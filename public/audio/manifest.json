@@ -1,0 +1,72 @@
+{
+ "files": [
+  "wind-larch",
+  "birch",
+  "breeze",
+  "insects",
+  "lake",
+  "mosquito",
+  "birds",
+  "room",
+  "fire",
+  "cuckoo",
+  "cuckoo-2",
+  "thrush",
+  "thrush-2",
+  "crow",
+  "crow-2",
+  "woodpecker",
+  "lark",
+  "horse",
+  "horse-2",
+  "cow",
+  "steps-grass",
+  "steps-dirt",
+  "steps-forest",
+  "steps-mud",
+  "steps-wood",
+  "discover",
+  "fire-feed",
+  "ribbon",
+  "ribbon-2",
+  "pour",
+  "water-pour",
+  "water-pour-2",
+  "churn",
+  "door",
+  "gate",
+  "bellows",
+  "bellows-2",
+  "bench",
+  "khomus",
+  "wood-take",
+  "wood-lay",
+  "wood-lay-2",
+  "crane",
+  "crane-2",
+  "bench-2",
+  "wood-take-2"
+ ],
+ "steps": {
+  "grass": {
+   "n": 10,
+   "slot": 0.5
+  },
+  "dirt": {
+   "n": 10,
+   "slot": 0.5
+  },
+  "forest": {
+   "n": 10,
+   "slot": 0.55
+  },
+  "mud": {
+   "n": 10,
+   "slot": 0.6
+  },
+  "wood": {
+   "n": 10,
+   "slot": 0.5
+  }
+ }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "alaas",
+  "version": "0.2.0",
+  "description": "Алаас: a first-person walk through a traditional Sakha summer homestead that teaches Sakha culture (three.js WebGPU).",
+  "license": "MIT",
+  "author": "Springfolk",
+  "repository": "github:Springfolk/alaas-game",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5190",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 5190",
+    "fetch-assets": "node tools/fetch-assets.mjs && node tools/webp.mjs",
+    "shot": "node tools/shot.mjs",
+    "fetch-audio": "node tools/fetch-audio.mjs",
+    "bench": "node tools/bench.mjs",
+    "hitch": "node tools/hitch.mjs",
+    "loadprof": "node tools/loadprof.mjs",
+    "loadtrace": "node tools/loadtrace.mjs",
+    "walkcheck": "node tools/walkcheck.mjs",
+    "lint": "eslint src tools",
+    "bake-impostors": "node tools/bake-impostors.mjs",
+    "bake-geometry": "node tools/bake-geometry.mjs",
+    "key-art": "node tools/key-art.mjs"
+  },
+  "dependencies": {
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "playwright-core": "^1.64.1",
+    "vite": "8.3.5"
+  }
+}

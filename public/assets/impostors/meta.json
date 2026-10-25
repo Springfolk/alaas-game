@@ -1,0 +1,12 @@
+{
+  "homestead": {
+    "key": "c1de713b",
+    "width": 2048,
+    "height": 768
+  },
+  "forest": {
+    "key": "7aa6a7ed",
+    "width": 2048,
+    "height": 2816
+  }
+}
