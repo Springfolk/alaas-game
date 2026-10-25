@@ -1,12 +1,15 @@
 // A small pool of load-time workers (src/load/worker.js). `job(type, args)` resolves with the result, or
 // runs `fallback()` on the main thread when workers are unavailable or the job fails.
-// Each worker runs at most two jobs at once (an async job's fetch overlaps the other's work); the rest wait
-// in one queue, generation jobs before texture images, so the world's own build never queues behind ~130 decodes.
+// Each worker runs at most two download jobs at once (an async job's fetch overlaps the other's work); the rest
+// wait in one queue, generation jobs before texture images. Generation jobs never wait for a download slot:
+// on a slow connection every slot can sit on a fetch for minutes, and the world's own build must not queue
+// behind them (the grass field once stayed empty, so the grass floated at height 0).
 import { cachedJob } from './geocache.js';
 import { span, event } from './prof.js';
 
 const N = Math.max(1, Math.min(6, (navigator.hardwareConcurrency || 2) - 1)), PER = 2;
 const LOW = new Set(['bitmap']); // queued after every other job type
+const NET = new Set(['bitmap', 'geo', 'pack']); // wait on downloads: at most PER per worker
 let pool = null, seq = 0, closed = false;
 const waiting = new Map(), queue = [];
 
@@ -16,10 +19,10 @@ function workers() {
   try {
     for (let i = 0; i < N; i++) {
       const w = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
-      const done = (id) => { const p = waiting.get(id); waiting.delete(id); w.jobs--; dispatch(); return p; };
+      const done = (id) => { const p = waiting.get(id); waiting.delete(id); w.jobs--; if (p?.net) w.net--; dispatch(); return p; };
       w.onmessage = ({ data }) => { const p = done(data.id); if (data.error) p?.no(new Error(data.error)); else p?.ok(data.result); };
       w.onerror = (e) => { e.preventDefault?.(); for (const [id, p] of waiting) if (p.w === w) done(id).no(new Error('worker failed')); };
-      w.jobs = 0;
+      w.jobs = 0; w.net = 0;
       pool.push(w);
     }
   } catch { pool = []; }
@@ -27,12 +30,14 @@ function workers() {
 }
 
 function dispatch() {
-  while (queue.length) {
-    const w = pool?.reduce((a, b) => (b.jobs < a.jobs ? b : a)); // the least busy
-    if (!w || w.jobs >= PER) return;
-    const j = queue.shift();
-    w.jobs++;
-    waiting.set(j.id, { ...j, w });
+  if (!pool?.length) return;
+  for (let i = 0; i < queue.length;) {
+    const j = queue[i], net = NET.has(j.type);
+    const w = pool.reduce((a, b) => ((net ? b.net < a.net : b.jobs < a.jobs) ? b : a)); // the least busy
+    if (net && w.net >= PER) { i++; continue; } // download slots full: later generation jobs still go
+    queue.splice(i, 1);
+    w.jobs++; if (net) w.net++;
+    waiting.set(j.id, { ...j, w, net });
     w.postMessage({ id: j.id, type: j.type, ...j.args });
   }
 }

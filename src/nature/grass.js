@@ -33,7 +33,7 @@ export function natureField(world) {
   };
   const texA = mk(a, THREE.HalfFloatType), texB = mk(b, THREE.UnsignedByteType);
   const pads = world.terrain.pads, spots = SPOTS();
-  job('field', { pads, spots }, () => fieldTexels(world.terrain, spots)).then((r) => {
+  const ready = job('field', { pads, spots }, () => fieldTexels(world.terrain, spots)).then((r) => {
     a.set(r.a); b.set(r.b); texA.needsUpdate = texB.needsUpdate = true;
   });
   const uvOf = (xz) => xz.sub(X0).div(SIZE);
@@ -45,7 +45,7 @@ export function natureField(world) {
     gh.maskXf.value.set(MASK.x0, MASK.z0, 1 / MASK.size);
   }
   world._field = {
-    texA, texB, uvOf, mask,
+    texA, texB, uvOf, mask, ready, // ready: the texels are in (until then every height reads 0)
     // TSL: (cut, mown) from the models' grass hints around the homestead
     sampleM: (xz) => texture(mask.tex, xz.sub(vec2(MASK.x0, MASK.z0)).div(MASK.size)).level(0),
     // TSL: { y, lakeD } and { forest, path, dry, grazed } at a world xz (vertex-safe: level 0)
@@ -659,4 +659,5 @@ export default async function build(ctx, world) {
     world.scene.add(f);
   }
   world.scene.add(shoreMeshes(world, F, W, ctx.rng));
+  await F.ready; // the blades join the scene only with their heights (empty, they float at y 0)
 }
