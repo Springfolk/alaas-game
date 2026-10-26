@@ -81,13 +81,13 @@ export function buildPost(engine) {
 
   // exposure (set by Engine.update), look and grade
   engine.grade = {
-    exposure: uniform(1), sharpen: uniform(tier === 'low' ? 0.35 : 0.22),
+    exposure: uniform(1), sharpen: uniform(0.8),
     power: uniform(1.12), saturation: uniform(1.18), vignette: uniform(0.16), grain: uniform(tier === 'low' ? 0 : 0.01),
   };
   const g = engine.grade;
   pipe.outputColorTransform = false;
   pipe.outputNode = Fn(() => {
-    // TRAA leaves the image soft: a light, halo-free sharpen (clamped to the local range)
+    // TRAA leaves the image soft: a strong, halo-free sharpen (clamped to the local range; SMAA, tried, shimmered in motion)
     const d = vec2(1).div(vec2(aaTex.size(0)));
     const c = aaTex.sample(screenUV).rgb;
     const n = aaTex.sample(screenUV.add(vec2(0, d.y))).rgb, s = aaTex.sample(screenUV.sub(vec2(0, d.y))).rgb;
