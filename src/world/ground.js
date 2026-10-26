@@ -114,13 +114,19 @@ function groundMaterial() {
   // the wet band at the waterline and the lake bed below it: darker and smoother
   const wet = float(1).sub(smoothstep(LAKE.level + 0.05, LAKE.level + 0.45, positionWorld.y));
   const tone = mx_noise_float(wp.mul(0.012)).mul(0.08).add(1);
-  // cow pats on grazed ground: a few per 2.4 m cell, grey-brown dry crust over a darker core
+  // cow pats on grazed ground, rare (one in ~14 cells of 2.4 m where grazing is heaviest): a lumpy outline,
+  // pale cracked dry crust, a browner moist middle and a dark rim where the low mound meets the grass
   const cell = floor(wp.div(2.4)), seed = cell.x.add(16384).toUint().mul(73856093).bitXor(cell.y.add(16384).toUint().mul(19349663));
   const hc = hash(seed), pc = cell.add(vec2(hash(seed.add(1)), hash(seed.add(2))).mul(0.7).add(0.15)).mul(2.4);
-  const pr = hash(seed.add(3)).mul(0.1).add(0.12);
-  const pd = length(wp.sub(pc).mul(vec2(1, hash(seed.add(4)).mul(0.4).add(0.8))));
-  const pat = float(1).sub(smoothstep(pr.mul(0.75), pr, pd)).mul(select(hc.lessThan(grazed.mul(0.22)), float(1), float(0)));
-  const dung = mix(lin(0x3f3626), lin(0x77705f), smoothstep(pr.mul(0.25), pr.mul(0.8), pd));
+  const pr = hash(seed.add(3)).mul(0.08).add(0.13);
+  const pd = length(wp.sub(pc).mul(vec2(1, hash(seed.add(4)).mul(0.4).add(0.8)))).div(pr)
+    .add(mx_noise_float(wp.mul(4)).mul(0.22)).add(mx_noise_float(wp.mul(13)).mul(0.08));
+  const pat = float(1).sub(smoothstep(0.85, 1, pd)).mul(select(hc.lessThan(grazed.mul(0.07)), float(1), float(0)));
+  // the slumped layers show as faint rings; cracks split the dry top
+  const ring = pd.mul(15).sin().mul(0.5).add(0.5).mul(smoothstep(0.15, 0.4, pd));
+  const crack = smoothstep(0.01, 0.05, mx_noise_float(wp.mul(30)).abs());
+  const crust = mix(lin(0x4a4130), mix(lin(0x5e5641), lin(0x6f6750), ring.mul(0.6).add(mx_noise_float(wp.mul(9)).mul(0.2))), crack);
+  const dung = mix(crust, lin(0x2f281d), smoothstep(0.78, 0.97, pd));
   mat.colorNode = mix(ar.rgb, dung, pat.mul(0.95)).mul(vec3(tone, tone, tone.mul(0.97))).mul(mix(1, 0.5, wet));
   mat.roughnessNode = mix(ar.a.mul(0.12).add(0.86), float(0.45), wet);
   mat.metalnessNode = float(0);
