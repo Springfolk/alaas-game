@@ -19,6 +19,17 @@ import { TIER } from '../engine/tier.js';
 
 // trees to FAR m from the alaas centre, the canopy band beyond; low tiers pull the full/coarse rings in (TIER.forest)
 export const BAND = 7, FAR = 950;
+
+// Phones: every tree in the forest's outer rows (DEPTH < 0.25, ~15 m in), every other one deeper in — there the far
+// impostors stood card behind card (fill a phone GPU pays per layer); the treeline still reads as dense
+function thin(t) {
+  if (TIER.name !== 'mobile' || KEYART) return t;
+  const keep = [];
+  for (let k = 0; k < t.N; k++) if (t.DEPTH[k] < 0.25 || ((k * 2654435761) >>> 0) % 100 < 50) keep.push(k);
+  const out = { N: keep.length };
+  for (const key of ['DEPTH', 'X', 'Z', 'Y', 'ROT', 'S', 'VI']) out[key] = t[key].constructor.from(keep, (k) => t[key][k]);
+  return out;
+}
 let R0 = 34, R1 = 100;
 const VARIANTS = [ // [species, count, options] — group key is options.kind or the species
   ['larch', 6], ['birch', 5], ['birch', 2, { young: true, kind: 'youngBirch' }], ['pine', 3], ['deadLarch', 2], ['shrub', 2, { kind: 'willow' }], ['shrub', 2, { kind: 'rose' }],
@@ -57,7 +68,7 @@ export default async function forest(ctx, world) {
     canopy = section(() => canopyGeometry(terrain, FAR * 0.9));
   }, { rngs: false });
 
-  const trees = await scattered;
+  const trees = thin(await scattered);
   const { N, DEPTH, X, Z, Y, ROT, S, VI } = trees;
   // ---------- spatial grid for the near rings ----------
   const G0 = -FAR * 1.25, CELL = 32, GN = Math.ceil(-G0 * 2 / CELL);

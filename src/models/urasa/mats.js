@@ -323,12 +323,13 @@ export function makeMats() {
     const k = hd.x;
     const q = vec3(t.x.mul(3), t.y.mul(3), hd.y.mul(10));
     const fur = n3(vec3(t.x.mul(320), t.y.mul(90), hd.y)).mul(0.45).add(n3(vec3(t.x.mul(60), t.y.mul(18), hd.y.add(3))).mul(0.35)).add(n3(vec3(t.x.mul(9), t.y.mul(9), hd.y.add(7))).mul(0.2));
-    const patch = smoothstep(0.48, 0.55, fbm3(q, 4));
-    const horse = mix(vec3(0.16, 0.09, 0.05), vec3(0.3, 0.18, 0.1), fbm3(q.mul(2), 3));
-    const cow = mix(vec3(0.24, 0.13, 0.07), vec3(0.5, 0.43, 0.34), patch);
-    const bear = mix(vec3(0.07, 0.05, 0.035), vec3(0.2, 0.13, 0.08), fbm3(q.mul(2), 3));
-    const elk = mix(vec3(0.38, 0.29, 0.2), vec3(0.22, 0.16, 0.11), fbm3(q.mul(1.5), 3));
-    let c = select(k.lessThan(0.5), horse, select(k.lessThan(1.5), cow, select(k.lessThan(2.5), bear, elk)));
+    // the skin's kind (horse, cow, bear, elk) picks its noise scale and colours first: one noise a pixel, not four
+    const pick = (a, b, c3, d) => select(k.lessThan(0.5), a, select(k.lessThan(1.5), b, select(k.lessThan(2.5), c3, d)));
+    const n = fbm3(q.mul(pick(float(2), float(1), float(2), float(1.5))), 3);
+    const isCow = k.greaterThan(0.5).and(k.lessThan(1.5));
+    const f = select(isCow, smoothstep(0.48, 0.55, n), n); // cow: white patches
+    let c = mix(pick(vec3(0.16, 0.09, 0.05), vec3(0.24, 0.13, 0.07), vec3(0.07, 0.05, 0.035), vec3(0.38, 0.29, 0.2)),
+      pick(vec3(0.3, 0.18, 0.1), vec3(0.5, 0.43, 0.34), vec3(0.2, 0.13, 0.08), vec3(0.22, 0.16, 0.11)), f);
     c = c.mul(fur.mul(0.9).add(0.45));
     m.colorNode = c;
     m.roughnessNode = float(1);

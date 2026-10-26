@@ -3,11 +3,11 @@ import * as THREE from 'three/webgpu';
 import {
   texture, uv, vec2, vec3, vec4, float, mix, smoothstep, step, clamp, max, abs, sin, fract, floor, positionLocal,
   normalLocal, attribute, faceDirection, normalMap, mx_noise_float, mx_fractal_noise_float, mx_worley_noise_float, time,
-  uniform, luminance, vertexColor, dot, length, bumpMap,
+  uniform, luminance, vertexColor, dot, length, bumpMap, Fn, If,
 } from 'three/tsl';
 
 import { FX, FZ, H, OUT, GAP, XD, ZD, KH } from './dims.js';
-import { octaves } from '../../engine/tier.js';
+import { octaves, TIER } from '../../engine/tier.js';
 
 const S = THREE.MeshStandardNodeMaterial;
 
@@ -81,20 +81,33 @@ export function makeMats(maps, { winter = false } = {}) {
     const rim = smoothstep(thr.sub(0.05), thr, fl).mul(float(1).sub(flaked));     // thinned plaster round a patch
     const lip = smoothstep(thr, thr.add(0.03), fl).mul(smoothstep(thr.add(0.06), thr.add(0.03), fl)); // shadow under the broken edge
     col = mix(col, col.mul(vec3(0.82, 0.78, 0.72)), rim.mul(0.45));
-    // the exposed logs: weathered silver-grey larch, round, with dark joints and bits of bark
-    const lw = 0.16;
-    const lu = u.x.div(lw).add(nz(vec3(u.y.mul(0.8), 0.0, 4.4)).mul(0.25));
-    const fu = fract(lu);
-    const round = sin(fu.mul(Math.PI)).pow(0.6);
-    const wtx = smp(T.wood.diff, vec2(u.x.mul(1.3), u.y.mul(0.35))).rgb;
-    const tone = nz(vec3(floor(lu).mul(1.7), 0.5, 2.0)).mul(0.35).add(0.75);
-    let logc = vec3(luminance(wtx)).mul(vec3(0.62, 0.52, 0.4)).mul(tone).mul(round.mul(0.45).add(0.5));
-    const chk = smoothstep(0.8, 0.86, nz(vec3(u.x.mul(40), u.y.mul(1.2), floor(lu))));
-    logc = mix(logc, vec3(0.06, 0.05, 0.045), chk.mul(0.6));
-    const barkLeft = smoothstep(0.62, 0.7, fz(vec3(u.x.mul(4), u.y.mul(1.2), 8.0), 2));
-    logc = mix(logc, smp(T.bark.diff, vec2(u.x.mul(1.4), u.y.mul(0.9))).rgb.mul(0.7), barkLeft.mul(0.6));
-    logc = mix(logc, vec3(0.05, 0.045, 0.04), smoothstep(0.12, 0.0, fu).add(smoothstep(0.88, 1.0, fu)).min(1));
-    logc = mix(logc, col.mul(0.7), smoothstep(0.75, 0.95, nz(p.mul(7.0))).mul(0.5));   // clay crumbs left in the joints
+    // the exposed logs: weathered silver-grey larch, round, with dark joints and bits of bark. Phones draw them only
+    // inside a flaked patch (six noises and two textures a pixel saved elsewhere; gradients taken before the branch)
+    const lean = TIER.name === 'mobile';
+    const logs = (du) => {
+      const look = (t, k) => (du ? texture(t, vec2(u.x.mul(k[0]), u.y.mul(k[1]))).grad(du[0].mul(vec2(k[0], k[1])), du[1].mul(vec2(k[0], k[1]))) : smp(t, vec2(u.x.mul(k[0]), u.y.mul(k[1]))));
+      const lw = 0.16;
+      const lu = u.x.div(lw).add(nz(vec3(u.y.mul(0.8), 0.0, 4.4)).mul(0.25));
+      const fu = fract(lu);
+      const round = sin(fu.mul(Math.PI)).pow(0.6);
+      const wtx = look(T.wood.diff, [1.3, 0.35]).rgb;
+      const tone = nz(vec3(floor(lu).mul(1.7), 0.5, 2.0)).mul(0.35).add(0.75);
+      let c = vec3(luminance(wtx)).mul(vec3(0.62, 0.52, 0.4)).mul(tone).mul(round.mul(0.45).add(0.5));
+      const chk = smoothstep(0.8, 0.86, nz(vec3(u.x.mul(40), u.y.mul(1.2), floor(lu))));
+      c = mix(c, vec3(0.06, 0.05, 0.045), chk.mul(0.6));
+      const barkLeft = smoothstep(0.62, 0.7, fz(vec3(u.x.mul(4), u.y.mul(1.2), 8.0), 2));
+      c = mix(c, look(T.bark.diff, [1.4, 0.9]).rgb.mul(0.7), barkLeft.mul(0.6));
+      c = mix(c, vec3(0.05, 0.045, 0.04), smoothstep(0.12, 0.0, fu).add(smoothstep(0.88, 1.0, fu)).min(1));
+      return vec4(c, smoothstep(0.75, 0.95, nz(p.mul(7.0))).mul(0.5));   // + clay crumbs left in the joints (mixed in below)
+    };
+    const lc = !lean ? logs(null) : Fn(() => {
+      const v = (n, x) => { const o = n.toVar(); o.assign(x); return o; };
+      const du = [v(vec2(0), u.dFdx()), v(vec2(0), u.dFdy())];
+      const out = vec4(0).toVar();
+      If(flaked.greaterThan(0.001), () => { out.assign(logs(du)); });
+      return out;
+    })();
+    const logc = mix(lc.rgb, col.mul(0.7), lc.a);
     col = mix(col, logc, flaked);
     col = col.mul(float(1).sub(lip.mul(0.55)));
     // alpha lives in colorNode too: the shadow pass takes its alpha from colorNode.a (a vec3 there cast no shadow at all)
