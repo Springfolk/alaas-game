@@ -30,7 +30,7 @@ const shoot = async (s) => {
     await page.waitForFunction(() => window.game?.complete, null, { timeout: 600000, polling: 500 });
     await page.addStyleTag({ content: '#hints, #dot, #prompt, #toasts, #title, #fps, #keyart { display: none !important; }' }); // no HUD
     const t0 = Date.now();
-    await page.evaluate(async () => { // every texture at full size, then ≥150 frames and ≥5 s: TRAA history and exposure settle
+    await page.evaluate(async () => { // every texture at full size, then ≥150 frames and ≥5 s: exposure settles
       await (await import('/src/engine/materials.js')).texturesLoaded();
       const t = performance.now();
       for (let n = 0; n < 150 || performance.now() - t < 5000; n++) await new Promise((r) => requestAnimationFrame(r));
