@@ -2,7 +2,7 @@
 // splatted PBR material: meadow grass, forest floor, lake-shore mud, trodden earth, dry grass.
 import * as THREE from 'three/webgpu';
 import { texture, attribute, positionWorld, cameraPosition, vec2, vec3, vec4, mix, normalMap, float, smoothstep, mx_noise_float, uniform, floor, hash, length, select } from 'three/tsl';
-import { maps, textureMax } from '../engine/materials.js';
+import { maps, firstTextureMax, onSharpen } from '../engine/materials.js';
 import { LAKE } from './terrain.js';
 import { groundSamples, groundArrays, packSet } from './ground-data.js';
 import { job } from '../load/workers.js';
@@ -42,12 +42,16 @@ function packed(id) {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
   t.generateMipmaps = true; t.anisotropy = 8; t.colorSpace = THREE.SRGBColorSpace;
-  // the device tier's texture cap (2048 → 1024 on low, 512 on phones); decoded and packed in a worker
-  const base = `${import.meta.env.BASE_URL}assets/tex/${id}/`, max = textureMax();
-  t.userData.ready = job('pack', { base, max }, () => packSet(base, max)).then((img) => {
+  // starts at 256 like every texture, then the device tier's cap (2048 → 1024 on low, 512 on phones) in play
+  // (sharpenTextures); decoded and packed in a worker; the swap drops the GPU texture first (a rebind, no new shader)
+  const base = `${import.meta.env.BASE_URL}assets/tex/${id}/`;
+  const load = (max, swap) => job('pack', { base, max }, () => packSet(base, max)).then((img) => {
+    if (swap) t.dispose();
     t.image = img;
     t.needsUpdate = true;
   }).catch((e) => console.warn('ground texture', id, e));
+  t.userData.ready = load(firstTextureMax(), false);
+  onSharpen((max) => load(max, true));
   return t;
 }
 

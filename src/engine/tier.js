@@ -67,7 +67,7 @@ export function bootStep(auto) {
   try { g = JSON.parse(localStorage.getItem(GUARD)) || {}; } catch { /* none */ }
   let step = auto ? g.step || 0 : 0;
   if (auto && g.pending && Date.now() - g.pending < 600000) step = Math.min(2, step + 1);
-  keep({ step, pending: Date.now() });
+  keep({ ...g, step, pending: Date.now() });
   addEventListener('pagehide', () => { if (guard.pending && !failed) keep({ ...guard, pending: 0 }); });
   return step;
 }
@@ -75,3 +75,19 @@ let failed = false;
 export const bootDone = () => keep({ ...guard, pending: 0 });
 // the GPU device was lost while loading (a GPU process crash or reset): reload one step down
 export const bootFailed = () => { if (!guard.pending || failed) return; failed = true; location.reload(); };
+// lost in play (iOS drops the GPU device under memory pressure or a GPU timeout: the canvas freezes on its last
+// frame while the page still answers): reload where the player stood (main.js resumes there, title screen);
+// a second loss within 10 min also steps the auto tier down like a killed load.
+const RESUME = 'alaas-resume';
+export function playLost(at) {
+  if (failed) return;
+  failed = true;
+  try { sessionStorage.setItem(RESUME, JSON.stringify({ at, t: Date.now() })); } catch { /* storage blocked */ }
+  const again = guard.lost && Date.now() - guard.lost < 600000;
+  keep({ ...guard, step: again ? Math.min(2, (guard.step || 0) + 1) : guard.step || 0, lost: Date.now(), pending: 0 });
+  location.reload();
+}
+// the spot to resume at after playLost's reload (once, within a minute), else null
+export function resumeSpot() {
+  try { const r = JSON.parse(sessionStorage.getItem(RESUME)); sessionStorage.removeItem(RESUME); return r && Date.now() - r.t < 60000 ? r.at : null; } catch { return null; }
+}

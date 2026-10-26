@@ -2,7 +2,7 @@
 
 - No unit tests; verification is `npm run lint` (undefined/unused names), `npm run build` and headless checks against `npm run dev`.
 - Tools launch system Chrome (`CHROME` overrides the path) or Playwright WebKit via `tools/browser.mjs`; `PORT` picks the dev server. npm scripts: `shot`, `walkcheck`, `hitch`, `loadprof`, `bench` (args after `--`).
-- `node tools/shot.mjs "/?auto&at=x,z,yaw" out.png 1280 720 4000` — system Chrome headless with WebGPU (`playwright-core` dev dependency); never takes the screen. Prints the backend and console errors. `DPR=2|3` sets the pixel ratio (also `bench`).
+- `node tools/shot.mjs "/?auto&at=x,z,yaw" out.png 1280 720 4000` — system Chrome headless with WebGPU (`playwright-core` dev dependency); never takes the screen. Waits for `game.sharp` (textures at the tier size). Prints the backend and console errors. `DPR=2|3` sets the pixel ratio (also `bench`).
 - `EVAL="js"` runs code in the page before the shot (`window.game`, `window.viewer`).
 - Models: `viewer.html?m=<model>&cam=x,y,z&look=x,y,z`; it sets `window.ready` after 40 frames.
 - Pointer lock can't be granted headless; `?auto` starts without it.

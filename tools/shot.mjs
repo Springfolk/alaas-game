@@ -11,7 +11,7 @@ page.on('pageerror', (e) => logs.push('pageerror: ' + (process.env.STACK ? e.sta
 await page.goto(`http://127.0.0.1:${port}${path}`, { waitUntil: 'domcontentloaded' });
 try {
   // the game: once the world is complete (every shader built; older builds: ready)
-  await page.waitForFunction(() => window.ready || window.game?.complete || (window.game?.ready && !window.game.finish), null, { timeout: 300000 });
+  await page.waitForFunction(() => window.ready || (window.game?.complete && (!window.game.sharpening || window.game.sharp)) || (window.game?.ready && !window.game.finish), null, { timeout: 300000 }); // sharp: textures at the tier size
 } catch { logs.push('timeout waiting for ready'); }
 if (process.env.EVAL) await page.evaluate(process.env.EVAL).catch((e) => logs.push("eval: " + e.message));
 await page.waitForTimeout(+wait);

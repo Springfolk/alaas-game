@@ -56,8 +56,10 @@ export class AudioScape {
     this.foot = 1;
     this.timers = {};
     for (const [k, v] of Object.entries(CALLS)) this.timers[k] = rand(4, v.gap[0]);
-    this.ready = this.load();
   }
+
+  // the clips (4.5 MB) download from ready on (Game.boot): before it they would share the link with the world
+  fetchClips() { return (this.ready ||= this.load()); }
 
   async load() {
     try { this.manifest = await (await fetch(BASE + 'manifest.json')).json(); } catch (e) { console.warn('audio: no manifest', e); return; }

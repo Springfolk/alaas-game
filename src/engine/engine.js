@@ -63,8 +63,9 @@ export class Engine {
     setTextureMax(this.opts.texMax);
     const r = this.renderer = new THREE.WebGPURenderer({ canvas: this.canvas, antialias: false, forceWebGL: !!this.opts.webgl, trackTimestamp: this.opts.gpuTime ?? urlFlag('gputime') });
     r.library.addLight(SunLightNode, SunLight);
-    const lost = r.onDeviceLost.bind(r); // lost while loading (bootDone not yet called): reload a step down
-    r.onDeviceLost = (info) => { lost(info); if (!KEYART) bootFailed(); };
+    // lost while loading (bootDone not yet called): reload a step down; in play: main.js's onLost (reload, resume)
+    const lost = r.onDeviceLost.bind(r);
+    r.onDeviceLost = (info) => { lost(info); if (KEYART) return; bootFailed(); this.onLost?.(info); };
     r.setPixelRatio(Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
     r.setSize(innerWidth, innerHeight, false);
     r.shadowMap.enabled = true;

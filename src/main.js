@@ -1,8 +1,8 @@
 // Boot and loop: title → walk. Looking at a thing + E opens its explainer card or does its action.
 import * as THREE from 'three/webgpu';
 import { Engine } from './engine/engine.js';
-import { setAnisotropy, setTextureRenderer } from './engine/materials.js';
-import { bootDone } from './engine/tier.js';
+import { setAnisotropy, setTextureRenderer, sharpenTextures } from './engine/materials.js';
+import { bootDone, playLost, resumeSpot } from './engine/tier.js';
 import { World } from './world/world.js';
 import { START } from './world/layout.js';
 import { Input } from './input.js';
@@ -80,9 +80,9 @@ class Game {
     this.stream.eye = this.engine.camera.position; // nearest first
     this.world.prewarm = (scene, cam, target) => this.stream.prepare(scene, cam, target); // offscreen bakes
     this.world.breathe = async () => { await new Promise((r) => setTimeout(r, 0)); await this.stream.viewBuilt(); }; // what shows comes first
-    // the soundscape loads and decodes its clips meanwhile, from the first view on (preview())
+    // the soundscape's code loads from the first view on (preview()), its clips from ready
     this.loadAudio = () => (this.audioLoading ||= audioModules['./audio/audio.js']?.().then(({ AudioScape }) => new AudioScape(this)).catch((e) => console.warn('audio', e)));
-    const at = params.get('at')?.split(',').map(Number);
+    const at = params.get('at')?.split(',').map(Number) || resumeSpot(); // resumeSpot: back after a GPU loss in play
     // the loading view must see the world from where it will be played (again once the floors exist)
     const place = () => { if (at) this.player.place(at[0], at[1], at[2] ?? 0); else this.player.place(START.x, START.z, START.yaw); this.player.update(0); };
     await this.world.build((f, stage) => { built = f; status(stage); }, () => { place(); return this.preview(status); }); // the homestead's build code starts once the sky shows
@@ -96,7 +96,8 @@ class Game {
     mark('warm');
 
     this.audio = await this.loadAudio();
-    closeWorkers();
+    this.audio?.fetchClips();
+    this.sharpening = sharpenTextures().then(() => { this.sharp = true; mark('sharp'); closeWorkers(); }); // 256 → the tier's size, in play
     this.player.onStep = (surface, speed) => this.audio?.step(surface, speed);
 
     this.title = true;
@@ -129,7 +130,13 @@ class Game {
     if (params.has('auto')) this.start(true);
 
     this.clock = new THREE.Timer();
-    this.engine.renderer.setAnimationLoop((t) => this.tick(t));
+    // the GPU device lost in play, or a frame that keeps throwing (the canvas would freeze): reload, resume here
+    const lost = () => playLost([this.player.pos.x, this.player.pos.z, this.player.yaw]);
+    this.engine.onLost = lost;
+    let bad = 0;
+    this.engine.renderer.setAnimationLoop((t) => {
+      try { this.tick(t); bad = 0; } catch (e) { if (bad++ === 0) console.error(e); if (bad > 60) lost(); }
+    });
   }
 
   // The loading view: a frame loop that draws whatever has its shader built and queues the rest for

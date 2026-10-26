@@ -2,6 +2,7 @@
 // Poly Haven (CC0, self-hosted copies need no credit). Skips files already present.
 // Usage: node tools/fetch-assets.mjs [id ...] && node tools/webp.mjs
 import { mkdir, writeFile, access } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 
 // id → resolution. Add a line here when a model needs a new material.
 export const TEXTURES = {
@@ -18,8 +19,9 @@ export const TEXTURES = {
   rough_wood: '2k', // yard: weathered round larch (serge, ampaar, kuruo, sele)
 };
 
-const MAPS = { diff: 'diff', nor: 'nor_gl', arm: 'arm' };
+export const MAPS = { diff: 'diff', nor: 'nor_gl', arm: 'arm' };
 const root = new URL('../public/assets/tex/', import.meta.url);
+if (import.meta.url === pathToFileURL(process.argv[1]).href) { // run, not imported (tex-sizes.mjs)
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(TEXTURES);
 
 for (const id of ids) {
@@ -35,4 +37,5 @@ for (const id of ids) {
     await writeFile(out, Buffer.from(await r.arrayBuffer()));
     console.log(`✓ ${id}/${name}.jpg (${res})`);
   }
+}
 }
