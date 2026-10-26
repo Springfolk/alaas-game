@@ -17,7 +17,7 @@ export default async function build(ctx, placement) {
   };
 }
 ```
-- `entry` = an id in `src/data/entries.json`. `target` = the Object3D the player looks at (raycast ≤3.4 m); `zone` = a circle the player stands in.
+- `entry` = an id in `src/data/entries.json`. `target` = the Object3D the player looks at (raycast ≤3.4 m; among hits within 0.6 m of the first the smallest target wins, so a proxy just inside a bigger one takes `side: BackSide` to answer from inside only — the uraha lining); `zone` = a circle the player stands in.
 - `act` = `{ id, label: { sah, en }, once?: true, thenCard?: false, freeze?: true, run: async (game, it) => {} }` — the player keeps walking and looking unless `freeze` (only for acts that move the view or ask a choice). Hooks for `src/interact`: `docs/interactions.md`. It may animate via `update`; `game.audio?.play(name, pos)` plays sounds.
 - Indoors: set `game.engine.exposureTarget` (base 0.62) higher when the player is inside, back to 0.62 outside.
 - Materials: `pbr(id, { repeat, tint, normalScale })` from `public/assets/tex/<id>/`; add sets to `tools/fetch-assets.mjs` and run `npm run fetch-assets`. Procedural detail via TSL node materials is welcome. Real-world scale in metres.

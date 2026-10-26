@@ -46,7 +46,7 @@ export default async function forest(ctx, world) {
   const bySp = {}; // variant indices per kind, in the order the variants are made below
   let nv = 0;
   for (const [sp, n, o = {}] of VARIANTS) for (let i = 0; i < n; i++) (bySp[o.kind || sp] ||= []).push(nv++);
-  const keep = PLACEMENTS.map((p) => ({ x: p.x, z: p.z, r: p.model === 'sacred-birch' ? 24 : (p.pad || 6) + 12 }));
+  const keep = PLACEMENTS.map((p) => ({ x: p.x, z: p.z, r: p.model === 'sacred-birch' ? 60 : (p.pad || 6) + 12 }));
   // debug: `?trees` lines every variant up on the meadow at z = −120 (x = −60 + 9·i), plus shrubs
   const lineUp = urlFlag('trees') ? nv : 0;
   const args = { bySp, keep, far: FAR, lineUp };
