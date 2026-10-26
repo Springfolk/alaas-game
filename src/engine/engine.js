@@ -173,6 +173,7 @@ export class Engine {
   // towards light than towards dark. Without the meter, the houses' exposureTarget hints drive it.
   update(dt) {
     this.dynamicResolution(dt);
+    if (this.opts.lazyShadows && !KEYART && !urlFlag('nolazy')) this.lazyShadows(dt); // ?nolazy: A/B
     this.cloudMap?.render(this.renderer, this.camera, this.sky.sunPosition.value);
     this.syncInteriors?.();
     this.meterDt = dt;
@@ -184,6 +185,19 @@ export class Engine {
     this.exposure += (target - this.exposure) * (1 - Math.exp(-rate * dt));
     if (this.grade) this.grade.exposure.value = this.exposure;
     this.renderer.toneMappingExposure = this.exposure;
+  }
+
+  // opts.lazyShadows (phones): the sun's maps re-render only when the view moved 1.5 m or turned 8°, at most every
+  // 1/8 s, else every 2 s; between, the last maps and their matrices keep (shadows of swaying leaves pause).
+  // Both cascades every frame was the largest single cost on an iPhone on WebGL2 (frozen: 10 → 25 fps).
+  lazyShadows(dt) {
+    const sh = this.sun.shadow, c = this.camera, s = (this._lazy ||= { p: new THREE.Vector3(1e9, 0, 0), d: new THREE.Vector3(), f: new THREE.Vector3(), t: 9 });
+    sh.autoUpdate = false;
+    s.t += dt;
+    c.getWorldDirection(s.f);
+    if (s.t > 0.125 && (s.t > 2 || c.position.distanceToSquared(s.p) > 2.25 || s.f.dot(s.d) < 0.99)) {
+      sh.needsUpdate = true; s.t = 0; s.p.copy(c.position); s.d.copy(s.f);
+    }
   }
 
   // Frame pacing: true when a frame is due on this animation frame (`now` = its timestamp, ms) for `fps`

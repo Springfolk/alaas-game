@@ -9,6 +9,7 @@
 //   grassDensity 1 = full blades (grass.js), forest = scale of the full/coarse tree ring radii (forest.js)
 //   ground       ground grid vertices per side · fps = frame cap (battery saver halves it)
 //   atlasMax     largest impostor atlas edge · pipelines = GPU pipeline compiles in flight while loading
+//   lazyShadows  sun shadow maps re-render on a move/turn only (Engine.lazyShadows) · mirrorEvery = lake mirror every n-th frame
 //   release      drop each texture image's CPU/IOSurface copy once it is on the GPU (materials.js)
 const NATIVE = typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1;
 export const PRESETS = {
@@ -17,7 +18,7 @@ export const PRESETS = {
   low: { quality: 'low', ao: false, shadows: 1024, shadowFar: 70, reflection: 0.18, dpr: 0.75, resMin: 0.5, texMax: 1024, grassDensity: 0.6, forest: 0.8, ground: 512, fps: 60 },
   // phones (lite too): 67–100% of the screen's own resolution — starts at 67% and climbs while frames keep pace
   // (dynamic resolution); below 67% read as mush (dpr = resMin: no dynamic resolution, only the knobs)
-  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: NATIVE, resMin: NATIVE * 0.67, resStart: 0.67, texMax: 512, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
+  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: NATIVE, resMin: NATIVE * 0.67, resStart: 0.67, lazyShadows: true, mirrorEvery: 2, texMax: 512, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
 };
 // A weak phone (≤3 GB, <4 cores, no WebGPU, under-default GPU limits) or one whose last load was killed:
 // mobile with these on top (TIER.lite). Memory can't be handed back at run time, so it is decided here.

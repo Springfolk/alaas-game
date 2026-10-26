@@ -8,7 +8,7 @@ import {
 } from 'three/tsl';
 import { LAKE } from '../world/terrain.js';
 import { natureField, natureWind } from './grass.js';
-import { mulberry32 } from '../util.js';
+import { mulberry32, urlFlag } from '../util.js';
 import { compiling, CULL_LAYER } from '../engine/merge.js';
 import { mirror } from '../engine/lod.js';
 
@@ -74,9 +74,12 @@ export default async function build(ctx, world) {
   };
   const hidden = [];
   let standIns = null;
+  const every = urlFlag('nolazy') ? 1 : engine.opts.mirrorEvery || 1; // phones: every 2nd frame (the target keeps the last one between)
   base.updateBefore = (frame) => {
-    const sh = engine.sun.shadow, auto = sh.autoUpdate;
-    sh.autoUpdate = false;
+    if (every > 1 && frame.frameId % every && !compiling(engine.camera)) return;
+    // the mirror's camera must neither redraw the shadow maps nor use up a pending redraw (Engine.lazyShadows)
+    const sh = engine.sun.shadow, auto = sh.autoUpdate, pend = sh.needsUpdate;
+    sh.autoUpdate = false; sh.needsUpdate = false;
     const cam = engine.camera, e = cam.position, vcam = base.getVirtualCamera(cam);
     // while the loader builds every shader: mirror everything, culled parts included
     const all = compiling(cam);
@@ -109,7 +112,7 @@ export default async function build(ctx, world) {
       if (coarse) { for (const t of tiles) t.visible = true; coarse.visible = false; }
       if (all) vcam.layers.disable(CULL_LAYER);
       mirror.value = 0;
-      sh.autoUpdate = auto;
+      sh.autoUpdate = auto; sh.needsUpdate = pend;
       for (const o of hidden) o.visible = true;
       hidden.length = 0;
     }
