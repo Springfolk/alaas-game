@@ -13,7 +13,7 @@ import { geoBuild, section } from '../load/geocache.js';
 import { scatterTrees } from './trees/scatter.js';
 import { job } from '../load/workers.js';
 import { PLACEMENTS } from '../world/layout.js';
-import { urlFlag } from '../util.js';
+import { urlFlag, KEYART } from '../util.js';
 
 import { TIER } from '../engine/tier.js';
 
@@ -29,6 +29,7 @@ export default async function forest(ctx, world) {
   const { terrain } = world;
   const t0 = performance.now();
   R0 = Math.round(44 * TIER.forest); R1 = Math.round(100 * TIER.forest);
+  if (KEYART) { R0 = 5000; R1 = 5100; } // ?keyart: every tree full (lod0), no coarse ring or impostors
 
   // ---------- placement: in a worker (trees/scatter.js) while the variants are made here ----------
   const bySp = {}; // variant indices per kind, in the order the variants are made below
@@ -68,7 +69,7 @@ export default async function forest(ctx, world) {
   for (let k = 0; k < N; k++) items[fill[cellOf(X[k], Z[k])]++] = k;
 
   // ---------- instanced near/mid meshes ----------
-  const CAP = [Math.ceil(900 * TIER.forest ** 2), Math.ceil(4000 * TIER.forest ** 2)];
+  const CAP = KEYART ? [N, 1] : [Math.ceil(900 * TIER.forest ** 2), Math.ceil(4000 * TIER.forest ** 2)];
   const group = new THREE.Group(); group.name = 'forest';
   const mats = {};
   const matFor = (sp, part) => (mats[sp + part] ||= part === 'bark' ? barkMaterial(sp) : leafMaterial(sp));
@@ -99,6 +100,7 @@ export default async function forest(ctx, world) {
 
   // ---------- far impostors, canopy band, deadwood, shrubs ----------
   const imp = await buildImpostors(world, variants, trees, { R1, BAND });
+  imp.object.visible = !KEYART;
   world.scene.add(imp.object);
   world.scene.add(buildCanopyBand(canopy));
   const dead = buildDeadwood(world, trees, { keep });
@@ -113,8 +115,12 @@ export default async function forest(ctx, world) {
 
   // ---------- LOD refresh ----------
   let lastX = 1e9, lastZ = 1e9, timer = 0;
+  // ?keyart: only trees whose bounds (+40 m: shadows cast into view) touch the view frustum, or all lod0 would be ~0.5 G triangles
+  const frustum = new THREE.Frustum(), sphere = new THREE.Sphere(), m4 = new THREE.Matrix4();
   const refresh = (ex, ez) => {
     for (const lod of sets) for (const s of lod) s.n = 0;
+    const cam = KEYART && world.engine?.camera;
+    if (cam) { cam.updateMatrixWorld(); frustum.setFromProjectionMatrix(m4.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); }
     let nc = 0;
     const reach = R1 + BAND;
     const c0x = Math.max(0, Math.floor((ex - reach - G0) / CELL)), c1x = Math.min(GN - 1, Math.floor((ex + reach - G0) / CELL));
@@ -126,6 +132,11 @@ export default async function forest(ctx, world) {
         const d = Math.hypot(X[k] - ex, Z[k] - ez);
         if (d > reach) continue;
         const vi = VI[k];
+        if (cam) {
+          const h = variants[vi].H * S[k];
+          sphere.center.set(X[k], Y[k] + h / 2, Z[k]); sphere.radius = h / 2 + variants[vi].radius * S[k] + 40;
+          if (!frustum.intersectsSphere(sphere)) continue;
+        }
         // cross-fades: lod0 fades out over R0±BAND while lod1 fades in on the complementary dither;
         // lod1 fades out over R1±BAND while the impostors (shader side) fade in
         const f0 = Math.min(1, Math.max(0, (R0 + BAND - d) / (2 * BAND)));

@@ -1,6 +1,6 @@
 // Renders the loading screen's key art from the game itself and encodes it (docs/loading.md):
 // public/assets/ui/keyart-{1920,960,phone}.{avif,webp} and the inline blurred placeholder in index.html.
-// npm run key-art — needs the dev server (PORT), `cwebp`, `avifenc` and `ffmpeg`. Rerun after changing
+// npm run key-art — needs the dev server (PORT; `/src` imports), `cwebp`, `avifenc` and `ffmpeg`. Rerun after changing
 // a model, the light or the sun (the shot uses the game's own sun, so the cross-fade into play matches).
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, statSync, rmSync } from 'node:fs';
@@ -9,9 +9,10 @@ import { join } from 'node:path';
 import { launch, PORT as port } from './browser.mjs';
 
 // over the lake's north shore, looking north up the path to the urasa and the forest ring (?cam=x,y,z,yaw°,pitch°,fov°)
+// rendered at 2× the largest output and scaled down (supersampling)
 const SHOTS = [
-  { name: 'wide', cam: '0,99,0,13,-5,30', w: 2880, h: 1620 },  // 16:9, rendered at 1.5× and scaled down; the urasa on the right third, clear of the title
-  { name: 'phone', cam: '0,99,0,2,-3.5,46', w: 1440, h: 2400 }, // portrait 3:5, 1.5× too
+  { name: 'wide', cam: '0,99,0,13,-5,30', w: 3840, h: 2160 },  // 16:9; the urasa on the right third, clear of the title
+  { name: 'phone', cam: '0,99,0,2,-3.5,46', w: 1920, h: 3200 }, // portrait 3:5
 ];
 const OUT = new URL('../public/assets/ui/', import.meta.url).pathname;
 const HTML = new URL('../index.html', import.meta.url).pathname;
@@ -19,20 +20,32 @@ const tmp = mkdtempSync(join(tmpdir(), 'keyart-'));
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: ['ignore', 'ignore', 'inherit'] });
 
 const browser = await launch('chrome');
-for (const s of SHOTS) {
+const shoot = async (s) => {
   const page = await browser.newPage({ viewport: { width: s.w, height: s.h } });
   page.on('pageerror', (e) => console.warn('pageerror:', e.message));
-  await page.goto(`http://127.0.0.1:${port}/?auto&q=high&cam=${s.cam}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.game?.complete, null, { timeout: 300000, polling: 200 });
-  await page.evaluate(() => { // full resolution, held (no dynamic drops under a busy GPU)
-    const e = window.game.engine;
-    e.dynamicResolution = () => {}; e.resScale = 1;
-    e.renderer.setPixelRatio(1); e.renderer.setSize(innerWidth, innerHeight, false);
-  });
-  await page.addStyleTag({ content: '#hints, #dot, #prompt, #toasts, #title, #fps, #keyart { display: none !important; }' }); // no HUD
-  await page.waitForTimeout(3000); // the play loop's resolution and exposure settle
-  await page.screenshot({ path: join(tmp, `${s.name}.png`), timeout: 120000 });
-  await page.close();
+  page.on('console', (m) => { if (m.type() === 'error') console.warn('console:', m.text()); });
+  try {
+    // ?keyart (src/util.js): high tier maxed, no LOD/impostors/size culling, fixed full resolution
+    await page.goto(`http://127.0.0.1:${port}/?auto&keyart&cam=${s.cam}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.game?.complete, null, { timeout: 600000, polling: 500 });
+    await page.addStyleTag({ content: '#hints, #dot, #prompt, #toasts, #title, #fps, #keyart { display: none !important; }' }); // no HUD
+    const t0 = Date.now();
+    await page.evaluate(async () => { // every texture at full size, then ≥150 frames and ≥5 s: TRAA history and exposure settle
+      await (await import('/src/engine/materials.js')).texturesLoaded();
+      const t = performance.now();
+      for (let n = 0; n < 150 || performance.now() - t < 5000; n++) await new Promise((r) => requestAnimationFrame(r));
+    });
+    console.log(`${s.name}: settled in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+    await page.screenshot({ path: join(tmp, `${s.name}.png`), timeout: 120000 });
+  } finally { await page.close(); }
+};
+for (const s of SHOTS) {
+  for (let tries = 3; ; ) {
+    try { await shoot(s); break; } catch (e) { // e.g. a dev-server reload mid-shot (a file changed)
+      if (--tries === 0) throw e;
+      console.warn(`${s.name}: ${e.message.split('\n')[0]} — retrying`);
+    }
+  }
 }
 await browser.close();
 

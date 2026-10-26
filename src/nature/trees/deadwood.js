@@ -4,9 +4,9 @@ import * as THREE from 'three/webgpu';
 import { positionWorld, screenCoordinate, hash, float } from 'three/tsl';
 import { limbsGeometry, grow, vec } from './gen.js';
 import { barkMaterial, U } from './materials.js';
-import { mulberry32, smooth, fbm } from '../../util.js';
+import { mulberry32, smooth, fbm, KEYART } from '../../util.js';
 
-const NEAR = 170;
+const NEAR = KEYART ? 2000 : 170; // ?keyart: all of it
 
 function logGeometry(rng, L) {
   const pts = [];

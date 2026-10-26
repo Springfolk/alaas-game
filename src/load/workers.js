@@ -7,7 +7,9 @@
 import { cachedJob } from './geocache.js';
 import { span, event } from './prof.js';
 
-const N = Math.max(1, Math.min(6, (navigator.hardwareConcurrency || 2) - 1)), PER = 2;
+// phones (coarse pointer) or ≤4 GB: ≤3 workers — each is a JS heap, and each decode holds a full-size image
+const SMALL = (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) || (navigator.deviceMemory || 8) <= 4;
+const N = Math.max(1, Math.min(SMALL ? 3 : 6, (navigator.hardwareConcurrency || 2) - 1)), PER = 2;
 const LOW = new Set(['bitmap']); // queued after every other job type
 const NET = new Set(['bitmap', 'geo', 'pack']); // wait on downloads: at most PER per worker
 let pool = null, seq = 0, closed = false;

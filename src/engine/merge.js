@@ -16,6 +16,7 @@ import { lights } from 'three/tsl';
 import { buildImpostors } from './lod.js';
 import { TIER } from './tier.js';
 import { LAKE } from '../world/terrain.js';
+import { KEYART } from '../util.js';
 
 export const SHADOW_LAYER = 2, CULL_LAYER = 30;
 // The loader (src/load/stream.js collect) renders once with the view camera on every layer to build every
@@ -125,9 +126,10 @@ export function optimizePlaced(world, camera, sun) {
 
     const isProxy = (o) => o.layers.mask === 1 << SHADOW_LAYER;
     // impostors stand in for the models in the lake mirror too, except near the water (seen up close there)
-    const mirrorOk = (c) => Math.hypot(c.x - LAKE.x, c.z - LAKE.z) - LAKE.r - c.R > 40;
+    const mirrorOk = (c) => !KEYART && Math.hypot(c.x - LAKE.x, c.z - LAKE.z) - LAKE.r - c.R > 40; // ?keyart: real meshes in the mirror
     const built = await buildImpostors(world, { skip: isProxy, cell: TIER.name === 'mobile' ? 64 : 128, mirrorOk });
     built.mesh.material.lightsNode = lights([sun]); // lit by the sun and sky only, as nature is
+    built.mesh.visible = !KEYART;
     THREE.Object3D.prototype.add.call(world.scene, built.mesh); // past World.build's staging of scene.add
     await breathe();
     const clusterOf = new Map();
@@ -155,7 +157,7 @@ export function optimizePlaced(world, camera, sun) {
 
   let t = 0, cursor = 0, warned = 0;
   const update = (dt) => {
-    if (!imp) return;
+    if (!imp || KEYART) return; // ?keyart: every mesh at every distance, no impostors
     const cam = camera.position;
     for (let i = 0; i < far.length; i++) {
       const c = imp.clusters[i], d = Math.hypot(c.x - cam.x, c.z - cam.z);

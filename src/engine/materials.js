@@ -4,6 +4,7 @@ import * as THREE from 'three/webgpu';
 import { loadBitmap } from '../load/bitmap.js';
 import { work } from '../load/workers.js';
 import { span } from '../load/prof.js';
+import { TIER } from './tier.js';
 
 const cache = new Map();
 const pending = new Set(); // image loads in flight (texturesLoaded)
@@ -15,6 +16,26 @@ export function setAnisotropy(n) { maxAniso = n; }
 // scaled down at load. Decoded in load workers as ImageBitmaps (pre-flipped, alpha not premultiplied).
 export function setTextureMax(n) { texMax = n; }
 export const textureMax = () => texMax;
+// TIER.release (phones): each image is uploaded as soon as it decodes and then closed — WebKit keeps an
+// ImageBitmap as an IOSurface besides the GPU copy (~0.5 GB at 1k on iOS, counted against the tab). A texture
+// asked for after that reloads its image.
+let renderer = null;
+export function setTextureRenderer(r) { renderer = r; }
+
+function fill(base, path) {
+  const url = new URL(path, location.href).href;
+  pending.add(span('tex.load', work('bitmap', { url, max: texMax }, () => loadBitmap(url, texMax))).then((bmp) => {
+    base.image = bmp;
+    const clones = base.userData.clones;
+    for (const c of clones) c.needsUpdate = true;
+    if (!TIER.release || !renderer) return;
+    for (const c of clones) renderer.initTexture(c);
+    base.userData.clones = [];
+    base.image = { width: bmp.width, height: bmp.height }; // no re-upload ever reads it (source version unchanged)
+    bmp.close();
+    base.userData.released = true;
+  }).catch((e) => console.warn('texture', path, e)));
+}
 
 export function tex(path, { srgb = false, repeat = [1, 1] } = {}) {
   const key = `${path}|${repeat}|${srgb}`;
@@ -25,18 +46,14 @@ export function tex(path, { srgb = false, repeat = [1, 1] } = {}) {
     base = new THREE.Texture();
     base.userData.clones = [];
     // decoded in a load worker (src/load/bitmap.js), the main thread as the fallback
-    const url = new URL(path, location.href).href;
-    pending.add(span('tex.load', work('bitmap', { url, max: texMax }, () => loadBitmap(url, texMax))).then((bmp) => {
-      base.image = bmp;
-      for (const c of base.userData.clones) c.needsUpdate = true;
-    }).catch((e) => console.warn('texture', path, e)));
+    fill(base, path);
     cache.set(path, base);
   }
   // a fresh texture sharing the image (clone() would mark it for upload before the image exists)
   t = new THREE.Texture();
   t.source = base.source;
   t.flipY = false; // the bitmap is decoded already flipped
-  if (base.image) t.needsUpdate = true; else base.userData.clones.push(t);
+  if (base.userData.released) { base.userData.released = false; base.image = null; base.userData.clones.push(t); fill(base, path); } else if (base.image) t.needsUpdate = true; else base.userData.clones.push(t);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(repeat[0], repeat[1]);
   t.anisotropy = maxAniso;

@@ -6,7 +6,7 @@ import * as THREE from 'three/webgpu';
 import { clamp, damp, lerp, smooth, angleDiff, fwdX, fwdZ, rightX, rightZ } from './util.js';
 
 const EYE = 1.62, CROUCH_EYE = 1.05, RADIUS = 0.28;
-const WALK = 1.4, RUN = 4.2, CROUCH = 0.75, BACK = 0.72;   // m/s
+const WALK = 1.67, RUN = 5.56, CROUCH = WALK * 0.8, BACK = 0.72;   // m/s (walk 10:00, run 3:00 min/km)
 const GRAVITY = 15, JUMP_V = 3.5, STEP_DOWN = 0.42;          // m/s², m/s (≈0.4 m hop), m
 const LOOK = 0.0022, TOUCH_LOOK = 0.0058;                     // rad per mouse / touch pixel at sens 1
 const _ray = new THREE.Raycaster(), _o = new THREE.Vector3(), _down = new THREE.Vector3(0, -1, 0);

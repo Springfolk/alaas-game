@@ -55,6 +55,7 @@ export default async function build(ctx, placement) {
   const bark = new THREE.Mesh(v.lod0.bark, barkMaterial('birch', { lod: false }));
   const leaves = new THREE.Mesh(v.lod0.leaves, leafMaterial('birch', { lod: false }));
   bark.name = 'sacred-birch-trunk'; leaves.name = 'sacred-birch-leaves';
+  bark.castShadow = leaves.castShadow = true;
   object.add(bark, leaves);
 
   const trunk = v.skeleton.trunk.pts;
@@ -83,7 +84,7 @@ export default async function build(ctx, placement) {
     return treeAttrs(merge(rootGeos), 0.8);
   });
   const roots = new THREE.Mesh(rootGeo, barkMaterial('birch', { lod: false, wind: false }));
-  roots.name = 'sacred-birch-roots';
+  roots.name = 'sacred-birch-roots'; roots.castShadow = true;
   const rootsGroup = new THREE.Group(); rootsGroup.add(roots); object.add(rootsGroup);
 
   // ── salama: one loose loop around the trunk at 1.7 m, sagging on the meadow side (+X) ──

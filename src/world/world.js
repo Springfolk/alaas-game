@@ -126,7 +126,7 @@ export class World {
     const { object } = res;
     object.position.set(p.x, p.y, p.z);
     object.rotation.y = p.yaw || 0;
-    object.traverse((o) => { if (o.isMesh) { o.castShadow ??= true; o.receiveShadow = true; } });
+    object.traverse((o) => { if (o.isMesh) o.receiveShadow = true; }); // casting is the model's call (three's default: off)
     this.scene.add(object);
     object.updateMatrixWorld(true);
     const c = Math.cos(p.yaw || 0), s = Math.sin(p.yaw || 0);

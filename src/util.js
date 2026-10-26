@@ -70,6 +70,8 @@ export const rand = (a, b) => a + Math.random() * (b - a); // unseeded, for runt
 export const deg = (d) => (d * Math.PI) / 180;
 // A URL query switch (?name); false where there is no location (workers, node tools).
 export const urlFlag = (name) => typeof location !== 'undefined' && new URLSearchParams(location.search).has(name);
+// ?keyart (tools/key-art.mjs): one still at full quality — high tier maxed, no LOD/impostors/culling, fixed resolution
+export const KEYART = urlFlag('keyart');
 
 // Forward/right on the XZ plane for a yaw (camera convention: yaw 0 looks down -Z).
 export const fwdX = (yaw) => -Math.sin(yaw);

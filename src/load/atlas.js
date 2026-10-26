@@ -4,6 +4,9 @@
 // and warns. `?bakeimpostors` forces the load-time bake and exposes the targets for the tool.
 import * as THREE from 'three/webgpu';
 import { strHash, urlFlag } from '../util.js';
+import { TIER } from '../engine/tier.js';
+import { work } from './workers.js';
+import { loadBitmap } from './bitmap.js';
 
 const BASE = (import.meta.env?.BASE_URL || '/') + 'assets/impostors/';
 export const baking = urlFlag('bakeimpostors');
@@ -11,8 +14,13 @@ const meta = baking ? Promise.resolve({}) : fetch(BASE + 'meta.json').then((r) =
 
 export const atlasKey = (s) => (strHash(s) >>> 0).toString(16);
 
-const load = (file) => new THREE.TextureLoader().loadAsync(BASE + file).then((t) => {
+// TIER.atlasMax (phones): decoded scaled down in a load worker instead of at full size (2048×2816)
+const image = (url) => (TIER.atlasMax
+  ? work('bitmap', { url, max: TIER.atlasMax, flip: false }, () => loadBitmap(url, TIER.atlasMax, 3, false)).then((b) => new THREE.Texture(b))
+  : new THREE.TextureLoader().loadAsync(url));
+const load = (file) => image(new URL(BASE + file, location.href).href).then((t) => {
   t.flipY = false; // stored top row first, as the render target it was read from
+  t.needsUpdate = true;
   t.colorSpace = THREE.NoColorSpace;
   t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true;
   return t;

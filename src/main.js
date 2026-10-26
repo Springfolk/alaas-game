@@ -1,7 +1,8 @@
 // Boot and loop: title → walk. Looking at a thing + E opens its explainer card or does its action.
 import * as THREE from 'three/webgpu';
 import { Engine } from './engine/engine.js';
-import { setAnisotropy } from './engine/materials.js';
+import { setAnisotropy, setTextureRenderer } from './engine/materials.js';
+import { bootDone } from './engine/tier.js';
 import { World } from './world/world.js';
 import { START } from './world/layout.js';
 import { Input } from './input.js';
@@ -48,6 +49,7 @@ class Game {
     this.applyStatic();
     this.engine = await new Engine(canvas, { webgl: params.has('webgl'), post: !params.has('nopost'), quality }).init();
     setAnisotropy(this.engine.renderer.getMaxAnisotropy?.() || 8);
+    setTextureRenderer(this.engine.renderer); // phones: texture images freed once uploaded
     instrument(this.engine.renderer); // ?prof (src/load/prof.js)
     mark('engine');
     window.game = this; // early, for debugging the load
@@ -99,6 +101,7 @@ class Game {
 
     this.title = true;
     this.ready = true;
+    bootDone(); // the boot guard's mark (src/engine/tier.js): this load was not killed
     mark('ready');
     document.getElementById('fade').classList.add('clear');
     this.reveal(() => { go.textContent = this.tt(T.clickToWalk); });
@@ -506,7 +509,7 @@ new Game().boot().catch(fail);
 // display refreshes, so a 120 Hz screen draws exactly every other one.
 Game.prototype.tick = function (now) {
   const e = this.engine, s = this.save.settings;
-  e.fpsCap = (s.batterySaver ?? e.autoSaver) ? 30 : e.opts.fps;
+  e.fpsCap = (s.batterySaver ?? (e.autoSaver || e.capDown)) ? 30 : e.opts.fps; // capDown: Engine.adapt
   const paused = document.getElementById('pause')?.classList.contains('show');
   this.pausedFrames = paused ? (this.pausedFrames || 0) + 1 : 0;
   if (e.pace(now, this.pausedFrames > 45 ? 0 : e.fpsCap)) this.frame(now);

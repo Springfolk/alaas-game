@@ -35,7 +35,7 @@ export default async function build(ctx, placement) {
     wood.push(g);
   }
   const postMesh = new THREE.Mesh(merge(wood), larch(ctx, { key: 'larch-sele', lichen: 0.4 }));
-  postMesh.name = 'sele-posts';
+  postMesh.name = 'sele-posts'; postMesh.castShadow = true;
   object.add(postMesh);
 
   // ── the rope: wrapped twice round each post, then the long sagging span ──
@@ -201,6 +201,7 @@ function buildPail(rng) {
   const body = turned(prof, { radial: 32, rng, noise: 0.012, oval: 0.03, tileU: 10, tileV: 1, color: (y, a, c) => { const d = y < 0.05 ? 0.7 : 1; c[0] = d; c[1] = d; c[2] = d; } });
   // bark uv: x around 0..1, y metres — tileU=10 makes uv.x ≈ 0..1 per circumference; keep as is
   const bark = new THREE.Mesh(body, birchBark('pail-bark'));
+  bark.castShadow = true;
   g.add(bark);
   // the rim hoop and its zigzag binding
   const hoopPts = [];

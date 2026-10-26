@@ -3,15 +3,22 @@
 //   quality      the preset name the post chain / life layers key on (mobile → 'low')
 //   ao           GTAO pre-pass (a second scene pass)
 //   shadows      sun shadow map size per cascade (2 cascades side by side), shadowFar = cascade range (m)
-//   reflection   lake reflection resolution scale · dpr = max pixel ratio · texMax = largest texture edge
+//   reflection   lake reflection resolution scale · texMax = largest texture edge
+//   dpr          max pixel ratio (capped by the display's) · resMin = pixel ratio dynamic resolution never
+//                goes under (none: 55% of the start ratio); high keeps at least CSS-pixel resolution
 //   grassDensity 1 = full blades (grass.js), forest = scale of the full/coarse tree ring radii (forest.js)
 //   ground       ground grid vertices per side · fps = frame cap (battery saver halves it)
+//   atlasMax     largest impostor atlas edge · pipelines = GPU pipeline compiles in flight while loading
+//   release      drop each texture image's CPU/IOSurface copy once it is on the GPU (materials.js)
 export const PRESETS = {
-  high: { quality: 'high', ao: true, shadows: 2048, shadowFar: 150, reflection: 0.35, dpr: 1, texMax: 4096, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
-  medium: { quality: 'medium', ao: false, shadows: 2048, shadowFar: 110, reflection: 0.25, dpr: 1, texMax: 2048, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
-  low: { quality: 'low', ao: false, shadows: 1024, shadowFar: 70, reflection: 0.18, dpr: 0.75, texMax: 1024, grassDensity: 0.6, forest: 0.8, ground: 512, fps: 60 },
-  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: 1.25, texMax: 1024, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
+  high: { quality: 'high', ao: true, shadows: 2048, shadowFar: 150, reflection: 0.35, dpr: 2, resMin: 1, texMax: 4096, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
+  medium: { quality: 'medium', ao: false, shadows: 2048, shadowFar: 110, reflection: 0.25, dpr: 1.5, resMin: 0.7, texMax: 2048, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
+  low: { quality: 'low', ao: false, shadows: 1024, shadowFar: 70, reflection: 0.18, dpr: 0.75, resMin: 0.5, texMax: 1024, grassDensity: 0.6, forest: 0.8, ground: 512, fps: 60 },
+  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: 1.25, resMin: 0.7, texMax: 512, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
 };
+// A weak phone (≤3 GB, <4 cores, no WebGPU, under-default GPU limits) or one whose last load was killed:
+// mobile with these on top (TIER.lite). Memory can't be handed back at run time, so it is decided here.
+export const LITE = { lite: true, shadows: 512, shadowFar: 45, reflection: 0.1, dpr: 1, resMin: 0.6, texMax: 256, atlasMax: 512, pipelines: 2, grassDensity: 0.3, forest: 0.55 }; // ground as mobile: its baked terrain pack
 
 export const TIER = { name: 'medium', auto: false, reason: '', ...PRESETS.medium };
 
@@ -28,10 +35,16 @@ export async function detectTier({ webgl = false } = {}) {
   const coarse = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
   const small = typeof screen !== 'undefined' && Math.min(screen.width, screen.height) < 820;
   const ipad = /Macintosh/.test(ua) && n.maxTouchPoints > 1; // iPadOS reports a Mac
-  if (/Android|iPhone|iPod|Mobile/i.test(ua) || ipad || (coarse && small)) return { name: 'mobile', reason: 'touch device' };
-  const cores = n.hardwareConcurrency || 4, mem = n.deviceMemory || 8;
+  const phone = /Android|iPhone|iPod|Mobile/i.test(ua) || ipad || (coarse && small);
+  const cores = n.hardwareConcurrency || 4, mem = n.deviceMemory || 8; // Safari reports no deviceMemory
   let adapter = null;
   if (!webgl && n.gpu) try { adapter = await n.gpu.requestAdapter({ powerPreference: 'high-performance' }); } catch { /* none */ }
+  if (phone) {
+    const l = adapter?.limits;
+    const weak = !adapter ? 'no WebGPU' : mem <= 3 ? `${mem} GB` : cores < 4 ? `${cores} cores`
+      : l && (l.maxTextureDimension2D < 8192 || l.maxStorageBufferBindingSize < 134217728) ? 'small GPU limits' : '';
+    return weak ? { name: 'mobile', reason: `touch device, ${weak}`, extra: LITE } : { name: 'mobile', reason: 'touch device' };
+  }
   if (!adapter) return { name: 'low', reason: 'no WebGPU' };
   const info = adapter.info || {};
   const vendor = (info.vendor || '').toLowerCase(), arch = (info.architecture || '').toLowerCase();
@@ -41,3 +54,24 @@ export async function detectTier({ webgl = false } = {}) {
   if (adapter.limits && adapter.limits.maxTextureDimension2D < 8192) return { name: 'low', reason: 'small GPU limits' };
   return { name: 'medium', reason: `${vendor || 'gpu'} ${arch}`.trim() };
 }
+
+// Boot guard: a load the OS kills (iOS jetsam on memory: Safari reloads the page, then gives up with "A problem
+// repeatedly occurred") leaves no JS error to react to, so each load marks itself in localStorage until ready
+// (bootDone) or a normal leave (pagehide). Finding an unfinished mark under 10 min old, the next load steps
+// down (and keeps that step): 1 = auto picks mobile + LITE / low, 2 = also WebGL2. A chosen quality resets it.
+const GUARD = 'alaas-boot';
+let guard = { step: 0 };
+const keep = (g) => { guard = g; try { localStorage.setItem(GUARD, JSON.stringify(g)); } catch { /* storage blocked */ } };
+export function bootStep(auto) {
+  let g = {};
+  try { g = JSON.parse(localStorage.getItem(GUARD)) || {}; } catch { /* none */ }
+  let step = auto ? g.step || 0 : 0;
+  if (auto && g.pending && Date.now() - g.pending < 600000) step = Math.min(2, step + 1);
+  keep({ step, pending: Date.now() });
+  addEventListener('pagehide', () => { if (guard.pending && !failed) keep({ ...guard, pending: 0 }); });
+  return step;
+}
+let failed = false;
+export const bootDone = () => keep({ ...guard, pending: 0 });
+// the GPU device was lost while loading (a GPU process crash or reset): reload one step down
+export const bootFailed = () => { if (!guard.pending || failed) return; failed = true; location.reload(); };

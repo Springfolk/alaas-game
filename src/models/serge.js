@@ -164,7 +164,7 @@ export default async function build(ctx, placement) {
     return merge(wood);
   });
   const postsMesh = new THREE.Mesh(postsGeo, larch(ctx, { lichen: 0.45 }));
-  postsMesh.name = 'serge-posts';
+  postsMesh.name = 'serge-posts'; postsMesh.castShadow = true;
   object.add(postsMesh);
 
   // ── салама on the main neck ──

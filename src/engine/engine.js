@@ -6,13 +6,13 @@ import {
 } from 'three/tsl';
 import { buildPost } from './post.js';
 import { fastPMREM } from '../load/pmrem.js';
-import { PRESETS, TIER, setTier, detectTier } from './tier.js';
+import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, bootFailed } from './tier.js';
 import { setTextureMax } from './materials.js';
 import { makeSky, updateSky, cloudField, cloudCover, CLOUD_Y } from './sky.js';
 import { sunMask } from './master.js';
 import { SunLight } from 'three/addons/lights/SunLight.js';
 import { SunLightNode } from 'three/addons/lights/SunLightNode.js';
-import { urlFlag } from '../util.js';
+import { urlFlag, KEYART } from '../util.js';
 
 // exposure for a sunlit scene; METER_REF = its metered mean log2 luminance (post.js meter)
 const EXPOSURE = 0.75, METER_REF = -1.75;
@@ -22,8 +22,9 @@ export class Engine {
   constructor(canvas, opts = {}) {
     this.canvas = canvas;
     // device tier presets (src/engine/tier.js): high | medium | low | mobile, or 'auto' → detected in init()
-    this.requested = opts;
-    this.tier = PRESETS[opts.quality] ? opts.quality : 'medium';
+    this.requested = KEYART ? { ...opts, quality: 'high' } : opts;
+    const q = this.requested.quality;
+    this.tier = PRESETS[q] ? q : 'medium';
     this.opts = this.presetOpts(this.tier);
     this.fpsCap = 60; // frame pacing (pace())
     this.resScale = 1; // dynamic resolution: drops when frames run long, recovers when there is room
@@ -34,15 +35,22 @@ export class Engine {
 
   presetOpts(tier) {
     const { quality, ...rest } = this.requested;
-    return { post: true, ...setTier(tier), ...rest };
+    // ?keyart: the high preset maxed — 4096 shadow maps over the whole shot, full-resolution lake mirror
+    return { post: true, ...setTier(tier, KEYART ? { shadows: 4096, shadowFar: 900, reflection: 1, texMax: 4096 } : this.tierExtra), ...rest };
   }
 
   async init() {
-    if (!PRESETS[this.requested.quality]) { // 'auto' (default): pick by device
+    const auto = !PRESETS[this.requested.quality];
+    // boot guard (tier.js): after a load the OS killed, step down — 1: mobile → LITE, medium → low; 2: WebGL2 too
+    const step = this.bootStep = KEYART ? 0 : bootStep(auto);
+    if (step >= 2) this.requested = { ...this.requested, webgl: true };
+    if (auto) { // 'auto' (default): pick by device
       const d = await detectTier({ webgl: !!this.requested.webgl });
       this.tier = d.name;
+      this.tierExtra = d.extra || (step && this.tier === 'mobile' ? LITE : undefined);
+      if (step && this.tier !== 'mobile') this.tier = 'low';
       this.opts = this.presetOpts(this.tier);
-      TIER.auto = true; TIER.reason = d.reason;
+      TIER.auto = true; TIER.reason = d.reason + (step ? `, boot step ${step}` : '');
     }
     this.tierAuto = TIER.auto;
     // battery saver (30 fps) by default on phones, and on a laptop whose battery runs low (≤20%, unplugged)
@@ -55,6 +63,8 @@ export class Engine {
     setTextureMax(this.opts.texMax);
     const r = this.renderer = new THREE.WebGPURenderer({ canvas: this.canvas, antialias: false, forceWebGL: !!this.opts.webgl, trackTimestamp: this.opts.gpuTime ?? urlFlag('gputime') });
     r.library.addLight(SunLightNode, SunLight);
+    const lost = r.onDeviceLost.bind(r); // lost while loading (bootDone not yet called): reload a step down
+    r.onDeviceLost = (info) => { lost(info); if (!KEYART) bootFailed(); };
     r.setPixelRatio(Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
     r.setSize(innerWidth, innerHeight, false);
     r.shadowMap.enabled = true;
@@ -174,14 +184,16 @@ export class Engine {
   // Frame pacing: true when a frame is due on this animation frame (`now` = its timestamp, ms) for `fps`
   // (0 = none). Draws every n-th display refresh, n = refreshes per capped frame (120 Hz → every 2nd for 60),
   // so frame intervals stay even; a refresh rate the cap doesn't divide (75, 90, 144 Hz) runs every refresh
-  // (or every 2nd at 144) — never below the cap. The refresh interval is the median of recent rAF deltas.
+  // (or every 2nd at 144) — never below the cap. The refresh interval is the low quartile of recent rAF deltas,
+  // at most 1/58 s: a device too slow to draw every refresh must not read as a slow display (its frames would
+  // then always "keep pace" and dynamic quality never step down).
   pace(now, fps) {
     const d = now - (this.lastTick ?? now);
     this.lastTick = now;
     const r = this.rafDeltas ||= [];
     if (d > 2 && d < 60) r.push(d);
-    if (r.length >= 31) { r.sort((a, b) => a - b); this.vsync = r[15]; r.length = 0; }
-    const v = this.vsync || 1000 / 60;
+    if (r.length >= 31) { r.sort((a, b) => a - b); this.vsync = r[7]; r.length = 0; }
+    const v = Math.min(this.vsync || 1000 / 60, 1000 / 58);
     this.vsyncs = (this.vsyncs || 0) + Math.max(1, Math.round(d / v));
     if (!fps) return false;
     const n = Math.max(1, Math.floor(1000 / fps / v + 0.2)); // +0.2: tolerates a noisy refresh estimate
@@ -195,8 +207,11 @@ export class Engine {
   // Every ~1.5 s: if frames miss the paced interval (a few missed refreshes: ≥12% over on average) render
   // fewer pixels; when they all keep it, give pixels back — but not straight back to a scale that just
   // failed (ceiling, retried after 30 s). Holds the frame rate by resolution instead of dropping frames.
+  // Still slow at the resolution floor: one cheaper knob per window (KNOBS: none builds a shader). A knob
+  // comes back, last first, once resolution is full again and frames kept pace for `knobWait` (10 s;
+  // doubled, ≤2 min, when a restored knob fails again within 20 s).
   dynamicResolution(dt) {
-    if (dt <= 0) return;
+    if (dt <= 0 || KEYART) return; // ?keyart: full resolution however long a frame takes
     const f = this.frameTimes, iv = this.paceIv || 1000 / 60;
     f.push(Math.min(dt * 1000, iv * 3));
     if (f.length * iv < 1500) return;
@@ -208,14 +223,34 @@ export class Engine {
     if (this.resCeil && now - this.resCeilAt > 30000) this.resCeil = 0;
     if (avg > iv * 1.12) {
       this.resCeil = this.resScale; this.resCeilAt = now;
-      this.resScale = Math.max(0.55, this.resScale - (avg > iv * 1.6 ? 0.15 : 0.08));
+      // floor: the tier's resMin pixel ratio (high: CSS pixels, never upscaled), else 55% of the start ratio
+      const base = Math.min(devicePixelRatio, this.opts.dpr), resMin = this.opts.resMin;
+      const floor = resMin ? Math.min(1, resMin / base) : 0.55;
+      if (this.resScale > floor) this.resScale = Math.max(floor, this.resScale - (avg > iv * 1.6 ? 0.15 : 0.08));
+      else this.knob(-1, now);
     } else if (avg < iv * 1.02 && this.resScale < 1 && (!this.resCeil || this.resScale + 0.05 < this.resCeil)) {
       this.resScale = Math.min(1, this.resScale + 0.05);
-    }
+    } else if (avg < iv * 1.02 && this.resScale >= 1 && this.knobs?.length && now - this.knobAt > this.knobWait) this.knob(1, now);
     if (this.resScale !== prev) {
       this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
       this.renderer.setSize(innerWidth, innerHeight, false);
     }
+  }
+
+  // One knob down (dir −1) or the last one back up (+1). Each changes only sizes, counts or the frame cap.
+  knob(dir, now) {
+    const on = this.knobs ||= [];
+    this.knobWait ||= 10000;
+    if (dir < 0) {
+      const k = KNOBS.find((k) => !on.includes(k) && k.ok(this));
+      if (!k) return;
+      if (now - this.knobAt < 20000 && this.knobUp === k) this.knobWait = Math.min(120000, this.knobWait * 2);
+      on.push(k); k.set(this, true);
+    } else {
+      const k = this.knobUp = on.pop();
+      k.set(this, false);
+    }
+    this.knobAt = now;
   }
 
   resize() {
@@ -229,6 +264,13 @@ export class Engine {
     else this.renderer.render(this.scene, this.camera);
   }
 }
+
+// Dynamic quality steps after resolution (Engine.knob), cheapest loss first; none needs a new shader or pipeline.
+const KNOBS = [
+  { name: 'shadow range ×0.7', ok: () => true, set: (e, d) => { e.sun.shadow.camera.far = e.opts.shadowFar * (d ? 0.7 : 1); } }, // fewer casters per cascade
+  { name: 'lake mirror ×0.6', ok: (e) => !!e.reflector, set: (e, d) => { e.reflector.resolutionScale = e.opts.reflection * (d ? 0.6 : 1); } },
+  { name: '30 fps', ok: (e) => e.fpsCap > 30, set: (e, d) => { e.capDown = d; } }, // main.js tick
+];
 
 // The coarse cloud field (sky.js cloudField, what cloud shadows use) over CLOUD_SPAN m of the cloud plane
 // around where the view's ground looks up to through the sun, in a 512² half-float texture (16 m texels;

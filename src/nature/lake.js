@@ -44,6 +44,7 @@ export default async function build(ctx, world) {
   const ripples = rippleTexture();
 
   const refl = reflector({ resolutionScale: world.engine.opts.reflection ?? 0.35 });
+  engine.reflector = refl.reflector; // dynamic quality scales its resolution (Engine.knob)
   refl.target.rotateX(-Math.PI / 2);
   refl.target.position.set(LAKE.x, LAKE.level, LAKE.z);
   world.scene.add(refl.target);

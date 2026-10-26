@@ -246,6 +246,9 @@ export default async function build(ctx, placement) {
     },
   };
 
+  // casters (three starts every mesh at castShadow = false): all but the earth and grass round the house
+  for (const g of [walls, door, inside]) g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+
   let restored = false, wasIn = false;
   return {
     object,

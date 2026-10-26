@@ -10,6 +10,7 @@
 // Uses three r186 renderer internals (`_renderObjectDirect`, `_objects`, `_nodes`, `_pipelines`, state fields).
 import { Sphere, Vector3 } from 'three/webgpu';
 import { enter, exit, span } from './prof.js';
+import { TIER } from '../engine/tier.js';
 
 // Safari has no `scheduler.yield`: three's fallback waits a whole animation frame per build stage.
 if (typeof self !== 'undefined' && !self.scheduler?.yield) {
@@ -175,6 +176,8 @@ export class ShaderStream {
   async run() {
     let t0 = performance.now();
     while (this.waiting) {
+      // phones: few pipeline compiles in flight (TIER.pipelines) — each holds compiler memory in the GPU process
+      while (this.flying.size >= (TIER.pipelines || Infinity)) await Promise.race([...this.flying].map((f) => f.catch(() => {})));
       const it = this.next();
       this.seen.delete(it.ro);
       try { await this.build(it.ro, it.group, it.drawRange, it.state); } finally { it.done = true; }

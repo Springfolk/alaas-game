@@ -30,7 +30,7 @@ const info = document.getElementById('info');
 const fakeWorld = { terrain: { height: () => 0, water: () => null }, interactables: [], engine };
 const ctx = { THREE, TSL, pbr, maps, tex, rng: mulberry32(strHash(name)), terrain: fakeWorld.terrain, world: fakeWorld };
 const res = await (await models[`./models/${name}.js`]()).default(ctx, { x: 0, y: 0, z: 0, yaw: 0, variant: q.get('variant') });
-res.object.traverse((o) => { if (o.isMesh) { o.castShadow ??= true; o.receiveShadow = true; } });
+res.object.traverse((o) => { if (o.isMesh) o.receiveShadow = true; }); // casting is the model's call, as in world.js
 scene.add(res.object);
 
 let tris = 0, meshes = 0;

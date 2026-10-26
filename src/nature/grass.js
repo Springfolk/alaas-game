@@ -10,7 +10,7 @@ import {
 } from 'three/tsl';
 import { LAKE } from '../world/terrain.js';
 import { PLACEMENTS } from '../world/layout.js';
-import { smooth, mulberry32 } from '../util.js';
+import { smooth, mulberry32, KEYART } from '../util.js';
 import { FIELD, FLOOR, fieldTexels, maskTexels } from './grass/field.js';
 import { job } from '../load/workers.js';
 import { sourceRef } from '../engine/master.js';
@@ -377,6 +377,12 @@ function grassMesh(world, F, W, lod) {
     let n = normalize(cross(vec3(wdir.x, 0, wdir.y), tan));
     n = select(dot(n, W.cam.sub(p)).lessThan(0), n.negate(), n);
     n = normalize(n.add(vec3(wdir.x, 0, wdir.y).mul(side.mul(mix(0.9, 0.3, far)))));
+    // two-sided: a face turned from the sun (seen looking towards it) is mirrored across the sun's
+    // vertical plane and lights like its sunward side, so the sward reads the same both ways round
+    // (the near ring went dark and too green against the ground; LeafLighting transmission was all it got)
+    const sH = normalize(vec3(W.sunDir.x, 0, W.sunDir.z).add(vec3(0.0001, 0, 0)));
+    const ns = dot(n, sH);
+    n = n.sub(sH.mul(min(ns, 0).mul(2)));
     // rounded near, eased into the ground normal with distance: no per-blade light/dark stripes
     vN.assign(normalize(mix(n, vec3(0, 1, 0), mix(upBlend, 0.72, far))));
 
@@ -639,8 +645,9 @@ export default async function build(ctx, world) {
   near.traverse((o) => o.layers.set(1)); // layer 1 only: the lake reflector's camera skips it
   world.engine.camera.layers.enable(1);
   const mid = grassMesh(world, F, W, {
-    name: 'mid', near: false, C: 84, K: 5, S: 0.36, segs: 2, nb: low ? 2 : 3, tuft: 0.35, rIn: 11, rOut: 60, salt: 23, upBlend: 0.3, minPx: 1.6,
-    wMul: (d) => d.mul(0.065).add(1.3).mul(low ? 1.4 : 1),
+    // ?keyart: the mid ring reaches over the whole alaas (90 m chunks); beyond 60 m the px rule alone widens blades
+    name: 'mid', near: false, C: KEYART ? 252 : 84, K: KEYART ? 17 : 5, S: 0.36, segs: 2, nb: low ? 2 : 3, tuft: 0.35, rIn: 11, rOut: KEYART ? 700 : 60, salt: 23, upBlend: 0.3, minPx: 1.6,
+    wMul: (d) => (KEYART ? d.min(60) : d).mul(0.065).add(1.3).mul(low ? 1.4 : 1),
   });
   mid.traverse((o) => o.layers.set(1)); // the reflection keeps only the static shore plants
   world.scene.add(near, mid);
@@ -654,6 +661,7 @@ export default async function build(ctx, world) {
     { kind: 'fireweed', C: 20, K: 3, S: 2.0, boost: 3, R: 40, h: [0.9, 1.4], headScale: 1, salt: 43, drift: 0.02, where: 'edge' },
   ];
   for (const sp of species) {
+    if (KEYART) { sp.C *= Math.ceil(60 / (sp.C * sp.S)); sp.R = 250; sp.K = 2 * Math.ceil(sp.R / (sp.C * sp.S)) + 1; } // ?keyart: to 250 m
     const f = flowerMesh(world, F, W, sp);
     f.traverse((o) => o.layers.set(1));
     world.scene.add(f);

@@ -23,7 +23,7 @@ const JOBS = {
   mask: ({ R, G, spots, mask }) => maskTexels(R, G, spots, mask),
   scatter: ({ pads, ...args }) => scatterTrees(terrain(pads), args),
   geo: ({ url }) => fetchPack(url), // a baked geometry pack (src/load/geocache.js)
-  bitmap: ({ url, max }) => loadBitmap(url, max), // a texture image (src/load/bitmap.js)
+  bitmap: ({ url, max, flip }) => loadBitmap(url, max, 3, flip), // a texture image (src/load/bitmap.js)
 };
 
 self.onmessage = async ({ data: { id, type, ...args } }) => {
