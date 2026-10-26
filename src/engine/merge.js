@@ -16,7 +16,8 @@ import { lights } from 'three/tsl';
 import { buildImpostors } from './lod.js';
 import { TIER } from './tier.js';
 import { LAKE } from '../world/terrain.js';
-import { KEYART } from '../util.js';
+import { KEYART, urlFlag } from '../util.js';
+import { work } from '../load/workers.js';
 
 export const SHADOW_LAYER = 2, CULL_LAYER = 30;
 // The loader (src/load/stream.js collect) renders once with the view camera on every layer to build every
@@ -60,6 +61,24 @@ const opaque = (m) => !m.transparent && !(m.alphaTest > 0) && !m.alphaMap && !m.
   && !m.castShadowPositionNode && !m.maskShadowNode && !m.displacementMap && m.colorWrite !== false;
 const shown = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
 
+// The proxy's triangles simplified in a load worker (src/load/simplify.js: ~1.5 cm, under a shadow texel; the
+// shadow pass drew the models' full detail per cascade): a new geometry with the same position attribute, the
+// swap the watchdog's rebuild does too (no new shader). Resolves when done; none on the main thread.
+const SHADOW_ERROR = 0.015;
+function simplified(proxy) {
+  if (KEYART || urlFlag('fullshadow')) return null; // ?keyart: exact shadows; ?fullshadow: A/B
+  const g = proxy.geometry, pos = g.attributes.position.array, idx = Uint32Array.from(g.index.array);
+  return work('simplify', { pos, idx, error: SHADOW_ERROR }, () => null).then((out) => {
+    if (!out || proxy.geometry !== g || out.length >= idx.length) return;
+    const s = new THREE.BufferGeometry();
+    s.setAttribute('position', g.attributes.position);
+    s.setIndex(new THREE.BufferAttribute(g.index.array instanceof Uint16Array ? Uint16Array.from(out) : out, 1));
+    s.boundingSphere = g.boundingSphere;
+    proxy.geometry = s;
+    console.info(`${proxy.name}: shadow ${idx.length / 3} → ${out.length / 3} triangles`);
+  }).catch((e) => console.warn('shadow simplify', e));
+}
+
 // Merged shadow proxies for one placed model root. `dynamic` = Object3Ds whose subtrees stay separate.
 function shadowProxies(root, dynamic) {
   root.updateMatrixWorld(true);
@@ -78,7 +97,8 @@ function shadowProxies(root, dynamic) {
   walk(root);
   const out = [];
   for (const [, list] of groups) {
-    if (list.length < 2) continue;
+    // one mesh: only worth a proxy for its simplified triangles (the serge's posts: 82k)
+    if (list.length < 2 && (list[0].geometry.index?.count ?? list[0].geometry.attributes.position.count) < 60000) continue;
     const m0 = list[0].material;
     const mat = new THREE.MeshBasicNodeMaterial({ side: m0.side, shadowSide: m0.shadowSide, colorWrite: false });
     mat.name = 'shadow-proxy';
@@ -87,6 +107,7 @@ function shadowProxies(root, dynamic) {
     const proxy = new THREE.Mesh(new THREE.BufferGeometry(), mat);
     proxy.userData.sources = sources; proxy.userData.shadowProxy = true;
     proxy.geometry = merged();
+    proxy.userData.simplified = simplified(proxy);
     proxy.name = `${root.name || 'model'}-shadow`;
     proxy.castShadow = true; proxy.receiveShadow = false;
     proxy.layers.set(SHADOW_LAYER);
@@ -113,6 +134,7 @@ export function optimizePlaced(world, camera, sun) {
   const breathe = () => new Promise((r) => setTimeout(r, 0));
   const init = async () => {
     for (const { object } of world.placed) { proxies.push(...shadowProxies(object, dynamic)); await breathe(); }
+    await Promise.all(proxies.map((p) => p.userData.simplified)); // before the loader builds their pipelines
     // the cascade cameras draw layer 0 (as before) plus the proxies; the view and the lake mirror don't
     // and, while the loader compiles everything (the view camera on all layers), the culled parts too
     const cams = [];

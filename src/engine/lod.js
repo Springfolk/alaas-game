@@ -11,6 +11,7 @@ import {
   uniform, cameraViewMatrix, screenCoordinate, positionPrevious, Fn, hash, normalViewGeometry, varying, materialColor, vertexColor,
 } from 'three/tsl';
 import { texturesLoaded } from './materials.js';
+import { TIER } from './tier.js';
 import { shippedAtlas, atlasKey, exposeBake } from '../load/atlas.js';
 
 const FRAMES = 8, BAND = 14;
@@ -93,7 +94,7 @@ export async function buildImpostors(world, { skip = () => false, cell = 128, mi
       const yaw = object.rotation.y;
       const w = new THREE.Vector3(cx, box.min.y, cz).applyMatrix4(object.matrixWorld);
       const S = Math.max(2 * R, H); // square cell: uniform scale keeps the baked normals true
-      list.push({ object, parts, cx, cz, y0: box.min.y, R, H, S, yaw, x: w.x, y: w.y, z: w.z, far: Math.max(110, 6 * S) });
+      list.push({ object, parts, cx, cz, y0: box.min.y, R, H, S, yaw, x: w.x, y: w.y, z: w.z, far: TIER.name === 'mobile' ? Math.max(45, 3 * S) : Math.max(110, 6 * S) }); // phones: the draws of whole houses were most of a WebGL2 frame
     }
   }
   const N = list.length, COLS = 16, ROWS = Math.ceil(N * FRAMES / COLS);

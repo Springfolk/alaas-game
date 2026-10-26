@@ -20,7 +20,7 @@ export default async function build(ctx, placement) {
 - `entry` = an id in `src/data/entries.json`. `target` = the Object3D the player looks at (raycast ≤3.4 m); `zone` = a circle the player stands in.
 - `act` = `{ id, label: { sah, en }, once?: true, thenCard?: false, freeze?: true, run: async (game, it) => {} }` — the player keeps walking and looking unless `freeze` (only for acts that move the view or ask a choice). Hooks for `src/interact`: `docs/interactions.md`. It may animate via `update`; `game.audio?.play(name, pos)` plays sounds.
 - Indoors: set `game.engine.exposureTarget` (base 0.62) higher when the player is inside, back to 0.62 outside.
-- Materials: `pbr(id, { repeat, tint, normalScale })` from `public/assets/tex/<id>/`; add sets to `tools/fetch-assets.mjs` and run it. Procedural detail via TSL node materials is welcome. Real-world scale in metres.
+- Materials: `pbr(id, { repeat, tint, normalScale })` from `public/assets/tex/<id>/`; add sets to `tools/fetch-assets.mjs` and run `npm run fetch-assets`. Procedural detail via TSL node materials is welcome. Real-world scale in metres.
 - Shadows: placed meshes receive by default but cast only when the model sets `castShadow = true` (three's default is off); leave it off on tiny parts and ground cover. Static casters are merged into one shadow proxy per model (`src/engine/merge.js`): mark a part that moves or hides later `userData.dynamic = true` (act/take targets are kept out already).
 - Collider `y0`/`y1` are compared with the player's world feet height: add `placement.y`.
 - `envMapIntensity` only works with `material.envMap` set; to dim sky light indoors assign `scene.environment` as `envMap` (see `src/models/balagan/mats.js`).

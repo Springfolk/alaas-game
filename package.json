@@ -14,7 +14,7 @@
     "dev": "vite --host 127.0.0.1 --port 5190",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 5190",
-    "fetch-assets": "node tools/fetch-assets.mjs && node tools/webp.mjs",
+    "fetch-assets": "node tools/fetch-assets.mjs && node tools/webp.mjs && node tools/tex-sizes.mjs",
     "shot": "node tools/shot.mjs",
     "fetch-audio": "node tools/fetch-audio.mjs",
     "bench": "node tools/bench.mjs",
@@ -28,6 +28,7 @@
     "key-art": "node tools/key-art.mjs"
   },
   "dependencies": {
+    "meshoptimizer": "1.3.0",
     "three": "0.186.1"
   },
   "devDependencies": {

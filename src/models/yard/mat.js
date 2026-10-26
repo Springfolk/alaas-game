@@ -4,8 +4,9 @@
 import * as THREE from 'three/webgpu';
 import {
   texture, uv, vec2, vec3, float, vertexColor, mix, smoothstep, positionWorld, normalWorld, mx_noise_float, positionView,
-  normalView, faceDirection, Fn, fract, floor, sin, normalMap, time, positionLocal, attribute,
+  normalView, faceDirection, Fn, fract, floor, sin, normalMap, time, positionLocal, attribute, varying, hash, step,
 } from 'three/tsl';
+import { TIER } from '../../engine/tier.js';
 
 const cache = new Map();
 const once = (key, make) => { if (!cache.has(key)) cache.set(key, make()); return cache.get(key); };
@@ -190,19 +191,25 @@ export function trodden(ctx, { key = 'trodden', hoof = 1 } = {}) {
     const mud = ctx.maps('brown_mud_dry'), path = ctx.maps('grass_path_2');
     const w = positionWorld.xz;
     const u1 = w.mul(0.45), u2 = w.mul(0.31).add(vec2(0.3, 0.7));
-    const mix1 = smoothstep(-0.3, 0.3, mx_noise_float(w.mul(0.22)));
+    // phones: the slow noises per vertex (the patch's grid is 0.5 m), the hoof rim's fine wobble dropped
+    const phone = TIER.name === 'mobile';
+    const slow = phone ? varying(vec2(mx_noise_float(w.mul(0.22)), mx_noise_float(w.mul(1.6)))) : vec2(mx_noise_float(w.mul(0.22)), mx_noise_float(w.mul(1.6)));
+    const mix1 = smoothstep(-0.3, 0.3, slow.x);
     const col = mix(texture(mud.diff, u1).rgb.mul(vec3(0.9, 0.86, 0.82)), texture(path.diff, u2).rgb.mul(0.7), mix1.mul(0.4));
     // hoof prints: small cupped dimples scattered by a cell hash
     const cell = w.mul(5.5);
     const id = floor(cell), f = fract(cell).sub(0.5);
-    const jit = vec2(mx_noise_float(id.mul(1.7)), mx_noise_float(id.mul(2.3).add(9.1))).mul(0.25);
-    const q = f.sub(jit); const d = vec2(q.x.mul(1.0), q.y.mul(1.25)).length().add(mx_noise_float(w.mul(40)).mul(0.03));
-    const has = smoothstep(0.25, 0.45, mx_noise_float(id.mul(0.71).add(3.3)));
+    // per cell: a hash, not three noise lookups (the same randomness for a lattice point)
+    const seed = id.x.add(16384).toUint().mul(73856093).bitXor(id.y.add(16384).toUint().mul(19349663));
+    const jit = vec2(hash(seed), hash(seed.add(1))).sub(0.5).mul(0.25);
+    const q = f.sub(jit); const r0 = vec2(q.x.mul(1.0), q.y.mul(1.25)).length();
+    const d = phone ? r0 : r0.add(mx_noise_float(w.mul(40)).mul(0.03));
+    const has = step(0.72, hash(seed.add(2))).mul(hash(seed.add(3)).mul(0.5).add(0.5));
     const cup = smoothstep(0.17, 0.08, d).mul(has).mul(hoof);
     const rim = smoothstep(0.22, 0.17, d).mul(smoothstep(0.12, 0.17, d)).mul(has).mul(hoof);
     const h = rim.mul(0.004).sub(cup.mul(0.01)).add(mx_noise_float(w.mul(9.0)).mul(0.004));
     const a = vertexColor().a;
-    const frayed = smoothstep(0.0, 1.0, a.add(mx_noise_float(w.mul(1.6)).mul(0.35)).add(mx_noise_float(w.mul(7)).mul(0.15)).sub(0.15));
+    const frayed = smoothstep(0.0, 1.0, a.add(slow.y.mul(0.35)).add(mx_noise_float(w.mul(7)).mul(0.15)).sub(0.15));
     const mat = new THREE.MeshStandardNodeMaterial({ transparent: true, depthWrite: false });
     mat.colorNode = col.mul(vec3(0.78, 0.7, 0.62)).mul(vertexColor().rgb).mul(cup.mul(0.1).oneMinus());
     mat.opacityNode = frayed.clamp(0, 1);

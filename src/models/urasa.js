@@ -269,7 +269,7 @@ export default async function build(ctx) {
   // ---- per-frame: curtain, exposure inside, fire, smoke, drops, tweens
   let open = 0, wasOpen = false, inside_ = false;
   const _kQ = new THREE.Quaternion(), _kUp = new THREE.Vector3(), kLast = { level: -1, up: new THREE.Vector3() };
-  const _p = new THREE.Vector3(), _iq = new THREE.Quaternion(), _sun = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
+  const _p = new THREE.Vector3(), _lp = new THREE.Vector3(), _iq = new THREE.Quaternion(), _sun = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
   const update = (dt, c) => {
     for (let i = tweens.length - 1; i >= 0; i--) {
       const tw = tweens[i];
@@ -286,13 +286,14 @@ export default async function build(ctx) {
     root.getWorldQuaternion(_iq).invert();
     // who is where: the player's feet in the game, the camera in the viewer
     const pp = c.player ? _p.copy(c.player.pos) : _p.copy(c.camera.position);
-    const lp = root.worldToLocal(pp.clone());
+    const lp = root.worldToLocal(_lp.copy(pp));
     const dDoor = Math.hypot(lp.x - (DOOR.r + 0.1), lp.z);
     const want = dDoor < 1.5 ? 1 : 0;
     open += (want - open) * (1 - Math.exp(-(want ? 5 : 2.2) * dt));
     if (want && !wasOpen) c.game?.audio?.play('door', root.localToWorld(new THREE.Vector3(DOOR.r, 1, 0)));
     wasOpen = !!want;
-    curtain.drape(open, c.time || 0);
+    // the breeze ripple (mm) can't be seen from afar: drape only near, or while it opens or closes
+    if (dDoor < 30 || Math.abs(want - open) > 1e-3) curtain.drape(open, c.time || 0);
     uDoorOpen.value = open;
     const r = Math.hypot(lp.x, lp.z);
     const isIn = inside_ ? r < R0 - 0.05 : r < R0 - 0.3;

@@ -160,7 +160,8 @@ export function buildFire(rng, { holeY, holeR, coneR }) {
 
   let flare = 0, tt = 0, fuel = 0; // fuel: a log laid on (src/interact), burns down over ~60 s
   const _r = new THREE.Vector3(), _u = new THREE.Vector3(), _q = new THREE.Quaternion();
-  const down = new THREE.Vector3(0, -1, 0);
+  const down = new THREE.Vector3(0, -1, 0), _d = new THREE.Vector3();
+  const CORNERS = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
   // sunDirLocal: unit vector towards the sun in model space; camLocal: camera axes in model space
   function update(dt, { sunLocal, sunElev, camRight, camUp }) {
     tt += dt;
@@ -178,7 +179,7 @@ export function buildFire(rng, { holeY, holeR, coneR }) {
     uSunL.value.copy(sunLocal);
     shaft.visible = on > 0.01;
     if (shaft.visible) {
-      const dir = sunLocal.clone().negate();
+      const dir = _d.copy(sunLocal).negate();
       _q.setFromUnitVectors(down, dir);
       shaft.quaternion.copy(_q);
       // length until it meets the floor or the wall of the cone
@@ -210,9 +211,8 @@ export function buildFire(rng, { holeY, holeR, coneR }) {
       _r.copy(camRight).multiplyScalar(c).addScaledVector(camUp, s).multiplyScalar(size / 2);
       _u.copy(camUp).multiplyScalar(c).addScaledVector(camRight, -s).multiplyScalar(size / 2);
       const k = i * 12;
-      const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
       for (let j = 0; j < 4; j++) {
-        const [a, b] = corners[j];
+        const [a, b] = CORNERS[j];
         sPos[k + j * 3] = q.x + _r.x * a + _u.x * b;
         sPos[k + j * 3 + 1] = q.y + _r.y * a + _u.y * b;
         sPos[k + j * 3 + 2] = q.z + _r.z * a + _u.z * b;

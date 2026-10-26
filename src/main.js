@@ -1,8 +1,8 @@
 // Boot and loop: title → walk. Looking at a thing + E opens its explainer card or does its action.
 import * as THREE from 'three/webgpu';
 import { Engine } from './engine/engine.js';
-import { setAnisotropy, setTextureRenderer } from './engine/materials.js';
-import { bootDone } from './engine/tier.js';
+import { setAnisotropy, setTextureRenderer, sharpenTextures } from './engine/materials.js';
+import { bootDone, restoreLost, resumeSpot } from './engine/tier.js';
 import { World } from './world/world.js';
 import { START } from './world/layout.js';
 import { Input } from './input.js';
@@ -20,6 +20,7 @@ import { instrument, event } from './load/prof.js';
 
 const KEY = 'alaas-v1';
 const params = new URLSearchParams(location.search);
+if (params.has('remotelog') || params.has('perftest')) import('./load/remotelog.js'); // phone debugging: console + heartbeat to /__log (tools/phonelog.mjs)
 const audioModules = import.meta.glob('./audio/audio.js');
 // load timeline (ms since navigation) for tools/loadprof.mjs
 const mark = (k) => { (window.loadMarks ||= {})[k] = Math.round(performance.now()); event(k); };
@@ -80,11 +81,12 @@ class Game {
     this.stream.eye = this.engine.camera.position; // nearest first
     this.world.prewarm = (scene, cam, target) => this.stream.prepare(scene, cam, target); // offscreen bakes
     this.world.breathe = async () => { await new Promise((r) => setTimeout(r, 0)); await this.stream.viewBuilt(); }; // what shows comes first
-    // the soundscape loads and decodes its clips meanwhile, from the first view on (preview())
+    // the soundscape's code loads from the first view on (preview()), its clips from ready
     this.loadAudio = () => (this.audioLoading ||= audioModules['./audio/audio.js']?.().then(({ AudioScape }) => new AudioScape(this)).catch((e) => console.warn('audio', e)));
-    const at = params.get('at')?.split(',').map(Number);
+    const at = params.get('at')?.split(',').map(Number) || resumeSpot(); // resumeSpot: back after a GPU loss in play
     // the loading view must see the world from where it will be played (again once the floors exist)
     const place = () => { if (at) this.player.place(at[0], at[1], at[2] ?? 0); else this.player.place(START.x, START.z, START.yaw); this.player.update(0); };
+    this.engine.onLost = () => restoreLost(at); // lost while loading: back to this same spot (in play: where the player stands, below)
     await this.world.build((f, stage) => { built = f; status(stage); }, () => { place(); return this.preview(status); }); // the homestead's build code starts once the sky shows
     place();
     mark('built');
@@ -96,7 +98,9 @@ class Game {
     mark('warm');
 
     this.audio = await this.loadAudio();
-    closeWorkers();
+    this.audio?.fetchClips();
+    this.sharpening = sharpenTextures().then(() => { this.sharp = true; mark('sharp'); closeWorkers(); }); // 256 → the tier's size, in play
+    if (params.has('perftest')) this.sharpening.then(() => import('./load/perftest.js')).then((m) => m.perfTest(this)); // per-layer frame cost on a device
     this.player.onStep = (surface, speed) => this.audio?.step(surface, speed);
 
     this.title = true;
@@ -129,7 +133,19 @@ class Game {
     if (params.has('auto')) this.start(true);
 
     this.clock = new THREE.Timer();
-    this.engine.renderer.setAnimationLoop((t) => this.tick(t));
+    // the GPU device lost in play, or a frame that keeps throwing (the canvas would freeze): reload, resume here
+    const lost = () => restoreLost([this.player.pos.x, this.player.pos.z, this.player.yaw]);
+    this.engine.onLost = lost;
+    // (Safari after the page was hidden: createCommandEncoder throws every few frames, no device-lost event)
+    let bad = [];
+    this.engine.renderer.setAnimationLoop((t) => {
+      try { this.tick(t); } catch (e) {
+        const now = performance.now();
+        bad = bad.filter((x) => now - x < 3000);
+        if (!bad.length) console.error(e);
+        if (bad.push(now) >= 5) lost();
+      }
+    });
   }
 
   // The loading view: a frame loop that draws whatever has its shader built and queues the rest for
@@ -198,7 +214,8 @@ class Game {
     let meshes = 0;
     for (let round = 0; round < 8; round++) {
       const n = s.total;
-      meshes = await this.inFrame(() => s.collect(e.scene, cam, () => e.render()));
+      // the sun's maps re-render every round, lazy or not (phones: Engine.lazyShadows), so each caster's shadow shader is built
+      meshes = await this.inFrame(() => s.collect(e.scene, cam, () => { e.sun.shadow.needsUpdate = true; e.render(); }));
       await s.drain();
       if (s.total === n) break;
     }
@@ -438,9 +455,9 @@ class Game {
 
   frame(now) {
     this.clock.update(now); // the rAF timestamp: frame steps stay as even as the display's refreshes
-    const dt = Math.max(0, Math.min(this.clock.getDelta(), 0.05));
+    const dt = Math.max(0, Math.min(this.clock.getDelta(), 0.25)); // (was 0.05: under 20 fps the world ran in slow motion)
     const paused = this.paused;
-    if (!this.title && !this.ui.modal && !paused) this.player.update(dt);
+    if (!this.title && !this.ui.modal && !paused) this.stepPlayer(dt);
     else if (this.title) { this.player.update(0); }
     // tag interactable roots once
     for (const it of this.world.interactables) if (it.target && !it.target.userData.interactable) it.target.userData.interactable = it;
@@ -479,6 +496,19 @@ class Game {
   }
 }
 
+// The body in steps of ≤1/30 s, so a slow frame walks as far as the time it took and collisions stay exact;
+// the frame's look input applies in the first step only.
+Game.prototype.stepPlayer = function (dt) {
+  const inp = this.input, look = [inp.mdx, inp.mdy, inp.lookX, inp.lookY];
+  for (let left = dt, first = true; first || left > 1e-6; first = false) {
+    const s = Math.min(left, 1 / 30);
+    if (!first) inp.mdx = inp.mdy = inp.lookX = inp.lookY = 0;
+    this.player.update(s);
+    left -= s;
+  }
+  [inp.mdx, inp.mdy, inp.lookX, inp.lookY] = look;
+};
+
 Game.prototype.fpsMeter = function (dt) {
   const m = this._fps ||= { t: 0, n: 0, worst: 0 };
   m.t += dt; m.n++; m.worst = Math.max(m.worst, dt);
@@ -493,6 +523,7 @@ Game.prototype.fpsMeter = function (dt) {
 };
 
 const fail = (e) => {
+  if (window.game?.engine?.restoring) return; // a lost GPU device is being restored by a reload: not a failed start
   console.error(e, e?.stack);
   const go = document.getElementById('go');
   go.style.animation = 'none';

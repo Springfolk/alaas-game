@@ -5,12 +5,17 @@ import {
   texture, uv, vec3, float, instancedBufferAttribute, mx_noise_float, time, color, mix,
 } from 'three/tsl';
 import { puffTexture } from './textures.js';
+import { TIER } from '../../engine/tier.js';
 
 /**
  * origin: [x, y, z] local; wind: [x, z] m/s; opts: rate (puffs/s), life (s), size [start, end] m,
  * rise m/s, tint (lit colour), shade (shadowed colour), alpha.
  */
 export function makeSmoke(origin, wind, opts = {}) {
+  // phones: 45% of the puffs, each denser, one noise octave: the smudge fire's overlapping puffs were a warm
+  // iPhone's heaviest view (blended layers, three noise lookups in each)
+  const phone = TIER.name === 'mobile';
+  if (phone) opts = { ...opts, count: Math.ceil((opts.count ?? 56) * 0.45), rate: (opts.rate ?? 4) * 0.45, alpha: Math.min(1, (opts.alpha ?? 0.55) * 1.35) };
   const { count = 56, rate = 4, life = 14, size = [0.7, 5.5], rise = 0.45, tint = 0xc9c6bf, shade = 0x6d6c6a, alpha = 0.55, spread = 0.5, seed = 1 } = opts;
   const geo = new THREE.PlaneGeometry(1, 1);
   const fade = new Float32Array(count * 3); // alpha, seed, age 0..1
@@ -21,7 +26,8 @@ export function makeSmoke(origin, wind, opts = {}) {
   // rolling noise erodes each puff into wisps as it ages
   const q = uv().sub(0.5);
   const drift = vec3(q.mul(2.2), a.y.mul(17).add(time.mul(0.15)));
-  const n = mx_noise_float(drift).mul(0.6).add(mx_noise_float(drift.mul(2.7)).mul(0.3)).add(mx_noise_float(drift.mul(6.1)).mul(0.12));
+  const n = phone ? mx_noise_float(drift).mul(0.85)
+    : mx_noise_float(drift).mul(0.6).add(mx_noise_float(drift.mul(2.7)).mul(0.3)).add(mx_noise_float(drift.mul(6.1)).mul(0.12));
   const base = texture(tex, q.mul(float(1).add(n.mul(0.35))).add(0.5)).r;
   const dens = base.mul(1.25).add(n.mul(0.85)).sub(a.z.mul(0.4)).smoothstep(0.12, 0.75);
   mat.opacityNode = dens.mul(a.x);

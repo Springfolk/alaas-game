@@ -1,14 +1,14 @@
 // Ground mesh (one warped grid: ~1.5 m cells at the homestead, ~40 m at the horizon) and its
 // splatted PBR material: meadow grass, forest floor, lake-shore mud, trodden earth, dry grass.
 import * as THREE from 'three/webgpu';
-import { texture, attribute, positionWorld, cameraPosition, vec2, vec3, vec4, mix, normalMap, float, smoothstep, mx_noise_float, uniform, floor, hash, length, select } from 'three/tsl';
-import { maps, textureMax } from '../engine/materials.js';
+import { texture, attribute, positionWorld, cameraPosition, vec2, vec3, vec4, mix, normalMap, float, smoothstep, mx_noise_float, uniform, floor, hash, length, Fn, If, varying } from 'three/tsl';
+import { maps, firstTextureMax, onSharpen, aniso } from '../engine/materials.js';
 import { LAKE } from './terrain.js';
 import { groundSamples, groundArrays, packSet } from './ground-data.js';
 import { job } from '../load/workers.js';
 import { TIER } from '../engine/tier.js';
 
-// The grid (N verts per side by tier: 640 → 420 on phones) and the splat textures are computed in a worker
+// The grid (N verts per side by tier: 640 → 320 on phones) and the splat textures are computed in a worker
 // (src/load/worker.js, data code in ground-data.js; the grid's terrain samples are baked: src/load/geocache.js);
 // on the main thread only if workers fail.
 export async function buildGround(terrain) {
@@ -17,11 +17,39 @@ export async function buildGround(terrain) {
   const mesh = new THREE.Mesh(groundGeometry(fine), groundMaterial());
   mesh.receiveShadow = true;
   mesh.name = 'ground';
+  mesh.userData.tiles = tiles(mesh, 4);
   // a coarse copy (same material, so the same pipeline) the lake reflection draws instead (lake.js)
   const coarse = new THREE.Mesh(groundGeometry(rough), mesh.material);
   coarse.name = 'ground-coarse'; coarse.visible = false; coarse.receiveShadow = true;
   mesh.add(coarse);
   return mesh;
+}
+
+// T×T tiles of the grid (index ranges over its vertices, own bounds) so three culls the ones out of view: the
+// whole grid drew every frame wherever one looked (818k triangles on desktop). The root keeps only one far corner
+// triangle (WebGPU warns on empty draws); the lake mirror hides the tiles for the coarse copy (lake.js).
+function tiles(mesh, T) {
+  const g = mesh.geometry, idx = g.index.array, pos = g.attributes.position.array;
+  const N = Math.round(Math.sqrt(g.attributes.position.count)), Q = N - 1; // the grid's own size, whatever tier built it
+  const per = Math.ceil(Q / T), out = [];
+  const box = new THREE.Box3(), v = new THREE.Vector3();
+  for (let tj = 0; tj < T; tj++) for (let ti = 0; ti < T; ti++) {
+    const j0 = tj * per, j1 = Math.min(Q, j0 + per), i0 = ti * per, i1 = Math.min(Q, i0 + per), w = (i1 - i0) * 6;
+    if (j1 <= j0 || i1 <= i0) continue;
+    const sub = new Uint32Array((j1 - j0) * w);
+    for (let j = j0; j < j1; j++) sub.set(idx.subarray((j * Q + i0) * 6, (j * Q + i0) * 6 + w), (j - j0) * w);
+    box.makeEmpty();
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const k = (j * N + i) * 3; box.expandByPoint(v.set(pos[k], pos[k + 1], pos[k + 2])); }
+    const tg = new THREE.BufferGeometry();
+    for (const [k, a] of Object.entries(g.attributes)) tg.setAttribute(k, a);
+    tg.setIndex(new THREE.BufferAttribute(sub, 1));
+    tg.boundingBox = box.clone(); tg.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
+    const m = new THREE.Mesh(tg, mesh.material);
+    m.name = 'ground'; m.receiveShadow = true;
+    mesh.add(m); out.push(m);
+  }
+  g.setIndex(new THREE.BufferAttribute(new Uint32Array(idx.subarray(0, 3)), 1));
+  return out;
 }
 
 function groundGeometry({ pos, uvs, nor, spl, idx }) {
@@ -41,13 +69,17 @@ function packed(id) {
   const t = new THREE.DataTexture();
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.generateMipmaps = true; t.anisotropy = 8; t.colorSpace = THREE.SRGBColorSpace;
-  // the device tier's texture cap (2048 → 1024 on low, 512 on phones); decoded and packed in a worker
-  const base = `${import.meta.env.BASE_URL}assets/tex/${id}/`, max = textureMax();
-  t.userData.ready = job('pack', { base, max }, () => packSet(base, max)).then((img) => {
+  t.generateMipmaps = true; t.anisotropy = aniso(8); t.colorSpace = THREE.SRGBColorSpace;
+  // starts at 256 like every texture, then the device tier's cap (2048 → 1024 on low, 512 on phones) in play
+  // (sharpenTextures); decoded and packed in a worker; the swap drops the GPU texture first (a rebind, no new shader)
+  const base = `${import.meta.env.BASE_URL}assets/tex/${id}/`;
+  const load = (max, swap) => job('pack', { base, max }, () => packSet(base, max)).then((img) => {
+    if (swap) t.dispose();
     t.image = img;
     t.needsUpdate = true;
   }).catch((e) => console.warn('ground texture', id, e));
+  t.userData.ready = load(firstTextureMax(), false);
+  onSharpen((max) => load(max, true));
   return t;
 }
 
@@ -72,14 +104,29 @@ function groundMaterial() {
   // edge noise so splat borders are ragged, not smooth gradients
   const edge = mx_noise_float(wp.mul(0.45)).mul(0.22);
   const w = (v) => v.add(edge).clamp(0, 1).smoothstep(0.25, 0.75);
-  const sample = (m, key) => mix(texture(m[key], uvA), texture(m[key], uvB), brk);
+  // low/mobile: the normals from one scale only (5 of the pixel's 21 samples; the colour keeps both, so tiling stays hidden)
+  const oneNor = TIER.quality === 'low';
+  // phones: a set is sampled only where it shows (most pixels show one or two of the five). Samples in a branch take
+  // their gradients from outside it (textureGrad), so filtering stays right at the branch's edges.
+  // (TSL emits a node where it is first used: the gradients and the scale pick are assigned before any branch)
+  const lean = TIER.name === 'mobile';
+  let gA = null, gB = null, pick = brk;
+  const before = () => {
+    const v = (n, x) => { const o = n.toVar(); o.assign(x); return o; };
+    gA = [v(vec2(0), uvA.dFdx()), v(vec2(0), uvA.dFdy())]; gB = [v(vec2(0), uvB.dFdx()), v(vec2(0), uvB.dFdy())]; pick = v(float(0), brk);
+  };
+  const look = (t, u, g) => (g ? texture(t, u).grad(g[0], g[1]) : texture(t, u));
+  const sample = (m, key) => (oneNor && key === 'nor' ? look(m[key], uvA, gA) : mix(look(m[key], uvA, gA), look(m[key], uvB, gB), pick));
+  const when = (need, get) => { if (!lean) return get(); const out = vec4(0).toVar(); If(need, () => { out.assign(get()); }); return out; };
+  const on = (x) => x.greaterThan(0.002);
   const lum = (c) => c.dot(vec3(0.3, 0.55, 0.15));
   const lin = (hex) => { const c = new THREE.Color(hex); return vec3(c.r, c.g, c.b); };
 
   // meadow ground re-graded to the colour of the grass mass: darker under the near blades,
   // green-gold with hay-yellow patches from afar (the textures alone read as brown dirt)
-  const macro = mx_noise_float(wp.mul(0.009)).mul(0.5).add(0.5);
-  const macro2 = mx_noise_float(wp.mul(0.04).add(7.3)).mul(0.5).add(0.5);
+  // the slow noises (25–110 m) per vertex (~1.5 m apart near): three fewer noises per pixel
+  const slow = varying(vec3(mx_noise_float(wp.mul(0.009)), mx_noise_float(wp.mul(0.04).add(7.3)), mx_noise_float(wp.mul(0.012))));
+  const macro = slow.x.mul(0.5).add(0.5), macro2 = slow.y.mul(0.5).add(0.5);
   const far = smoothstep(8, 45, dist);
   const meadowTint = mix(mix(lin(0x3d4a1f), lin(0x55632a), macro2), mix(lin(0x617a2b), lin(0x84863c), macro.smoothstep(0.35, 0.8)), far);
   // texture detail fades with distance so its tiling never shows as a pattern across the meadow
@@ -87,52 +134,67 @@ function groundMaterial() {
   const H = makeHooks();
   const fM = (H.maskNode = texture(blank(), wp.sub(H.maskXf.xy).mul(H.maskXf.z)));
   const grazed = fM.z, bareG = fM.w;
+  const wD = w(s.w), wF = w(s.x), wP = w(s.z), wS = w(s.y);
   const layer = (key) => {
     const get = (n) => sample(sets[n], key);
-    if (key === 'ar') {
+    const ar = key === 'ar', kP = ar ? wP.mul(0.85) : wP, bare = ar ? bareG.mul(0.8) : float(0);
+    // what each set still shows after the ones mixed over it (shore over path over forest over grass/dry)
+    const cS = float(1).sub(wS), cP = cS.mul(float(1).sub(kP)), cF = cP.mul(float(1).sub(wF)), cG = cF.mul(float(1).sub(bare));
+    const pv = when(on(cS).and(on(kP).or(on(bare))), () => get('path'));
+    let v = when(on(cG).and(on(float(1).sub(wD))), () => get('grass'));
+    const dv = when(on(cG).and(on(wD)), () => get('dry'));
+    const fv = when(on(cP).and(on(wF)), () => get('forest'));
+    const sv = when(on(wS), () => get('shore'));
+    if (ar) {
       // trodden earth: dusty and pale, not dark mud bands
-      const pv = get('path'), path = vec4(mix(pv.rgb.mul(1.3), lin(0x8a7c5e), 0.4), pv.a);
-      let v = get('grass'); v = vec4(regrade(v.rgb, 0.045, meadowTint, 0.9), v.a);
-      const dv = get('dry'); v = mix(v, vec4(regrade(dv.rgb, 0.2, mix(meadowTint, lin(0x9a9050), 0.4), 0.85), dv.a), w(s.w));
+      const path = vec4(mix(pv.rgb.mul(1.3), lin(0x8a7c5e), 0.4), pv.a);
+      v = vec4(regrade(v.rgb, 0.045, meadowTint, 0.9), v.a);
+      v = mix(v, vec4(regrade(dv.rgb, 0.2, mix(meadowTint, lin(0x9a9050), 0.4), 0.85), dv.a), wD);
       // grazed sward: tighter, greener-yellow, broken by bare trodden soil (same patches the grass leaves)
       v = vec4(mix(v.rgb, regrade(v.rgb, 0.045, mix(lin(0x55622a), lin(0x6c6d34), macro2), 0.9), grazed), v.a);
-      v = mix(v, path, bareG.mul(0.8));
-      v = mix(v, get('forest'), w(s.x));
-      v = mix(v, path, w(s.z).mul(0.85));
-      v = mix(v, get('shore'), w(s.y));
-      return v;
+      v = mix(v, path, bare);
+      v = mix(v, fv, wF);
+      v = mix(v, path, kP);
+      return mix(v, sv, wS);
     }
-    let v = get('grass');
-    v = mix(v, get('dry'), w(s.w));
-    v = mix(v, get('forest'), w(s.x));
-    v = mix(v, get('path'), w(s.z));
-    v = mix(v, get('shore'), w(s.y));
-    return v;
+    v = mix(v, dv, wD);
+    v = mix(v, fv, wF);
+    v = mix(v, pv, wP);
+    return mix(v, sv, wS);
   };
+  const layerOf = (key) => (lean ? Fn(() => { before(); return layer(key); })() : layer(key));
   const mat = new THREE.MeshPhysicalNodeMaterial({ roughness: 1, metalness: 0 });
-  const ar = layer('ar');
+  const ar = layerOf('ar');
   // the wet band at the waterline and the lake bed below it: darker and smoother
   const wet = float(1).sub(smoothstep(LAKE.level + 0.05, LAKE.level + 0.45, positionWorld.y));
-  const tone = mx_noise_float(wp.mul(0.012)).mul(0.08).add(1);
+  const tone = slow.z.mul(0.08).add(1);
   // cow pats on grazed ground, rare (one in ~14 cells of 2.4 m where grazing is heaviest): a lumpy outline,
-  // pale cracked dry crust, a browner moist middle and a dark rim where the low mound meets the grass
-  const cell = floor(wp.div(2.4)), seed = cell.x.add(16384).toUint().mul(73856093).bitXor(cell.y.add(16384).toUint().mul(19349663));
-  const hc = hash(seed), pc = cell.add(vec2(hash(seed.add(1)), hash(seed.add(2))).mul(0.7).add(0.15)).mul(2.4);
-  const pr = hash(seed.add(3)).mul(0.08).add(0.13);
-  const pd = length(wp.sub(pc).mul(vec2(1, hash(seed.add(4)).mul(0.4).add(0.8)))).div(pr)
-    .add(mx_noise_float(wp.mul(4)).mul(0.22)).add(mx_noise_float(wp.mul(13)).mul(0.08));
-  const pat = float(1).sub(smoothstep(0.85, 1, pd)).mul(select(hc.lessThan(grazed.mul(0.07)), float(1), float(0)));
-  // the slumped layers show as faint rings; cracks split the dry top
-  const ring = pd.mul(15).sin().mul(0.5).add(0.5).mul(smoothstep(0.15, 0.4, pd));
-  const crack = smoothstep(0.01, 0.05, mx_noise_float(wp.mul(30)).abs());
-  const crust = mix(lin(0x4a4130), mix(lin(0x5e5641), lin(0x6f6750), ring.mul(0.6).add(mx_noise_float(wp.mul(9)).mul(0.2))), crack);
-  const dung = mix(crust, lin(0x2f281d), smoothstep(0.78, 0.97, pd));
-  mat.colorNode = mix(ar.rgb, dung, pat.mul(0.95)).mul(vec3(tone, tone, tone.mul(0.97))).mul(mix(1, 0.5, wet));
+  // pale cracked dry crust, a browner moist middle and a dark rim where the low mound meets the grass.
+  // Its four noises run only inside a pat's cell and reach (a coherent branch; they were in every ground pixel).
+  const cow = Fn(() => {
+    const out = vec4(0).toVar();
+    const cell = floor(wp.div(2.4)), seed = cell.x.add(16384).toUint().mul(73856093).bitXor(cell.y.add(16384).toUint().mul(19349663));
+    If(hash(seed).lessThan(grazed.mul(0.07)), () => {
+      const pc = cell.add(vec2(hash(seed.add(1)), hash(seed.add(2))).mul(0.7).add(0.15)).mul(2.4);
+      const pr = hash(seed.add(3)).mul(0.08).add(0.13);
+      const pd0 = length(wp.sub(pc).mul(vec2(1, hash(seed.add(4)).mul(0.4).add(0.8)))).div(pr);
+      If(pd0.lessThan(1.35), () => { // the noise below moves the outline by < 0.3
+        const pd = pd0.add(mx_noise_float(wp.mul(4)).mul(0.22)).add(mx_noise_float(wp.mul(13)).mul(0.08));
+        // the slumped layers show as faint rings; cracks split the dry top
+        const ring = pd.mul(15).sin().mul(0.5).add(0.5).mul(smoothstep(0.15, 0.4, pd));
+        const crack = smoothstep(0.01, 0.05, mx_noise_float(wp.mul(30)).abs());
+        const crust = mix(lin(0x4a4130), mix(lin(0x5e5641), lin(0x6f6750), ring.mul(0.6).add(mx_noise_float(wp.mul(9)).mul(0.2))), crack);
+        out.assign(vec4(mix(crust, lin(0x2f281d), smoothstep(0.78, 0.97, pd)), float(1).sub(smoothstep(0.85, 1, pd))));
+      });
+    });
+    return out;
+  })();
+  mat.colorNode = mix(ar.rgb, cow.rgb, cow.a.mul(0.95)).mul(vec3(tone, tone, tone.mul(0.97))).mul(mix(1, 0.5, wet));
   mat.roughnessNode = mix(ar.a.mul(0.12).add(0.86), float(0.45), wet);
   mat.metalnessNode = float(0);
   // rough soil has almost no specular: kills the grey sky sheen at grazing angles
   mat.specularIntensityNode = mix(float(0.25), float(0.8), wet);
-  mat.normalNode = normalMap(layer('nor').rgb.mul(2).sub(1).normalize().mul(0.5).add(0.5));
+  mat.normalNode = normalMap(layerOf('nor').rgb.mul(2).sub(1).normalize().mul(0.5).add(0.5));
   mat.name = 'ground';
   mat.userData.hooks = H; // filled by src/nature/grass.js
   // resolves once every map has its image (world.js shows the ground then, not black)

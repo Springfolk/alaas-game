@@ -170,9 +170,10 @@ export default async function build(ctx, placement) {
     inside.add(m);
   }
 
-  // trodden earth before the door and round the house
+  // trodden earth before the door and round the house; the earth floor inside the walls (|x|, |z| < HW + 0.1: the
+  // x test once had no lower bound, so the floor ran out past the back wall)
   const eg = section(() => {
-    const tg = troddenPatch(ground, -2.8, 4.6, -2.8, 2.8, (x, zz) => Math.max(blob(3.0, 0, 1.6, 1.2, 4)(x, zz), x < HW + 0.1 && Math.abs(zz) < HW + 0.1 ? 1.2 : blob(0, 0, 2.6, 2.6, 6, 0.6)(x, zz) * 0.6), { step: 0.35 });
+    const tg = troddenPatch(ground, -2.8, 4.6, -2.8, 2.8, (x, zz) => Math.max(blob(3.0, 0, 1.6, 1.2, 4)(x, zz), Math.abs(x) < HW + 0.1 && Math.abs(zz) < HW + 0.1 ? 1.2 : blob(0, 0, 2.6, 2.6, 6, 0.6)(x, zz) * 0.6), { step: 0.35 });
     const gr = [];
     for (let i = 0; i < 26; i++) {
       const s = rng() * 4 - 2, side = Math.floor(rng() * 4);

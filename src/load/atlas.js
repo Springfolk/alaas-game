@@ -15,10 +15,11 @@ const meta = baking ? Promise.resolve({}) : fetch(BASE + 'meta.json').then((r) =
 export const atlasKey = (s) => (strHash(s) >>> 0).toString(16);
 
 // TIER.atlasMax (phones): decoded scaled down in a load worker instead of at full size (2048×2816)
-const image = (url) => (TIER.atlasMax
-  ? work('bitmap', { url, max: TIER.atlasMax, flip: false }, () => loadBitmap(url, TIER.atlasMax, 3, false)).then((b) => new THREE.Texture(b))
+// the homestead's atlas (2048×768) stays full size: phones switch to its impostors from ~45 m (lod.js)
+const image = (url, max) => (max
+  ? work('bitmap', { url, max, flip: false }, () => loadBitmap(url, max, 3, false)).then((b) => new THREE.Texture(b))
   : new THREE.TextureLoader().loadAsync(url));
-const load = (file) => image(new URL(BASE + file, location.href).href).then((t) => {
+const load = (file) => image(new URL(BASE + file, location.href).href, TIER.atlasMax && (file.startsWith('homestead') ? Math.max(2048, TIER.atlasMax) : TIER.atlasMax)).then((t) => {
   t.flipY = false; // stored top row first, as the render target it was read from
   t.needsUpdate = true;
   t.colorSpace = THREE.NoColorSpace;

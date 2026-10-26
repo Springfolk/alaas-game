@@ -2,11 +2,12 @@
 // (post chain: post.js; sky and clouds: sky.js; interior sky occlusion: interiors.js).
 import * as THREE from 'three/webgpu';
 import {
-  uniform, vec4, Fn, output, positionWorld, positionView, float, exp, max, cameraPosition, dot, smoothstep, texture, uv,
+  uniform, vec4, Fn, output, BasicShadowFilter, positionWorld, positionView, float, exp, max, cameraPosition, dot, smoothstep, texture, uv,
 } from 'three/tsl';
 import { buildPost } from './post.js';
 import { fastPMREM } from '../load/pmrem.js';
-import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, bootFailed } from './tier.js';
+import { leanEnvironment } from './leanenv.js';
+import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, restoreLost, webgpuAdapter, gpuBroken } from './tier.js';
 import { setTextureMax } from './materials.js';
 import { makeSky, updateSky, cloudField, cloudCover, CLOUD_Y } from './sky.js';
 import { sunMask } from './master.js';
@@ -41,9 +42,12 @@ export class Engine {
 
   async init() {
     const auto = !PRESETS[this.requested.quality];
-    // boot guard (tier.js): after a load the OS killed, step down — 1: mobile → LITE, medium → low; 2: WebGL2 too
+    // boot guard (tier.js): after a load the OS killed, step down: mobile → LITE, medium → low
     const step = this.bootStep = KEYART ? 0 : bootStep(auto);
-    if (step >= 2) this.requested = { ...this.requested, webgl: true };
+    // WebGPU wherever the browser gives an adapter, phones too (an iPhone 14 Pro: 17 ms a frame at the urasa where
+    // WebGL2 took 45, its per-draw cost far lower); WebGL2 only without one (or ?webgl)
+    // (a device that broke 3× within 2 min in this tab: WebGL2 for the tab's session, tier.js restoreLost)
+    if (!this.requested.webgl && (gpuBroken() || !(await webgpuAdapter()))) this.requested = { ...this.requested, webgl: true };
     if (auto) { // 'auto' (default): pick by device
       const d = await detectTier({ webgl: !!this.requested.webgl });
       this.tier = d.name;
@@ -53,8 +57,10 @@ export class Engine {
       TIER.auto = true; TIER.reason = d.reason + (step ? `, boot step ${step}` : '');
     }
     this.tierAuto = TIER.auto;
-    // battery saver (30 fps) by default on phones, and on a laptop whose battery runs low (≤20%, unplugged)
-    // where the Battery Status API reports it (Chromium; Safari has none: the setting is the fallback)
+    this.resScale = this.opts.resStart ?? 1; // phones start low and climb (dynamicResolution)
+    // battery saver (30 fps) by default on phones — at 60 an iPhone heated within a minute, dimmed its screen and
+    // throttled to ~10 fps — and on a battery running low (≤20%, unplugged) where the Battery Status API reports it
+    // (Chromium; Safari has none). The setting overrides it.
     this.autoSaver = this.tier === 'mobile';
     navigator.getBattery?.().then((b) => {
       const upd = () => { this.autoSaver = this.tier === 'mobile' || (!b.charging && b.level <= 0.2); };
@@ -63,8 +69,10 @@ export class Engine {
     setTextureMax(this.opts.texMax);
     const r = this.renderer = new THREE.WebGPURenderer({ canvas: this.canvas, antialias: false, forceWebGL: !!this.opts.webgl, trackTimestamp: this.opts.gpuTime ?? urlFlag('gputime') });
     r.library.addLight(SunLightNode, SunLight);
-    const lost = r.onDeviceLost.bind(r); // lost while loading (bootDone not yet called): reload a step down
-    r.onDeviceLost = (info) => { lost(info); if (!KEYART) bootFailed(); };
+    // device lost (the OS took the GPU back: memory pressure, a GPU reset, a page long hidden): restored by a reload
+    // at the same quality, where the player stood (main.js onLost; while loading, tier.js restoreLost)
+    const lost = r.onDeviceLost.bind(r);
+    r.onDeviceLost = (info) => { lost(info); if (KEYART) return; this.restoring = true; if (this.onLost) this.onLost(info); else restoreLost(); }; // (restoring: main.js shows no start failure)
     r.setPixelRatio(Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
     r.setSize(innerWidth, innerHeight, false);
     r.shadowMap.enabled = true;
@@ -72,6 +80,13 @@ export class Engine {
     r.toneMappingExposure = 1;
     await r.init();
     this.backend = r.backend.isWebGPUBackend ? 'webgpu' : 'webgl2';
+    // Safari can break a WebGPU device without losing it (mid-load, or after the page was hidden): every
+    // createCommandEncoder then throws and the canvas freezes. Treated as a loss at the first throw.
+    const dev = r.backend.device;
+    if (dev) {
+      const make = dev.createCommandEncoder.bind(dev);
+      dev.createCommandEncoder = (d) => { try { return make(d); } catch (err) { r.onDeviceLost({ api: 'WebGPU', message: String(err), reason: 'broken' }); throw err; } };
+    }
 
     const scene = this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 6000);
@@ -88,7 +103,7 @@ export class Engine {
     // so the shadows drifting over the alaas belong to the clouds overhead. Every lit material gets them.
     this.cloudShadow = uniform(0.7); // how dark a cloud shadow is (0 = none): ~1.5 EV, the sky still lights it
     this.cloudCover = cloudCover;    // noise threshold: lower = more of the ground in shadow
-    // The coarse cloud field is rendered each frame into a small texture around the view (cloudMap) and
+    // The coarse cloud field is rendered into a small texture around the view (cloudMap, 4×/s) and
     // sampled per pixel, instead of three noise octaves in every lit pixel.
     const cm = this.cloudMap = makeCloudMap();
     sun.colorNode = Fn(() => {
@@ -100,6 +115,7 @@ export class Engine {
       return this.sunColor.mul(float(1).sub(c.mul(this.cloudShadow))).mul(sunMask); // per-material sun mask (master.js)
     })();
     sun.shadow.mapSize.setScalar(this.opts.shadows);
+    if (urlFlag('hardshadow')) sun.shadow.filterNode = BasicShadowFilter; // A/B: one hardware-filtered tap per cascade
     sun.shadow.normalBias = 0.035;
     sun.shadow.bias = -0.0002;
     scene.add(sun);
@@ -123,6 +139,7 @@ export class Engine {
 
     this.pmrem = new THREE.PMREMGenerator(r);
     this.envScene = new THREE.Scene();
+    if (this.opts.leanEnv && !urlFlag('fullenv')) { this.leanEnv = leanEnvironment(); scene.environmentNode = this.leanEnv.node; } // ?fullenv: A/B
     scene.environmentIntensity = 1; // the sky is in absolute units matched to the sun (sky.js)
     this.setSun(this.sunElev, this.sunAz);
     if (this.opts.post) this.buildPost();
@@ -161,13 +178,16 @@ export class Engine {
     this.scene.add(this.sky);
     this.sky.showSunDisc.value = 1;
     this.scene.environment = this.envRT.texture;
-    (this.scene.environmentNode ||= fastPMREM(this.envRT.texture)).value = this.envRT.texture; // same light, cheaper shader builds (src/load/pmrem.js)
+    if (this.lakeSky) this.lakeSky.value = this.envRT.texture; // the mirrorless lake (lake.js)
+    if (this.leanEnv) this.leanEnv.bake(this.renderer, this.envRT.texture); // low/mobile: the same light from two small panoramas (leanenv.js)
+    else (this.scene.environmentNode ||= fastPMREM(this.envRT.texture)).value = this.envRT.texture; // same light, cheaper shader builds (src/load/pmrem.js)
   }
 
   // Eye adaptation: the exposure follows the metered frame (post.js) — partly, as eyes do, faster
   // towards light than towards dark. Without the meter, the houses' exposureTarget hints drive it.
   update(dt) {
     this.dynamicResolution(dt);
+    if (this.opts.lazyShadows && !KEYART && !urlFlag('nolazy')) this.lazyShadows(dt); // ?nolazy: A/B
     this.cloudMap?.render(this.renderer, this.camera, this.sky.sunPosition.value);
     this.syncInteriors?.();
     this.meterDt = dt;
@@ -179,6 +199,19 @@ export class Engine {
     this.exposure += (target - this.exposure) * (1 - Math.exp(-rate * dt));
     if (this.grade) this.grade.exposure.value = this.exposure;
     this.renderer.toneMappingExposure = this.exposure;
+  }
+
+  // opts.lazyShadows (phones): the sun's maps re-render only when the view moved 1.5 m or turned 8°, at most every
+  // 1/8 s, else every 2 s; between, the last maps and their matrices keep (shadows of swaying leaves pause).
+  // Both cascades every frame was the largest single cost on an iPhone on WebGL2 (frozen: 10 → 25 fps).
+  lazyShadows(dt) {
+    const sh = this.sun.shadow, c = this.camera, s = (this._lazy ||= { p: new THREE.Vector3(1e9, 0, 0), d: new THREE.Vector3(), f: new THREE.Vector3(), t: 9 });
+    sh.autoUpdate = false;
+    s.t += dt;
+    c.getWorldDirection(s.f);
+    if (s.t > 0.125 && (s.t > 2 || c.position.distanceToSquared(s.p) > 2.25 || s.f.dot(s.d) < 0.99)) {
+      sh.needsUpdate = true; s.t = 0; s.p.copy(c.position); s.d.copy(s.f);
+    }
   }
 
   // Frame pacing: true when a frame is due on this animation frame (`now` = its timestamp, ms) for `fps`
@@ -274,7 +307,8 @@ const KNOBS = [
 
 // The coarse cloud field (sky.js cloudField, what cloud shadows use) over CLOUD_SPAN m of the cloud plane
 // around where the view's ground looks up to through the sun, in a 512² half-float texture (16 m texels;
-// the finest octave is ~110 m). Re-rendered each frame (it drifts), centred on a texel-snapped origin.
+// the finest octave is ~110 m), centred on a texel-snapped origin. Re-rendered 4×/s or when the origin moves a texel:
+// the clouds drift a texel in ~3 s, and every frame was ~30% of a phone-tier frame's GPU time.
 const CLOUD_SPAN = 8192;
 function makeCloudMap() {
   const N = 512;
@@ -288,10 +322,14 @@ function makeCloudMap() {
   const quad = new THREE.QuadMesh(mat);
   const step = CLOUD_SPAN / N;
   return {
-    rt, origin,
+    rt, origin, at: -1e9,
     render(renderer, camera, L) {
       const up = Math.max(L.y, 0.08), k = (CLOUD_Y - camera.position.y) / up;
-      origin.value.set(Math.round((camera.position.x + L.x * k) / step) * step, Math.round((camera.position.z + L.z * k) / step) * step);
+      const x = Math.round((camera.position.x + L.x * k) / step) * step, z = Math.round((camera.position.z + L.z * k) / step) * step;
+      const now = performance.now();
+      if (x === origin.value.x && z === origin.value.y && now - this.at < 250) return;
+      this.at = now;
+      origin.value.set(x, z);
       const prev = renderer.getRenderTarget();
       renderer.setRenderTarget(rt);
       quad.render(renderer);

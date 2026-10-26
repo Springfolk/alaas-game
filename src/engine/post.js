@@ -4,12 +4,14 @@
 // Called once by Engine.init (engine.buildPost); reads engine.opts (quality); sets engine.pipeline/grade/meter.
 import * as THREE from 'three/webgpu';
 import {
-  pass, mrt, normalView, velocity, packNormalToRGB, unpackRGBToNormal, sample, screenUV, uv,
+  pass, mrt, rtt, normalView, velocity, packNormalToRGB, unpackRGBToNormal, sample, screenUV, uv,
   builtinAOContext, uniform, vec4, Fn, output, float, vec2, vec3, dot, hash, floor, time, screenCoordinate,
   luminance, mat3, max, min, log2, pow, clamp, mix,
 } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
+import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
+import { urlFlag } from '../util.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { interiorOcclusion } from './interiors.js';
 
@@ -39,6 +41,10 @@ export function buildPost(engine) {
   const interiors = interiorOcclusion();
   engine.syncInteriors = interiors.sync;
   const occl = interiors.node;
+  // TRAA everywhere but phones: at their 30 fps cap and upscaled render its jitter and history blend show as a
+  // shimmering, soft still image (sharp only while looking around); FXAA there instead (below).
+  // ?taa / ?notaa override.
+  const taa = urlFlag('taa') || (engine.tier !== 'mobile' && !urlFlag('notaa'));
   let scenePass, depth, vel;
   if (engine.opts.ao) {
     // high: a normals/velocity pre-pass feeds GTAO into the scene pass's ambient light
@@ -59,14 +65,18 @@ export function buildPost(engine) {
   } else {
     // medium/low: one scene pass writes colour and velocity together
     scenePass = pass(scene, camera);
-    scenePass.setMRT(mrt({ output, velocity }));
+    if (taa) scenePass.setMRT(mrt({ output, velocity }));
     scenePass.contextNode = builtinAOContext(occl);
     depth = scenePass.getTextureNode('depth');
-    vel = scenePass.getTextureNode('velocity');
+    // (an 11-11-10 float colour target, tried for phones: ~2% GPU, and blended decals vanished on it under ANGLE)
+    if (taa) vel = scenePass.getTextureNode('velocity'); // asking adds a colour target: only with the MRT that fills it
   }
-  const aa = traa(scenePass.getTextureNode('output'), depth, vel, camera);
-  aa.useSubpixelCorrection = false;
-  const aaTex = aa.getTextureNode();
+  let aa = scenePass.getTextureNode('output'), aaTex = aa;
+  if (taa) {
+    aa = traa(aa, depth, vel, camera);
+    aa.useSubpixelCorrection = false;
+    aaTex = aa.getTextureNode();
+  }
 
   // glare: a soft veil from the brightest things (sun, sunlit cloud rims, glints on water). The input is
   // capped so the sun glows as through a lens instead of whiting out the frame.
@@ -81,19 +91,23 @@ export function buildPost(engine) {
 
   // exposure (set by Engine.update), look and grade
   engine.grade = {
-    exposure: uniform(1), sharpen: uniform(0.8),
+    exposure: uniform(1), sharpen: uniform(taa ? 0.8 : 0), // no TRAA softness to undo
     power: uniform(1.12), saturation: uniform(1.18), vignette: uniform(0.16), grain: uniform(tier === 'low' ? 0 : 0.01),
   };
   const g = engine.grade;
   pipe.outputColorTransform = false;
-  pipe.outputNode = Fn(() => {
+  const graded = Fn(() => {
     // TRAA leaves the image soft: a strong, halo-free sharpen (clamped to the local range; SMAA, tried, shimmered in motion)
-    const d = vec2(1).div(vec2(aaTex.size(0)));
+    // (no TRAA, phones: sharpen 0, so not its four taps either)
     const c = aaTex.sample(screenUV).rgb;
-    const n = aaTex.sample(screenUV.add(vec2(0, d.y))).rgb, s = aaTex.sample(screenUV.sub(vec2(0, d.y))).rgb;
-    const e = aaTex.sample(screenUV.add(vec2(d.x, 0))).rgb, w = aaTex.sample(screenUV.sub(vec2(d.x, 0))).rgb;
-    const lo = min(min(min(n, s), min(e, w)), c), hi = max(max(max(n, s), max(e, w)), c);
-    let col = clamp(c.add(c.mul(4).sub(n).sub(s).sub(e).sub(w).mul(g.sharpen.mul(0.25))), lo, hi);
+    let col = c;
+    if (taa) {
+      const d = vec2(1).div(vec2(aaTex.size(0)));
+      const n = aaTex.sample(screenUV.add(vec2(0, d.y))).rgb, s = aaTex.sample(screenUV.sub(vec2(0, d.y))).rgb;
+      const e = aaTex.sample(screenUV.add(vec2(d.x, 0))).rgb, w = aaTex.sample(screenUV.sub(vec2(d.x, 0))).rgb;
+      const lo = min(min(min(n, s), min(e, w)), c), hi = max(max(max(n, s), max(e, w)), c);
+      col = clamp(c.add(c.mul(4).sub(n).sub(s).sub(e).sub(w).mul(g.sharpen.mul(0.25))), lo, hi);
+    }
     if (useBloom) col = col.add(glow.rgb);
     let o = agx(col.mul(g.exposure), g.power, g.saturation);
     const v = screenUV.sub(0.5).mul(vec2(1.25, 1));
@@ -104,6 +118,10 @@ export function buildPost(engine) {
     o = o.add(hash(seed).sub(0.5).mul(g.grain));
     return vec4(o, 1);
   })();
+  // phones (no TRAA): FXAA on the graded display-space image (its edge search needs gamma, not linear HDR); ?noaa: none
+  // (graded is display-referred 0–1: FXAA reads it from 8 bits, not half floats)
+  pipe.outputNode = taa || urlFlag('noaa') ? graded : fxaa(rtt(graded, null, null, { type: THREE.UnsignedByteType }));
+  engine.graded = graded; // (tools/iphone.mjs: the 'no fxaa' A/B)
 
   // exposure meter: mean log2 luminance of the anti-aliased frame, centre-weighted, read back on the CPU
   const W = 64, H = 36;

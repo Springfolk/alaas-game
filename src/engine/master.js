@@ -10,6 +10,7 @@
 import * as THREE from 'three/webgpu';
 import { MaterialReferenceNode, ReferenceNode, LightsNode, UniformNode, TextureNode, PointLightNode } from 'three/webgpu';
 import { lights as lightsNode, cameraViewMatrix, positionView, vec4 } from 'three/tsl';
+import { urlFlag } from '../util.js';
 
 // A material reference that, in the sun's shadow pass (where three draws with its own override material),
 // reads the material of the object being drawn.
@@ -30,7 +31,7 @@ export const sourceRef = (name, type) => refs.get(name + type) || refs.set(name 
 // from the material, i.e. from the model's own lights (a house's fire and fill). A material is lit by its own
 // model's lights only, as with a set per model, but every model shares the set (and so the builds).
 // The sun is scaled by `_sun` (0: an interior the shadow map would leak into, the urasa).
-export const LOCAL_LIGHTS = 2;
+export const LOCAL_LIGHTS = urlFlag('nolocal') ? 0 : 2; // ?nolocal: A/B (sun only)
 const proto = THREE.Material.prototype; // (three draws a plain material through a node copy; references read the original)
 proto._sun = 1;
 for (let i = 0; i < LOCAL_LIGHTS; i++) Object.assign(proto, { [`_l${i}c`]: new THREE.Color(0, 0, 0), [`_l${i}p`]: new THREE.Vector3(), [`_l${i}d`]: 1, [`_l${i}k`]: 2 });
@@ -69,7 +70,7 @@ function live(l) {
 export function useLights(material, own) {
   if (material._ownLights) return;
   material._ownLights = true;
-  if (own.length > LOCAL_LIGHTS) console.warn(`master: ${own.length} local lights on ${material.name}, ${LOCAL_LIGHTS} used`);
+  if (own.length > LOCAL_LIGHTS && LOCAL_LIGHTS) console.warn(`master: ${own.length} local lights on ${material.name}, ${LOCAL_LIGHTS} used`);
   own.slice(0, LOCAL_LIGHTS).forEach((l, i) => {
     const d = live(l);
     Object.defineProperties(material, {

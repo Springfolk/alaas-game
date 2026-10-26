@@ -1,6 +1,7 @@
 // The ground's pure-CPU data (no three.js, so a worker can build it — src/load/worker.js): the warped grid's
 // terrain samples and vertex arrays, and a splat set's diff × AO + roughness texels.
 import { HOME } from './terrain.js';
+import { sized } from '../load/texsize.js';
 
 const A = 360, B = 2640; // x = A·u + B·u⁴ around the homestead
 
@@ -79,8 +80,8 @@ async function imagePixels(url, max, tries = 3) {
   return g.getImageData(0, 0, w, h);
 }
 
-// One splat set packed from its diff.webp and arm.webp under `base`.
+// One splat set packed from its diff.webp and arm.webp under `base` (the shipped size that covers `max`).
 export async function packSet(base, max) {
-  const [d, a] = await Promise.all([imagePixels(base + 'diff.webp', max), imagePixels(base + 'arm.webp', max)]);
+  const [d, a] = await Promise.all(['diff', 'arm'].map((m) => imagePixels(sized(new URL(base + m + '.webp', location.href).href, max), max)));
   return packTexels(d, a);
 }

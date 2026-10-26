@@ -19,7 +19,18 @@ import { TIER } from '../engine/tier.js';
 
 // trees to FAR m from the alaas centre, the canopy band beyond; low tiers pull the full/coarse rings in (TIER.forest)
 export const BAND = 7, FAR = 950;
-let R0 = 44, R1 = 100;
+
+// Phones: every tree in the forest's outer rows (DEPTH < 0.25, ~15 m in), every other one deeper in — there the far
+// impostors stood card behind card (fill a phone GPU pays per layer); the treeline still reads as dense
+function thin(t) {
+  if (TIER.name !== 'mobile' || KEYART) return t;
+  const keep = [];
+  for (let k = 0; k < t.N; k++) if (t.DEPTH[k] < 0.25 || ((k * 2654435761) >>> 0) % 100 < 50) keep.push(k);
+  const out = { N: keep.length };
+  for (const key of ['DEPTH', 'X', 'Z', 'Y', 'ROT', 'S', 'VI']) out[key] = t[key].constructor.from(keep, (k) => t[key][k]);
+  return out;
+}
+let R0 = 34, R1 = 100;
 const VARIANTS = [ // [species, count, options] — group key is options.kind or the species
   ['larch', 6], ['birch', 5], ['birch', 2, { young: true, kind: 'youngBirch' }], ['pine', 3], ['deadLarch', 2], ['shrub', 2, { kind: 'willow' }], ['shrub', 2, { kind: 'rose' }],
 ];
@@ -28,7 +39,7 @@ export default async function forest(ctx, world) {
   if (urlFlag('noforest')) return; // A/B timing
   const { terrain } = world;
   const t0 = performance.now();
-  R0 = Math.round(44 * TIER.forest); R1 = Math.round(100 * TIER.forest);
+  R0 = Math.round(34 * TIER.forest); R1 = Math.round(100 * TIER.forest); // R0 was 44: the full trees (5–7k bark triangles each) were ~30% of a forest-edge frame
   if (KEYART) { R0 = 5000; R1 = 5100; } // ?keyart: every tree full (lod0), no coarse ring or impostors
 
   // ---------- placement: in a worker (trees/scatter.js) while the variants are made here ----------
@@ -57,7 +68,7 @@ export default async function forest(ctx, world) {
     canopy = section(() => canopyGeometry(terrain, FAR * 0.9));
   }, { rngs: false });
 
-  const trees = await scattered;
+  const trees = thin(await scattered);
   const { N, DEPTH, X, Z, Y, ROT, S, VI } = trees;
   // ---------- spatial grid for the near rings ----------
   const G0 = -FAR * 1.25, CELL = 32, GN = Math.ceil(-G0 * 2 / CELL);
@@ -114,9 +125,26 @@ export default async function forest(ctx, world) {
   for (let i = 0; i < POOL; i++) { const c = { kind: 'circle', x: 1e7, z: 1e7, r: 0 }; pool.push(c); world.colliders.push(c); }
 
   // ---------- LOD refresh ----------
-  let lastX = 1e9, lastZ = 1e9, timer = 0;
+  let lastX = 1e9, lastZ = 1e9, lastYaw = 0, timer = 0;
+  const fwd = new THREE.Vector3();
   // ?keyart: only trees whose bounds (+40 m: shadows cast into view) touch the view frustum, or all lod0 would be ~0.5 G triangles
   const frustum = new THREE.Frustum(), sphere = new THREE.Sphere(), m4 = new THREE.Matrix4();
+  // view (every tier, not ?keyart): only trees in the camera's horizontal view cone (half-FOV + CONE margin) or
+  // within NEAR m; a full tree (it casts shadows) also when its shadow's tip lands in the cone. A turn past TURN
+  // refills at once (the updater, before this frame's render), so a turn never shows a gap.
+  const CONE = 0.45, TURN = 0.2, NEAR = 12;
+  const view = { on: false, fx: 0, fz: 1, cos: -1, sx: 0, sz: 0, sl: 0 };
+  const inView = (x, z, d) => view.fx * x + view.fz * z >= view.cos * d;
+  // one instance into its variant's buffers (no closure or array per tree: a refresh touches thousands, and
+  // WebKit keeps that garbage for its periodic 40–70 ms collections)
+  const put = (lod, vi, k, f) => {
+    const s = sets[lod][vi];
+    if (f === 0 || s.n >= CAP[lod]) return;
+    const a = s.itr.array, b = s.isc.array, i = s.n * 4, j = s.n * 3;
+    a[i] = X[k]; a[i + 1] = Y[k]; a[i + 2] = Z[k]; a[i + 3] = ROT[k];
+    b[j] = S[k]; b[j + 1] = f; b[j + 2] = DEPTH[k];
+    s.n++;
+  };
   const refresh = (ex, ez) => {
     for (const lod of sets) for (const s of lod) s.n = 0;
     const cam = KEYART && world.engine?.camera;
@@ -139,15 +167,17 @@ export default async function forest(ctx, world) {
         }
         // cross-fades: lod0 fades out over R0±BAND while lod1 fades in on the complementary dither;
         // lod1 fades out over R1±BAND while the impostors (shader side) fade in
+        let shadowOnly = false;
+        if (view.on && d > NEAR && !inView(X[k] - ex, Z[k] - ez, d)) {
+          if (d > R0 + BAND) continue;
+          const L = Math.min(60, variants[vi].H * S[k] * view.sl), tx = X[k] - ex + view.sx * L, tz = Z[k] - ez + view.sz * L;
+          if (!inView(tx, tz, Math.hypot(tx, tz))) continue;
+          shadowOnly = true; // only its shadow shows: the full tree, no lod1 cross-fade partner
+        }
         const f0 = Math.min(1, Math.max(0, (R0 + BAND - d) / (2 * BAND)));
         const f1 = Math.min(1, Math.max(0, (R1 + BAND - d) / (2 * BAND)));
-        const put = (lod, f) => {
-          const s = sets[lod][vi];
-          if (f === 0 || s.n >= CAP[lod]) return;
-          s.itr.array.set([X[k], Y[k], Z[k], ROT[k]], s.n * 4); s.isc.array.set([S[k], f, DEPTH[k]], s.n * 3); s.n++;
-        };
-        if (d < R0 + BAND) put(0, f0);
-        if (d > R0 - BAND) put(1, d < R0 + BAND ? (f0 > 0 ? -(1 - f0) : 1) : f1);
+        if (d < R0 + BAND) put(0, vi, k, f0);
+        if (d > R0 - BAND && !shadowOnly) put(1, vi, k, d < R0 + BAND ? (f0 > 0 ? -(1 - f0) : 1) : f1);
         if (d < 14 && nc < POOL) {
           const c = pool[nc++]; c.x = X[k]; c.z = Z[k]; c.r = variants[vi].trunkR * S[k] * 1.25 + 0.03;
         }
@@ -172,8 +202,21 @@ export default async function forest(ctx, world) {
     const e = camera.position;
     U.eye.value.copy(e);
     timer -= dt;
-    if (timer <= 0 || Math.hypot(e.x - lastX, e.z - lastZ) > 1.5) {
-      refresh(e.x, e.z); lastX = e.x; lastZ = e.z; timer = 0.5;
+    camera.getWorldDirection(fwd);
+    const h = Math.hypot(fwd.x, fwd.z), yaw = Math.atan2(fwd.x, fwd.z);
+    const turned = Math.abs(Math.atan2(Math.sin(yaw - lastYaw), Math.cos(yaw - lastYaw))) > TURN;
+    if (timer <= 0 || turned || Math.hypot(e.x - lastX, e.z - lastZ) > 1.5) {
+      // looking nearly straight up or down: no cone; else the half-FOV across (portrait phones: narrow) + margin
+      view.on = !KEYART && h > 0.25;
+      if (view.on) {
+        const half = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect);
+        view.fx = fwd.x / h; view.fz = fwd.z / h; view.cos = Math.cos(Math.min(Math.PI, half + CONE + TURN));
+        if (sun) { // shadow direction on the ground (away from the sun) and length per metre of height
+          const sd = sun.position, sh = Math.hypot(sd.x, sd.z) || 1;
+          view.sx = -sd.x / sh; view.sz = -sd.z / sh; view.sl = Math.min(4, sh / Math.max(1e-3, sd.y));
+        } else view.sl = 0;
+      }
+      refresh(e.x, e.z); lastX = e.x; lastZ = e.z; lastYaw = yaw; timer = 0.5;
     }
   });
   // first fill so the opening frame already has trees
