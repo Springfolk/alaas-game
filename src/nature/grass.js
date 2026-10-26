@@ -58,7 +58,7 @@ export function natureField(world) {
 
 // Fine mask (0.33 m texels) over the homestead and its lake shore, from the models' hints:
 // R = cut (paths, trodden pens and posts, the offering stone; FLOOR under earth floors), G = mown/short. Edges of the region stay 0.
-const MASK = { x0: -170, z0: -370, size: 340, res: 1024 };
+const MASK = { x0: -262, z0: -370, size: 432, res: 1280 }; // reaches the sacred birch's path (x ≈ −248)
 function clearingMask(world) {
   const { x0, z0, size, res } = MASK, px = size / res;
   const R = new Float32Array(res * res), G = new Float32Array(res * res);

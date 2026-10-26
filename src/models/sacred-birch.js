@@ -1,8 +1,8 @@
 // Ытык мас — the great lone birch at the alaas edge, revered as the home of the spirit of the place.
-// ~17 m, trunk 43 cm at chest height, dark fissured bark at the foot, low drooping limbs.
+// ~21 m, trunk 54 cm at chest height, a broad open-grown crown, dark fissured bark at the foot, low drooping limbs.
 // On it: a салама (two-ply white/black horsehair rope) wrapped at 1.7 m with seven hangings
-// (3 white hair tufts, 2 ribbons, a birch-bark horse, a duck feather), and faded cloth strips tied
-// on the low branches at 1.8–2.5 m. Exposed root flares at the foot (Aal Luuk Mas: roots to the
+// (3 white hair tufts, 2 ribbons, a birch-bark horse, a duck feather), and cloth strips (old and faded, a few
+// fresh) tied all round the low branches at 1.8–2.5 m. A footpath leads to it from the homestead. Exposed root flares at the foot (Aal Luuk Mas: roots to the
 // Lower World). Act: greet the tree (a slight bow, a short silence) and tie one ribbon.
 import * as THREE from 'three/webgpu';
 import { makeTree } from '../nature/trees/gen.js';
@@ -39,14 +39,17 @@ export default async function build(ctx, placement) {
   // the tree's geometry and the skeleton points used below (baked: src/load/geocache.js)
   const v = section(() => {
     const t = makeTree('birch', 9241, {
-      H: 17.2, r0: 0.215, crownBaseM: 3.4, limbs: 30, spread: 1.5, lean: 0.006, density: 3.6, cardScale: 0.66, envelope: 1.3,
+      // open-grown and old: taller and far broader than the forest's birches, a full crown down to low spreading limbs
+      H: 21, r0: 0.27, crownBaseM: 3.6, limbs: 44, spread: 2.3, lean: 0.006, density: 7, cardScale: 0.9, envelope: 1.5,
       lowLimbs: [
-        { y: 2.75, az: 0.15, L: 3.8, elev: -0.02, droop: 0.12 },
-        { y: 2.95, az: 1.35, L: 3.4, elev: 0.02, droop: 0.12 },
-        { y: 2.65, az: -1.15, L: 3.6, elev: -0.06, droop: 0.1 },
-        { y: 3.15, az: 2.55, L: 3.2, elev: 0.08 },
-        { y: 3.05, az: -2.45, L: 3.4, elev: 0.04 },
-        { y: 3.3, az: 0.75, L: 3.0, elev: 0.12 },
+        { y: 2.75, az: 0.15, L: 4.8, elev: -0.02, droop: 0.12 },
+        { y: 2.95, az: 1.35, L: 4.3, elev: 0.02, droop: 0.12 },
+        { y: 2.65, az: -1.15, L: 4.5, elev: -0.06, droop: 0.1 },
+        { y: 3.15, az: 2.55, L: 4.0, elev: 0.08 },
+        { y: 3.05, az: -2.45, L: 4.3, elev: 0.04 },
+        { y: 3.3, az: 0.75, L: 3.8, elev: 0.12 },
+        { y: 2.85, az: -0.5, L: 4.4, elev: -0.03, droop: 0.11 },
+        { y: 3.0, az: 1.95, L: 4.1, elev: 0.03, droop: 0.1 },
       ],
     });
     const pts = (l) => l.pts.map(({ p, r }) => ({ p, r }));
@@ -220,7 +223,7 @@ export default async function build(ctx, placement) {
   salama.add(smallMesh);
   object.add(salama);
 
-  // ── faded cloth strips tied on the low branches between 1.8 and 2.5 m ──
+  // ── cloth strips tied on the low branches between 1.8 and 2.5 m: many, so the tree reads as visited from afar ──
   const spots = [];
   for (const limb of v.skeleton.low) limb.pts.forEach((pt, k, L) => { pt.d = L[Math.min(k + 1, L.length - 1)].p.clone().sub(L[Math.max(k - 1, 0)].p).normalize(); });
   for (const limb of v.skeleton.low) for (const pt of limb.pts) {
@@ -246,11 +249,12 @@ export default async function build(ctx, placement) {
     // the knot: a band wrapped round the limb (along it), not a ring hanging under it; strips fall from its underside
     const at = spot.p.clone().add(new THREE.Vector3(0, -spot.r - 0.006, 0));
     knots.push(setColor(tube([spot.p.clone().addScaledVector(spot.d, -0.012), spot.p.clone().addScaledVector(spot.d, 0.012)], spot.r + 0.005, { radial: 7 }), color));
-    g.push(ribbon(rng, at.toArray(), { len: 0.28 + rng() * 0.14, width: 0.032 + rng() * 0.01, color }));
-    g.push(ribbon(rng, at.clone().add(new THREE.Vector3(0.01, 0, 0.004)).toArray(), { len: 0.2 + rng() * 0.12, width: 0.03, color }));
+    g.push(ribbon(rng, at.toArray(), { len: 0.4 + rng() * 0.3, width: 0.036 + rng() * 0.012, color }));
+    g.push(ribbon(rng, at.clone().add(new THREE.Vector3(0.01, 0, 0.004)).toArray(), { len: 0.3 + rng() * 0.2, width: 0.032, color }));
   };
-  const prefs = [0.0, 0.5, -0.6, 1.3, -1.2, 2.2, -2.3];
-  prefs.forEach((pref, i) => { const s = pickSpot(pref); if (s) tie(s, FADED[i % FADED.length]); });
+  const FRESH = Object.values(RIBBONS).map((r) => r.c);
+  const prefs = [0.0, 0.5, -0.6, 1.3, -1.2, 2.2, -2.3, 0.25, -0.3, 0.9, -0.9, 1.75, -1.75, 2.7, -2.75, 3.1];
+  prefs.forEach((pref, i) => { const s = pickSpot(pref); if (s) tie(s, i % 3 === 2 ? FRESH[((i / 3) | 0) % FRESH.length] : FADED[i % FADED.length]); });
   const strips = new THREE.Mesh(merge([...stripParts, ...knots.map(noSway)]), cloth('sacred-birch-strips', 0.04));
   strips.castShadow = false;
   object.add(strips);
@@ -312,11 +316,13 @@ export default async function build(ctx, placement) {
     }
   };
 
+  // a footpath from the homestead's west yard (world ≈ −30, −195) to the tree, kept by visitors (grass cut short)
+  object.userData.paths = [{ w: 0.55, pts: [[2.2, -1.2], [14, -5], [40, -10], [72, -21], [104, -31], [138, -44], [170, -53], [196, -61], [218, -67]] }];
   object.userData.info = { tris: tris(v.lod0.bark) + tris(v.lod0.leaves) + tris(rootGeo) + tris(ropeGeo) };
   const base = trunkAt(0.3);
   return {
     object,
-    colliders: [{ x: base.p.x, z: base.p.z, r: 0.3 }],
+    colliders: [{ x: base.p.x, z: base.p.z, r: 0.38 }],
     floors: [],
     interactables: [
       { entry: 'sacred-birch', target: trunkTarget, act: greet },

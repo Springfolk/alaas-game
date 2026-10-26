@@ -97,6 +97,9 @@ export default async function build(ctx) {
   const profPts = (off, step = 0.6) => { const pts = []; for (let s = 0; s <= P.L; s += step) { const q = P.at(s); pts.push([q.r + q.nr * off, q.y + q.ny * off]); } return pts; };
   const outerProxy = proxy(lathe(profPts(0.08), 16), 'urasa-outer');
   const lining = proxy(lathe(profPts(0.0).filter(([r]) => r > 0.4), 16), 'urasa-lining');
+  // the lining answers from inside only: from outside it lies just behind the cover and, being smaller, won the
+  // look-at ray (main.js pickFocus: the smallest target close behind the first hit), so the house read as "Birch bark"
+  lining.material = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
   const frameProxy = new THREE.Group();
   root.add(frameProxy);
   for (const a of frame.postAngles) {
