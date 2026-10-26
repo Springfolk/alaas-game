@@ -70,6 +70,20 @@ const out = await run(async (mode, spots, at, only, cycles, seq) => {
     // fewer instances of every grass/flower chunk (the cost of a sparser build, not its look)
     // half a second of nothing drawn (then measured with everything back)
     'blank 0.5s': () => { const u = hide(groups.map((c) => c.name).filter(Boolean))(); const v = e.sky.visible; e.sky.visible = false; const t1 = setTimeout(() => { u(); e.sky.visible = v; }, 500); return () => { clearTimeout(t1); u(); e.sky.visible = v; }; },
+    // the view turning as in play (0.4 rad/s); a GPU fence every 4th frame as in spots
+    spin: () => { const iv = setInterval(() => { g.player.aimYaw += 0.02; }, 50); return () => clearInterval(iv); },
+    fence: () => { const frame = g.frame; let k = 0; g.frame = (...a) => { frame.apply(g, a); if (gl && ++k % 4 === 0) { const s = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush(); const poll = () => { if (gl.getSyncParameter(s, gl.SYNC_STATUS) === gl.SIGNALED) gl.deleteSync(s); else setTimeout(poll, 0); }; setTimeout(poll, 0); } }; return () => { g.frame = frame; }; },
+    // the exposure meter's readback (a fence each time): none, or once a second instead of every 0.15 s
+    // every texture's anisotropic filtering off (a sampler parameter: re-applied with a re-upload)
+    'aniso 1': () => { const h = new Map(); const take = (t) => { if (t?.isTexture && t.anisotropy > 1 && !h.has(t)) h.set(t, t.anisotropy); };
+      scene.traverse((o) => { const m = o.material; if (!m) return; for (const v of Object.values(m)) { take(v); if (v?.isNode) v.traverse((n) => take(n.value)); } });
+      for (const t of h.keys()) { t.anisotropy = 1; t.needsUpdate = true; } return () => { for (const [t, a] of h) { t.anisotropy = a; t.needsUpdate = true; } }; },
+    'no sky': () => { e.sky.visible = false; return () => { e.sky.visible = true; }; },
+    'no meter': () => { const t = e.meter.tick; e.meter.tick = () => {}; return () => { e.meter.tick = t; }; },
+    'meter 1s': () => { const m = e.meter, t = m.tick; m.tick = (dt) => { t.call(m, dt); if (m.wait > 0.149) m.wait = 1; }; return () => { m.tick = t; }; },
+    'no fxaa': () => { const p = e.pipeline, o = p.outputNode; p.outputNode = e.graded; p.needsUpdate = true; return () => { p.outputNode = o; p.needsUpdate = true; }; },
+    'shadow every frame': () => { const lz = e.opts.lazyShadows, sh = e.sun.shadow; e.opts.lazyShadows = false; sh.autoUpdate = true; return () => { e.opts.lazyShadows = lz; }; },
+    'spin+frozen': () => { const a = T.spin(), b = T['frozen shadows'](); return () => { a(); b(); }; },
     'res x0.85': () => { const pr = r.getPixelRatio(); r.setPixelRatio(pr * 0.85); return () => r.setPixelRatio(pr); },
     'diet': () => { const a = T['grass x0.5'](); return () => a(); },
     'diet+res': () => { const a = T['grass x0.5'](), b = T['res x0.85'](); return () => { a(); b(); }; },
@@ -92,11 +106,11 @@ const out = await run(async (mode, spots, at, only, cycles, seq) => {
     T[n] = () => { const h = []; scene.getObjectByName(root)?.traverse((o) => { if (o.isMesh && o.layers.mask && want.has(o.material?.name || o.material?.type)) { h.push([o, o.layers.mask]); o.layers.mask = 0; } }); return () => { for (const [o, m] of h) o.layers.mask = m; }; };
   }
   const names = only ? only.split('|') : Object.keys(T);
-  const measure = async () => { await wait(700); links = 0; const f0 = r.info.frame, t1 = performance.now(); await wait(2500); return { ms: (performance.now() - t1) / Math.max(1, r.info.frame - f0), links }; };
+  const measure = async () => { await wait(700); links = 0; const f0 = r.info.frame, t1 = performance.now(); await wait(2500); return { ms: (performance.now() - t1) / Math.max(1, r.info.frame - f0), links, draws: r.info.render.drawCalls }; };
   const acc = { base: [] }; for (const n of names) acc[n] = [];
   if (seq) { // SEQ: one exact order, printed as a timeline
     const line = [];
-    for (const n of seq.split('|')) { const undo = n === 'base' ? () => {} : T[n](); const m = await measure(); undo(); line.push(`${n} ${m.ms.toFixed(0)}${m.links ? '*' : ''}`); }
+    for (const n of seq.split('|')) { const undo = n === 'base' ? () => {} : T[n](); const m = await measure(); undo(); line.push(`${n} ${m.ms.toFixed(0)}${m.links ? '*' : ''} (${m.draws})`); }
     return { loaded, timeline: line.join(' → ') };
   }
   for (let c = 0; c < cycles; c++) for (const n of ['base', ...names]) { const undo = n === 'base' ? () => {} : T[n](); acc[n].push(await measure()); undo(); }

@@ -97,7 +97,8 @@ function shadowProxies(root, dynamic) {
   walk(root);
   const out = [];
   for (const [, list] of groups) {
-    if (list.length < 2) continue;
+    // one mesh: only worth a proxy for its simplified triangles (the serge's posts: 82k)
+    if (list.length < 2 && (list[0].geometry.index?.count ?? list[0].geometry.attributes.position.count) < 60000) continue;
     const m0 = list[0].material;
     const mat = new THREE.MeshBasicNodeMaterial({ side: m0.side, shadowSide: m0.shadowSide, colorWrite: false });
     mat.name = 'shadow-proxy';

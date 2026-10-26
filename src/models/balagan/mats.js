@@ -224,6 +224,7 @@ export function makeMats(maps, { winter = false } = {}) {
     m.positionNode = positionLocal.add(vec3(w.mul(0.035), 0, w.mul(0.02)).mul(h.mul(h)));
     m.colorNode = vertexColor().mul(mix(0.55, 1.05, h));
     m.envMapIntensity = 0.8;
+    m.userData.noShadow = TIER.quality === 'low'; // low/phones: ~50k swaying blades a roof in every shadow update
     return m;
   })();
 

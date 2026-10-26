@@ -645,6 +645,14 @@ function shoreMeshes(world, F, W, rng) {
     m.castShadow = false; m.receiveShadow = true;
     group.add(m);
   }
+  // a sector wholly beyond the 110 m above is hidden (its blades were all zero-area, but every vertex still ran)
+  world.updaters.push(() => {
+    const ex = W.cam.value.x, ez = W.cam.value.z;
+    for (const m of group.children) {
+      const b = m.geometry.boundingBox, nx = Math.max(b.min.x - ex, 0, ex - b.max.x), nz = Math.max(b.min.z - ez, 0, ez - b.max.z);
+      m.visible = nx * nx + nz * nz < 111 * 111;
+    }
+  });
   return group;
 }
 
