@@ -11,7 +11,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 - Traced ornament textures (`docs/patterns.md`): `node tools/make-carving.mjs` (chorons, front saddle bow; no dev server)
 - `npm run fetch-assets` (Poly Haven textures, then `tools/tex-sizes.mjs`: masters re-encoded + 1024/512/256 sizes) · `npm run fetch-audio` (sound sources)
 - Bakes (dev server running; `docs/loading.md`), rerun after changing a model, tree or the look, in this order: `npm run bake-geometry` → `npm run bake-impostors` → `npm run key-art`
-- URL flags: `?auto` skip title · `?at=x,z,yaw` start spot · `?q=auto|high|medium|low|mobile` · `?sun=elev,az` · `?nopost` · `?webgl` · `?low` · `?nogeo` generate instead of baked geometry · `?sharp` full-size textures from the start (no 256 first pass) · `?taa` / `?notaa` force TRAA on/off (phones default off) · `?cam=x,y,z,yaw°,pitch°,fov°` pinned camera · `?keyart` full-quality still (key-art tool only)
+- URL flags: `?auto` skip title · `?at=x,z,yaw` start spot · `?q=auto|high|medium|low|mobile` · `?sun=elev,az` · `?nopost` · `?webgl` · `?low` · `?nogeo` generate instead of baked geometry · `?sharp` full-size textures from the start (no 256 first pass) · `?taa` / `?notaa` force TRAA on/off (phones: off, FXAA instead; `?noaa` none) · `?remotelog` console + heartbeat to `/__log` (`node tools/phonelog.mjs`, docs/testing.md) · `?cam=x,y,z,yaw°,pitch°,fov°` pinned camera · `?keyart` full-quality still (key-art tool only)
 - In game: F3 frame-rate meter (fps, draw calls, triangles, quality, resolution scale) · H on-screen controls · `viewer.html?m=<model>` — one model in isolation
 
 ## Docs

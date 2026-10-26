@@ -17,3 +17,4 @@ Real recordings only (no synthesis). `src/audio/audio.js` (`AudioScape`) plays `
 - Shot loudness: hand foley (sit, wood, ribbon) ≈ −30…−25 LUFS, the rest ≈ −26…−23, `khomus` −17. No held creaks or hinge squeals: they read as cartoonish.
 - Cow bells left out on purpose: research says they are not traditional (distant lowing instead).
 - Opus in Ogg: Chrome, Firefox, Safari 18.4+.
+- The context suspends while the page is hidden and resumes on return (visibility, pageshow, focus) or the next touch/key: iOS leaves it `interrupted` after sleep or a tab switch.

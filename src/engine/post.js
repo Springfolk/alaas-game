@@ -10,6 +10,7 @@ import {
 } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
+import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
 import { urlFlag } from '../util.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { interiorOcclusion } from './interiors.js';
@@ -41,7 +42,7 @@ export function buildPost(engine) {
   engine.syncInteriors = interiors.sync;
   const occl = interiors.node;
   // TRAA everywhere but phones: at their 30 fps cap and upscaled render its jitter and history blend show as a
-  // shimmering, soft still image (sharp only while looking around); a phone's ~460 ppi hides the aliasing.
+  // shimmering, soft still image (sharp only while looking around); FXAA there instead (below).
   // ?taa / ?notaa override.
   const taa = urlFlag('taa') || (engine.tier !== 'mobile' && !urlFlag('notaa'));
   let scenePass, depth, vel;
@@ -94,7 +95,7 @@ export function buildPost(engine) {
   };
   const g = engine.grade;
   pipe.outputColorTransform = false;
-  pipe.outputNode = Fn(() => {
+  const graded = Fn(() => {
     // TRAA leaves the image soft: a strong, halo-free sharpen (clamped to the local range; SMAA, tried, shimmered in motion)
     const d = vec2(1).div(vec2(aaTex.size(0)));
     const c = aaTex.sample(screenUV).rgb;
@@ -112,6 +113,8 @@ export function buildPost(engine) {
     o = o.add(hash(seed).sub(0.5).mul(g.grain));
     return vec4(o, 1);
   })();
+  // phones (no TRAA): FXAA on the graded display-space image (its edge search needs gamma, not linear HDR); ?noaa: none
+  pipe.outputNode = taa || urlFlag('noaa') ? graded : fxaa(graded);
 
   // exposure meter: mean log2 luminance of the anti-aliased frame, centre-weighted, read back on the CPU
   const W = 64, H = 36;

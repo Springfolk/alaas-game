@@ -20,6 +20,7 @@ import { instrument, event } from './load/prof.js';
 
 const KEY = 'alaas-v1';
 const params = new URLSearchParams(location.search);
+if (params.has('remotelog')) import('./load/remotelog.js'); // phone debugging: console + heartbeat to /__log (tools/phonelog.mjs)
 const audioModules = import.meta.glob('./audio/audio.js');
 // load timeline (ms since navigation) for tools/loadprof.mjs
 const mark = (k) => { (window.loadMarks ||= {})[k] = Math.round(performance.now()); event(k); };

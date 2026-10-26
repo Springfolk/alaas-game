@@ -46,6 +46,14 @@ export class AudioScape {
     this.outside.connect(this.muffle).connect(this.master);
     this.near = c.createGain(); // footsteps, interactions, the room: never muffled
     this.near.connect(this.master);
+    // the page sleeping or losing the tab suspends the context (iOS: 'interrupted') and nothing resumes it: resume
+    // on return and, as Safari may allow that only in a gesture, on the next touch or key too; quiet while hidden
+    const wake = () => { if (this.started && !document.hidden && c.state !== 'running') c.resume().catch(() => {}); };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); else if (this.started) c.suspend().catch(() => {}); });
+    addEventListener('pageshow', wake);
+    addEventListener('focus', wake);
+    for (const ev of ['pointerdown', 'touchend', 'keydown']) addEventListener(ev, wake, { capture: true, passive: true });
+    c.onstatechange = wake;
 
     this.buffers = {};
     this.beds = {};
