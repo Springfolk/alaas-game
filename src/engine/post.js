@@ -41,10 +41,9 @@ export function buildPost(engine) {
   const interiors = interiorOcclusion();
   engine.syncInteriors = interiors.sync;
   const occl = interiors.node;
-  // TRAA everywhere but phones: at their 30 fps cap and upscaled render its jitter and history blend show as a
-  // shimmering, soft still image (sharp only while looking around); FXAA there instead (below).
-  // ?taa / ?notaa override.
-  const taa = urlFlag('taa') || (engine.tier !== 'mobile' && !urlFlag('notaa'));
+  // FXAA on every tier (below): TRAA left the image soft (-25–30% centre sharpness even after its sharpen) and
+  // smeared thin far detail in motion, worst on the upscaled medium/low renders most machines get. ?taa = TRAA.
+  const taa = urlFlag('taa');
   let scenePass, depth, vel;
   if (engine.opts.ao) {
     // high: a normals/velocity pre-pass feeds GTAO into the scene pass's ambient light
@@ -98,7 +97,7 @@ export function buildPost(engine) {
   pipe.outputColorTransform = false;
   const graded = Fn(() => {
     // TRAA leaves the image soft: a strong, halo-free sharpen (clamped to the local range; SMAA, tried, shimmered in motion)
-    // (no TRAA, phones: sharpen 0, so not its four taps either)
+    // (FXAA: sharpen 0, so not its four taps either)
     const c = aaTex.sample(screenUV).rgb;
     let col = c;
     if (taa) {
@@ -118,7 +117,7 @@ export function buildPost(engine) {
     o = o.add(hash(seed).sub(0.5).mul(g.grain));
     return vec4(o, 1);
   })();
-  // phones (no TRAA): FXAA on the graded display-space image (its edge search needs gamma, not linear HDR); ?noaa: none
+  // FXAA on the graded display-space image (its edge search needs gamma, not linear HDR); ?noaa: none
   // (graded is display-referred 0–1: FXAA reads it from 8 bits, not half floats)
   pipe.outputNode = taa || urlFlag('noaa') ? graded : fxaa(rtt(graded, null, null, { type: THREE.UnsignedByteType }));
   engine.graded = graded; // (tools/iphone.mjs: the 'no fxaa' A/B)
