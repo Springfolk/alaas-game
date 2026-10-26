@@ -140,14 +140,15 @@ export function buildKymys(rng, M) {
   const birch = [], hair = [], bark = [];
 
   // ---- platform and sack
-  const aS = deg(-35), rS = R_POST - 0.32; // against the wall, inside the post ring
+  const aS = deg(-35), rS = R_POST - 0.42; // near the wall, inside the post ring, the stirrer well clear of the poles
   const sackRoot = new THREE.Group();
   sackRoot.position.set(...P2(rS, aS));
   sackRoot.rotation.y = -aS + Math.PI / 2; // sack width runs along the wall
   group.add(sackRoot);
   const plat = [];
-  for (let k = 0; k < 3; k++) plat.push(beam([-0.32, 0.135, -0.2 + k * 0.2], [0.32, 0.135, -0.2 + k * 0.2], 0.19, 0.035, 0.005));
-  for (const s of [-1, 1]) plat.push(beam([s * 0.22, 0.05, -0.32], [s * 0.22, 0.05, 0.32], 0.08, 0.1, 0.008));
+  // three boards a little wider than the sack's belly, resting on two bearers (their ends under the outer boards)
+  for (let k = 0; k < 3; k++) plat.push(beam([-0.37, 0.135, -0.2 + k * 0.2], [0.37, 0.135, -0.2 + k * 0.2], 0.19, 0.035, 0.005));
+  for (const s of [-1, 1]) plat.push(beam([s * 0.26, 0.06, -0.28], [s * 0.26, 0.06, 0.28], 0.08, 0.12, 0.008));
   add(merge(plat), M.plank, sackRoot);
   const sack = add(sackGeom(), M.leather, sackRoot);
   sack.position.y = 0.152;
@@ -196,10 +197,11 @@ export function buildKymys(rng, M) {
     const handle = tube(path, (t, an) => Math.hypot(Math.cos(an) * 0.007, Math.sin(an) * 0.012) * (t < 0.08 ? 1.25 : 1) * (1 - t * 0.25), 8, { capEnd: true });
     const rings = [0.075, 0.085, 0.095].map((x) => xf(lathe([[0.012, -0.002], [0.0145, 0], [0.012, 0.002]], 10), { r: [0, 0, Math.PI / 2 - 0.3], p: [x, 0.012 + (x - 0.05) * 0.4, 0] }));
     add(merge([plain(bowl), plain(handle), ...rings.map((g) => plain(g))]), M.birch, ladle);
-    // hang it: handle up along the sack, hook over the collar rim
-    ladle.rotation.z = Math.PI / 2 + 0.25;
-    ladle.position.set(0.08 + 0.1, neckY - 0.33, 0.055);
-    ladle.rotation.y = -0.15;
+    // hang it on the room side (−z): the hook's curl (centre at handle-local (0.35, 0.0705)) over the collar rim,
+    // the handle leaning out over the sack's shoulder, the bowl hanging clear of the belly
+    const th = 0.89, cx = 0.35 * Math.cos(th) - 0.0705 * Math.sin(th), cy = 0.35 * Math.sin(th) + 0.0705 * Math.cos(th);
+    ladle.rotation.set(0, -Math.PI / 2, th);
+    ladle.position.set(0, neckY + 0.068 - cy, -0.0485 - cx);
     sackRoot.add(ladle);
   }
 
@@ -305,7 +307,8 @@ export function buildKymys(rng, M) {
     const T = (arr, from) => { for (let i = from; i < arr.length; i++) xf(arr[i], { ry, p: at }); };
     T(bark, n0.bark); T(birch, n0.birch); T(hair, n0.hair);
   };
-  const posA = P2(R_POST - 0.65, deg(-45)), posB = P2(R_POST - 0.17, deg(-17));
+  // on the floor in front of the north bench's end, and between the chorons' board and the door post
+  const posA = P2(3.7, deg(-44)), posB = P2(4.25, deg(-21));
   placeBucket([0.24, 0.13, 0.1225, true], posA, 0.6); // Fig. 100: wider at the base
   placeBucket([0.24, 0.11, 0.12, false], posB, 2.0);
   // rope from the sack's neck to the nearest post (−45°)
