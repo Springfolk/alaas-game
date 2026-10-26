@@ -454,9 +454,9 @@ class Game {
 
   frame(now) {
     this.clock.update(now); // the rAF timestamp: frame steps stay as even as the display's refreshes
-    const dt = Math.max(0, Math.min(this.clock.getDelta(), 0.05));
+    const dt = Math.max(0, Math.min(this.clock.getDelta(), 0.25)); // (was 0.05: under 20 fps the world ran in slow motion)
     const paused = this.paused;
-    if (!this.title && !this.ui.modal && !paused) this.player.update(dt);
+    if (!this.title && !this.ui.modal && !paused) this.stepPlayer(dt);
     else if (this.title) { this.player.update(0); }
     // tag interactable roots once
     for (const it of this.world.interactables) if (it.target && !it.target.userData.interactable) it.target.userData.interactable = it;
@@ -494,6 +494,19 @@ class Game {
     this.input.endFrame();
   }
 }
+
+// The body in steps of ≤1/30 s, so a slow frame walks as far as the time it took and collisions stay exact;
+// the frame's look input applies in the first step only.
+Game.prototype.stepPlayer = function (dt) {
+  const inp = this.input, look = [inp.mdx, inp.mdy, inp.lookX, inp.lookY];
+  for (let left = dt, first = true; first || left > 1e-6; first = false) {
+    const s = Math.min(left, 1 / 30);
+    if (!first) inp.mdx = inp.mdy = inp.lookX = inp.lookY = 0;
+    this.player.update(s);
+    left -= s;
+  }
+  [inp.mdx, inp.mdy, inp.lookX, inp.lookY] = look;
+};
 
 Game.prototype.fpsMeter = function (dt) {
   const m = this._fps ||= { t: 0, n: 0, worst: 0 };

@@ -8,7 +8,7 @@ import { groundSamples, groundArrays, packSet } from './ground-data.js';
 import { job } from '../load/workers.js';
 import { TIER } from '../engine/tier.js';
 
-// The grid (N verts per side by tier: 640 → 420 on phones) and the splat textures are computed in a worker
+// The grid (N verts per side by tier: 640 → 320 on phones) and the splat textures are computed in a worker
 // (src/load/worker.js, data code in ground-data.js; the grid's terrain samples are baked: src/load/geocache.js);
 // on the main thread only if workers fail.
 export async function buildGround(terrain) {

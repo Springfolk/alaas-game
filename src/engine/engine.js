@@ -2,10 +2,11 @@
 // (post chain: post.js; sky and clouds: sky.js; interior sky occlusion: interiors.js).
 import * as THREE from 'three/webgpu';
 import {
-  uniform, vec4, Fn, output, positionWorld, positionView, float, exp, max, cameraPosition, dot, smoothstep, texture, uv,
+  uniform, vec4, Fn, output, BasicShadowFilter, positionWorld, positionView, float, exp, max, cameraPosition, dot, smoothstep, texture, uv,
 } from 'three/tsl';
 import { buildPost } from './post.js';
 import { fastPMREM } from '../load/pmrem.js';
+import { leanEnvironment } from './leanenv.js';
 import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, bootFailed, isPhone } from './tier.js';
 import { setTextureMax } from './materials.js';
 import { makeSky, updateSky, cloudField, cloudCover, CLOUD_Y } from './sky.js';
@@ -105,6 +106,7 @@ export class Engine {
       return this.sunColor.mul(float(1).sub(c.mul(this.cloudShadow))).mul(sunMask); // per-material sun mask (master.js)
     })();
     sun.shadow.mapSize.setScalar(this.opts.shadows);
+    if (urlFlag('hardshadow')) sun.shadow.filterNode = BasicShadowFilter; // A/B: one hardware-filtered tap per cascade
     sun.shadow.normalBias = 0.035;
     sun.shadow.bias = -0.0002;
     scene.add(sun);
@@ -128,6 +130,7 @@ export class Engine {
 
     this.pmrem = new THREE.PMREMGenerator(r);
     this.envScene = new THREE.Scene();
+    if (this.opts.leanEnv && !urlFlag('fullenv')) { this.leanEnv = leanEnvironment(); scene.environmentNode = this.leanEnv.node; } // ?fullenv: A/B
     scene.environmentIntensity = 1; // the sky is in absolute units matched to the sun (sky.js)
     this.setSun(this.sunElev, this.sunAz);
     if (this.opts.post) this.buildPost();
@@ -167,7 +170,8 @@ export class Engine {
     this.sky.showSunDisc.value = 1;
     this.scene.environment = this.envRT.texture;
     if (this.lakeSky) this.lakeSky.value = this.envRT.texture; // the mirrorless lake (lake.js)
-    (this.scene.environmentNode ||= fastPMREM(this.envRT.texture)).value = this.envRT.texture; // same light, cheaper shader builds (src/load/pmrem.js)
+    if (this.leanEnv) this.leanEnv.bake(this.renderer, this.envRT.texture); // low/mobile: the same light from two small panoramas (leanenv.js)
+    else (this.scene.environmentNode ||= fastPMREM(this.envRT.texture)).value = this.envRT.texture; // same light, cheaper shader builds (src/load/pmrem.js)
   }
 
   // Eye adaptation: the exposure follows the metered frame (post.js) — partly, as eyes do, faster
