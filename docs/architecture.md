@@ -22,9 +22,9 @@
 | `src/ui/ui.js` · `src/ui/i18n.js` | Prompt, explainer card (+ reference-image gallery from optional `src/data/images.json`), journal, toasts, title loading bar · interface strings and the controls list; Sakha/English/Russian (L cycles) |
 | `index.html` · `public/assets/ui/` | All interface styles (Vista/Live-Messenger Aero look: `.glass` frame + light `.client`, glossy `.btn`) · self-hosted Open Sans + Noto Serif (`fonts.css`) |
 | `src/data/entries.json` | Explainer entries (Sakha + English) with sources and confidence |
-| `src/player.js` · `src/input.js` | Body: momentum walk/run (Shift)/crouch (C), jump (Space) with gather + landing spring, vault over 0.3–1.3 m obstacles (rays onto the contact collider's midline), wall sliding, footfall-synced bob/sway/roll, strafe lean, run FOV kick · keys/mouse, or touch (`active` = locked or touch live) |
+| `src/player.js` · `src/input.js` | Body: momentum walk 10:00/run (Shift) 5:30 min/km/crouch (C), jump (Space) with gather + landing spring, vault over 0.3–1.3 m obstacles (rays onto the contact collider's midline), wall sliding, footfall-synced bob/sway/roll, strafe lean, run FOV kick · keys/mouse, or touch (`active` = locked or touch live) |
 | `src/util.js` | Shared helpers: seeded random (`mulberry32`, `hash2`), value noise/`fbm`, `clamp`/`lerp`/`smooth`/`ease`/`damp`, yaw vectors, `urlFlag` (debug query switches) |
-| `src/ui/touch.js` | Phone controls (auto on coarse pointers; `?touch` / `?notouch`): floating stick (rim = run), right-side drag look (tap = E), glass buttons E/jump/crouch/journal/language/pause, 1·2·3 while an act runs; `tc-` scoped CSS |
+| `src/ui/touch.js` | Phone controls (auto on coarse pointers; `?touch` / `?notouch`): floating stick (rim = run), right-side drag look (tap = E; a "Look around" tip until the first look drag), glass buttons E/jump/crouch/journal/language/pause, 1·2·3 while an act runs; `tc-` scoped CSS |
 
 - North is −Z, east +X; models face east (+X) locally — Sakha doors face east.
 - Player settings (`player.settings`, saved in `alaas-v1` settings): `sens`, `invertY`, `fov` (base; run adds ≤7.5°), `motion` 0–1 (camera motion comfort: bob, sway, roll, FOV kick; 0 = steady), `smooth` 0–1 (mouse-look smoothing). `main.js` binds `#s-motion` / `#s-smooth` sliders if present.

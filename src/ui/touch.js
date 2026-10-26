@@ -1,8 +1,10 @@
 // Phone / tablet controls, no pointer lock: a floating stick under the left thumb (walk; push to the
-// rim = run), drag anywhere on the right to look (a short tap there = E), glass buttons for E, jump,
-// crouch, journal, language and pause, and 1·2·3 buttons while an act asks for a choice.
+// rim = run), drag anywhere on the right to look (a short tap there = E; a tip says so until the first
+// look drag), glass buttons for E, jump, crouch, journal, language and pause, and 1·2·3 buttons while an
+// act asks for a choice.
 // Auto-enabled on coarse-pointer devices; `?touch` forces it, `?notouch` disables it.
 // Self-contained: every class is `tc-` prefixed and the stylesheet is injected here.
+import { CONTROLS, tr } from './i18n.js';
 
 const CSS = `
 .tc-root{position:fixed;inset:0;z-index:15;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
@@ -42,6 +44,12 @@ const CSS = `
 .tc-choice .tc-btn{position:relative;width:58px;height:58px;font-size:20px}
 .tc-ui{position:absolute;top:calc(10px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));display:flex;gap:10px;z-index:40}
 .tc-ui .tc-btn{position:relative;width:46px;height:46px;border-radius:12px;font-size:13px}
+.tc-tip{position:absolute;right:calc(12% + env(safe-area-inset-right));top:40%;display:flex;align-items:center;gap:8px;padding:7px 14px 7px 9px;
+  border-radius:22px;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 3px rgba(0,20,50,.85);pointer-events:none;
+  background:var(--tc-glass);border:1px solid var(--tc-edge);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:opacity .8s}
+.tc-tip.gone{opacity:0}
+.tc-tip svg{width:30px;height:30px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;animation:tc-drag 1.6s ease-in-out infinite}
+@keyframes tc-drag{0%,100%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
 `;
 
 const ICON = {
@@ -50,8 +58,10 @@ const ICON = {
   journal: '<svg viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3zM21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></svg>',
   pause: '<svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg>',
   close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  drag: '<svg viewBox="0 0 24 24"><path d="M10 13V6.5a1.5 1.5 0 0 1 3 0V12l4.2.9a2 2 0 0 1 1.5 2.3L18 20h-7.5L7 15.5a1.4 1.4 0 0 1 2-2zM3 5l-2 2 2 2M21 5l2 2-2 2"/></svg>',
 };
 const LANG_SHORT = { sah: 'САХ', en: 'EN', ru: 'РУ' };
+const LOOK = CONTROLS[1][1]; // the hand-written "Look around" (no new Sakha text)
 
 export class TouchControls {
   static wanted() {
@@ -76,6 +86,7 @@ export class TouchControls {
     root.innerHTML = `
       <div class="tc-zone tc-move"></div><div class="tc-zone tc-look"></div>
       <div class="tc-stick"><div class="tc-knob"></div></div>
+      <div class="tc-tip tc-play">${ICON.drag}<span></span></div>
       <div class="tc-btn tc-play tc-act" data-b="act">E</div>
       <div class="tc-btn tc-play tc-jump" data-b="jump">${ICON.jump}</div>
       <div class="tc-btn tc-play tc-crouch" data-b="crouch">${ICON.crouch}</div>
@@ -90,6 +101,7 @@ export class TouchControls {
     this.act = root.querySelector('.tc-act');
     this.crouchBtn = root.querySelector('.tc-crouch');
     this.langBtns = [...root.querySelectorAll('[data-b=lang]')];
+    this.tip = root.querySelector('.tc-tip'); this.tipText = this.tip.querySelector('span');
     this.moveId = null; this.lookId = null;
     this.stickHome();
 
@@ -168,6 +180,7 @@ export class TouchControls {
         this.stick.classList.toggle('run', v > 0.92);
       } else if (t.identifier === this.lookId) {
         e.preventDefault();
+        if (!this.looked && this.tap && Math.hypot(t.clientX - this.tap.x, t.clientY - this.tap.y) > 40) { this.looked = true; this.tip.classList.add('gone'); }
         this.input.lookX += (t.clientX - this.lx) * this.lookScale;
         this.input.lookY += (t.clientY - this.ly) * this.lookScale;
         this.lx = t.clientX; this.ly = t.clientY;
@@ -202,5 +215,7 @@ export class TouchControls {
     this.crouchBtn.classList.toggle('on', !!g.player?.crouch);
     const l = LANG_SHORT[g.state?.lang] || 'EN';
     for (const b of this.langBtns) if (b.textContent !== l) b.textContent = l;
+    const tip = tr(LOOK, g.state?.lang);
+    if (this.tipText.textContent !== tip) this.tipText.textContent = tip;
   }
 }

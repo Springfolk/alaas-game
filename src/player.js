@@ -6,7 +6,7 @@ import * as THREE from 'three/webgpu';
 import { clamp, damp, lerp, smooth, angleDiff, fwdX, fwdZ, rightX, rightZ } from './util.js';
 
 const EYE = 1.62, CROUCH_EYE = 1.05, RADIUS = 0.28;
-const WALK = 1.67, RUN = 5.56, CROUCH = WALK * 0.8, BACK = 0.72;   // m/s (walk 10:00, run 3:00 min/km)
+const WALK = 1.67, RUN = 3.03, CROUCH = WALK * 0.8, BACK = 0.72;   // m/s (walk 10:00, run 5:30 min/km)
 const GRAVITY = 15, JUMP_V = 3.5, STEP_DOWN = 0.42;          // m/s², m/s (≈0.4 m hop), m
 const LOOK = 0.0022, TOUCH_LOOK = 0.0058;                     // rad per mouse / touch pixel at sens 1
 const _ray = new THREE.Raycaster(), _o = new THREE.Vector3(), _down = new THREE.Vector3(0, -1, 0);
@@ -29,7 +29,7 @@ export class Player {
     // motion: 0..1 camera motion (bob, sway, roll, FOV kick); smooth: 0..1 mouse-look smoothing; fov: base degrees
     this.settings = { sens: 1, invertY: false, motion: 1, smooth: 0, fov: camera.fov };
     this.frozen = false;
-    this.onStep = null; // (surface, speed) => void; speed > 4 plays the heavy (run / jump / landing) step
+    this.onStep = null; // (surface, speed) => void; speed > 2.6 plays the heavy (run / jump / landing) step
     this.speed = 0;
   }
   place(x, z, yaw = 0) {

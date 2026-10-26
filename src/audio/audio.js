@@ -294,7 +294,7 @@ export class AudioScape {
     let i;
     do i = (Math.random() * st.n) | 0; while (st.n > 2 && last.includes(i));
     this.lastStep[def] = [i, last[0]];
-    const run = speed > 4;
+    const run = speed > 2.6;
     const c = this.ctx;
     const src = c.createBufferSource();
     src.buffer = buf; src.playbackRate.value = rand(0.93, 1.07) * (run ? 1.04 : 1);

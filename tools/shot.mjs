@@ -4,7 +4,7 @@
 import { launch, PORT as port } from './browser.mjs';
 const [path = '/', out = 'shot.png', w = 1280, h = 720, wait = 1500] = process.argv.slice(2);
 const browser = await launch('chrome');
-const page = await browser.newPage({ viewport: { width: +w, height: +h } });
+const page = await browser.newPage({ viewport: { width: +w, height: +h }, deviceScaleFactor: +process.env.DPR || 1 });
 const logs = [];
 page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) logs.push(`${m.type()}: ${m.text()}`); });
 page.on('pageerror', (e) => logs.push('pageerror: ' + (process.env.STACK ? e.stack : e.message)));
