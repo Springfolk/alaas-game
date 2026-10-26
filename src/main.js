@@ -523,6 +523,7 @@ Game.prototype.fpsMeter = function (dt) {
 };
 
 const fail = (e) => {
+  if (window.game?.engine?.restoring) return; // a lost GPU device is being restored by a reload: not a failed start
   console.error(e, e?.stack);
   const go = document.getElementById('go');
   go.style.animation = 'none';

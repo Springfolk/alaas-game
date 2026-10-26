@@ -4,7 +4,7 @@
 // node tools/iphone.mjs play "<query>" [x,z,yaw]                        the game's pacing, slow turn: rendered fps per 5 s (CYCLES minutes)
 // node tools/iphone.mjs ab "<query>" [x,z,yaw] [toggle|toggle…]           interleaved runtime A/B (CYCLES, default 4; SEQ=a|base|b… one exact order)
 // BASE = the page (default: the tailnet test link); COOL=s first idles the phone on about:blank (heat throttles ~3×).
-// The session id is kept in .cache/iphone.sid. A phone that has run hot shows ~3× frame times: compare within one run.
+// SIM=1: a booted iOS Simulator instead (`xcrun simctl boot <id>`; real Mobile Safari, the Mac's GPU). The session id is kept in .cache/iphone.sid. A phone that has run hot shows ~3× frame times: compare within one run.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 const WD = process.env.WD || 'http://127.0.0.1:4723', SIDF = '.cache/iphone.sid';
 const BASE = process.env.BASE || 'https://georgiis-macbook.taila4c0b.ts.net:8443/';
@@ -15,7 +15,7 @@ const wd = async (method, path, body) => {
 };
 let sid = existsSync(SIDF) ? readFileSync(SIDF, 'utf8').trim() : null;
 try { if (sid) await wd('GET', `/session/${sid}/url`); } catch { sid = null; }
-if (!sid) { sid = (await wd('POST', '/session', { capabilities: { alwaysMatch: { platformName: 'iOS', browserName: 'Safari' } } })).sessionId; mkdirSync('.cache', { recursive: true }); writeFileSync(SIDF, sid); }
+if (!sid) { sid = (await wd('POST', '/session', { capabilities: { alwaysMatch: { platformName: 'iOS', browserName: 'Safari', ...(process.env.SIM ? { 'safari:useSimulator': true } : {}) } } })).sessionId; mkdirSync('.cache', { recursive: true }); writeFileSync(SIDF, sid); }
 await wd('POST', `/session/${sid}/timeouts`, { script: 1800000, pageLoad: 120000 });
 const go = (url) => wd('POST', `/session/${sid}/url`, { url });
 const run = (fn, ...args) => wd('POST', `/session/${sid}/execute/async`, { script: `const done = arguments[arguments.length - 1]; (${fn})(...Array.from(arguments).slice(0, -1)).then(done, (e) => done({ error: String(e && e.stack || e) }));`, args });

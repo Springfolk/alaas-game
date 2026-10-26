@@ -72,7 +72,7 @@ export class Engine {
     // device lost (the OS took the GPU back: memory pressure, a GPU reset, a page long hidden): restored by a reload
     // at the same quality, where the player stood (main.js onLost; while loading, tier.js restoreLost)
     const lost = r.onDeviceLost.bind(r);
-    r.onDeviceLost = (info) => { lost(info); if (KEYART) return; if (this.onLost) this.onLost(info); else restoreLost(); };
+    r.onDeviceLost = (info) => { lost(info); if (KEYART) return; this.restoring = true; if (this.onLost) this.onLost(info); else restoreLost(); }; // (restoring: main.js shows no start failure)
     r.setPixelRatio(Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
     r.setSize(innerWidth, innerHeight, false);
     r.shadowMap.enabled = true;
