@@ -4,7 +4,7 @@
 //   ao           GTAO pre-pass (a second scene pass)
 //   shadows      sun shadow map size per cascade (2 cascades side by side), shadowFar = cascade range (m)
 //   reflection   lake reflection resolution scale · texMax = largest texture edge
-//   dpr          max pixel ratio (capped by the display's) · resMin = pixel ratio dynamic resolution never
+//   dpr          max pixel ratio (capped by the display's) · resStart = the scale of it to start at (1) · resMin = pixel ratio dynamic resolution never
 //                goes under (none: 55% of the start ratio); high keeps at least CSS-pixel resolution
 //   grassDensity 1 = full blades (grass.js), forest = scale of the full/coarse tree ring radii (forest.js)
 //   ground       ground grid vertices per side · fps = frame cap (battery saver halves it)
@@ -15,12 +15,13 @@ export const PRESETS = {
   high: { quality: 'high', ao: true, shadows: 2048, shadowFar: 150, reflection: 0.35, dpr: 2, resMin: 1, texMax: 4096, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
   medium: { quality: 'medium', ao: false, shadows: 2048, shadowFar: 110, reflection: 0.25, dpr: 1.5, resMin: 0.7, texMax: 2048, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
   low: { quality: 'low', ao: false, shadows: 1024, shadowFar: 70, reflection: 0.18, dpr: 0.75, resMin: 0.5, texMax: 1024, grassDensity: 0.6, forest: 0.8, ground: 512, fps: 60 },
-  // phones: a fixed 67% of the screen's own resolution (lite too: less read as mush on a phone) (dpr = resMin: no dynamic resolution, only the knobs)
-  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: NATIVE * 0.67, resMin: NATIVE * 0.67, texMax: 512, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
+  // phones (lite too): 67–100% of the screen's own resolution — starts at 67% and climbs while frames keep pace
+  // (dynamic resolution); below 67% read as mush (dpr = resMin: no dynamic resolution, only the knobs)
+  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: NATIVE, resMin: NATIVE * 0.67, resStart: 0.67, texMax: 512, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
 };
 // A weak phone (≤3 GB, <4 cores, no WebGPU, under-default GPU limits) or one whose last load was killed:
 // mobile with these on top (TIER.lite). Memory can't be handed back at run time, so it is decided here.
-export const LITE = { lite: true, shadows: 512, shadowFar: 45, reflection: 0.1, dpr: NATIVE * 0.67, resMin: NATIVE * 0.67, texMax: 256, atlasMax: 512, pipelines: 2, grassDensity: 0.3, forest: 0.55 }; // ground as mobile: its baked terrain pack
+export const LITE = { lite: true, shadows: 512, shadowFar: 45, reflection: 0.1, texMax: 256, atlasMax: 512, pipelines: 2, grassDensity: 0.3, forest: 0.55 }; // ground as mobile: its baked terrain pack
 
 export const TIER = { name: 'medium', auto: false, reason: '', ...PRESETS.medium };
 
@@ -29,24 +30,27 @@ export function setTier(name, extra = {}) {
   return TIER;
 }
 
-// Phones/tablets → mobile; no WebGPU (WebGL2 fallback), few cores, little memory or an older
+// Phones/tablets → mobile; on desktop no WebGPU (WebGL2 fallback), few cores, little memory or an older
 // integrated GPU → low; everything else → medium. `high` (GTAO) is never picked automatically.
-export async function detectTier({ webgl = false } = {}) {
-  const n = typeof navigator !== 'undefined' ? navigator : {};
-  const ua = n.userAgent || '';
+// Phones and tablets: the UA, iPadOS (which reports a Mac), or a coarse pointer on a small screen.
+export function isPhone() {
+  const n = typeof navigator !== 'undefined' ? navigator : {}, ua = n.userAgent || '';
   const coarse = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
   const small = typeof screen !== 'undefined' && Math.min(screen.width, screen.height) < 820;
-  const ipad = /Macintosh/.test(ua) && n.maxTouchPoints > 1; // iPadOS reports a Mac
-  const phone = /Android|iPhone|iPod|Mobile/i.test(ua) || ipad || (coarse && small);
+  return /Android|iPhone|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && n.maxTouchPoints > 1) || (coarse && small);
+}
+
+export async function detectTier({ webgl = false } = {}) {
+  const n = typeof navigator !== 'undefined' ? navigator : {};
   const cores = n.hardwareConcurrency || 4, mem = n.deviceMemory || 8; // Safari reports no deviceMemory
-  let adapter = null;
-  if (!webgl && n.gpu) try { adapter = await n.gpu.requestAdapter({ powerPreference: 'high-performance' }); } catch { /* none */ }
-  if (phone) {
-    const l = adapter?.limits;
-    const weak = !adapter ? 'no WebGPU' : mem <= 3 ? `${mem} GB` : cores < 4 ? `${cores} cores`
-      : l && (l.maxTextureDimension2D < 8192 || l.maxStorageBufferBindingSize < 134217728) ? 'small GPU limits' : '';
+  // phones draw with WebGL2 (Engine.init; most have no WebGPU, and Safari's is opt-in): only memory and cores
+  // make one weak (LITE), not missing WebGPU
+  if (isPhone()) {
+    const weak = mem <= 3 ? `${mem} GB` : cores < 4 ? `${cores} cores` : '';
     return weak ? { name: 'mobile', reason: `touch device, ${weak}`, extra: LITE } : { name: 'mobile', reason: 'touch device' };
   }
+  let adapter = null;
+  if (!webgl && n.gpu) try { adapter = await n.gpu.requestAdapter({ powerPreference: 'high-performance' }); } catch { /* none */ }
   if (!adapter) return { name: 'low', reason: 'no WebGPU' };
   const info = adapter.info || {};
   const vendor = (info.vendor || '').toLowerCase(), arch = (info.architecture || '').toLowerCase();

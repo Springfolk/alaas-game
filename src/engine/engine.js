@@ -6,7 +6,7 @@ import {
 } from 'three/tsl';
 import { buildPost } from './post.js';
 import { fastPMREM } from '../load/pmrem.js';
-import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, bootFailed } from './tier.js';
+import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, bootFailed, isPhone } from './tier.js';
 import { setTextureMax } from './materials.js';
 import { makeSky, updateSky, cloudField, cloudCover, CLOUD_Y } from './sky.js';
 import { sunMask } from './master.js';
@@ -43,7 +43,9 @@ export class Engine {
     const auto = !PRESETS[this.requested.quality];
     // boot guard (tier.js): after a load the OS killed, step down — 1: mobile → LITE, medium → low; 2: WebGL2 too
     const step = this.bootStep = KEYART ? 0 : bootStep(auto);
-    if (step >= 2) this.requested = { ...this.requested, webgl: true };
+    // phones: WebGL2 (most have no WebGPU; Safari's is opt-in and lost the device under load) unless ?webgpu;
+    // desktop: WebGPU, WebGL2 on step 2
+    if (step >= 2 || (isPhone() && !urlFlag('webgpu'))) this.requested = { ...this.requested, webgl: true };
     if (auto) { // 'auto' (default): pick by device
       const d = await detectTier({ webgl: !!this.requested.webgl });
       this.tier = d.name;
@@ -53,6 +55,7 @@ export class Engine {
       TIER.auto = true; TIER.reason = d.reason + (step ? `, boot step ${step}` : '');
     }
     this.tierAuto = TIER.auto;
+    this.resScale = this.opts.resStart ?? 1; // phones start low and climb (dynamicResolution)
     // battery saver (30 fps) by default only on a battery running low (≤20%, unplugged) where the Battery Status
     // API reports it (Chromium; Safari has none: the setting is the fallback). Phones too run at full rate: one
     // that can't keep it steps to 30 by itself (the '30 fps' knob); measured on an iPhone 14 Pro: 60 held.

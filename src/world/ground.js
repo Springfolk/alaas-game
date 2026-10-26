@@ -17,7 +17,7 @@ export async function buildGround(terrain) {
   const mesh = new THREE.Mesh(groundGeometry(fine), groundMaterial());
   mesh.receiveShadow = true;
   mesh.name = 'ground';
-  mesh.userData.tiles = tiles(mesh, TIER.ground, 4);
+  mesh.userData.tiles = tiles(mesh, 4);
   // a coarse copy (same material, so the same pipeline) the lake reflection draws instead (lake.js)
   const coarse = new THREE.Mesh(groundGeometry(rough), mesh.material);
   coarse.name = 'ground-coarse'; coarse.visible = false; coarse.receiveShadow = true;
@@ -28,8 +28,10 @@ export async function buildGround(terrain) {
 // T×T tiles of the grid (index ranges over its vertices, own bounds) so three culls the ones out of view: the
 // whole grid drew every frame wherever one looked (818k triangles on desktop). The root keeps only one far corner
 // triangle (WebGPU warns on empty draws); the lake mirror hides the tiles for the coarse copy (lake.js).
-function tiles(mesh, N, T) {
-  const g = mesh.geometry, idx = g.index.array, pos = g.attributes.position.array, Q = N - 1, per = Math.ceil(Q / T), out = [];
+function tiles(mesh, T) {
+  const g = mesh.geometry, idx = g.index.array, pos = g.attributes.position.array;
+  const N = Math.round(Math.sqrt(g.attributes.position.count)), Q = N - 1; // the grid's own size, whatever tier built it
+  const per = Math.ceil(Q / T), out = [];
   const box = new THREE.Box3(), v = new THREE.Vector3();
   for (let tj = 0; tj < T; tj++) for (let ti = 0; ti < T; ti++) {
     const j0 = tj * per, j1 = Math.min(Q, j0 + per), i0 = ti * per, i1 = Math.min(Q, i0 + per), w = (i1 - i0) * 6;

@@ -30,24 +30,39 @@ export const firstTextureMax = () => (SHARP ? texMax : Math.min(FIRST, texMax));
 let renderer = null;
 export function setTextureRenderer(r) { renderer = r; }
 
-// Loads `path` at `max` into `base`; `list` are the textures to upload once it decodes. sharpen: they already
-// hold a smaller image, so their GPU textures are dropped first (rebuilt at the new size: a rebind, no new shader).
-function fill(base, path, max, list, sharpen = false) {
-  const url = sized(new URL(path, location.href).href, max);
-  base.userData.max = max;
-  const p = span('tex.load', work('bitmap', { url, max }, () => loadBitmap(url, max))).then((bmp) => {
-    if (sharpen) { for (const c of list) c.dispose(); base.image?.close?.(); }
-    base.image = bmp;
-    for (const c of list) c.needsUpdate = true;
-    if (!TIER.release || !renderer) return;
-    for (const c of list) renderer.initTexture(c);
-    list.length = 0;
-    base.image = { width: bmp.width, height: bmp.height }; // no re-upload ever reads it (source version unchanged)
-    bmp.close();
-    base.userData.released = true;
-  }).catch((e) => console.warn('texture', path, e));
-  pending.add(p);
-  return p;
+// One image load at a time per base (`u.loading`); it loads the largest size asked for (`u.want`) and, landing,
+// uploads to the textures that need it: the waiting ones, or every one when the size changed (their GPU textures
+// are dropped first: rebuilt at the new size, a rebind, no new shader). A size asked for meanwhile, or a texture
+// needing a released image again (`u.refill`), runs the next round. One at a time: two loads of one image (a
+// sharpen and a re-request on phones) once raced, one blanking the image the other was uploading — every frame
+// then threw and the page reloaded in a loop.
+function fill(base, path, max) {
+  const u = base.userData;
+  u.want = Math.max(u.want || 0, max);
+  if (u.loading) return u.loading;
+  u.loading = (async () => {
+    while (u.refill || u.want > (u.got || 0)) {
+      const m = u.want, url = sized(new URL(path, location.href).href, m);
+      u.refill = false;
+      let bmp;
+      try { bmp = await span('tex.load', work('bitmap', { url, max: m }, () => loadBitmap(url, m))); } catch (e) { console.warn('texture', path, e); break; }
+      const resized = u.got !== undefined && bmp.width !== u.gotW;
+      const list = resized ? [...u.users] : u.clones.splice(0);
+      if (resized) { for (const c of list) if (!u.clones.includes(c)) c.dispose(); u.clones.length = 0; }
+      base.image?.close?.();
+      base.image = bmp; u.got = m; u.gotW = bmp.width;
+      for (const c of list) c.needsUpdate = true;
+      if (TIER.release && renderer) {
+        for (const c of list) renderer.initTexture(c);
+        base.image = { width: bmp.width, height: bmp.height }; // no re-upload ever reads it (source version unchanged)
+        bmp.close();
+        u.released = true;
+      }
+    }
+    u.loading = null;
+  })();
+  pending.add(u.loading);
+  return u.loading;
 }
 
 export function tex(path, { srgb = false, repeat = [1, 1] } = {}) {
@@ -57,18 +72,21 @@ export function tex(path, { srgb = false, repeat = [1, 1] } = {}) {
   let base = bases.get(path);
   if (!base) {
     base = new THREE.Texture();
-    base.userData.clones = []; // waiting for the image
-    base.userData.users = []; // every texture on it (sharpenTextures)
-    // decoded in a load worker (src/load/bitmap.js), the main thread as the fallback
-    fill(base, path, firstTextureMax(), base.userData.clones);
+    base.userData.clones = []; // waiting for an image
+    base.userData.users = []; // every texture on it
     bases.set(path, base);
+    // decoded in a load worker (src/load/bitmap.js), the main thread as the fallback
+    fill(base, path, firstTextureMax());
   }
+  const u = base.userData;
   // a fresh texture sharing the image (clone() would mark it for upload before the image exists)
   t = new THREE.Texture();
   t.source = base.source;
   t.flipY = false; // the bitmap is decoded already flipped
-  base.userData.users.push(t);
-  if (base.userData.released) { base.userData.released = false; base.image = null; base.userData.clones.push(t); fill(base, path, base.userData.max, base.userData.clones); } else if (base.image) t.needsUpdate = true; else base.userData.clones.push(t);
+  u.users.push(t);
+  if (u.released) { u.clones.push(t); u.refill = true; fill(base, path, u.got); } // phones: the image was let go: load it again
+  else if (u.got !== undefined) t.needsUpdate = true;
+  else u.clones.push(t);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(repeat[0], repeat[1]);
   t.anisotropy = maxAniso;
@@ -87,10 +105,12 @@ export async function sharpenTextures() {
   const jobs = [...sharpeners.splice(0).map((fn) => () => fn(texMax))];
   for (const [path, base] of bases) {
     const url = new URL(path, location.href).href;
-    if (edgeFor(url, texMax) > edgeFor(url, base.userData.max)) jobs.push(() => fill(base, path, texMax, [...base.userData.users], true));
+    if (edgeFor(url, texMax) > edgeFor(url, base.userData.want)) jobs.push(() => fill(base, path, texMax));
   }
-  const next = async () => { for (let j; (j = jobs.shift());) { await j(); await new Promise((r) => setTimeout(r, 16)); } };
-  await Promise.all([next(), next(), next(), next()]);
+  // WebGL2 (phones) uploads and builds mips synchronously on the main thread: one swap at a time, two frames apart
+  const gl = !!renderer?.backend?.isWebGLBackend, frame = () => new Promise((r) => requestAnimationFrame(r));
+  const next = async () => { for (let j; (j = jobs.shift());) { await j(); if (gl) { await frame(); await frame(); } else await new Promise((r) => setTimeout(r, 16)); } };
+  await Promise.all(gl ? [next()] : [next(), next(), next(), next()]);
 }
 
 // The three maps of a set as textures, for TSL graphs that mix several sets.
