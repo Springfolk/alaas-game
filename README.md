@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>Киин Саха сирин алааһыгар сайылык</b><br>
-  A summer homestead in Central Yakutia — a first-person walk through Sakha culture.
+  An interactive museum: a first-person walk through a Sakha summer homestead in Central Yakutia.
 </p>
 
 <p align="center">
@@ -21,11 +21,11 @@
   <a href="#quick-start"><b>Play locally</b></a> · <a href="CONTRIBUTING.md"><b>Contributing</b></a> · <a href="docs/credits.md"><b>Credits</b></a>
 </p>
 
-Алаас is a first-person walk through a traditional Sakha summer homestead (сайылык) in an alaas, the
+Алаас is an interactive museum, a first-person walk through a traditional Sakha summer homestead (сайылык) in an alaas, the
 round meadow-and-lake hollow in the taiga where Sakha families have kept horses and cattle for centuries.
 It is told from the Sakha point of view: the birch-bark urasa, the balagan with its hearth, the serge
 hitching posts, the kymys and the fire's spirit are shown as a living culture, in its own words — Sakha
-first, then English and Russian, picked from your browser's language. There is no combat and no score. You walk, look and learn.
+first, then English and Russian, picked from your browser's language. You walk, look and learn.
 
 <table>
   <tr>
@@ -44,7 +44,7 @@ first, then English and Russian, picked from your browser's language. There is n
 - **51 explainer cards** in Sakha, English and Russian, with sources and 72 reference images. Look at a
   thing, press E for a short note, E again for the full read; the journal collects what you have found and hints at where the rest are.
 - **Hands-on acts** done with respect: feed the fire, tie a ribbon on the serge, carry water, lay
-  firewood, sit on the орон, pick дьэдьэн. Sacred rites are explained, never played.
+  firewood, sit on the орон, pick дьэдьэн. Sacred rites are only explained: the museum never has you perform them.
 - **A living alaas**: procedural larch, birch and pine taiga, wind in the grass, birds, insects, a lake
   with reflections, a physical sky with drifting cloud shadows, and real field recordings.
 - **Runs in the browser**: three.js WebGPURenderer with TSL shaders, steady 60 fps, no backend, no
@@ -95,11 +95,13 @@ Phones: left thumb walks (push to the rim to run), right thumb looks, a tap is E
 | `docs/` | how it all works ([`AGENTS.md`](AGENTS.md) has the map) |
 
 ## Contributing
-Contributions are welcome, from code to Sakha-language corrections. Read
-[`CONTRIBUTING.md`](CONTRIBUTING.md) first: it lists the checks to run and the content rules.
+Contributions are welcome, from code to Sakha-language corrections. If you know Sakha life and
+something is wrong or missing, open an [issue](https://github.com/Springfolk/alaas-game/issues) or write
+to hello@springfolk.co; corrections are credited. For pull requests, read [`CONTRIBUTING.md`](CONTRIBUTING.md)
+first: it lists the checks to run and the content rules.
 
 ## Credits and licences
-- **AI-assisted**: the code, models, shaders, texts and research were made with the help of Claude Opus 5.5 (Anthropic), directed and reviewed by Springfolk. The Sakha texts were checked by a native speaker.
+- **AI-assisted**: the code, models, shaders, texts and research were made with the help of Claude Opus 5.5 (Anthropic), directed and reviewed by Georgii Antipin (Springfolk), who also checked every Sakha text.
 - **Code**: MIT, © Springfolk ([`LICENSE`](LICENSE)).
 - **Original content** (explainer and interface texts, the project's own baked textures): CC BY-SA 4.0.
 - **Third-party assets** keep their own licences: CC0 textures from Poly Haven and ambientCG, CC0 and
