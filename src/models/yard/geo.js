@@ -234,6 +234,40 @@ export function board(w, h, d, { color = [1, 1, 1], tile = 1 } = {}) {
   return g;
 }
 
+// A turned post's real surface, read back from its vertices (rings share one y): centre and radius per ring, so
+// cords and ropes laid on it follow the noise, ovality, bend and turn. Returns (y, a) → { cx, cz, r }, a: x = cos a, z = −sin a.
+export function surfaceOf(geo, x, z, reach = 0.35) {
+  const p = geo.attributes.position, by = new Map();
+  for (let i = 0; i < p.count; i++) {
+    const vx = p.getX(i), vz = p.getZ(i);
+    if (Math.hypot(vx - x, vz - z) > reach) continue;
+    const y = p.getY(i);
+    if (!by.has(y)) by.set(y, []);
+    by.get(y).push(vx, vz);
+  }
+  const rings = [...by.keys()].sort((a, b) => a - b).map((y) => {
+    const v = by.get(y), n = v.length / 2;
+    let cx = 0, cz = 0;
+    for (let k = 0; k < v.length; k += 2) { cx += v[k]; cz += v[k + 1]; }
+    return { y, v, cx: cx / n, cz: cz / n };
+  });
+  const radius = (R, a) => { // the vertex nearest in angle
+    const ca = Math.cos(a), sa = -Math.sin(a);
+    let best = -2, r = 0;
+    for (let k = 0; k < R.v.length; k += 2) {
+      const dx = R.v[k] - R.cx, dz = R.v[k + 1] - R.cz, d = Math.hypot(dx, dz) || 1, c = (dx * ca + dz * sa) / d;
+      if (c > best) { best = c; r = d; }
+    }
+    return r;
+  };
+  return (y, a) => {
+    let i = 1;
+    while (i < rings.length - 1 && rings[i].y < y) i++;
+    const A = rings[i - 1], B = rings[i], t = Math.min(1, Math.max(0, (y - A.y) / (B.y - A.y || 1)));
+    return { cx: A.cx + (B.cx - A.cx) * t, cz: A.cz + (B.cz - A.cz) * t, r: radius(A, a) + (radius(B, a) - radius(A, a)) * t };
+  };
+}
+
 export function merge(list) {
   const gs = list.filter(Boolean);
   if (!gs.length) return null;

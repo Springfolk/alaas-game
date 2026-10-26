@@ -6,6 +6,7 @@ import { box, log, sheet, fbm2, xf, lathe, tube } from './geo.js';
 import { FX, FZ, H, ZD, DW, inner } from './dims.js';
 
 const BT = 0.5; // bench top height
+const POSTS_X = [-FX, 0, FX];   // the post frame's posts stand at these x on both long walls (shell.js)
 
 // invisible ray targets (raycasts ignore visibility; nothing is drawn)
 function proxy(root, w, h, d, p, r = [0, 0, 0]) {
@@ -66,7 +67,14 @@ export function buildInterior({ B, M, rng, winter, root }) {
       B.add(M.planks, alongX ? box(0.04, 0.3, D * 0.7, { p: [q[0], q[1], cz - fs * D * 0.15] }) : box(D * 0.7, 0.3, 0.04, { p: [cx - fs * D * 0.15, q[1], q[2]] }), { color: [0.75, 0.62, 0.5] });
     }
     colliders.push({ x: cx, z: cz, hw: Math.abs(d.x1 - d.x0) / 2, hd: Math.abs(d.z1 - d.z0) / 2, y0: -1, y1: BT + 0.05 });
-    if (d.hide) hide(B, M, rng, alongX ? [cx, cz + (d.z1 > 0 ? 0.08 : -0.08)] : [cx - 0.08, cz], alongX ? [L * 0.42, D * 0.45] : [D * 0.45, L * 0.42], alongX, fs, D, d.hide);
+    if (d.hide) {
+      // along a bench with a post standing in it (the frame's posts are on the long walls), the hide takes the
+      // longer free stretch beside the post: its legs reach ~1.45 × its half length
+      let a = d.x0 + 0.06, b = d.x1 - 0.06;
+      if (alongX) for (const px of POSTS_X) if (px > a && px < b) { if (px - a > b - px) b = px - 0.25; else a = px + 0.25; }
+      const hc = alongX ? (a + b) / 2 : cx, hl = alongX ? Math.min(L * 0.42, (b - a) / 2 / 1.45) : L * 0.42;
+      hide(B, M, rng, alongX ? [hc, cz + (d.z1 > 0 ? 0.08 : -0.08)] : [cx - 0.08, cz], alongX ? [hl, D * 0.45] : [D * 0.45, hl], alongX, fs, D, d.hide);
+    }
     if (!d.alcove) {
       const t = proxy(root, alongX ? L : D, 0.4, alongX ? D : L, [cx, BT - 0.1, cz]);
       benches.push({ target: t, label: { sah: d.sah, en: d.en, ru: d.ru } });
@@ -177,9 +185,9 @@ export function buildInterior({ B, M, rng, winter, root }) {
   const bowl = (rim, ht, x, y, z, { band = false, food = false, tint = [1, 1, 1] } = {}) => {
     const r = rim / 2, base = r * 0.45;
     const out = [[0, 0], [base, 0], [base + 0.004, 0.004], [r * 0.82, ht * 0.45], [r, ht * 0.95], [r - 0.004, ht], [r - 0.01, ht * 0.97], [r * 0.78, ht * 0.5], [base * 0.9, 0.012], [0, 0.012]];
-    const g = lathe(out, 22).translate(x, y, z);
+    const g = lathe(out, 16).translate(x, y, z);
     B.add(M.oiled, g, { color: tint });
-    if (band) B.add(M.silver, lathe([[r + 0.002, ht * 0.78], [r + 0.003, ht * 0.86], [r * 1.0 + 0.002, ht * 0.95]], 22).translate(x, y, z), { color: [0.85, 0.5, 0.32] });
+    if (band) B.add(M.silver, lathe([[r + 0.002, ht * 0.78], [r + 0.003, ht * 0.86], [r * 1.0 + 0.002, ht * 0.95]], 16).translate(x, y, z), { color: [0.85, 0.5, 0.32] });
     if (food) {
       const f = new THREE.CircleGeometry(r * 0.86, 20).rotateX(-Math.PI / 2).translate(x, y + ht * 0.75, z);
       B.add(M.food, f, { color: [0.72, 0.5, 0.22] });
@@ -241,14 +249,15 @@ export function buildInterior({ B, M, rng, winter, root }) {
   birchVessel(0.3, shelfTop, sz + 0.14, 0.085, 0.2, { lid: true, rot: 2.0 });
   if (!winter) {
     birchVessel(0.62, shelfTop, sz + 0.15, 0.06, 0.13, { rot: 1.4 });
-    birchVessel(0.62, BT, -2.55, 0.14, 0.32, { rot: 1.0 });   // a bucket on the vessel bench
+    birchVessel(0.8, BT, -2.6, 0.14, 0.32, { rot: 1.0 });   // a bucket on the vessel bench
   } else birchVessel(-2.0, 0.0, 0.6, 0.12, 0.26, { rot: 0.5 }); // a split, left-behind bucket on the floor
-  targets.birch = winter ? proxy(root, 0.3, 0.3, 0.3, [-2.0, 0.15, 0.6]) : proxy(root, 0.55, 0.35, 0.3, [0.5, BT + 0.15, -2.55]);
+  targets.birch = winter ? proxy(root, 0.3, 0.3, 0.3, [-2.0, 0.15, 0.6]) : proxy(root, 0.32, 0.35, 0.32, [0.8, BT + 0.15, -2.6]);
   targets.birchShelf = proxy(root, 0.5, 0.25, 0.3, [0.45, shelfTop + 0.12, sz + 0.15]);
 
   // ---------- the festive outfit, laid out on хаҥас орон before Ysyakh ----------
   if (!winter) {
-    const cy = BT + 0.012, ox = -1.28, oz = -2.42;  // coat: collar at the west end, hem to the east
+    // coat: collar at the west end, hem to the east, ending short of the north middle post (x = 0)
+    const cy = BT + 0.012, ox = -1.3, oz = -2.42, CS = 0.94;
     const sh = new THREE.Shape();
     const P = [[0, 0.07], [0.015, 0.19], [0.2, 0.19], [0.42, 0.175], [0.7, 0.3], [1.12, 0.47], [1.15, 0.0], [1.12, -0.47], [0.7, -0.3], [0.42, -0.175], [0.2, -0.19], [0.015, -0.19], [0, -0.07], [0.04, 0]];
     sh.moveTo(P[0][0], P[0][1]);
@@ -258,22 +267,23 @@ export function buildInterior({ B, M, rng, winter, root }) {
     for (let k = 0; k < pa.count; k++) pa.setZ(k, pa.getZ(k) + 0.01 * fbm2(pa.getX(k) * 7, pa.getY(k) * 7, 5) + 0.012 * Math.sin(pa.getX(k) * 16) * Math.max(0, pa.getX(k) - 0.6));
     coat.computeVertexNormals();
     xf(coat, { r: [-Math.PI / 2, 0, 0] });
+    xf(coat, { s: [CS, 1, 1] });
     xf(coat, { p: [ox, cy, oz] });
     B.add(M.wool, coat, { color: [1, 1, 1] });
     // sleeves laid along the body, puffed at the shoulder
     for (const s of [-1, 1]) {
-      B.add(M.wool, tube([[ox + 0.05, cy + 0.05, oz - s * 0.2], [ox + 0.3, cy + 0.035, oz - s * 0.3], [ox + 0.58, cy + 0.03, oz - s * 0.36]], 0.04, 8), { color: [0.95, 0.95, 0.95] });
+      B.add(M.wool, tube([[ox + 0.05, cy + 0.05, oz - s * 0.2], [ox + 0.3 * CS, cy + 0.035, oz - s * 0.3], [ox + 0.58 * CS, cy + 0.03, oz - s * 0.36]], 0.04, 8), { color: [0.95, 0.95, 0.95] });
       const puff = new THREE.SphereGeometry(0.07, 12, 8);
       xf(puff, { s: [1, 0.75, 1], p: [ox + 0.05, cy + 0.06, oz - s * 0.2] });
       B.add(M.wool, puff, { color: [1, 1, 1] });
-      B.add(M.fur, tube([[ox + 0.6, cy + 0.03, oz - s * 0.33], [ox + 0.6, cy + 0.03, oz - s * 0.39]], 0.045, 8), { color: [0.3, 0.21, 0.15] });
+      B.add(M.fur, tube([[ox + 0.6 * CS, cy + 0.03, oz - s * 0.33], [ox + 0.6 * CS, cy + 0.03, oz - s * 0.39]], 0.045, 8), { color: [0.3, 0.21, 0.15] });
       // fur round the hem and the front edges
-      B.add(M.fur, tube([[ox + 1.12, cy + 0.03, oz], [ox + 1.13, cy + 0.03, oz - s * 0.25], [ox + 1.12, cy + 0.03, oz - s * 0.47]], 0.038, 7), { color: [0.3, 0.21, 0.15] });
+      B.add(M.fur, tube([[ox + 1.12 * CS, cy + 0.03, oz], [ox + 1.13 * CS, cy + 0.03, oz - s * 0.25], [ox + 1.12 * CS, cy + 0.03, oz - s * 0.47]], 0.038, 7), { color: [0.3, 0.21, 0.15] });
     }
-    B.add(M.fur, tube([[ox + 0.02, cy + 0.03, oz], [ox + 0.5, cy + 0.035, oz + 0.01], [ox + 1.1, cy + 0.035, oz]], 0.03, 7), { color: [0.29, 0.2, 0.14] });
+    B.add(M.fur, tube([[ox + 0.02, cy + 0.03, oz], [ox + 0.5 * CS, cy + 0.035, oz + 0.01], [ox + 1.1 * CS, cy + 0.035, oz]], 0.03, 7), { color: [0.29, 0.2, 0.14] });
     // no beadwork band across the chest: the one drawn here had no image source (docs/patterns.md)
     // дьабака hat on a carved stand on the vessel bench
-    const hx = 0.6, hz = -2.15;
+    const hx = 0.8, hz = -2.15;   // east end of the vessel bench: the silver lies at its west end
     const hb = BT + 0.12;  // a low carved stand, the hat on top
     B.add(M.oiled, lathe([[0.07, 0], [0.07, 0.025], [0.03, 0.04], [0.025, 0.1], [0.07, 0.12], [0, 0.125]], 12).translate(hx, BT, hz), { color: [0.7, 0.6, 0.5] });
     const hat = lathe([[0.0, 0.0], [0.1, 0.0], [0.106, 0.04], [0.104, 0.12], [0.112, 0.22], [0.122, 0.3], [0.116, 0.31], [0.0, 0.31]], 22);
@@ -301,21 +311,22 @@ export function buildInterior({ B, M, rng, winter, root }) {
       B.add(M.velvet, lathe([[0.053, 0.0], [0.056, 0.04]], 14).translate(bx0, 0.37, bz0));
       for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; B.add(M.food, new THREE.SphereGeometry(0.004, 4, 3).translate(bx0 + Math.cos(a) * 0.057 * 0.92, 0.39, bz0 + Math.sin(a) * 0.058), { color: k % 2 ? [0.9, 0.88, 0.8] : [0.1, 0.35, 0.55] }); }
     }
-    targets.clothing = proxy(root, 1.3, 0.3, 1.0, [-0.65, BT + 0.1, -2.35]);
+    targets.clothing = proxy(root, 1.2, 0.3, 1.0, [-0.72, BT + 0.1, -2.35]);
     targets.clothingHat = proxy(root, 0.3, 0.5, 0.3, [hx, BT + 0.25, hz]);
 
     // ---------- silver laid on red broadcloth beside the coat ----------
-    const sx0 = 0.04, sz0 = -2.42, sy = BT + 0.008;
-    B.add(M.velvet, sheet(6, 10, (u, v) => [sx0 - 0.18 + u * 0.36, sy + 0.004 * Math.sin(v * 9), sz0 - 0.42 + v * 0.84], { uvf: (u, v) => [u * 0.36, v * 0.84], face: () => [0, 1, 0] }));
+    // on the vessel bench, between its west partition and the hat and bucket (the post at x = 0 stood through it)
+    const sx0 = 0.45, sz0 = -2.42, sy = BT + 0.008;
+    B.add(M.velvet, sheet(6, 10, (u, v) => [sx0 - 0.16 + u * 0.32, sy + 0.004 * Math.sin(v * 9), sz0 - 0.42 + v * 0.84], { uvf: (u, v) => [u * 0.36, v * 0.84], face: () => [0, 1, 0] }));
     // кылдьыы: twisted neck ring, open ends with loops
     const ring = [];
     for (let k = 0; k <= 60; k++) { const a = 0.25 + (k / 60) * (Math.PI * 2 - 0.5); ring.push([sx0 + Math.cos(a) * 0.09, sy + 0.012, sz0 - 0.25 + Math.sin(a) * 0.09]); }
-    B.add(M.silver, tube(ring, 0.0045, 6, false, 120), { color: [1, 1, 1] });
+    B.add(M.silver, tube(ring, 0.0045, 5, false, 60), { color: [1, 1, 1] });
     for (let k = 0; k < 20; k++) { const a = 0.25 + (k / 20) * (Math.PI * 2 - 0.5); B.add(M.silver, new THREE.TorusGeometry(0.004, 0.0012, 3, 6).rotateY(a).translate(sx0 + Math.cos(a) * 0.09, sy + 0.013, sz0 - 0.25 + Math.sin(a) * 0.09), { color: [0.7, 0.68, 0.64] }); }
     // илин кэбиһэр: chains, engraved bars, pendants and the round күн disc
     for (let c = 0; c < 5; c++) {
       const x = sx0 - 0.06 + c * 0.03;
-      B.add(M.silver, tube([[x, sy + 0.006, sz0 - 0.16], [x + 0.002, sy + 0.006, sz0], [x, sy + 0.006, sz0 + 0.2]], 0.0016, 3, false, 24), { color: [0.85, 0.83, 0.78] });
+      B.add(M.silver, tube([[x, sy + 0.006, sz0 - 0.16], [x + 0.002, sy + 0.006, sz0], [x, sy + 0.006, sz0 + 0.2]], 0.0016, 3, false, 12), { color: [0.85, 0.83, 0.78] });
       for (let k = 0; k < 3; k++) {
         const drop = new THREE.ConeGeometry(0.007, 0.022, 6); xf(drop, { r: [Math.PI / 2, 0, 0], p: [x, sy + 0.007, sz0 + 0.215 + k * 0.0] });
         if (k === 0) B.add(M.silver, drop, { color: [1, 1, 1] });
@@ -342,7 +353,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
       const p = belt[k], ang = Math.atan2(belt[k][2] - belt[k - 1][2], belt[k][0] - belt[k - 1][0]);
       for (const [g, c] of beltPlate()) { xf(g, { r: [0, -ang, 0], p: [p[0], p[1] + 0.003, p[2]] }); B.add(M.silver, g, { color: c }); }
     }
-    targets.silver = proxy(root, 0.38, 0.12, 0.86, [sx0, sy + 0.03, sz0]);
+    targets.silver = proxy(root, 0.34, 0.12, 0.86, [sx0, sy + 0.03, sz0]);
   }
 
   // ---------- хомус on a peg by the women's bench (north middle post) ----------
@@ -368,7 +379,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
 
   // ---------- the work board with the Sakha knife, its sheath, shavings and a half-whittled peg ----------
   if (!winter) {
-    const wx = 0.15, wz = 2.25, wy = BT + 0.005;
+    const wx = 0.52, wz = 2.25, wy = BT + 0.005;   // east of the south middle post (x = 0)
     B.add(M.planks, box(0.5, 0.03, 0.26, { p: [wx, wy + 0.015, wz], r: [0, 0.12, 0] }), { color: [1.1, 1.0, 0.85] });
     const ty = wy + 0.032;
     // blade: flat right face, convex left, slight drop point
@@ -394,7 +405,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
       const a0 = rng() * 6.28, cx = wx - 0.1 + rng() * 0.25, cz = wz - 0.12 + rng() * 0.12;
       const pts = [];
       for (let j = 0; j <= 10; j++) { const a = a0 + j * 0.55; pts.push([cx + Math.cos(a) * 0.012 + j * 0.003, ty + 0.012 + Math.sin(a) * 0.01, cz + j * 0.001]); }
-      B.add(M.birch, tube(pts, 0.0025, 3, false, 20), { color: [1.0, 0.92, 0.8] });
+      B.add(M.birch, tube(pts, 0.0025, 3, false, 10), { color: [1.0, 0.92, 0.8] });
     }
     B.add(M.oiled, lathe([[0, 0], [0.012, 0.01], [0.013, 0.09], [0.011, 0.12], [0.003, 0.15], [0, 0.152]], 8).rotateZ(Math.PI / 2).translate(wx + 0.12, ty + 0.013, wz - 0.06), { color: [1.25, 1.15, 0.95] });
     targets.knife = proxy(root, 0.4, 0.08, 0.25, [wx, ty + 0.02, wz]);
@@ -427,7 +438,7 @@ function hide(B, M, rng, c, half, alongX, fs, D, col) {
   const [ax, az] = half;
   const ph = rng() * 0.3;
   const lobe = (a, at, w, len) => len * Math.exp(-(((Math.atan2(Math.sin(a - at), Math.cos(a - at))) / w) ** 2));
-  const g = sheet(36, 10, (u, v) => {
+  const g = sheet(30, 8, (u, v) => {
     const a = u * Math.PI * 2;
     let k = 1 + 0.05 * Math.sin(a * 5 + ph);
     for (const at of [0.75, Math.PI - 0.75, Math.PI + 0.75, -0.75]) k += lobe(a, at + ph * 0.3, 0.16, 0.38);
@@ -444,7 +455,7 @@ function hide(B, M, rng, c, half, alongX, fs, D, col) {
   // colour: darker spine, paler belly edge
   const p = g.attributes.position, n = p.count, cc = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
-    const v = Math.floor(i / 37) / 10;
+    const v = Math.floor(i / 31) / 8;
     const f = 0.75 + 0.45 * v + 0.15 * fbm2(p.getX(i) * 6, p.getZ(i) * 6, 9);
     cc.set([col[0] * f, col[1] * f, col[2] * f], i * 3);
   }
@@ -458,8 +469,8 @@ function hide(B, M, rng, c, half, alongX, fs, D, col) {
 const MM = 0.04233e-3; // drawing px → m
 function beltPlate() {
   const R = 657, HW = 641, HH = 405, pts = [];
-  for (let k = 0; k < 96; k++) {
-    const a = (k / 96) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+  for (let k = 0; k < 64; k++) {
+    const a = (k / 64) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
     const rect = Math.min(HW / Math.max(1e-6, Math.abs(c)), HH / Math.max(1e-6, Math.abs(s)));
     const r = Math.max(R, rect);
     pts.push(new THREE.Vector2(c * r * MM, s * r * MM));
@@ -468,11 +479,33 @@ function beltPlate() {
   for (const [hx, hy] of [[-570, -350], [570, -350], [-570, 350], [570, 350]]) { const h = new THREE.Path(); h.absarc(hx * MM, hy * MM, 15 * MM, 0, Math.PI * 2, true); sh.holes.push(h); }
   const plate = new THREE.ExtrudeGeometry(sh, { depth: 0.0012, bevelEnabled: false, curveSegments: 4 });
   plate.rotateX(-Math.PI / 2);
-  const ENG = [0.32, 0.31, 0.3], y = 0.00125, out = [[plate, [1, 1, 1]]];
-  const ring = (r) => { const p = []; for (let k = 0; k <= 48; k++) { const a = (k / 48) * Math.PI * 2; p.push([Math.cos(a) * r * MM, y, Math.sin(a) * r * MM]); } return tube(p, 0.00022, 3, false, 48); };
-  for (const r of [108, 137, 352, 514, 548]) out.push([ring(r), ENG]);
+  // engraved lines: flat dark ribbons just over the plate (round tubes cost 3× the triangles for lines 0.4 mm wide)
+  const ENG = [0.32, 0.31, 0.3], y = 0.0013, out = [[plate, [1, 1, 1]]];
+  for (const r of [108, 137, 352, 514, 548]) out.push([new THREE.RingGeometry((r * MM) - 0.00022, (r * MM) + 0.00022, r < 200 ? 16 : 40, 1).rotateX(-Math.PI / 2).translate(0, y, 0), ENG]);
   const zz = [];
-  for (let k = 0; k <= 208; k++) { const a = (k / 208) * Math.PI * 2, r = k % 2 ? 545 : 518; zz.push([Math.cos(a) * r * MM, y, Math.sin(a) * r * MM]); }
-  out.push([tube(zz, 0.0002, 3, false, 208), ENG]);
+  for (let k = 0; k <= 208; k++) { const a = (k / 208) * Math.PI * 2, r = k % 2 ? 545 : 518; zz.push([Math.cos(a) * r * MM, Math.sin(a) * r * MM]); }
+  out.push([flatLine(zz, 0.0002, y), ENG]);
   return out;
+}
+
+// A flat ribbon (half width w, facing up at height y) along a polyline of [x, z] points.
+function flatLine(pts, w, y) {
+  const pos = [], idx = [];
+  for (let k = 0; k < pts.length; k++) {
+    const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)];
+    const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1, nx = -dz / l * w, nz = dx / l * w;
+    pos.push(pts[k][0] - nx, y, pts[k][1] - nz, pts[k][0] + nx, y, pts[k][1] + nz);
+    if (k) { const i = (k - 1) * 2; idx.push(i, i + 1, i + 2, i + 1, i + 3, i + 2); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return orientUp(g);
+}
+// Flip a flat geometry's winding so it faces +y.
+function orientUp(g) {
+  const n = g.attributes.normal;
+  if (n.count && n.getY(0) < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; } g.computeVertexNormals(); }
+  return g;
 }

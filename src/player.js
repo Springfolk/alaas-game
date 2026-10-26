@@ -7,6 +7,7 @@ import { clamp, damp, lerp, smooth, angleDiff, fwdX, fwdZ, rightX, rightZ } from
 
 const EYE = 1.62, CROUCH_EYE = 1.05, RADIUS = 0.28;
 const WALK = 1.67, RUN = 3.03, CROUCH = WALK * 0.8, BACK = 0.72;   // m/s (walk 10:00, run 5:30 min/km)
+const WALK_SPM = 130, RUN_SPM = 180;                          // steps per minute: a brisk walk, a real run's cadence
 const GRAVITY = 15, JUMP_V = 3.5, STEP_DOWN = 0.42;          // m/s², m/s (≈0.4 m hop), m
 const LOOK = 0.0022, TOUCH_LOOK = 0.0058;                     // rad per mouse / touch pixel at sens 1
 const _ray = new THREE.Raycaster(), _o = new THREE.Vector3(), _down = new THREE.Vector3(0, -1, 0);
@@ -123,7 +124,7 @@ export class Player {
     this.eye = damp(this.eye, eyeTo, eyeTo < this.eye ? 12 : 7, dt);
 
     // footfalls: the stride lengthens with speed; the camera is lowest at heel strike (phase 0)
-    const stride = this.crouch ? 0.52 : lerp(0.7, 1.3, smooth(WALK, RUN, sp));
+    const stride = this.crouch ? 0.52 : lerp(WALK / WALK_SPM, RUN / RUN_SPM, smooth(WALK, RUN, sp)) * 60;
     const prev = this.stepPhase;
     if (this.grounded && !this.vault) this.stepPhase += sp * dt / stride;
     if (Math.floor(this.stepPhase) !== Math.floor(prev) && sp > 0.35) {

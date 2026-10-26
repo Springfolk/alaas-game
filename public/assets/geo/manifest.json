@@ -2,16 +2,16 @@
  "version": 1,
  "keys": {
   "jobs": "2fa000a4a1f4",
-  "model:ampaar": "368d46d64b12",
-  "model:balagan": "f47e120e98bb",
-  "model:chores": "0afed058b74b",
-  "model:kuruo": "b183b5166b67",
-  "model:lakeside": "81e5e63f52d8",
-  "model:sacred-birch": "28e49984c3b6",
-  "model:sele": "10667ddc7fee",
-  "model:serge": "e9eeed43a1bc",
-  "model:urasa": "3363241fc836",
-  "model:yardlife": "c2a42bffd1a0"
+  "model:ampaar": "a112deda819a",
+  "model:balagan": "338bd465c39a",
+  "model:chores": "3a9b3040efde",
+  "model:kuruo": "10f1a4980b8b",
+  "model:lakeside": "2a219033768a",
+  "model:sacred-birch": "515d1c4a3ade",
+  "model:sele": "63f93561c32f",
+  "model:serge": "405852420cc1",
+  "model:urasa": "8c8555f6ef71",
+  "model:yardlife": "e09db63b1fdf"
  },
  "packs": {
   "forest#c904aa13": {
@@ -48,7 +48,7 @@
    "raw": 3625996,
    "lazy": true
   },
-  "job:mask#44ad5450": {
+  "job:mask#706a6ece": {
    "group": "jobs",
    "key": "*",
    "empty": true
@@ -60,78 +60,78 @@
   },
   "model:ampaar#890beb7e": {
    "group": "model:ampaar",
-   "key": "368d46d64b12",
+   "key": "a112deda819a",
    "file": "ampaar-890beb7e.bin",
-   "bytes": 138664,
-   "raw": 725148
+   "bytes": 141237,
+   "raw": 738480
   },
   "model:balagan#782a55bb": {
    "group": "model:balagan",
-   "key": "f47e120e98bb",
+   "key": "338bd465c39a",
    "file": "balagan-782a55bb.bin",
-   "bytes": 633461,
-   "raw": 3249880
+   "bytes": 493501,
+   "raw": 2194492
   },
   "model:balagan#c00f8976": {
    "group": "model:balagan",
-   "key": "f47e120e98bb",
+   "key": "338bd465c39a",
    "file": "balagan-c00f8976.bin",
-   "bytes": 686502,
-   "raw": 3397872
+   "bytes": 529138,
+   "raw": 2480292
   },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "0afed058b74b",
+   "key": "3a9b3040efde",
    "file": "chores-753cb87c.bin",
-   "bytes": 9256,
-   "raw": 43964
+   "bytes": 11650,
+   "raw": 47444
   },
   "model:kuruo#9296aa7a": {
    "group": "model:kuruo",
-   "key": "b183b5166b67",
+   "key": "10f1a4980b8b",
    "file": "kuruo-9296aa7a.bin",
-   "bytes": 215791,
-   "raw": 1156116
+   "bytes": 226956,
+   "raw": 1236416
   },
   "model:lakeside#6c7e420d": {
    "group": "model:lakeside",
-   "key": "81e5e63f52d8",
+   "key": "2a219033768a",
    "file": "lakeside-6c7e420d.bin",
-   "bytes": 157078,
-   "raw": 435128
+   "bytes": 173727,
+   "raw": 463036
   },
   "model:sacred-birch#f02b57e6": {
    "group": "model:sacred-birch",
-   "key": "28e49984c3b6",
+   "key": "515d1c4a3ade",
    "file": "sacred-birch-f02b57e6.bin",
-   "bytes": 233504,
-   "raw": 803124
+   "bytes": 239597,
+   "raw": 847864
   },
   "model:sele#6f8bdbc0": {
    "group": "model:sele",
-   "key": "10667ddc7fee",
+   "key": "63f93561c32f",
    "empty": true
   },
   "model:serge#08963bf0": {
    "group": "model:serge",
-   "key": "e9eeed43a1bc",
+   "key": "405852420cc1",
    "file": "serge-08963bf0.bin",
-   "bytes": 151235,
-   "raw": 1236472
+   "bytes": 152480,
+   "raw": 1236544
   },
   "model:urasa#c45c7fb1": {
    "group": "model:urasa",
-   "key": "3363241fc836",
+   "key": "8c8555f6ef71",
    "file": "urasa-c45c7fb1.bin",
-   "bytes": 333533,
-   "raw": 1851908
+   "bytes": 222641,
+   "raw": 1140096
   },
   "model:yardlife#8f2bbc3c": {
    "group": "model:yardlife",
-   "key": "c2a42bffd1a0",
+   "key": "e09db63b1fdf",
    "file": "yardlife-8f2bbc3c.bin",
-   "bytes": 912799,
-   "raw": 3932468
+   "bytes": 874262,
+   "raw": 2858432
   }
  }
 }

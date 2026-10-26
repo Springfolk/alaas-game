@@ -102,7 +102,7 @@ export function buildCover(rng, P) {
       return k * (free * (0.003 + h * 0.014) + corner * Math.pow(1 - v, 2) * 0.02 + Math.sin(lu * Math.PI * (2 + Math.floor(h2 * 3)) + h * 6) * 0.004 * (0.4 + free));
     };
     const vis = (s1 - s0) / RING_H; // the top ring is shorter
-    outer.push(strip(P, s0, s1, 4, (v) => O_OUT + 0.011 * (1 - v) * (1 - v * 0.3), 0.15, {
+    outer.push(strip(P, s0, s1, 3, (v) => O_OUT + 0.011 * (1 - v) * (1 - v * 0.3), 0.2, {
       doorCut, edgeWobble: 0.018, seed: i * 3.3, lift,
       uvFn: (a, v, rm) => [((a * rm) / 1.6) * uScale + uOff, v * vis],
       attrFn: () => [i, rnd, scallops(i), scallops(i + 1)],
@@ -111,9 +111,9 @@ export function buildCover(rng, P) {
   // inner face: one watertight surface from the ground to the smoke hole (the same vertices round every row,
   // so no cracks between rings); uv.y counts rings (the stitch rows), uv.x metres/1.6 round
   {
-    const nv = Math.ceil(sTop / 0.25), rm = P.at(sTop / 2).r;
+    const nv = Math.ceil(sTop / 0.35), rm = P.at(sTop / 2).r;
     inner.push(strip(P, 0, sTop, nv, () => O_IN, 0, {
-      doorCut: true, flipNormals: true, seed: 50, nu: 176,
+      doorCut: true, flipNormals: true, seed: 50, nu: 128,
       uvFn: (a, v, _rm, s) => [(a * rm) / 1.6, s / RING_STEP],
     }));
   }
@@ -137,7 +137,7 @@ export function buildCover(rng, P) {
     const o = (v) => { const h = 0.07 + v * hgt; return O_OUT + Math.max(surf(h), surf(h - RING_STEP) + 0.005) + 0.008; };
     const rm = P.at((s0 + s1) / 2).r + O_OUT;
     const reps = Math.max(2, Math.round((TAU * rm) / repeat));
-    bands.push(strip(P, s0, s1, 4, o, 0.08, {
+    bands.push(strip(P, s0, s1, 3, o, 0.16, {
       doorCut: P.at(s0).y < DOOR.cutY, seed: ring,
       uvFn: (a, v) => [(a / TAU) * reps, kind === 'arcade' ? 0.5 + v * 0.5 : v * 0.5],
     }));

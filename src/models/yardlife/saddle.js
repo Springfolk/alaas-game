@@ -74,7 +74,7 @@ export function saddle(K, x, z, yaw) {
     // horse): black velvet with a braid edge; a red field framed on three sides by rows of white beads, brass discs and
     // white beads. The skirt's bead-embroidered scrolls and girth slit are not modelled.
     {
-      const P = 0.56 / 360, half = 275 * P, len = 360 * P, nx = 200, nz = 90;
+      const P = 0.56 / 360, half = 275 * P, len = 360 * P;
       const pos = [], uvs = [], col = [], idx = [];
       const R = TR + 0.015, arc = R * Math.PI / 2;
       const drape = (s, zz) => { // across-distance from the spine s, along zz → [x, y] on the cloth
@@ -91,8 +91,15 @@ export function saddle(K, x, z, yaw) {
         if (x < 112 || y < 94 || y > 341 || x > 328) return [0.035, 0.025, 0.02];    // black velvet
         return [0.58, 0.07, 0.06];                                                   // red cloth
       };
+      // a sparse grid with lines hugging each colour border (±0.4 px), so the bands stay sharp: was 200 × 90 cells (36k tris)
+      const ticks = (lo, hi, n, cuts) => [...new Set([...Array.from({ length: n + 1 }, (_, i) => lo + (hi - lo) * i / n),
+        ...cuts.flatMap((c) => [c - 0.4 * P, c + 0.4 * P])].filter((v) => v >= lo && v <= hi).map((v) => Math.round(v * 1e6) / 1e6))].sort((a, b) => a - b);
+      const sb = [17 * P, 233 * P, 271 * P];
+      const S = ticks(-half, half, 36, [...sb, ...sb.map((v) => -v), arc, -arc]);
+      const Z = ticks(-len / 2, len / 2, 24, [39, 94, 341, 391].map((y) => (y - 215) * P));
+      const nx = S.length - 1, nz = Z.length - 1;
       for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
-        const s = (i / nx * 2 - 1) * half, zz = (j / nz - 0.5) * len;
+        const s = S[i], zz = Z[j];
         const [px, py] = drape(s, zz);
         pos.push(px, py, zz); uvs.push(s, zz); col.push(...tone(s, zz));
       }
@@ -105,7 +112,7 @@ export function saddle(K, x, z, yaw) {
       F.add(cg, M.cloth, mtx([0, y0 + 0.8, 0]));
       // the frame rows: [hem-side x, top y, bottom y, pitch, kind] in photo px; each runs top → hem side → bottom
       const rows = [[116, 100, 332, 6.9, 'w'], [127, 109, 324, 7.6, 'b'], [136, 117, 317, 6.9, 'w']];
-      const bead = new THREE.IcosahedronGeometry(0.0035, 0), disc = new THREE.CylinderGeometry(0.0055, 0.0055, 0.0012, 10);
+      const bead = new THREE.OctahedronGeometry(0.0035, 0), disc = new THREE.CylinderGeometry(0.0055, 0.0055, 0.0012, 7); // 3.5 mm beads, 5.5 mm discs: few facets do
       for (const sd of [-1, 1]) for (const [hx, ty, by, pitch, kind] of rows) {
         const path = [[328, ty], [hx, ty], [hx, by], [328, by]], L = [0];
         for (let k = 1; k < path.length; k++) L.push(L[k - 1] + Math.hypot(path[k][0] - path[k - 1][0], path[k][1] - path[k - 1][1]));

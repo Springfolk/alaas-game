@@ -67,27 +67,82 @@ export default async function build(ctx, placement) {
     return { p: trunk[trunk.length - 1].p.clone(), r: 0.01 };
   };
 
-  // ── roots: flared root buttresses running into the ground ──
+  // ── roots: flares that rise as ridges out of the trunk's foot and dive gently into the ground ──
+  // Oval section (b: out/up half-axis, a: across): a low ridge under the bark at the top (no collar),
+  // widening and flattening towards the ground, its thinning tip ~10 cm under the soil.
+  const RR = 12, RK = 16;
+  const ss01 = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+  const flare = (dir, L, wob) => {
+    const C = [];
+    for (let k = 0; k <= RK; k++) {
+      const t = k / RK, y = 0.7 * Math.pow(1 - t, 1.8) - 0.1 * t * t;
+      const c = trunkAt(Math.max(0, y));
+      const d = c.r * (0.78 + 0.25 * ss01(t / 0.35)) + L * Math.pow(Math.max(0, t - 0.1), 1.3);
+      const side = Math.sin(t * 5 + wob) * 0.025 * t; // a slight meander
+      C.push(new THREE.Vector3(c.p.x, y, c.p.z).addScaledVector(dir, d).add(new THREE.Vector3(-dir.z * side, 0, dir.x * side)));
+    }
+    const S = new THREE.Vector3(-dir.z, 0, dir.x);
+    const pos = [], nor = [], uv = [], col = [], idx = [];
+    let s = 0;
+    for (let k = 0; k <= RK; k++) {
+      const t = k / RK;
+      if (k) s += C[k].distanceTo(C[k - 1]);
+      const T = C[Math.min(k + 1, RK)].clone().sub(C[Math.max(k - 1, 0)]).normalize();
+      const Nk = S.clone().cross(T).normalize(); // out from the trunk at the top, up near the ground
+      const b = t < 0.4 ? 0.025 + 0.045 * ss01(t / 0.4) : 0.018 + 0.052 * Math.pow((1 - t) / 0.6, 1.3);
+      const a = t < 0.5 ? 0.08 + 0.05 * Math.sin((t / 0.5) * Math.PI / 2) : 0.04 + 0.09 * Math.pow((1 - t) / 0.5, 1.1);
+      for (let j = 0; j <= RR; j++) {
+        const q = (j / RR) * Math.PI * 2, cq = Math.cos(q), sq = Math.sin(q);
+        const p = C[k].clone().addScaledVector(S, a * cq).addScaledVector(Nk, b * sq);
+        const n = S.clone().multiplyScalar(b * cq).addScaledVector(Nk, a * sq).normalize(); // the ellipse's own normal: smooth shading
+        pos.push(p.x, p.y, p.z); nor.push(n.x, n.y, n.z); uv.push(j / RR, s); col.push(1, 1, 1);
+      }
+    }
+    for (let k = 0; k < RK; k++) for (let j = 0; j < RR; j++) {
+      const p0 = k * (RR + 1) + j, p1 = p0 + RR + 1;
+      idx.push(p0, p1, p0 + 1, p0 + 1, p1, p1 + 1);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setIndex(idx);
+    return g;
+  };
   const rootGeo = section(() => {
     const rootGeos = [];
     for (let i = 0; i < 7; i++) {
       const az = (i / 7) * Math.PI * 2 + rng() * 0.5;
-      const dir = new THREE.Vector3(Math.cos(az), 0, Math.sin(az));
-      const L = 0.25 + rng() * 0.3, c = trunkAt(0.3);
-      const pts = [];
-      for (let k = 0; k <= 8; k++) {
-        const t = k / 8;
-        pts.push(c.p.clone().addScaledVector(dir, c.r * 0.55 + L * t).add(new THREE.Vector3((rng() - 0.5) * 0.02, 0.22 - 0.36 * Math.pow(t, 0.6), (rng() - 0.5) * 0.02)));
-      }
-      rootGeos.push(tube(pts, (t) => 0.1 * (1 - t) + 0.035, { radial: 7 }));
+      rootGeos.push(flare(new THREE.Vector3(Math.cos(az), 0, Math.sin(az)), 0.4 + rng() * 0.35, rng() * 6));
     }
-    return treeAttrs(merge(rootGeos), 0.8);
+    // the trunk's open foot carried 40 cm down and a little out: on a slope or seen low it never floats
+    const bark = v.lod0.bark, P = bark.attributes.position, Nn = bark.attributes.normal, UV = bark.attributes.uv;
+    const ring = [];
+    for (let j = 0; j < P.count && Math.abs(P.getY(j)) < 0.05; j++) ring.push(j); // the trunk's first ring (y ≈ 0, tilted a hair)
+    const o = trunk[0].p, pos = [], nor = [], uv = [], col = [], idx = [];
+    for (const k of [0, 1]) for (const j of ring) {
+      const s = k ? 1 : 1.15;
+      pos.push(o.x + (P.getX(j) - o.x) * s, k ? P.getY(j) : -0.4, o.z + (P.getZ(j) - o.z) * s);
+      nor.push(Nn.getX(j), Nn.getY(j), Nn.getZ(j));
+      uv.push(UV.getX(j), UV.getY(j) - (k ? 0 : 0.3));
+      col.push(1, 1, 1);
+    }
+    const n = ring.length;
+    for (let j = 0; j < n - 1; j++) idx.push(j, j + 1, n + j, j + 1, n + j + 1, n + j);
+    const foot = new THREE.BufferGeometry();
+    foot.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    foot.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    foot.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    foot.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    foot.setIndex(idx);
+    return treeAttrs(merge([...rootGeos, foot]), 0.8);
   });
   const roots = new THREE.Mesh(rootGeo, barkMaterial('birch', { lod: false, wind: false }));
   roots.name = 'sacred-birch-roots'; roots.castShadow = true;
   const rootsGroup = new THREE.Group(); rootsGroup.add(roots); object.add(rootsGroup);
 
-  // ── salama: one loose loop around the trunk at 1.7 m, sagging on the meadow side (+X) ──
+  // ── salama: one loop around the trunk at 1.7 m, lying on the bark, dipping on the meadow side (+X) ──
   const front = 0.25; // azimuth the swag hangs towards
   const loop = [];
   const N = 64;
@@ -96,7 +151,7 @@ export default async function build(ctx, placement) {
     const sag = Math.pow((1 + Math.cos(a - front)) / 2, 2.2);
     const y = 1.76 - 0.3 * sag;
     const c = trunkAt(y);
-    const r = c.r + 0.004 + 0.1 * sag;
+    const r = c.r + 0.002 + 0.012 * sag; // on the bark; the hangings' weight lifts it a little off the front
     loop.push(new THREE.Vector3(c.p.x + Math.cos(a) * r, y, c.p.z + Math.sin(a) * r));
   }
   // the knot's two free ends hang at the back
@@ -115,14 +170,16 @@ export default async function build(ctx, placement) {
 
   // seven hangings on the front half, ~25 cm apart: tuft, ribbon, tuft, horse, tuft, ribbon, feather
   const hangAt = (i) => loop[Math.round(N / 2 + (i - 3) * 5.5)].clone();
+  const outAt = (p) => { const c = trunkAt(p.y).p; return new THREE.Vector3(p.x - c.x, 0, p.z - c.z).normalize(); }; // away from the trunk
   const hairParts = [], clothParts = [];
   const order = ['tuft', 'ribbonW', 'tuft', 'horse', 'tuft', 'ribbonB', 'feather'];
   const thread = [];
   order.forEach((kind, i) => {
-    const at = hangAt(i);
-    if (kind === 'tuft') hairParts.push(...tuft(rng, at.toArray(), { len: 0.15, locks: 12, color: [0.86, 0.84, 0.78] }));
-    if (kind === 'ribbonW') clothParts.push(ribbon(rng, at.toArray(), { len: 0.2, width: 0.025, color: [0.84, 0.83, 0.78] }));
-    if (kind === 'ribbonB') clothParts.push(ribbon(rng, at.toArray(), { len: 0.2, width: 0.025, color: [0.5, 0.64, 0.78] }));
+    const at = hangAt(i), o = outAt(at);
+    const dir = [o.x * 0.3, -1, o.z * 0.3]; // falling clear of the bark
+    if (kind === 'tuft') hairParts.push(...tuft(rng, at.toArray(), { len: 0.15, locks: 12, color: [0.86, 0.84, 0.78], dir }));
+    if (kind === 'ribbonW') clothParts.push(ribbon(rng, at.toArray(), { len: 0.2, width: 0.025, color: [0.84, 0.83, 0.78], dir }));
+    if (kind === 'ribbonB') clothParts.push(ribbon(rng, at.toArray(), { len: 0.2, width: 0.025, color: [0.5, 0.64, 0.78], dir }));
     if (kind === 'horse' || kind === 'feather') thread.push({ at, kind });
   });
   const hairMesh = new THREE.Mesh(merge(hairParts), hair('salama-hair', 0.02));
@@ -133,7 +190,8 @@ export default async function build(ctx, placement) {
   // birch-bark horse (~6 cm, pale bark side out) and a duck feather, each on a short hair thread
   const smalls = [];
   for (const { at, kind } of thread) {
-    const low = at.clone().add(new THREE.Vector3(0, -0.07, 0));
+    const o = outAt(at), tg = new THREE.Vector3(-o.z, 0, o.x);
+    const low = at.clone().addScaledVector(o, 0.008).add(new THREE.Vector3(0, -0.07, 0));
     smalls.push(noSway(setColor(tube([at, low], 0.0008, { radial: 4 }), [0.7, 0.68, 0.62])));
     const sh = new THREE.Shape();
     if (kind === 'horse') { // side-view horse silhouette, 6 cm nose to tail
@@ -148,8 +206,9 @@ export default async function build(ctx, placement) {
     const c = kind === 'horse' ? [0.78, 0.7, 0.56] : [0.42, 0.37, 0.3];
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i);
-      pos.setXYZ(i, low.x, low.y + (kind === 'horse' ? y - 0.012 : y), low.z + x);
-      nrm.set([1, 0, 0], i * 3); col.set(c, i * 3);
+      // flat to the bark (along its tangent), never edge-on into it
+      pos.setXYZ(i, low.x + tg.x * x, low.y + (kind === 'horse' ? y - 0.012 : y), low.z + tg.z * x);
+      nrm.set([o.x, 0, o.z], i * 3); col.set(c, i * 3);
     }
     g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -163,6 +222,7 @@ export default async function build(ctx, placement) {
 
   // ── faded cloth strips tied on the low branches between 1.8 and 2.5 m ──
   const spots = [];
+  for (const limb of v.skeleton.low) limb.pts.forEach((pt, k, L) => { pt.d = L[Math.min(k + 1, L.length - 1)].p.clone().sub(L[Math.max(k - 1, 0)].p).normalize(); });
   for (const limb of v.skeleton.low) for (const pt of limb.pts) {
     const d = Math.hypot(pt.p.x, pt.p.z);
     if (pt.p.y > 1.85 && pt.p.y < 2.55 && d > 0.9) spots.push(pt);
@@ -183,8 +243,9 @@ export default async function build(ctx, placement) {
     return best;
   };
   const tie = (spot, color, g = stripParts) => {
-    const at = spot.p.clone().add(new THREE.Vector3(0, -spot.r - 0.004, 0));
-    knots.push(setColor(tube([at.clone().add(new THREE.Vector3(-0.012, 0.012, 0)), at.clone().add(new THREE.Vector3(0.012, 0.01, 0.004))], spot.r + 0.006, { radial: 6 }), color));
+    // the knot: a band wrapped round the limb (along it), not a ring hanging under it; strips fall from its underside
+    const at = spot.p.clone().add(new THREE.Vector3(0, -spot.r - 0.006, 0));
+    knots.push(setColor(tube([spot.p.clone().addScaledVector(spot.d, -0.012), spot.p.clone().addScaledVector(spot.d, 0.012)], spot.r + 0.005, { radial: 7 }), color));
     g.push(ribbon(rng, at.toArray(), { len: 0.28 + rng() * 0.14, width: 0.032 + rng() * 0.01, color }));
     g.push(ribbon(rng, at.clone().add(new THREE.Vector3(0.01, 0, 0.004)).toArray(), { len: 0.2 + rng() * 0.12, width: 0.03, color }));
   };
@@ -209,7 +270,6 @@ export default async function build(ctx, placement) {
     a.needsUpdate = true;
   };
   const mineAt = mineSpot.p.clone();
-
   // ── interactions ──
   const trunkTarget = new THREE.Group(); trunkTarget.name = 'sacred-birch-target';
   object.remove(bark); trunkTarget.add(bark); object.add(trunkTarget);

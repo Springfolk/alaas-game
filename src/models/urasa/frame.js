@@ -72,12 +72,17 @@ export function buildFrame(rng, P) {
     const a = ((k + 0.5) / N_POST) * TAU + (rng() - 0.5) * 0.02;
     postAngles.push(a);
     const r0 = 0.1 + rng() * 0.012, top = POST_H + (rng() - 0.5) * 0.03, seed = k * 13.7;
+    // rows: 12 even steps plus three across each turned ring (even rows only hit or missed the 1.2 cm rings)
+    const RINGS = [0.84, 1.06, 1.5, 1.88], ys = [];
+    for (let i = 0; i <= 12; i++) ys.push(-0.15 + (top + 0.15) * (i / 12));
+    for (const yb of RINGS) ys.push(yb - 0.02, yb, yb + 0.02);
+    ys.sort((a, b) => a - b);
     const prof = [];
-    for (let i = 0; i <= 44; i++) {
-      const y = -0.15 + (top + 0.15) * (i / 44);
+    for (const y of ys) {
+      if (prof.length && y - prof[prof.length - 1][1] < 0.012) continue;
       let r = r0 * (1.06 - 0.12 * (y / top));
       // turned rings framing the carved bands
-      for (const yb of [0.84, 1.06, 1.5, 1.88]) r -= 0.006 * Math.exp(-(((y - yb) / 0.012) ** 2));
+      for (const yb of RINGS) r -= 0.006 * Math.exp(-(((y - yb) / 0.012) ** 2));
       prof.push([r, y]);
     }
     const g = lathe(prof, 14, (r, y, ang) => r * (1 + valueNoise(ang * 1.3 + seed, y * 2.2, 5) * 0.06 + valueNoise(ang * 4 + seed, y * 9, 6) * 0.015));
@@ -91,16 +96,16 @@ export function buildFrame(rng, P) {
   }
 
   // ---- hoops: the lower one of bent poles lashed on the post tops; middle and top ones tied inside the poles
-  const hoopRing = (rc, y, rt, parts, seed) => {
+  const hoopRing = (rc, y, rt, parts, seed, radial = 8) => {
     for (let k = 0; k < parts; k++) {
       const a0 = (k / parts) * TAU + seed, a1 = a0 + TAU / parts + 0.25;
-      const pts = [];
-      for (let i = 0; i <= 48; i++) {
-        const a = a0 + (a1 - a0) * (i / 48), side = (k % 2 ? 1 : -1) * 0.012;
+      const pts = [], nh = 32;
+      for (let i = 0; i <= nh; i++) {
+        const a = a0 + (a1 - a0) * (i / nh), side = (k % 2 ? 1 : -1) * 0.012;
         const rr = rc + side + valueNoise(a * 3, seed, 9) * 0.008;
         pts.push(new THREE.Vector3(Math.cos(a) * rr, y + valueNoise(a * 2, seed, 11) * 0.01 + (k % 2) * 0.01, Math.sin(a) * rr));
       }
-      const g = tube(pts, (t) => rt * (1.1 - 0.25 * Math.abs(t - 0.5) * 2) * (t < 0.03 || t > 0.97 ? 0.85 : 1), 8, { capStart: true, capEnd: true });
+      const g = tube(pts, (t) => rt * (1.1 - 0.25 * Math.abs(t - 0.5) * 2) * (t < 0.03 || t > 0.97 ? 0.85 : 1), radial, { capStart: true, capEnd: true });
       const uv = g.attributes.uv;
       for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) + 10); // plain (uncarved)
       G.post.push(g);
@@ -118,8 +123,8 @@ export function buildFrame(rng, P) {
   const midS = P.sAtY(5.5), topS = P.sAtY(8.5);
   const mid = P.at(midS), tp = P.at(topS);
   const RT_MID = 0.042, RT_TOP = 0.034;
-  hoopRing(mid.r - (POLE_R + RT_MID) * mid.nr, mid.y - (POLE_R + RT_MID) * mid.ny, RT_MID, 3, 1.3);
-  hoopRing(tp.r - (POLE_R * 0.8 + RT_TOP) * tp.nr, tp.y - (POLE_R * 0.8 + RT_TOP) * tp.ny, RT_TOP, 2, 2.1);
+  hoopRing(mid.r - (POLE_R + RT_MID) * mid.nr, mid.y - (POLE_R + RT_MID) * mid.ny, RT_MID, 3, 1.3, 6);
+  hoopRing(tp.r - (POLE_R * 0.8 + RT_TOP) * tp.nr, tp.y - (POLE_R * 0.8 + RT_TOP) * tp.ny, RT_TOP, 2, 2.1, 6);
   // hoop lashed to each post top
   for (const a of postAngles) {
     const c = new THREE.Vector3(Math.cos(a) * R_POST, hoopY1, Math.sin(a) * R_POST);
@@ -128,12 +133,26 @@ export function buildFrame(rng, P) {
 
   // ---- poles. Inner: on the profile; outer: over the bark, they make the crown.
   // sEnd < sApex: a pole that stops just past a hoop (the old way: the poles reach the lower, middle and top hoops in turn)
+  // Rows along a pole: short where the profile bends (over the lower hoop) and where the poles gather to the tie,
+  // up to 1.1 m along the straight cone (the bend's chord stays within ~1 cm of the curve).
+  const poleRows = (s0, sEnd, toApex) => {
+    const out = [s0];
+    let s = s0;
+    while (sEnd - s > 1e-4) {
+      let ds = Math.min(1.1, sEnd - s);
+      if (toApex && s + ds > sApex - 1.8) ds = Math.max(Math.min(ds, sApex - 1.8 - s), Math.min(0.45, sEnd - s));
+      const q0 = P.at(s);
+      while (ds > 0.3) { const q1 = P.at(s + ds); if (Math.acos(Math.min(1, q0.tr * q1.tr + q0.ty * q1.ty)) < 0.08) break; ds *= 0.75; }
+      s = Math.min(sEnd, s + ds);
+      out.push(s);
+    }
+    return out;
+  };
   const polePath = (a, o, s0, sEnd, extra, lateral, wobble) => {
-    const pts = [], n = Math.max(6, Math.ceil((sEnd - s0) / 0.42));
+    const pts = [];
     const perp = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a));
     const toApex = sEnd >= sApex;
-    for (let i = 0; i <= n; i++) {
-      const s = s0 + (sEnd - s0) * (i / n);
+    for (const s of poleRows(s0, sEnd, toApex)) {
       const v = onProf(P, s, a, toApex ? o * (1 - Math.max(0, (s - (sApex - 1.6)) / 1.6) * 0.85) : o);
       const k = toApex ? Math.max(0, Math.min(1, (s - (sApex - 1.8)) / 1.8)) : 0;
       v.addScaledVector(perp, lateral * k * k * (3 - 2 * k) + Math.sin(s * 1.1 + wobble) * 0.01);
@@ -143,7 +162,7 @@ export function buildFrame(rng, P) {
       // straight on past the apex
       const d = new THREE.Vector3(Math.cos(a) * apexDir.tr, apexDir.ty, Math.sin(a) * apexDir.tr).normalize();
       const last = pts[pts.length - 1];
-      for (let i = 1; i <= 4; i++) pts.push(last.clone().addScaledVector(d, extra * (i / 4)));
+      for (let i = 1; i <= 2; i++) pts.push(last.clone().addScaledVector(d, extra * (i / 2)));
     }
     return pts;
   };
@@ -211,7 +230,8 @@ export function buildFrame(rng, P) {
   const jz = DOOR.hw + 0.065;
   for (const s of [-1, 1]) G.timber.push(beam([DOOR.rAt(-0.12), -0.12, s * jz], [DOOR.rTop, DOOR.h + 0.115, s * jz], 0.13, 0.2, 0.015));
   G.timber.push(beam([DOOR.rTop, DOOR.h + 0.06, -(jz + 0.2)], [DOOR.rTop, DOOR.h + 0.06, jz + 0.2], 0.22, 0.12, 0.015));
-  G.timber.push(tube([new THREE.Vector3(DOOR.r - 0.07, 0.04, -jz - 0.08), new THREE.Vector3(DOOR.r - 0.07, 0.045, jz + 0.08)], () => 0.065, 10, { capStart: true, capEnd: true }));
+  // the threshold ends inside the jambs: a straight log past them stood out of the curving bark, its flat end showing
+  G.timber.push(tube([new THREE.Vector3(DOOR.r - 0.07, 0.04, -jz - 0.03), new THREE.Vector3(DOOR.r - 0.07, 0.045, jz + 0.03)], () => 0.065, 10, { capStart: true, capEnd: true }));
 
   const geoms = {};
   for (const [k, list] of Object.entries(G)) geoms[k] = merge(list);

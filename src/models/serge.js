@@ -6,7 +6,7 @@
 // birch-bark horse; the player may tie one ribbon (white / light blue / green), which stays.
 // On the north post: a coiled horsehair tether (кыл көнтөс) — the "horsehair" entry.
 import * as THREE from 'three/webgpu';
-import { turned, bow, tube, sagCurve, merge, tris } from './yard/geo.js';
+import { turned, bow, tube, sagCurve, merge, tris, surfaceOf } from './yard/geo.js';
 import { larch, rope, hair, cloth, birchBark, trodden, grass } from './yard/mat.js';
 import { groundOf, troddenPatch, blob, tuft, ribbon, noSway, grassClump, choose, tween, ease } from './yard/bits.js';
 import { section } from '../load/geocache.js';
@@ -170,14 +170,17 @@ export default async function build(ctx, placement) {
   // ── салама on the main neck ──
   const M = posts[0];
   const ny = M.gy + 1.378, nr = 0.054; // the waist of the main post
-  const knot = new THREE.Vector3(M.x + nr + 0.006, ny + 0.002, M.z + 0.004);
   const sg = section(() => {
     const sal = [], hairs = [], cloths = [], bark = [];
+    // laid on the post's real surface (bent, oval, turned), so the cord neither sinks into the wood nor floats
+    const surf = surfaceOf(postsGeo, M.x, M.z);
+    const on = (y, a, out) => { const s = surf(y, a), r = s.r + out; return new THREE.Vector3(s.cx + Math.cos(a) * r, y, s.cz - Math.sin(a) * r); };
+    const knot = on(ny + 0.002, 0, 0.006).add(new THREE.Vector3(0, 0, 0.004));
     // the loop around the neck, slightly tilted, crossing at a knot on the east face
     const loop = [];
     for (let k = 0; k <= 40; k++) {
       const a = (k / 40) * TAU;
-      loop.push(new THREE.Vector3(M.x + Math.cos(a) * (nr + 0.003), ny + Math.sin(a + 0.6) * 0.008 + (k / 40) * 0.006, M.z - Math.sin(a) * (nr + 0.003)));
+      loop.push(on(ny + Math.sin(a + 0.6) * 0.008 + (k / 40) * 0.006, a, 0.0034));
     }
     sal.push(tube(loop, 0.0028, { radial: 6 }));
     // two tails hanging from the knot down the east face, one longer, curving with the post
@@ -185,10 +188,8 @@ export default async function build(ctx, placement) {
     for (const [len, side] of [[0.62, -1], [0.44, 1]]) {
       const pts = [];
       for (let k = 0; k <= 30; k++) {
-        const t = k / 30, y = knot.y - t * len;
-        const r = mainR(y - M.gy) + 0.006 + t * 0.03; // follow the post, swinging out a little
-        const a = side * (0.12 + t * 0.35);
-        pts.push(new THREE.Vector3(M.x + Math.cos(a) * Math.max(r, nr + 0.006 + t * 0.03), y, M.z - Math.sin(a) * Math.max(r, nr + 0.006)));
+        const t = k / 30;
+        pts.push(on(knot.y - t * len, side * (0.12 + t * 0.35), 0.0034 + t * 0.03)); // swinging out a little
       }
       tails.push(pts);
       sal.push(tube(pts, (t) => 0.0028 * (1 - t * 0.2), { radial: 6 }));
@@ -205,8 +206,9 @@ export default async function build(ctx, placement) {
     cloths.push(ribbon(rng, at(tails[1], 0.75), { len: 0.16, color: [0.6, 0.62, 0.48], width: 0.022 })); // sun-bleached green
     // birch-bark horse silhouette (~6 cm), tied on a short thread
     bark.push(horseCutout(at(tails[0], 0.82)));
-    return { rope: merge(sal.map(noSway)), hair: merge(hairs), cloth: merge(cloths), bark: merge(bark) };
+    return { rope: merge(sal.map(noSway)), hair: merge(hairs), cloth: merge(cloths), bark: merge(bark), knot: knot.toArray() };
   });
+  const knot = new THREE.Vector3(...(sg.knot || [M.x + nr + 0.006, ny + 0.002, M.z + 0.004]));
 
   const salRope = new THREE.Mesh(sg.rope, rope({ key: 'salama', colors: [0xe9e4d6, 0x1a1712], plies: 2, pitch: 0.02, radius: 0.0028 }));
   const salHair = new THREE.Mesh(sg.hair, hair('serge-hair'));
@@ -232,20 +234,31 @@ export default async function build(ctx, placement) {
   const N = posts[1];
   const coilY = N.gy + N.H - 0.2;
   const cg = section(() => {
-    const coil = [];
+    const coil = [], RR = 0.006;
+    const surf = surfaceOf(postsGeo, N.x, N.z);
+    // push a point out of the post's real surface, so no turn cuts into the wood
+    const clear = (v) => {
+      const c = surf(v.y, 0), dx = v.x - c.cx, dz = v.z - c.cz, d = Math.hypot(dx, dz) || 1;
+      const r = surf(v.y, Math.atan2(-dz, dx)).r + RR + 0.001;
+      if (d < r) { v.x = c.cx + (dx / d) * r; v.z = c.cz + (dz / d) * r; }
+      return v;
+    };
+    // each turn rings the neck: it rests in the groove on the east face and hangs down past the west face
     for (let l = 0; l < 4; l++) {
-      const pts = [], drop = 0.3 + l * 0.035 + rng() * 0.02, sw = 0.12 + l * 0.012;
+      const pts = [], drop = 0.3 + l * 0.035 + rng() * 0.02, W = 0.1 + l * 0.012;
+      const aT = (l - 1.5) * 0.14, yT = coilY + (l - 1.5) * 0.011, c = surf(yT, aT), rE = c.r + RR;
+      const ex = Math.cos(aT), ez = -Math.sin(aT); // east (top) direction and its perpendicular
       for (let k = 0; k <= 36; k++) {
-        const t = k / 36, a = t * TAU;
-        // a loop hanging from the neck: over the top of the groove, down the west face
-        const hang = (1 - Math.cos(a)) / 2;
-        pts.push(new THREE.Vector3(N.x - 0.075 - hang * 0.04 - l * 0.012, coilY - hang * drop, N.z + Math.sin(a) * sw * 0.5 * (0.6 + hang * 0.4) + l * 0.006));
+        const u = (k / 36) * TAU, hang = (1 - Math.cos(u)) / 2;
+        const along = Math.cos(u) * rE - hang * (0.05 + l * 0.01), across = Math.sin(u) * W * (0.8 + hang * 0.2);
+        pts.push(clear(new THREE.Vector3(c.cx + ex * along - ez * across, yT - hang * drop, c.cz + ez * along + ex * across)));
       }
-      coil.push(tube(pts, 0.006, { radial: 7, closed: false }));
+      coil.push(tube(pts, RR, { radial: 7, closed: false }));
     }
-    // the free end hanging down with a frayed tip
-    const endPts = sagCurve([N.x - 0.08, coilY - 0.02, N.z - 0.06], [N.x - 0.1, coilY - 0.62, N.z - 0.11], -0.03, 0.03);
-    coil.push(tube(endPts, 0.006, { radial: 7 }));
+    // the free end leaves the groove on the north-west and hangs down with a frayed tip
+    const c0 = surf(coilY, 2.2);
+    const endPts = sagCurve([c0.cx + Math.cos(2.2) * (c0.r + RR), coilY - 0.01, c0.cz - Math.sin(2.2) * (c0.r + RR)], [N.x - 0.14, coilY - 0.62, N.z - 0.11], -0.03, 0.03).map(clear);
+    coil.push(tube(endPts, RR, { radial: 7 }));
     return { coil: merge(coil.map(noSway)), tip: merge(tuft(rng, endPts[endPts.length - 1].toArray(), { len: 0.06, color: [0.07, 0.055, 0.04], locks: 6, spread: 0.005 })) };
   });
   const coilMesh = new THREE.Mesh(cg.coil, rope({ key: 'tether', colors: [0x231c15, 0x3a2e22, 0x15110d], plies: 3, pitch: 0.035, radius: 0.006 }));
@@ -253,8 +266,8 @@ export default async function build(ctx, placement) {
   const coilGroup = new THREE.Group();
   coilGroup.name = 'horsehair';
   coilGroup.add(coilMesh, coilTip);
-  const coilHit = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.6, 0.22), hitMat);
-  coilHit.position.set(N.x - 0.1, coilY - 0.25, N.z); coilHit.visible = false;
+  const coilHit = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.6, 0.26), hitMat);
+  coilHit.position.set(N.x - 0.05, coilY - 0.25, N.z); coilHit.visible = false;
   coilGroup.add(coilHit);
   object.add(coilGroup);
 

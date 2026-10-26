@@ -3,7 +3,7 @@
 // mares stay near to be milked. The herd is out on pasture: only signs remain — hoof-trodden ground
 // along the line, horse droppings, a halter dropped in the grass, a birch-bark milk pail by a post.
 import * as THREE from 'three/webgpu';
-import { turned, logProfile, bow, tube, sagCurve, strip, merge, tris } from './yard/geo.js';
+import { turned, logProfile, bow, tube, sagCurve, strip, merge, tris, surfaceOf } from './yard/geo.js';
 import { larch, rope, trodden, grass, plain, birchBark } from './yard/mat.js';
 import { groundOf, troddenPatch, grassClump, noSway } from './yard/bits.js';
 import { fbm } from '../util.js';
@@ -24,9 +24,12 @@ export default async function build(ctx, placement) {
   const wood = [];
   for (const p of posts) {
     p.gy = ground(p.x, p.z);
-    const H = 1.62 + rng() * 0.12;
-    const g = turned(logProfile(H + 0.35, 0.085, 0.068, { step: 0.12 }), {
-      radial: 16, rng, noise: 0.05, oval: 0.06, bend: bow(rng, H, 0.025), capTop: true,
+    const H = 1.62 + rng() * 0.12, L = H + 0.35;
+    // the top hewn round and weathered (a flat sawn disc read as cardboard)
+    const prof = logProfile(L, 0.085, 0.068, { step: 0.12 }).filter(([y]) => y < L - 0.05);
+    for (let k = 0; k <= 6; k++) { const q = (k / 6) * Math.PI / 2; prof.push([L - 0.05 + Math.sin(q) * 0.045, 0.069 * Math.pow(Math.cos(q), 0.6) + 0.0005]); }
+    const g = turned(prof, {
+      radial: 16, rng, noise: 0.05, oval: 0.06, bend: bow(rng, H, 0.025),
       // hewn top, worn bright where the rope rubs, dark at the foot
       carve: (y, a) => (Math.abs(y - (TIE + 0.35)) < 0.03 ? -0.008 * (1 - Math.abs(y - TIE - 0.35) / 0.03) : 0) + Math.abs(Math.sin(a * 5 + y)) * -0.003,
       color: (y, a, c) => { const d = Math.max(0, Math.min(1, (0.55 - y) / 0.3)); const w = Math.abs(y - TIE - 0.35) < 0.06 ? 1.15 : 1; c[0] = 0.95 * w * (1 - d * 0.45); c[1] = 0.87 * w * (1 - d * 0.5); c[2] = 0.76 * w * (1 - d * 0.55); },
@@ -34,23 +37,32 @@ export default async function build(ctx, placement) {
     g.translate(p.x, p.gy - 0.35, p.z);
     wood.push(g);
   }
-  const postMesh = new THREE.Mesh(merge(wood), larch(ctx, { key: 'larch-sele', lichen: 0.4 }));
+  const postGeo = merge(wood);
+  const postMesh = new THREE.Mesh(postGeo, larch(ctx, { key: 'larch-sele', lichen: 0.4 }));
   postMesh.name = 'sele-posts'; postMesh.castShadow = true;
   object.add(postMesh);
 
   // ── the rope: wrapped twice round each post, then the long sagging span ──
+  // laid on the posts' real surfaces (bent, oval), so the turns neither sink into the wood nor float off it
+  const RR = 0.0065;
+  for (const p of posts) p.surf = surfaceOf(postGeo, p.x, p.z);
+  const on = (p, y, ang, out) => { const s = p.surf(y, ang), r = s.r + out; return new THREE.Vector3(s.cx + Math.cos(ang) * r, y, s.cz - Math.sin(ang) * r); };
   const ropes = [];
-  const a = [posts[0].x, posts[0].gy + TIE, posts[0].z + 0.08], b = [posts[1].x, posts[1].gy + TIE, posts[1].z - 0.08];
+  // the span leaves each post on the side facing the other (a = −π/2 faces +z)
+  const a = on(posts[0], posts[0].gy + TIE, -Math.PI / 2, RR).toArray(), b = on(posts[1], posts[1].gy + TIE, Math.PI / 2, RR).toArray();
   const span = sagCurve(a, b, SAG, 0.08, 0.04, rng);
-  ropes.push(tube(span, 0.0065, { radial: 7 }));
+  ropes.push(tube(span, RR, { radial: 7 }));
   for (const [p, dirz] of [[posts[0], 1], [posts[1], -1]]) {
     const pts = [];
     for (let k = 0; k <= 48; k++) {
       const t = k / 24, ang = t * TAU + (dirz > 0 ? Math.PI / 2 : -Math.PI / 2);
-      pts.push(new THREE.Vector3(p.x + Math.cos(ang) * 0.082, p.gy + TIE + 0.02 - t * 0.018, p.z - Math.sin(ang) * 0.082));
+      pts.push(on(p, p.gy + TIE + 0.02 - t * 0.018, ang, RR + 0.0006));
     }
-    ropes.push(tube(pts, 0.0065, { radial: 7 }));
+    ropes.push(tube(pts, RR, { radial: 7 }));
   }
+  // things lying on the trodden earth sit on its sheet (troddenPatch lifts it 2.5 cm over the ground): under it,
+  // the see-through sheet greyed them out
+  const top = (x, z) => ground(x, z) + 0.027;
   // foal tethers every ~1.6 m: a knot on the line, a short rope hanging down to a loop
   const tethers = [];
   const along = (t) => span[Math.round(t * (span.length - 1))];
@@ -63,15 +75,14 @@ export default async function build(ctx, placement) {
     knot.translate(k.x, k.y - 0.004, k.z);
     knot.setAttribute('color', new THREE.Float32BufferAttribute(new Array(knot.attributes.position.count * 3).fill(1), 3));
     tethers.push(knot);
-    const gy = ground(k.x, k.z);
     // the tether hangs, the end loop lies in the grass (some hang free)
     const lying = rng() < 0.6;
     const len = 0.7 + rng() * 0.3;
-    const endY = lying ? gy + 0.02 : k.y - len * 0.75;
+    const endY = lying ? top(k.x, k.z) + 0.005 : k.y - len * 0.75;
     const side = (rng() - 0.5) * 0.6;
     const end = [k.x + side, endY, k.z + (rng() - 0.5) * 0.3];
     const pts = sagCurve([k.x, k.y - 0.01, k.z], end, -0.06, 0.05, 0.01, rng);
-    if (lying) pts.forEach((p) => { p.y = Math.max(p.y, ground(p.x, p.z) + 0.012); });
+    if (lying) pts.forEach((p) => { p.y = Math.max(p.y, top(p.x, p.z) + 0.004); });
     tethers.push(tube(pts, 0.0045, { radial: 6 }));
     // the loop at the free end
     const loop = [];
@@ -81,7 +92,7 @@ export default async function build(ctx, placement) {
       const r = 0.07;
       const lx = Math.cos(u) * r, lz = Math.sin(u) * r;
       const px = end[0] + Math.cos(la) * (lx + r) - Math.sin(la) * lz, pz = end[2] + Math.sin(la) * (lx + r) + Math.cos(la) * lz;
-      loop.push(new THREE.Vector3(px, lying ? ground(px, pz) + 0.012 : end[1] - Math.abs(lz) * 0.4 - (lx + r) * 0.9, lying ? pz : end[2] + lz * 0.3));
+      loop.push(new THREE.Vector3(px, lying ? top(px, pz) + 0.004 : end[1] - Math.abs(lz) * 0.4 - (lx + r) * 0.9, lying ? pz : end[2] + lz * 0.3));
     }
     tethers.push(tube(loop, 0.0045, { radial: 6 }));
   }
@@ -106,9 +117,9 @@ export default async function build(ctx, placement) {
     const n = 5 + Math.floor(rng() * 6), old = rng() < 0.5;
     for (let i = 0; i < n; i++) {
       const x = cx + (rng() - 0.5) * 0.22, z = cz + (rng() - 0.5) * 0.22, r = 0.03 + rng() * 0.012;
-      const g = new THREE.SphereGeometry(r, 7, 5);
+      const g = new THREE.SphereGeometry(r, 10, 7);
       g.scale(1, 0.75, 1.15); g.rotateY(rng() * TAU);
-      g.translate(x, ground(x, z) + r * 0.45 + (i > n / 2 ? r * 0.8 : 0), z);
+      g.translate(x, top(x, z) + r * 0.25 + (i > n / 2 ? r * 0.8 : 0), z);
       const col = old ? [0.13, 0.11, 0.07] : [0.06, 0.05, 0.028];
       g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(g.attributes.position.count).fill(col).flat(), 3));
       dung.push(g);
@@ -127,27 +138,28 @@ export default async function build(ctx, placement) {
       const u = (j / n) * TAU, r = 1 + Math.sin(u * 3 + rot) * 0.15;
       const x = cx + (Math.cos(u) * rx * Math.cos(rot) - Math.sin(u) * rz * Math.sin(rot)) * r;
       const z = cz + (Math.cos(u) * rx * Math.sin(rot) + Math.sin(u) * rz * Math.cos(rot)) * r;
-      pts.push(new THREE.Vector3(x, ground(x, z) + 0.01 + Math.max(0, Math.sin(u * 2 + rot)) * lift, z));
+      pts.push(new THREE.Vector3(x, top(x, z) + 0.002 + Math.max(0, Math.sin(u * 2 + rot)) * lift, z));
     }
     return pts;
   };
   straps.push(strip(crumple(hx, hz, 0.13, 0.09, 0.4, 28, 0.03), 0.026, { up: [0, 1, 0] }));
   straps.push(strip(crumple(hx + 0.17, hz + 0.08, 0.2, 0.12, 1.1, 32, 0.05), 0.024, { up: [0, 1, 0], twist: 0.6 }));
-  straps.push(strip(sagCurve([hx + 0.1, ground(hx + 0.1, hz - 0.08) + 0.012, hz - 0.08], [hx + 0.36, ground(hx + 0.36, hz + 0.02) + 0.012, hz + 0.02], 0, 0.04), 0.024, { up: [0, 1, 0] }));
-  for (const g of straps) setCol(g, [0.16, 0.1, 0.06]);
+  straps.push(strip(sagCurve([hx + 0.1, top(hx + 0.1, hz - 0.08) + 0.004, hz - 0.08], [hx + 0.36, top(hx + 0.36, hz + 0.02) + 0.004, hz + 0.02], 0, 0.04), 0.024, { up: [0, 1, 0] }));
+  for (const g of straps) setCol(g, [0.055, 0.032, 0.018]); // old dark leather
   // a wooden toggle fastening the nose band
-  const toggle = turned(logProfile(0.07, 0.008, 0.007, { step: 0.035 }), { radial: 6, rng, noise: 0.03, capTop: true, capBottom: true, color: (y, a, c) => { c[0] = 0.55; c[1] = 0.45; c[2] = 0.32; } });
+  const toggle = turned(logProfile(0.07, 0.008, 0.007, { step: 0.035 }), { radial: 6, rng, noise: 0.03, capTop: true, capBottom: true });
+  setCol(toggle, [0.3, 0.24, 0.16]); // ends too: the caps' pale end grain read as a white plastic peg
   toggle.rotateZ(Math.PI / 2); toggle.rotateY(0.7);
-  toggle.translate(hx + 0.07, ground(hx, hz) + 0.018, hz - 0.08);
+  toggle.translate(hx + 0.07, top(hx, hz) + 0.01, hz - 0.08);
   straps.push(toggle);
-  const halterMesh = new THREE.Mesh(merge(straps), plain('leather', { roughness: 0.6, side: THREE.DoubleSide, bump: 0.0008, bumpFreq: 200 }));
+  const halterMesh = new THREE.Mesh(merge(straps), plain('leather', { roughness: 0.85, side: THREE.DoubleSide, bump: 0.0008, bumpFreq: 200 }));
   halterMesh.castShadow = false;
   object.add(halterMesh);
   // its lead rope trailing off in a lazy S
   const lead = [];
   for (let j = 0; j <= 40; j++) {
     const t = j / 40, x = hx + 0.3 + t * 1.3 + Math.sin(t * 5) * 0.18, z = hz - 0.1 - t * 0.7 + Math.cos(t * 4) * 0.12;
-    lead.push(new THREE.Vector3(x, ground(x, z) + 0.008, z));
+    lead.push(new THREE.Vector3(x, top(x, z) + 0.004, z));
   }
   const leadMesh = new THREE.Mesh(noSway(tube(lead, 0.006, { radial: 6 })), rope({ key: 'sele-rope', colors: [0x2a221a, 0x3d3228, 0x5e5244], plies: 3, pitch: 0.04, radius: 0.0065 }));
   leadMesh.castShadow = false;
@@ -226,10 +238,12 @@ function buildPail(rng) {
   trim.castShadow = false;
   g.add(trim);
   // milk film inside the bottom
-  const milk = new THREE.Mesh(new THREE.CircleGeometry(rb - th - 0.002, 24), plain('milk', { roughness: 0.2 }));
-  milk.geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Array(milk.geometry.attributes.position.count * 3).fill(0.85), 3));
+  const milk = new THREE.Mesh(new THREE.CircleGeometry(rb - th - 0.002, 24), plain('milk', { roughness: 0.45 }));
+  // creamy, not a grey mirror of the sky
+  milk.geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Array(milk.geometry.attributes.position.count).fill([0.9, 0.87, 0.77]).flat(), 3));
   milk.rotation.x = -Math.PI / 2; milk.position.y = 0.032;
   milk.castShadow = false;
   g.add(milk);
   return g;
 }
+

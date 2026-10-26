@@ -3,7 +3,7 @@
 // box, and wild-strawberry (дьэдьэн) patches on the dry meadow around the homestead.
 // Placed at the homestead centre (HOME); everything that moves is reparented to the scene by
 // src/interact/index.js, which finds the parts in `object.userData.chores`.
-import { Bucket, lathe, tube, splitGeo, jitterTint } from './yardlife/kit.js';
+import { Bucket, boxUV, lathe, tube, splitGeo, jitterTint } from './yardlife/kit.js';
 import { yardMats } from './yardlife/mats.js';
 import { DOOR } from './urasa/frame.js';
 import { PLACEMENTS } from '../world/layout.js';
@@ -36,18 +36,22 @@ export default async function build(ctx, placement) {
   {
     const B = new Bucket(() => 0);
     const H = 0.3, R0 = 0.125, R1 = 0.15, W = 0.012;
-    // one surface: outside up, over the rim, down the inside, across the bottom
-    B.add(lathe([[R0, 0.0], [R0 + (R1 - R0) * 0.5, H * 0.5], [R1, H], [R1 - W, H + 0.004], [R1 - W - 0.002, H * 0.5], [R0 - W, 0.035], [0, 0.035]], 28, rng, 0.012), M.fresh, null, [0.92, 0.86, 0.78]);
+    // one surface: outside up, over the rim, down the inside to the floor
+    B.add(lathe([[R0, 0.0], [R0 + (R1 - R0) * 0.5, H * 0.5], [R1, H], [R1 - W, H + 0.004], [R1 - W - 0.002, H * 0.5], [R0 - W, 0.035], [R0 - W - 0.004, 0.035]], 28, rng, 0.012), M.fresh, null, [0.92, 0.86, 0.78]);
+    // the floor: a disc with flat uvs in metres (lathed to the axis, its grain pinched into a wedge at the middle)
+    const fl = new T.CircleGeometry(R0 - W + 0.001, 28).rotateX(-Math.PI / 2).translate(0, 0.0352, 0);
+    { const fp = fl.attributes.position, fu = fl.attributes.uv; for (let i = 0; i < fp.count; i++) fu.setXY(i, fp.getX(i), fp.getZ(i)); }
+    B.add(fl, M.fresh, null, [0.8, 0.74, 0.66]);
     B.add(new T.CircleGeometry(R0, 20).rotateX(Math.PI / 2), M.darkwood); // the underside
     for (const [y, r] of [[0.06, R0 + (R1 - R0) * 0.2 + 0.004], [H - 0.05, R1 - (R1 - R0) * 0.17 + 0.004]]) {
       B.add(new T.TorusGeometry(r, 0.008, 5, 36).rotateX(Math.PI / 2).translate(0, y, 0), M.lash);
     }
     // the handle: lugs on two staves, a rope arching over
-    for (const s of [-1, 1]) B.add(new T.BoxGeometry(0.03, 0.07, 0.02).translate(0, H + 0.02, s * (R1 - 0.004)), M.fresh);
+    for (const s of [-1, 1]) B.add(boxUV(new T.BoxGeometry(0.03, 0.07, 0.02).translate(0, H + 0.02, s * (R1 - 0.004))), M.fresh); // uv in metres, not 0…1 per face
     B.add(tube([[0, H + 0.04, -R1], [0, H + 0.2, -R1 * 0.75], [0, H + 0.27, 0], [0, H + 0.2, R1 * 0.75], [0, H + 0.04, R1]], 0.007, 5), M.rope);
     for (const m of B.build(pail)) m.castShadow = true;
     // water, shown when filled (built now so its shader is warmed with the rest)
-    const water = new T.Mesh(new T.CircleGeometry(R1 - W - 0.004, 24).rotateX(-Math.PI / 2),
+    const water = new T.Mesh(new T.CircleGeometry(R1 - W - 0.0015, 28).rotateX(-Math.PI / 2),
       new T.MeshStandardNodeMaterial({ color: 0x24302c, roughness: 0.04, metalness: 0 }));
     water.position.y = H - 0.05; water.visible = false; water.castShadow = false; water.name = 'pail-water';
     pail.add(water);
@@ -139,7 +143,7 @@ export default async function build(ctx, placement) {
 const STALK = 0.085;
 function strawberryLeaf(T) {
   const pos = [], col = [], idx = [];
-  const L = 0.04, W = 0.0135, TEETH = 7;
+  const L = 0.04, W = 0.0135, TEETH = 5;
   const leaflet = (yaw, tilt) => {
     const c = Math.cos(yaw), sn = Math.sin(yaw), base = pos.length / 3;
     const put = (x, z, g) => {
@@ -186,7 +190,7 @@ function strawberryLeaf(T) {
 // stalk that rises ~3 cm towards the leaves. Origin = the berry's centre.
 function strawberryBerry(T) {
   const R = 0.006;
-  const berry = new T.SphereGeometry(R, 8, 6);
+  const berry = new T.SphereGeometry(R, 6, 5); // 1–1.5 cm
   const bp = berry.attributes.position;
   for (let i = 0; i < bp.count; i++) {
     const y = bp.getY(i) / R, w = 1 - 0.45 * Math.max(0, -y); // -1 tip … 1 calyx

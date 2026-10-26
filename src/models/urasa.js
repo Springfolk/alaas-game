@@ -94,16 +94,16 @@ export default async function build(ctx) {
   // ---- invisible proxies for looking at things
   const hidden = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   const proxy = (g, name) => { const o = new THREE.Mesh(g, hidden); o.visible = false; o.name = name; root.add(o); return o; };
-  const profPts = (off, step = 0.3) => { const pts = []; for (let s = 0; s <= P.L; s += step) { const q = P.at(s); pts.push([q.r + q.nr * off, q.y + q.ny * off]); } return pts; };
-  const outerProxy = proxy(lathe(profPts(0.08), 28), 'urasa-outer');
-  const lining = proxy(lathe(profPts(0.0).filter(([r]) => r > 0.4), 28), 'urasa-lining');
+  const profPts = (off, step = 0.6) => { const pts = []; for (let s = 0; s <= P.L; s += step) { const q = P.at(s); pts.push([q.r + q.nr * off, q.y + q.ny * off]); } return pts; };
+  const outerProxy = proxy(lathe(profPts(0.08), 16), 'urasa-outer');
+  const lining = proxy(lathe(profPts(0.0).filter(([r]) => r > 0.4), 16), 'urasa-lining');
   const frameProxy = new THREE.Group();
   root.add(frameProxy);
   for (const a of frame.postAngles) {
-    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, POST_H, 8), hidden);
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, POST_H, 6), hidden);
     c.position.set(Math.cos(a) * R_POST, POST_H / 2, Math.sin(a) * R_POST); c.visible = false; frameProxy.add(c);
   }
-  const hoopP = new THREE.Mesh(new THREE.TorusGeometry(R_POST, 0.09, 6, 64), hidden);
+  const hoopP = new THREE.Mesh(new THREE.TorusGeometry(R_POST, 0.09, 4, 32), hidden);
   hoopP.rotation.x = Math.PI / 2; hoopP.position.y = frame.hoopY1; hoopP.visible = false; frameProxy.add(hoopP);
   const doorProxy = proxy(new THREE.BoxGeometry(0.34, DOOR.h, DOOR.hw * 2), 'urasa-door');
   doorProxy.position.set((DOOR.r + DOOR.rTop) / 2 - 0.05, DOOR.h / 2, 0);

@@ -2,7 +2,7 @@
 // and the birch-bark craft spot outside the uraha.
 import * as THREE from 'three/webgpu';
 import {
-  addLog, blob, decalMat, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, rollGeo, sheetGeo, splitGeo, tube, TAU,
+  addLog, blob, boxUV, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, rollGeo, sheetGeo, splitGeo, tube, TAU,
 } from './kit.js';
 import { makeSmoke } from './smoke.js';
 import { geoMats } from '../../load/geocache.js';
@@ -46,7 +46,7 @@ export function smudge(K, x, z) {
       const a = rng() * TAU;
       const ox = Math.cos(a) * 0.75, oz = Math.sin(a) * 0.75;
       const [wx, wz] = F.tw(ox, oz), [cx, cz] = F.tw(ox * 0.25, oz * 0.25);
-      addLog(K.b, [wx, K.b.ground(wx, wz) + 0.02, wz], [cx, K.b.ground(cx, cz) + 0.3, cz], 0.025, 0.018, rng, M.charcoal, null, { seg: 5, step: 0.3 });
+      addLog(K.b, [wx, K.b.ground(wx, wz) + 0.02, wz], [cx, K.b.ground(cx, cz) + 0.3, cz], 0.025, 0.018, rng, M.charcoal, M.charcoal, { seg: 5, step: 0.3 });
     }
     // a spare heap of dung clods and a wooden two-tined fork
     for (let i = 0; i < 9; i++) {
@@ -59,7 +59,7 @@ export function smudge(K, x, z) {
       const d = [bx - ax, bz - az], l = Math.hypot(...d), ux = d[0] / l, uz = d[1] / l;
       for (const s of [-1, 1]) {
         const tx = bx + ux * 0.4 - uz * s * 0.07, tz = bz + uz * 0.4 + ux * s * 0.07;
-        addLog(K.b, [bx, K.b.ground(bx, bz) + 0.05, bz], [tx, K.b.ground(tx, tz) + 0.06, tz], 0.018, 0.01, rng, M.wood, null, { seg: 5, step: 0.15 });
+        addLog(K.b, [bx, K.b.ground(bx, bz) + 0.05, bz], [tx, K.b.ground(tx, tz) + 0.06, tz], 0.018, 0.01, rng, M.wood, M.end, { seg: 5, step: 0.15 });
       }
     }
   });
@@ -95,11 +95,12 @@ export function woodpile(K, x, z, yaw = 0) {
         const w = r * (ang > 2.5 ? 1.6 : 1.15);
         if (top && rng() < 0.35) { cx += w; continue; }
         const len = depth + (rng() - 0.5) * 0.08;
-        const pc = splitGeo(len, r, ang, rng);
-        const m = F.F.clone().multiply(mtx([cx + w / 2, y + r * 0.45 + (rng() - 0.5) * 0.02, -len / 2 + (rng() - 0.5) * 0.04], [0, 0, 0]))
+        const pc = splitGeo(len, r, ang, rng, 4);
+        const m = F.F.clone().multiply(mtx([cx + w / 2, y + r * 0.45 + (rng() - 0.5) * 0.02, -len / 2 + (rng() - 0.5) * 0.1], [0, 0, 0])) // a ragged face, not a wall
           .multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2)).multiply(new THREE.Matrix4().makeRotationY(rng() * TAU));
         const t = jitterTint(rng, 0.12);
-        K.b.add(pc.bark, M.bark, m, t); K.b.add(pc.split, M.split, m, t); K.b.add(pc.ends, M.endFresh, m, t);
+        // ends weather grey-brown in the stack; the last split are still golden
+        K.b.add(pc.bark, M.bark, m, t); K.b.add(pc.split, M.split, m, t); K.b.add(pc.ends, ((row * 7 + Math.round(cx * 13)) % 5 + 5) % 5 < 3 ? M.end : M.endFresh, m, t);
         cx += w * (0.92 + rng() * 0.1);
       }
       y += 0.115 + (rng() - 0.5) * 0.01;
@@ -111,7 +112,7 @@ export function woodpile(K, x, z, yaw = 0) {
     }
     // a few bark slabs on top against the rain
     for (let i = 0; i < 4; i++) {
-      const sl = sheetGeo(0.75, 0.5, rng, { curl: -0.06 });
+      const sl = sheetGeo(0.75, 0.5, rng, { curl: -0.06, thick: 0.014 });
       F.add(sl, M.barkSlab, mtx([-1.05 + i * 0.7, y + 0.06, 0], [0, (rng() - 0.5) * 0.2, 0]), jitterTint(rng, 0.1));
     }
     K.colliders.push(F.col({ x: 0, z: 0, hw: L / 2 + 0.15, hd: 0.4 }));
@@ -120,18 +121,21 @@ export function woodpile(K, x, z, yaw = 0) {
     const [bx, bz] = F.tw(1.5, 1.6);
     const by = K.b.ground(bx, bz);
     const blk = logGeo(0.55, 0.25, 0.24, rng, { seg: 12, caps: true, wob: 0.05 });
-    K.b.add(blk.side, M.darkwood, mtx([bx, by - 0.05, bz], [0, rng() * TAU, 0]));
-    K.b.add(blk.caps, M.end, mtx([bx, by - 0.05, bz], [0, rng() * TAU, 0]), [0.8, 0.75, 0.7]);
+    const bm = mtx([bx, by - 0.05, bz], [0, rng() * TAU, 0]);
+    rng(); // (was the caps' own turn, which opened slits at the rim)
+    K.b.add(blk.side, M.darkwood, bm);
+    K.b.add(blk.caps, M.end, bm, [0.8, 0.75, 0.7]);
     // axe: larch haft, forged head biting into the block
     {
       const head = new THREE.BoxGeometry(0.16, 0.05, 0.03, 2, 1, 1);
       const hp = head.attributes.position;
       for (let i = 0; i < hp.count; i++) { const hx = hp.getX(i); if (hx > 0) hp.setY(i, hp.getY(i) * (1 + hx * 9)); }
-      head.computeVertexNormals();
+      head.computeVertexNormals(); boxUV(head);
       const m = mtx([bx + 0.03, by + 0.52, bz], [0, 0.6, -0.55]);
       K.b.add(head, M.iron, m.clone().multiply(mtx([0.04, 0, 0])));
-      const haft = logGeo(0.72, 0.018, 0.016, rng, { seg: 6, step: 0.2, bend: 0.03 });
-      K.b.add(haft.side, M.fresh, m.clone().multiply(mtx([-0.03, 0, 0], [0, 0, 1.2])), [0.75, 0.65, 0.55]);
+      const haft = logGeo(0.72, 0.018, 0.016, rng, { seg: 6, step: 0.2, bend: 0.03, caps: true });
+      const hm = m.clone().multiply(mtx([-0.03, 0, 0], [0, 0, 1.2]));
+      K.b.add(haft.side, M.fresh, hm, [0.75, 0.65, 0.55]); K.b.add(haft.caps, M.end, hm);
     }
     K.b.add(patchGeo(K.b.ground, bx, bz, 1.6, 1.3, rng(), 16), decalMat('wood_chips', { scale: 0.8, tint: 0xc8b8a0 }));
     for (let i = 0; i < 3; i++) {
@@ -241,11 +245,12 @@ export function craft(K, x, z, yaw = 0) {
       for (let k = 0; k < 4; k++) {
         const a = rng() * TAU;
         const [ax, az] = F.tw(cx + Math.cos(a) * 0.35, cz + Math.sin(a) * 0.35), [bx, bz] = F.tw(cx - Math.cos(a) * 0.05, cz - Math.sin(a) * 0.05);
-        addLog(K.b, [ax, K.b.ground(ax, az) + 0.02, az], [bx, K.b.ground(bx, bz) + 0.05, bz], 0.02, 0.015, rng, M.charcoal, null, { seg: 5, step: 0.2 });
+        addLog(K.b, [ax, K.b.ground(ax, az) + 0.02, az], [bx, K.b.ground(bx, bz) + 0.05, bz], 0.02, 0.015, rng, M.charcoal, M.charcoal, { seg: 5, step: 0.2 });
       }
       const pot = lathe([[0.0, 0.0], [0.07, 0.006], [0.14, 0.04], [0.175, 0.1], [0.18, 0.16], [0.172, 0.2], [0.19, 0.21], [0.188, 0.22], [0.165, 0.215], [0.158, 0.16], [0.15, 0.1], [0.12, 0.05], [0.0, 0.03]], 24);
+      const surf = fillLathe(pot, 24, 9, 8, 0.18, { rings: 1 }); // water out to the inner wall
       F.add(pot, M.soot, mtx([cx, gy + 0.11, cz]));
-      F.add(new THREE.CircleGeometry(0.155, 20).rotateX(-Math.PI / 2), water, mtx([cx, gy + 0.11 + 0.17, cz]));
+      F.add(surf, water, mtx([cx, gy + 0.11, cz]));
       // a strip of bark curling out of the water
       F.add(sheetGeo(0.32, 0.07, rng, { curl: 0.1, res: 6 }), bark, mtx([cx + 0.08, gy + 0.11 + 0.22, cz], [0, 0.5, -0.9]));
       F.add(blob(0.12, 0.08, 0.1, rng), M.stone, mtx([cx + 0.17, gy, cz - 0.17]), [0.4, 0.38, 0.36]);
@@ -258,7 +263,7 @@ export function craft(K, x, z, yaw = 0) {
       for (let k = 0; k < 18; k++) {
         const o = (rng() - 0.5) * 0.09, oy = rng() * 0.05, sl = (rng() - 0.5) * 0.25;
         addLog(K.b, [ax + nx * o + d[0] / l * sl, K.b.ground(ax, az) + 0.01 + oy, az + nz * o + d[1] / l * sl],
-          [bx + nx * o * 2.6, K.b.ground(bx, bz) + 0.01 + oy * 0.5, bz + nz * o * 2.6], 0.009, 0.005, rng, M.willow, null, { seg: 4, step: 0.35, bend: 0.01 });
+          [bx + nx * o * 2.6, K.b.ground(bx, bz) + 0.01 + oy * 0.5, bz + nz * o * 2.6], 0.009, 0.005, rng, M.willow, M.willow, { seg: 4, step: 0.35, bend: 0.01 });
       }
       for (const t of [0.3, 0.65]) {
         const px = ax + d[0] * t, pz = az + d[1] * t;
