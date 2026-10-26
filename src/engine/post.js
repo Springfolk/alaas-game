@@ -10,6 +10,7 @@ import {
 } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
+import { urlFlag } from '../util.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { interiorOcclusion } from './interiors.js';
 
@@ -39,6 +40,10 @@ export function buildPost(engine) {
   const interiors = interiorOcclusion();
   engine.syncInteriors = interiors.sync;
   const occl = interiors.node;
+  // TRAA everywhere but phones: at their 30 fps cap and upscaled render its jitter and history blend show as a
+  // shimmering, soft still image (sharp only while looking around); a phone's ~460 ppi hides the aliasing.
+  // ?taa / ?notaa override.
+  const taa = urlFlag('taa') || (engine.tier !== 'mobile' && !urlFlag('notaa'));
   let scenePass, depth, vel;
   if (engine.opts.ao) {
     // high: a normals/velocity pre-pass feeds GTAO into the scene pass's ambient light
@@ -59,14 +64,17 @@ export function buildPost(engine) {
   } else {
     // medium/low: one scene pass writes colour and velocity together
     scenePass = pass(scene, camera);
-    scenePass.setMRT(mrt({ output, velocity }));
+    if (taa) scenePass.setMRT(mrt({ output, velocity }));
     scenePass.contextNode = builtinAOContext(occl);
     depth = scenePass.getTextureNode('depth');
-    vel = scenePass.getTextureNode('velocity');
+    if (taa) vel = scenePass.getTextureNode('velocity'); // asking adds a colour target: only with the MRT that fills it
   }
-  const aa = traa(scenePass.getTextureNode('output'), depth, vel, camera);
-  aa.useSubpixelCorrection = false;
-  const aaTex = aa.getTextureNode();
+  let aa = scenePass.getTextureNode('output'), aaTex = aa;
+  if (taa) {
+    aa = traa(aa, depth, vel, camera);
+    aa.useSubpixelCorrection = false;
+    aaTex = aa.getTextureNode();
+  }
 
   // glare: a soft veil from the brightest things (sun, sunlit cloud rims, glints on water). The input is
   // capped so the sun glows as through a lens instead of whiting out the frame.
@@ -81,7 +89,7 @@ export function buildPost(engine) {
 
   // exposure (set by Engine.update), look and grade
   engine.grade = {
-    exposure: uniform(1), sharpen: uniform(0.8),
+    exposure: uniform(1), sharpen: uniform(taa ? 0.8 : 0), // no TRAA softness to undo
     power: uniform(1.12), saturation: uniform(1.18), vignette: uniform(0.16), grain: uniform(tier === 'low' ? 0 : 0.01),
   };
   const g = engine.grade;
