@@ -28,7 +28,7 @@ mark('main'); // every static import fetched and run
 // the loading key art (index.html #keyart; hidden with ?auto) covers the world until it is complete
 const keyart = document.getElementById('keyart');
 const keyartShown = () => !!keyart && getComputedStyle(keyart).display !== 'none';
-const setRes = (e, k) => { e.renderer.setPixelRatio(Math.min(devicePixelRatio, e.opts.dpr) * e.resScale * k); e.renderer.setSize(innerWidth, innerHeight, false); };
+const setRes = (e, k) => { e.renderer.setPixelRatio(e.pixelRatio() * k); e.renderer.setSize(innerWidth, innerHeight, false); };
 
 function loadSave() {
   const def = { lang: detectLang(), found: [], done: [], settings: { sens: 1, fov: 72, vol: 0.85, quality: 'auto', invertY: false, hints: true, motion: 1, smooth: 0 } };
@@ -517,7 +517,7 @@ Game.prototype.fpsMeter = function (dt) {
   if (el.classList.contains('on')) {
     const info = this.engine.renderer.info.render, e = this.engine;
     el.textContent = `${Math.round(m.n / m.t)} fps · ${(m.t / m.n * 1000).toFixed(1)} ms (worst ${(m.worst * 1000).toFixed(0)})\n` +
-      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap · res ${Math.round(e.resScale * 100)}% · ${e.backend}`;
+      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap · res ${Math.round(e.renderer.getPixelRatio() / devicePixelRatio * 100)}% of native · ${e.backend}`;
   }
   m.t = 0; m.n = 0; m.worst = 0;
 };

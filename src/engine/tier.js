@@ -77,9 +77,9 @@ export async function detectTier({ webgl = false } = {}) {
 // repeatedly occurred") leaves no JS error to react to, so each load marks itself in localStorage until ready
 // (bootDone) or a normal leave (pagehide); while hidden (locked, another app or tab) it is unmarked — the OS freezing
 // a background page is not the load failing. Finding an unfinished mark under 10 min old, the next load steps down:
-// 1 = auto picks mobile + LITE / low (never WebGL2: that only where WebGPU is missing). A load that finished at a step tries one step up next time,
-// at most once a day (a failed try blocks the next for a day), so two interrupted loads never demote a device for
-// good. A chosen quality resets it.
+// 1 = auto picks mobile + LITE / low (never WebGL2: that only where WebGPU is missing). A load that finished at a step tries one step up next time —
+// on a phone at most once a day (a failed try blocks the next for a day: no jetsam crash loop), on a desktop at once —
+// so interrupted loads never demote a device for good. A chosen quality resets it.
 const GUARD = 'alaas-boot4'; // 4: drops the old step 2 (WebGL2)
 const DAY = 86400000;
 let guard = { step: 0 }, loading = true;
@@ -90,7 +90,7 @@ export function bootStep(auto) {
   const now = Date.now();
   let step = auto ? g.step || 0 : 0;
   if (auto && g.pending && now - g.pending < 600000) { step = 1; g.tryAt = now; }
-  else if (auto && step > 0 && g.ok && !(now - (g.tryAt || 0) < DAY)) { step--; g.tryAt = now; }
+  else if (auto && step > 0 && g.ok && (!isPhone() || !(now - (g.tryAt || 0) < DAY))) { step--; g.tryAt = now; }
   keep({ ...g, step, ok: false, pending: now });
   addEventListener('pagehide', () => { if (guard.pending && !failed) keep({ ...guard, pending: 0 }); });
   document.addEventListener('visibilitychange', () => { if (loading && !failed) keep({ ...guard, pending: document.hidden ? 0 : Date.now() }); });

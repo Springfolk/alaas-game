@@ -73,7 +73,7 @@ export class Engine {
     // at the same quality, where the player stood (main.js onLost; while loading, tier.js restoreLost)
     const lost = r.onDeviceLost.bind(r);
     r.onDeviceLost = (info) => { lost(info); if (KEYART) return; this.restoring = true; if (this.onLost) this.onLost(info); else restoreLost(); }; // (restoring: main.js shows no start failure)
-    r.setPixelRatio(Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
+    r.setPixelRatio(this.pixelRatio());
     r.setSize(innerWidth, innerHeight, false);
     r.shadowMap.enabled = true;
     r.toneMapping = THREE.AgXToneMapping;
@@ -239,9 +239,9 @@ export class Engine {
 
   // Every ~1.5 s: if frames miss the paced interval (a few missed refreshes: ≥12% over on average) render
   // fewer pixels; when they all keep it, give pixels back — but not straight back to a scale that just
-  // failed (ceiling, retried after 30 s). Holds the frame rate by resolution instead of dropping frames.
+  // failed (ceiling, retried after 8 s). Holds the frame rate by resolution instead of dropping frames.
   // Still slow at the resolution floor: one cheaper knob per window (KNOBS: none builds a shader). A knob
-  // comes back, last first, once resolution is full again and frames kept pace for `knobWait` (10 s;
+  // comes back, last first, once resolution is full again and frames kept pace for `knobWait` (4 s;
   // doubled, ≤2 min, when a restored knob fails again within 20 s).
   dynamicResolution(dt) {
     if (dt <= 0 || KEYART) return; // ?keyart: full resolution however long a frame takes
@@ -253,27 +253,33 @@ export class Engine {
     const avg = sum / f.length;
     f.length = 0;
     const prev = this.resScale, now = performance.now();
-    if (this.resCeil && now - this.resCeilAt > 30000) this.resCeil = 0;
+    if (this.resCeil && now - this.resCeilAt > 8000) this.resCeil = 0;
     if (avg > iv * 1.12) {
       this.resCeil = this.resScale; this.resCeilAt = now;
-      // floor: the tier's resMin pixel ratio (high: CSS pixels, never upscaled), else 55% of the start ratio
+      // floor: the tier's resMin pixel ratio (high: CSS pixels, never upscaled), else 55% of the start ratio — and
+      // never under MIN_RES of the screen's own ratio (a base already there: no dropping, the knobs go instead)
       const base = Math.min(devicePixelRatio, this.opts.dpr), resMin = this.opts.resMin;
-      const floor = resMin ? Math.min(1, resMin / base) : 0.55;
+      const floor = Math.min(1, Math.max(resMin ? resMin / base : 0.55, devicePixelRatio * MIN_RES / base));
       if (this.resScale > floor) this.resScale = Math.max(floor, this.resScale - (avg > iv * 1.6 ? 0.15 : 0.08));
       else this.knob(-1, now);
-    } else if (avg < iv * 1.02 && this.resScale < 1 && (!this.resCeil || this.resScale + 0.05 < this.resCeil)) {
-      this.resScale = Math.min(1, this.resScale + 0.05);
+    } else if (avg < iv * 1.02 && this.resScale < 1 && (!this.resCeil || this.resScale + 0.1 < this.resCeil)) {
+      this.resScale = Math.min(1, this.resScale + 0.1);
     } else if (avg < iv * 1.02 && this.resScale >= 1 && this.knobs?.length && now - this.knobAt > this.knobWait) this.knob(1, now);
     if (this.resScale !== prev) {
-      this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
+      this.renderer.setPixelRatio(this.pixelRatio());
       this.renderer.setSize(innerWidth, innerHeight, false);
     }
+  }
+
+  // The render pixel ratio: the tier's cap × the dynamic scale, never under MIN_RES of the screen's own ratio.
+  pixelRatio() {
+    return Math.max(devicePixelRatio * MIN_RES, Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
   }
 
   // One knob down (dir −1) or the last one back up (+1). Each changes only sizes, counts or the frame cap.
   knob(dir, now) {
     const on = this.knobs ||= [];
-    this.knobWait ||= 10000;
+    this.knobWait ||= 4000;
     if (dir < 0) {
       const k = KNOBS.find((k) => !on.includes(k) && k.ok(this));
       if (!k) return;
@@ -299,6 +305,9 @@ export class Engine {
 }
 
 // Dynamic quality steps after resolution (Engine.knob), cheapest loss first; none needs a new shader or pipeline.
+// No tier or dynamic resolution renders under half the screen's own resolution (per axis).
+const MIN_RES = 0.5;
+
 const KNOBS = [
   { name: 'shadow range ×0.7', ok: () => true, set: (e, d) => { e.sun.shadow.camera.far = e.opts.shadowFar * (d ? 0.7 : 1); } }, // fewer casters per cascade
   { name: 'lake mirror ×0.6', ok: (e) => !!e.reflector, set: (e, d) => { e.reflector.resolutionScale = e.opts.reflection * (d ? 0.6 : 1); } },
