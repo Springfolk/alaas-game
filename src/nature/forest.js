@@ -19,7 +19,7 @@ import { TIER } from '../engine/tier.js';
 
 // trees to FAR m from the alaas centre, the canopy band beyond; low tiers pull the full/coarse rings in (TIER.forest)
 export const BAND = 7, FAR = 950;
-let R0 = 44, R1 = 100;
+let R0 = 34, R1 = 100;
 const VARIANTS = [ // [species, count, options] — group key is options.kind or the species
   ['larch', 6], ['birch', 5], ['birch', 2, { young: true, kind: 'youngBirch' }], ['pine', 3], ['deadLarch', 2], ['shrub', 2, { kind: 'willow' }], ['shrub', 2, { kind: 'rose' }],
 ];
@@ -28,7 +28,7 @@ export default async function forest(ctx, world) {
   if (urlFlag('noforest')) return; // A/B timing
   const { terrain } = world;
   const t0 = performance.now();
-  R0 = Math.round(44 * TIER.forest); R1 = Math.round(100 * TIER.forest);
+  R0 = Math.round(34 * TIER.forest); R1 = Math.round(100 * TIER.forest); // R0 was 44: the full trees (5–7k bark triangles each) were ~30% of a forest-edge frame
   if (KEYART) { R0 = 5000; R1 = 5100; } // ?keyart: every tree full (lod0), no coarse ring or impostors
 
   // ---------- placement: in a worker (trees/scatter.js) while the variants are made here ----------
@@ -124,6 +124,16 @@ export default async function forest(ctx, world) {
   const CONE = 0.45, TURN = 0.2, NEAR = 12;
   const view = { on: false, fx: 0, fz: 1, cos: -1, sx: 0, sz: 0, sl: 0 };
   const inView = (x, z, d) => view.fx * x + view.fz * z >= view.cos * d;
+  // one instance into its variant's buffers (no closure or array per tree: a refresh touches thousands, and
+  // WebKit keeps that garbage for its periodic 40–70 ms collections)
+  const put = (lod, vi, k, f) => {
+    const s = sets[lod][vi];
+    if (f === 0 || s.n >= CAP[lod]) return;
+    const a = s.itr.array, b = s.isc.array, i = s.n * 4, j = s.n * 3;
+    a[i] = X[k]; a[i + 1] = Y[k]; a[i + 2] = Z[k]; a[i + 3] = ROT[k];
+    b[j] = S[k]; b[j + 1] = f; b[j + 2] = DEPTH[k];
+    s.n++;
+  };
   const refresh = (ex, ez) => {
     for (const lod of sets) for (const s of lod) s.n = 0;
     const cam = KEYART && world.engine?.camera;
@@ -155,13 +165,8 @@ export default async function forest(ctx, world) {
         }
         const f0 = Math.min(1, Math.max(0, (R0 + BAND - d) / (2 * BAND)));
         const f1 = Math.min(1, Math.max(0, (R1 + BAND - d) / (2 * BAND)));
-        const put = (lod, f) => {
-          const s = sets[lod][vi];
-          if (f === 0 || s.n >= CAP[lod]) return;
-          s.itr.array.set([X[k], Y[k], Z[k], ROT[k]], s.n * 4); s.isc.array.set([S[k], f, DEPTH[k]], s.n * 3); s.n++;
-        };
-        if (d < R0 + BAND) put(0, f0);
-        if (d > R0 - BAND && !shadowOnly) put(1, d < R0 + BAND ? (f0 > 0 ? -(1 - f0) : 1) : f1);
+        if (d < R0 + BAND) put(0, vi, k, f0);
+        if (d > R0 - BAND && !shadowOnly) put(1, vi, k, d < R0 + BAND ? (f0 > 0 ? -(1 - f0) : 1) : f1);
         if (d < 14 && nc < POOL) {
           const c = pool[nc++]; c.x = X[k]; c.z = Z[k]; c.r = variants[vi].trunkR * S[k] * 1.25 + 0.03;
         }

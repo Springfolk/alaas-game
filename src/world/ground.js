@@ -17,11 +17,37 @@ export async function buildGround(terrain) {
   const mesh = new THREE.Mesh(groundGeometry(fine), groundMaterial());
   mesh.receiveShadow = true;
   mesh.name = 'ground';
+  mesh.userData.tiles = tiles(mesh, TIER.ground, 4);
   // a coarse copy (same material, so the same pipeline) the lake reflection draws instead (lake.js)
   const coarse = new THREE.Mesh(groundGeometry(rough), mesh.material);
   coarse.name = 'ground-coarse'; coarse.visible = false; coarse.receiveShadow = true;
   mesh.add(coarse);
   return mesh;
+}
+
+// T×T tiles of the grid (index ranges over its vertices, own bounds) so three culls the ones out of view: the
+// whole grid drew every frame wherever one looked (818k triangles on desktop). The root keeps only one far corner
+// triangle (WebGPU warns on empty draws); the lake mirror hides the tiles for the coarse copy (lake.js).
+function tiles(mesh, N, T) {
+  const g = mesh.geometry, idx = g.index.array, pos = g.attributes.position.array, Q = N - 1, per = Math.ceil(Q / T), out = [];
+  const box = new THREE.Box3(), v = new THREE.Vector3();
+  for (let tj = 0; tj < T; tj++) for (let ti = 0; ti < T; ti++) {
+    const j0 = tj * per, j1 = Math.min(Q, j0 + per), i0 = ti * per, i1 = Math.min(Q, i0 + per), w = (i1 - i0) * 6;
+    if (j1 <= j0 || i1 <= i0) continue;
+    const sub = new Uint32Array((j1 - j0) * w);
+    for (let j = j0; j < j1; j++) sub.set(idx.subarray((j * Q + i0) * 6, (j * Q + i0) * 6 + w), (j - j0) * w);
+    box.makeEmpty();
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const k = (j * N + i) * 3; box.expandByPoint(v.set(pos[k], pos[k + 1], pos[k + 2])); }
+    const tg = new THREE.BufferGeometry();
+    for (const [k, a] of Object.entries(g.attributes)) tg.setAttribute(k, a);
+    tg.setIndex(new THREE.BufferAttribute(sub, 1));
+    tg.boundingBox = box.clone(); tg.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
+    const m = new THREE.Mesh(tg, mesh.material);
+    m.name = 'ground'; m.receiveShadow = true;
+    mesh.add(m); out.push(m);
+  }
+  g.setIndex(new THREE.BufferAttribute(new Uint32Array(idx.subarray(0, 3)), 1));
+  return out;
 }
 
 function groundGeometry({ pos, uvs, nor, spl, idx }) {

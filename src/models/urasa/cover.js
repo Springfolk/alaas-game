@@ -165,7 +165,9 @@ export function buildCurtain() {
     const a = j * (nu + 1) + i, b = a + nu + 1;
     idx.push(a, a + 1, b, b, a + 1, b + 1);
   }
+  const nor = new Float32Array(n * 3);
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   const x0 = DOOR.rTop + 0.125, yTop = DOOR.h + 0.06; // against the lintel and jambs
@@ -187,7 +189,18 @@ export function buildCurtain() {
       pos[k] = x; pos[k + 1] = Math.max(0.02, y); pos[k + 2] = z;
     }
     g.attributes.position.needsUpdate = true;
-    g.computeVertexNormals();
+    // grid normals from the neighbouring points (computeVertexNormals allocated ~60 KB a frame here)
+    for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
+      const a = (j * (nu + 1) + Math.max(0, i - 1)) * 3, b = (j * (nu + 1) + Math.min(nu, i + 1)) * 3;
+      const c = (Math.max(0, j - 1) * (nu + 1) + i) * 3, d = (Math.min(nv, j + 1) * (nu + 1) + i) * 3;
+      const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2];
+      const vx = pos[d] - pos[c], vy = pos[d + 1] - pos[c + 1], vz = pos[d + 2] - pos[c + 2];
+      // the index winds (a, a+1, b): u along i, v along j → face normal u × v
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      const l = Math.hypot(nx, ny, nz) || 1, k = (j * (nu + 1) + i) * 3;
+      nor[k] = nx / l; nor[k + 1] = ny / l; nor[k + 2] = nz / l;
+    }
+    g.attributes.normal.needsUpdate = true;
   };
   drape(0, 0);
   return { geom: g, drape };

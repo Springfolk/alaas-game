@@ -209,20 +209,25 @@ class BladeMaterial extends THREE.MeshStandardNodeMaterial {
 // ---------- geometry ----------
 
 // A tuft of `nb` blades: pairs of verts at t = k/segs plus a tip. attribute `blade` = (side −½..½, t 0..1, blade #).
+// userData.lite: a coarser index over the same vertices for far chunks (chunked's `lite`): 3+ segments → base,
+// top level and tip (3 triangles, was 5); 2 → one base-to-tip triangle (was 3).
 function bladeGeometry(segs, nb = 1) {
-  const bl = [], idx = [], per = segs * 2 + 1;
+  const bl = [], idx = [], lite = [], per = segs * 2 + 1;
   for (let b = 0; b < nb; b++) {
     const o = b * per;
     for (let k = 0; k < segs; k++) bl.push(-0.5, k / segs, b, 0.5, k / segs, b);
     bl.push(0, 1, b);
     for (let k = 0; k < segs - 1; k++) { const a = o + k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
     const a = o + (segs - 1) * 2; idx.push(a, a + 1, o + segs * 2);
+    if (segs > 2) lite.push(o, o + 1, a, o + 1, a + 1, a, a, a + 1, o + segs * 2);
+    else lite.push(o, o + 1, o + segs * 2);
   }
   const g = new THREE.InstancedBufferGeometry();
   const n = bl.length / 3;
   g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(n * 3), 3));
   g.setAttribute('blade', new THREE.Float32BufferAttribute(bl, 3));
   g.setIndex(idx);
+  g.userData.lite = new THREE.BufferAttribute(new (idx.length > 0 && per * nb > 65535 ? Uint32Array : Uint16Array)(lite), 1);
   return g;
 }
 
@@ -255,7 +260,11 @@ let origin = null; // one for every chunked material (it reads the drawn object'
 function originUniform() {
   return (origin ||= uniform(new THREE.Vector2()).onObjectUpdate(({ object }) => object.userData.origin));
 }
-function chunked(world, W, mat, geo, { S, C, K, name }) {
+// ring [rMin, rMax] (horizontal m from the camera): what the material draws anywhere; a chunk wholly outside it
+// (the square's corners past rMax, the middle inside a ring's hole) is hidden instead of drawing only
+// discarded blades — about half of all grass and flower triangles, and their draw calls.
+// lite: [m, index]: chunks whose nearest point is farther than m draw that coarser index (same vertices and pipeline).
+function chunked(world, W, mat, geo, { S, C, K, name, ring = [0, Infinity], lite = null }) {
   const group = new THREE.Group();
   group.name = name;
   const size = S * C, meshes = [];
@@ -270,17 +279,25 @@ function chunked(world, W, mat, geo, { S, C, K, name }) {
     m.castShadow = false; m.receiveShadow = true;
     meshes.push(m); group.add(m);
   }
-  let last = '';
+  let lbx = NaN, lbz = NaN;
+  const [r0, r1] = [ring[0] - 1, ring[1] + 1]; // 1 m: blades lean and sway past their cell
   world.updaters.push(() => {
-    const bx = Math.floor(W.cam.value.x / size) - (K >> 1), bz = Math.floor(W.cam.value.z / size) - (K >> 1);
-    const key = bx + ',' + bz;
-    if (key === last) return;
-    last = key;
+    const ex = W.cam.value.x, ez = W.cam.value.z;
+    const bx = Math.floor(ex / size) - (K >> 1), bz = Math.floor(ez / size) - (K >> 1);
+    const moved = bx !== lbx || bz !== lbz;
+    lbx = bx; lbz = bz;
     for (const m of meshes) {
-      const cx = bx + m.userData.i, cz = bz + m.userData.j;
-      m.userData.origin.set(cx * C, cz * C);
-      const x = (cx + 0.5) * size, z = (cz + 0.5) * size;
-      m.geometry.boundingSphere.center.set(x, world.terrain.height(x, z) + 0.5, z);
+      const cx = bx + m.userData.i, cz = bz + m.userData.j, x0 = cx * size, z0 = cz * size;
+      if (moved) {
+        m.userData.origin.set(cx * C, cz * C);
+        const x = x0 + size / 2, z = z0 + size / 2;
+        m.geometry.boundingSphere.center.set(x, world.terrain.height(x, z) + 0.5, z);
+      }
+      const nx = Math.max(x0 - ex, 0, ex - x0 - size), nz = Math.max(z0 - ez, 0, ez - z0 - size);
+      const fx = Math.max(Math.abs(ex - x0), Math.abs(ex - x0 - size)), fz = Math.max(Math.abs(ez - z0), Math.abs(ez - z0 - size));
+      const dn = nx * nx + nz * nz;
+      m.visible = dn < r1 * r1 && fx * fx + fz * fz > r0 * r0;
+      if (lite) m.geometry.index = dn > lite[0] * lite[0] ? lite[1] : geo.index;
     }
   });
   return group;
@@ -417,7 +434,7 @@ function grassMesh(world, F, W, lod) {
   const back = pow(max(dot(toFrag, W.sunDir), 0), 2);
   mat.emissiveNode = vC.mul(W.sunCol).mul(back.mul(0.14).mul(tt.mul(0.7).add(0.3))).mul(vec3(0.95, 1.1, 0.55));
 
-  return chunked(world, W, mat, geo, { S, C, K: lod.K, name: `grass-${lod.name}` });
+  return chunked(world, W, mat, geo, { S, C, K: lod.K, name: `grass-${lod.name}`, ring: [lod.near ? 0 : rIn, rOut], lite: [lod.liteAt, geo.userData.lite] });
 }
 
 // ---------- flowers ----------
@@ -539,7 +556,7 @@ function flowerMesh(world, F, W, sp) {
     _fHead: sp.headScale, _fMeadow: sp.where === 'meadow' ? 1 : 0, _fGrazed: sp.where === 'grazed' ? 1 : 0, _fEdge: sp.where === 'edge' ? 1 : 0, _fDry0: dry0, _fDry1: dry1,
   });
   mat.name = `flowers-${sp.kind}`;
-  return chunked(world, W, mat, geo, { S: sp.S, C: sp.C, K: sp.K, name: `flowers-${sp.kind}` });
+  return chunked(world, W, mat, geo, { S: sp.S, C: sp.C, K: sp.K, name: `flowers-${sp.kind}`, ring: [0, sp.R] });
 }
 
 // ---------- lake edge: sedge tussocks and horsetail in the shallows (static, chunked) ----------
@@ -638,15 +655,16 @@ export default async function build(ctx, world) {
   // the near blades (same 5.6 m chunks, wider cells) and draw two blades per mid tuft instead of three
   const eng = world.engine, tier = eng.tier ?? eng.opts?.tier ?? eng.opts?.quality ?? 'medium';
   const low = tier === 'low' || tier === 'mobile' || tier === 'phone' || (eng.opts?.dpr ?? 1) < 1;
+  // liteAt: coarser blades from there (bladeGeometry); near from 11 m, where it cross-fades to the mid ring (from 7 m the meadow read thinner)
   const near = grassMesh(world, F, W, {
-    name: 'near', near: true, C: low ? 40 : 56, K: 7, S: low ? 0.14 : 0.1, segs: 3, nb: 3, tuft: 0.1, rIn: 11, rOut: 16.5, salt: 11, upBlend: 0.25, minPx: 1.3,
+    name: 'near', near: true, liteAt: KEYART ? Infinity : 11, C: low ? 40 : 56, K: 7, S: low ? 0.14 : 0.1, segs: 3, nb: 3, tuft: 0.1, rIn: 11, rOut: 16.5, salt: 11, upBlend: 0.25, minPx: 1.3,
     wMul: () => float(1),
   });
   near.traverse((o) => o.layers.set(1)); // layer 1 only: the lake reflector's camera skips it
   world.engine.camera.layers.enable(1);
   const mid = grassMesh(world, F, W, {
     // ?keyart: the mid ring reaches over the whole alaas (90 m chunks); beyond 60 m the px rule alone widens blades
-    name: 'mid', near: false, C: KEYART ? 252 : 84, K: KEYART ? 17 : 5, S: 0.36, segs: 2, nb: low ? 2 : 3, tuft: 0.35, rIn: 11, rOut: KEYART ? 700 : 60, salt: 23, upBlend: 0.3, minPx: 1.6,
+    name: 'mid', near: false, liteAt: KEYART ? Infinity : 30, C: KEYART ? 252 : 84, K: KEYART ? 17 : 5, S: 0.36, segs: 2, nb: low ? 2 : 3, tuft: 0.35, rIn: 11, rOut: KEYART ? 700 : 60, salt: 23, upBlend: 0.3, minPx: 1.6,
     wMul: (d) => (KEYART ? d.min(60) : d).mul(0.065).add(1.3).mul(low ? 1.4 : 1),
   });
   mid.traverse((o) => o.layers.set(1)); // the reflection keeps only the static shore plants

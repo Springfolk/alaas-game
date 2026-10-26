@@ -53,11 +53,12 @@ export class Engine {
       TIER.auto = true; TIER.reason = d.reason + (step ? `, boot step ${step}` : '');
     }
     this.tierAuto = TIER.auto;
-    // battery saver (30 fps) by default on phones, and on a laptop whose battery runs low (≤20%, unplugged)
-    // where the Battery Status API reports it (Chromium; Safari has none: the setting is the fallback)
-    this.autoSaver = this.tier === 'mobile';
+    // battery saver (30 fps) by default only on a battery running low (≤20%, unplugged) where the Battery Status
+    // API reports it (Chromium; Safari has none: the setting is the fallback). Phones too run at full rate: one
+    // that can't keep it steps to 30 by itself (the '30 fps' knob); measured on an iPhone 14 Pro: 60 held.
+    this.autoSaver = false;
     navigator.getBattery?.().then((b) => {
-      const upd = () => { this.autoSaver = this.tier === 'mobile' || (!b.charging && b.level <= 0.2); };
+      const upd = () => { this.autoSaver = !b.charging && b.level <= 0.2; };
       upd(); b.addEventListener('chargingchange', upd); b.addEventListener('levelchange', upd);
     }).catch(() => {});
     setTextureMax(this.opts.texMax);

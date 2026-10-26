@@ -199,7 +199,7 @@ export class World {
           const dx = x - k.x, dz = z - k.z, d = Math.hypot(dx, dz), m = k.r + r;
           if (d < m && d > 1e-6) { x = k.x + dx / d * m; z = k.z + dz / d * m; }
         } else {
-          const [lx, lz] = World.local(k, x, z);
+          const ox = x - k.x, oz = z - k.z, lx = ox * k.c - oz * k.s, lz = ox * k.s + oz * k.c; // World.local, no array: per collider × pass
           const cx = Math.max(-k.hw, Math.min(k.hw, lx)), cz = Math.max(-k.hd, Math.min(k.hd, lz));
           let ex = lx - cx, ez = lz - cz, d = Math.hypot(ex, ez);
           if (d >= r) continue;

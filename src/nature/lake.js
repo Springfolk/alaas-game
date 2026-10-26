@@ -102,11 +102,11 @@ export default async function build(ctx, world) {
       if (all || !p.o.visible) continue;
       if (2 * p.r < Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z) * k || !seen(p)) { p.o.visible = false; hidden.push(p.o); }
     }
-    // the reflection gets the coarse ground (ground.js): the fine grid draws nothing for this pass
-    const fine = ground?.geometry, coarse = ground?.getObjectByName('ground-coarse');
-    if (coarse) { fine.drawRange.count = 3; coarse.visible = true; } // 3: one far corner triangle (WebGPU warns on empty draws)
+    // the reflection gets the coarse ground (ground.js): the fine grid's tiles draw nothing for this pass
+    const tiles = ground?.userData.tiles || [], coarse = ground?.getObjectByName('ground-coarse');
+    if (coarse) { for (const t of tiles) t.visible = false; coarse.visible = true; }
     try { return render(frame); } finally {
-      if (coarse) { fine.drawRange.count = Infinity; coarse.visible = false; }
+      if (coarse) { for (const t of tiles) t.visible = true; coarse.visible = false; }
       if (all) vcam.layers.disable(CULL_LAYER);
       mirror.value = 0;
       sh.autoUpdate = auto;
