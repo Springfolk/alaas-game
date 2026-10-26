@@ -300,7 +300,7 @@
 
   /* ---- loading key art: the game's own render over the world until it is complete, then a cross-fade (docs/loading.md) ---- */
   #keyart { position: fixed; inset: 0; z-index: 15; overflow: hidden; pointer-events: none; transition: opacity 1.4s ease-in-out;
-    background: #8fa7b8 /* keyart-lqip */ url(data:image/webp;base64,UklGRrIAAABXRUJQVlA4IKYAAAAQBgCdASowABsAPrVSok0nJKMiJWsw4BaJZAC0NGjW3y7ZaMYeFdGQfRpnHzDkmSgQGyc9N0uGsQAA/u/AwLXx6wpwMPlnLGBQ3sM34NUEZA/8aj0VG6LkwOlQiq5DvhdG5rXDVepbw2/O7RFRrlvgNdIndE20BdB27DUvrXBR9Ll8WjIP+uKcUGHdpQ2PYKkiqLKBzCLqh2kMGCwiXz+Tan4T4AAA) center / cover no-repeat; }
+    background: #8fa7b8 /* keyart-lqip */ url(data:image/webp;base64,UklGRrIAAABXRUJQVlA4IKYAAACQBgCdASowABsAPrVUoU0nJKMiJWsw4BaJZAC2NV4J/gu/9bESknN2WSVCER9eUz/8QvLF5dykTw9rGf0AAP7vwMC18esKcDD5ZyxdBHaWCjxHqf3U6G3LXeeTfie3/1+B/KPAAFkrbN2iKjW16tAk3nb2pCenNY5uZeVwQfqdc+ksjeE4oMO7SjNzAI2Hyf1f8B27IqoanHxuL0prA7gHYhvtsAAA) center / cover no-repeat; }
   #keyart img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s; transform-origin: 50% 40%; will-change: transform; animation: kenburns 46s ease-in-out infinite alternate; }
   #keyart img.in { opacity: 1; }
   #keyart.gone { opacity: 0; }

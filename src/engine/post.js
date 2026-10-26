@@ -62,6 +62,13 @@ export function buildPost(engine) {
     aoPass.useTemporalFiltering = true;
     scenePass = pass(scene, camera);
     scenePass.contextNode = builtinAOContext(aoPass.getTextureNode().sample(screenUV).r.mul(occl));
+    // TRAA takes velocity and depth from the pass it resolves, as on medium: the pre-pass's (rendered before it)
+    // didn't match the scene pass's frame, and every pan smeared the whole view
+    if (taa) {
+      scenePass.setMRT(mrt({ output, velocity }));
+      depth = scenePass.getTextureNode('depth');
+      vel = scenePass.getTextureNode('velocity');
+    }
   } else {
     // medium/low: one scene pass writes colour and velocity together
     scenePass = pass(scene, camera);
