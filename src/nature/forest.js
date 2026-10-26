@@ -1,7 +1,7 @@
 // The taiga around the alaas: Cajander larch, birch, some Scots pine, dead larches, shrubs,
 // stumps and fallen logs. ~150k trees placed from terrain.forest(); drawn in three rings:
-//   0–R0 m full trees, R0–R1 m coarser trees (both instanced per variant, shadows), beyond R1
-//   octahedral-ish billboard impostors baked at load, then a canopy band to the horizon.
+//   0–R0 m full trees, R0–R1 m coarser trees (both instanced per variant, shadows), beyond R1 only
+//   a canopy band to the horizon (`?farforest`: octahedral-ish billboard impostors in between, baked at load).
 // Rings cross-fade with a screen dither. Near trunks get colliders.
 import * as THREE from 'three/webgpu';
 import { makeTree } from './trees/gen.js';
@@ -110,9 +110,13 @@ export default async function forest(ctx, world) {
   world.scene.add(group);
 
   // ---------- far impostors, canopy band, deadwood, shrubs ----------
-  const imp = await buildImpostors(world, variants, trees, { R1, BAND });
-  imp.object.visible = !KEYART;
-  world.scene.add(imp.object);
+  // no trees past R1 by default: the canopy band alone keeps the far forest distant, the homestead in focus;
+  // ?farforest = the billboard ring (baked at load, nothing shipped)
+  if (urlFlag('farforest')) {
+    const imp = await buildImpostors(world, variants, trees, { R1, BAND });
+    imp.object.visible = !KEYART;
+    world.scene.add(imp.object);
+  }
   world.scene.add(buildCanopyBand(canopy));
   const dead = buildDeadwood(world, trees, { keep });
   dead.object.traverse((o) => o.layers.set(1));
