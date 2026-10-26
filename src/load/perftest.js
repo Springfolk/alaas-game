@@ -17,6 +17,7 @@ export async function perfTest(game) {
   const e = game.engine, r = e.renderer, scene = e.scene, sun = e.sun;
   const log = (s) => console.info(`perftest ${s}`);
   e.pace = () => true; e.dynamicResolution = () => {};
+  const awake = await navigator.wakeLock?.request('screen').catch(() => null); // ~2.5 min untouched: keep the screen on
   const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
   const groups = scene.children.filter((c) => !c.isLight && c.name !== 'ground');
   const match = (c, keys) => keys.some((k) => k === '*' || (k.endsWith('-') ? c.name.startsWith(k) : c.name === k));
@@ -48,5 +49,6 @@ export async function perfTest(game) {
       sun.shadow.autoUpdate = true;
     }
   }
+  awake?.release();
   log('done');
 }

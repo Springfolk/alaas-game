@@ -15,12 +15,12 @@ export const PRESETS = {
   high: { quality: 'high', ao: true, shadows: 2048, shadowFar: 150, reflection: 0.35, dpr: 2, resMin: 1, texMax: 4096, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
   medium: { quality: 'medium', ao: false, shadows: 2048, shadowFar: 110, reflection: 0.25, dpr: 1.5, resMin: 0.7, texMax: 2048, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
   low: { quality: 'low', ao: false, shadows: 1024, shadowFar: 70, reflection: 0.18, dpr: 0.75, resMin: 0.5, texMax: 1024, grassDensity: 0.6, forest: 0.8, ground: 512, fps: 60 },
-  // phones: a fixed 50% of the screen's own resolution (dpr = resMin: no dynamic resolution, only the knobs)
-  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: NATIVE * 0.5, resMin: NATIVE * 0.5, texMax: 512, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
+  // phones: a fixed 67% of the screen's own resolution (lite too: less read as mush on a phone) (dpr = resMin: no dynamic resolution, only the knobs)
+  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: NATIVE * 0.67, resMin: NATIVE * 0.67, texMax: 512, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
 };
 // A weak phone (≤3 GB, <4 cores, no WebGPU, under-default GPU limits) or one whose last load was killed:
 // mobile with these on top (TIER.lite). Memory can't be handed back at run time, so it is decided here.
-export const LITE = { lite: true, shadows: 512, shadowFar: 45, reflection: 0.1, dpr: 1, resMin: 0.6, texMax: 256, atlasMax: 512, pipelines: 2, grassDensity: 0.3, forest: 0.55 }; // ground as mobile: its baked terrain pack
+export const LITE = { lite: true, shadows: 512, shadowFar: 45, reflection: 0.1, dpr: NATIVE * 0.67, resMin: NATIVE * 0.67, texMax: 256, atlasMax: 512, pipelines: 2, grassDensity: 0.3, forest: 0.55 }; // ground as mobile: its baked terrain pack
 
 export const TIER = { name: 'medium', auto: false, reason: '', ...PRESETS.medium };
 
@@ -59,22 +59,29 @@ export async function detectTier({ webgl = false } = {}) {
 
 // Boot guard: a load the OS kills (iOS jetsam on memory: Safari reloads the page, then gives up with "A problem
 // repeatedly occurred") leaves no JS error to react to, so each load marks itself in localStorage until ready
-// (bootDone) or a normal leave (pagehide). Finding an unfinished mark under 10 min old, the next load steps
-// down (and keeps that step): 1 = auto picks mobile + LITE / low, 2 = also WebGL2. A chosen quality resets it.
-const GUARD = 'alaas-boot2'; // 2: drops the steps the first play-loss recovery added
-let guard = { step: 0 };
+// (bootDone) or a normal leave (pagehide); while hidden (locked, another app or tab) it is unmarked — the OS freezing
+// a background page is not the load failing. Finding an unfinished mark under 10 min old, the next load steps down:
+// 1 = auto picks mobile + LITE / low, 2 = also WebGL2. A load that finished at a step tries one step up next time,
+// at most once a day (a failed try blocks the next for a day), so two interrupted loads never demote a device for
+// good. A chosen quality resets it.
+const GUARD = 'alaas-boot3'; // 3: drops the steps the old keep-forever rule left
+const DAY = 86400000;
+let guard = { step: 0 }, loading = true;
 const keep = (g) => { guard = g; try { localStorage.setItem(GUARD, JSON.stringify(g)); } catch { /* storage blocked */ } };
 export function bootStep(auto) {
   let g = {};
   try { g = JSON.parse(localStorage.getItem(GUARD)) || {}; } catch { /* none */ }
+  const now = Date.now();
   let step = auto ? g.step || 0 : 0;
-  if (auto && g.pending && Date.now() - g.pending < 600000) step = Math.min(2, step + 1);
-  keep({ ...g, step, pending: Date.now() });
+  if (auto && g.pending && now - g.pending < 600000) { step = Math.min(2, step + 1); g.tryAt = now; }
+  else if (auto && step > 0 && g.ok && !(now - (g.tryAt || 0) < DAY)) { step--; g.tryAt = now; }
+  keep({ ...g, step, ok: false, pending: now });
   addEventListener('pagehide', () => { if (guard.pending && !failed) keep({ ...guard, pending: 0 }); });
+  document.addEventListener('visibilitychange', () => { if (loading && !failed) keep({ ...guard, pending: document.hidden ? 0 : Date.now() }); });
   return step;
 }
 let failed = false;
-export const bootDone = () => keep({ ...guard, pending: 0 });
+export const bootDone = () => { loading = false; keep({ ...guard, pending: 0, ok: true }); };
 // the GPU device was lost while loading (a GPU process crash or reset): reload one step down
 export const bootFailed = () => { if (!guard.pending || failed) return; failed = true; location.reload(); };
 // lost in play (iOS drops the GPU device under memory pressure or a GPU timeout, or hands it back broken after
