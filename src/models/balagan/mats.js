@@ -199,8 +199,14 @@ export function makeMats(maps, { winter = false } = {}) {
     const bare = smoothstep(0.55, 0.75, n);
     let c = mix(g.mul(vec3(0.9, 1.0, 0.75)), g2, smoothstep(0.3, 0.6, fz(p.mul(0.37).add(5), 2)));
     if (winter) c = mix(c, c.mul(vec3(1.1, 0.95, 0.7)), 0.4);
-    m.colorNode = mix(c, s.mul(vec3(0.7, 0.62, 0.52)), bare.mul(0.85));
-    m.normalNode = normalMap(smp(T.sodA.nor, u.mul(0.55)).xyz);
+    c = mix(c, s.mul(vec3(0.7, 0.62, 0.52)), bare.mul(0.85));
+    // steep banks (the berm's slumped ends and toes): earth breaks through the turf, mapped on the bank itself
+    // (the top-down map smears into streaks there)
+    const steep = smoothstep(0.8, 0.45, normalLocal.y);
+    const ub = vec2(p.x.add(p.z), p.y);
+    const bank = mix(smp(T.dirt.diff, ub.mul(0.6)).rgb.mul(vec3(0.5, 0.44, 0.36)), smp(T.sodA.diff, ub.mul(0.55)).rgb.mul(vec3(0.9, 1.0, 0.75)), 0.35);
+    m.colorNode = mix(c, bank, steep);
+    m.normalNode = normalMap(mix(smp(T.sodA.nor, u.mul(0.55)).xyz, smp(T.dirt.nor, ub.mul(0.6)).xyz, steep));
     m.aoNode = smp(T.sodA.arm, u.mul(0.55)).r;
     return m;
   })();

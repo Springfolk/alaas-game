@@ -25,15 +25,16 @@ function longStack(L, W, H, rng) {
   const pos = [], uvs = [], idx = [];
   for (let i = 0; i <= nu; i++) {
     const u = i / nu * 2 - 1;
-    const e = Math.max(0, Math.abs(u) - 0.55) / 0.45;
+    // the ends: a rounded, slumped slope over the last ~1.4 m (a steeper end stood as a cliff)
+    const e = Math.max(0, Math.abs(u) - 0.45) / 0.55;
     const endK = Math.sqrt(Math.max(0, 1 - e * e));
     for (let j = 0; j <= nv; j++) {
       const v = j / nv * Math.PI;
       const sv = Math.sin(v), cv = Math.cos(v);
       let s = W / 2 * cv * (1 + 0.1 * sv) * (sv < 0.25 ? 0.9 + sv * 0.4 : 1);
       let h = H * Math.pow(sv, 0.7);
-      const k = 0.15 + 0.85 * endK;
-      s *= k; h *= Math.pow(endK, 0.35);
+      const k = 0.2 + 0.8 * endK;
+      s *= k; h *= Math.pow(endK, 0.75);
       const d = 1 + 0.035 * nz(v * 3, u * 6) + 0.02 * Math.sin(u * 40 + v * 13) + 0.018 * Math.sin(u * 97 + v * 41) * Math.sin(v * 63 - u * 23);
       pos.push(u * L / 2 * (endK < 1 ? 1 - (1 - endK) * 0.04 : 1), h * d - 0.12 * (1 - sv), s * d);
       uvs.push(u * L / 2, v * W);
@@ -164,7 +165,7 @@ export function hayMeadow(K) {
         const a = rng() * TAU;
         for (const sd of [-1, 1]) {
           const ax = cx + Math.cos(a) * sd * R * 0.75, az = cz + Math.sin(a) * sd * R * 0.75;
-          addLog(B, [ax, y0 + H * 0.55, az], [cx - Math.cos(a) * sd * 0.25 + lean[0], y0 + H + 0.25, cz - Math.sin(a) * sd * 0.25 + lean[1]], 0.028, 0.022, rng, M.darkwood, null, { seg: 5, step: 0.5 });
+          addLog(B, [ax, y0 + H * 0.55, az], [cx - Math.cos(a) * sd * 0.25 + lean[0], y0 + H + 0.25, cz - Math.sin(a) * sd * 0.25 + lean[1]], 0.028, 0.022, rng, M.darkwood, M.end, { seg: 5, step: 0.5 });
         }
       }
       K.colliders.push({ x: cx, z: cz, r: R + 0.1 });
@@ -182,7 +183,7 @@ export function hayMeadow(K) {
       for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
         if (rng() < 0.12) continue;
         const hx = x0 + c * 7 + (rng() - 0.5) * 2, hz = z0 + r * 8 + (rng() - 0.5) * 2;
-        const { g } = roundStack(0.7 + rng() * 0.15, 1.1 + rng() * 0.25, rng, { seg: 16, rings: 8, point: 0.25 });
+        const { g } = roundStack(0.7 + rng() * 0.15, 1.1 + rng() * 0.25, rng, { seg: 24, rings: 12, point: 0.25 });
         B.add(g, M.hay, mtx([hx, gr(hx, hz) - 0.02, hz], [0, rng() * TAU, 0]), jitterTint(rng, 0.08, [1.02, 1.04, 0.95]));
         K.colliders.push({ x: hx, z: hz, r: 0.65 });
       }

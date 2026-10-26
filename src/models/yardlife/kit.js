@@ -292,6 +292,8 @@ export function jitterTint(rng, k = 0.1, base = [1, 1, 1]) {
 /**
  * Split firewood along +Y: a sector of a log (angle `ang`, radius r) — returns
  * { bark (outer arc), split (two radial faces), ends (end grain) }.
+ * The bark is shaded round; each end is a saw cut a few degrees off square with an eased, slightly
+ * domed rim (a flat, square end reads as a cardboard cut-out).
  */
 export function splitGeo(len, r, ang, rng, k = 5) {
   const pts = [[0, 0]];
@@ -307,30 +309,59 @@ export function splitGeo(len, r, ang, rng, k = 5) {
   mx /= pts.length; mz /= pts.length;
   for (const p of pts) { p[0] -= mx; p[1] -= mz; }
   const skew = (rng() - 0.5) * 0.04;
-  const quad = (A, B, out) => {
-    // a strip from A to B along the length (2 rings)
-    const pos = [], uvs = [], idx = [];
+  // each end's cut plane: y = base + tx·x + tz·z (up to ~5° off square), from one rng draw per end
+  const tilt = (s) => { const a = s * TAU * 7.31, m = 0.035 + 0.05 * ((s * 97.3) % 1); return [Math.cos(a) * m, Math.sin(a) * m]; };
+  const T0 = tilt(rng()), T1 = tilt(rng());
+  const yAt = (p, end) => (end ? len + T1[0] * p[0] + T1[1] * p[1] : T0[0] * p[0] + T0[1] * p[1]);
+  const xAt = (p, end) => p[0] + (end ? skew : 0);
+  const n = pts.length;
+  // bark: one strip over the arc (pts 1 … n-1), normals from the pith (−mx, −mz)
+  const bark = (() => {
+    const pos = [], nor = [], uvs = [];
+    let arc = 0;
+    for (let i = 1; i < n; i++) {
+      const p = pts[i];
+      if (i > 1) arc += Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]);
+      const nx = p[0] + mx, nz = p[1] + mz, nl = Math.hypot(nx, nz) || 1;
+      for (const end of [0, 1]) { pos.push(xAt(p, end), yAt(p, end), p[1]); nor.push(nx / nl, 0, nz / nl); uvs.push(arc, end ? len : 0); }
+    }
+    const idx = [];
+    for (let i = 0; i < n - 2; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
+    return finish(pos, nor, uvs, idx).toNonIndexed();
+  })();
+  // the two split faces (flat)
+  const quad = (A, B) => {
     const w = Math.hypot(B[0] - A[0], B[1] - A[1]);
-    pos.push(A[0], 0, A[1], B[0], 0, B[1], A[0] + skew, len, A[1], B[0] + skew, len, B[1]);
-    uvs.push(0, 0, w, 0, 0, len, w, len);
-    idx.push(0, 2, 1, 1, 2, 3);
-    out.push(finish(pos, null, uvs, idx));
+    const pos = [xAt(A, 0), yAt(A, 0), A[1], xAt(B, 0), yAt(B, 0), B[1], xAt(A, 1), yAt(A, 1), A[1], xAt(B, 1), yAt(B, 1), B[1]];
+    return finish(pos, null, [0, 0, w, 0, 0, len, w, len], [0, 2, 1, 1, 2, 3]).toNonIndexed();
   };
-  const bark = [], split = [];
-  quad(pts[0], pts[1], split);
-  for (let i = 1; i < pts.length - 1; i++) quad(pts[i], pts[i + 1], bark);
-  quad(pts[pts.length - 1], pts[0], split);
-  const cap = (y, dir, dx) => {
-    const pos = [], uvs = [], idx = [];
-    for (const p of pts) { pos.push(p[0] + dx, y, p[1]); uvs.push(p[0] + mx, p[1] + mz); }
-    for (let i = 1; i < pts.length - 1; i++) dir > 0 ? idx.push(0, i + 1, i) : idx.push(0, i, i + 1);
-    return finish(pos, null, uvs, idx);
+  const split = mergeGeometries([quad(pts[0], pts[1]), quad(pts[n - 1], pts[0])]);
+  // an end: the rim ring on the cut, an inner ring drawn in by c and raised by c·0.5 (eased edge), fanned to its middle
+  const c = Math.min(0.006, r * 0.07);
+  let cx = 0, cz = 0;
+  for (const p of pts) { cx += p[0]; cz += p[1]; }
+  cx /= n; cz /= n;
+  const cap = (end) => {
+    const dir = end ? 1 : -1, pos = [], uvs = [], idx = [];
+    const put = (x, z, lift) => {
+      const p = [x, z];
+      pos.push(xAt(p, end), yAt(p, end) + dir * lift, z); uvs.push(x + mx, z + mz);
+    };
+    for (const p of pts) put(p[0], p[1], 0);
+    for (const p of pts) {
+      const dx = cx - p[0], dz = cz - p[1], d = Math.hypot(dx, dz) || 1, s = Math.min(c, d * 0.4) / d;
+      put(p[0] + dx * s, p[1] + dz * s, c * 0.5);
+    }
+    put(cx, cz, c * 0.8);
+    const tri = (a, b, e) => (dir > 0 ? idx.push(a, e, b) : idx.push(a, b, e));
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      tri(i, j, n + i); tri(j, n + j, n + i); // rim band
+      tri(n + i, n + j, 2 * n);               // face
+    }
+    return finish(pos, null, uvs, idx).toNonIndexed();
   };
-  return {
-    bark: mergeGeometries(bark.map((g) => g.toNonIndexed())),
-    split: mergeGeometries(split.map((g) => g.toNonIndexed())),
-    ends: mergeGeometries([cap(0, -1, 0).toNonIndexed(), cap(len, 1, skew).toNonIndexed()]),
-  };
+  return { bark, split, ends: mergeGeometries([cap(0), cap(1)]) };
 }
 
 /** A body of revolution from [[r, y], ...] with uv in metres (u around, v along the profile). */
@@ -356,6 +387,17 @@ export function lathe(profile, seg = 20, rng, wob = 0) {
   }
   const g = finish(pos, null, uvs, idx);
   weld(g, profile.length, row);
+  // a ring on the axis (a closed bottom or top) has only degenerate triangles: take its neighbour ring's mean normal
+  const n = g.attributes.normal;
+  for (let i = 0; i < profile.length; i++) {
+    if (profile[i][0] > 1e-6) continue;
+    const k = i > 0 ? i - 1 : i + 1;
+    if (k >= profile.length) continue;
+    _v.set(0, 0, 0);
+    for (let j = 0; j < seg; j++) _v.x += n.getX(k * row + j), _v.y += n.getY(k * row + j), _v.z += n.getZ(k * row + j);
+    _v.normalize();
+    for (let j = 0; j <= seg; j++) n.setXYZ(i * row + j, _v.x, _v.y, _v.z);
+  }
   return g;
 }
 function weld(g, rings, row) {
@@ -560,8 +602,11 @@ export function rollGeo(h, r0, turns, gap = 0.006, seg = 40) {
   return finish(pos, null, uvs, idx);
 }
 
-/** A thin sheet (w × d, in x/z) with curl along x and random warping; grid res. */
-export function sheetGeo(w, d, rng, { curl = 0.08, warp = 0.015, res = 8 } = {}) {
+/**
+ * A thin sheet (w × d, in x/z) with curl along x and random warping; grid res.
+ * thick > 0: a closed slab instead — the underside offset down by `thick` (tinted by `under`) and the edges closed.
+ */
+export function sheetGeo(w, d, rng, { curl = 0.08, warp = 0.015, res = 8, thick = 0, under = [0.78, 0.62, 0.5] } = {}) {
   const g = new THREE.PlaneGeometry(w, d, res, res);
   g.rotateX(-Math.PI / 2);
   const p = g.attributes.position, uvA = g.attributes.uv;
@@ -573,7 +618,50 @@ export function sheetGeo(w, d, rng, { curl = 0.08, warp = 0.015, res = 8 } = {})
     uvA.setXY(i, x, z);
   }
   g.computeVertexNormals();
-  return g;
+  return thick > 0 ? slab(g, res, thick, under) : g;
+}
+
+// Closes a (res+1)² grid sheet into a slab of thickness t: top as is, bottom offset along −normal, rim strips.
+function slab(g, res, t, under) {
+  const P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv, n = P.count, row = res + 1;
+  const pos = [], uvs = [], col = [], idx = [];
+  const v = (i, down, u, w, c) => {
+    pos.push(P.getX(i) - (down ? N.getX(i) * t : 0), P.getY(i) - (down ? N.getY(i) * t : 0), P.getZ(i) - (down ? N.getZ(i) * t : 0));
+    uvs.push(u ?? U.getX(i), w ?? U.getY(i)); col.push(...c);
+    return pos.length / 3 - 1;
+  };
+  const top = [1, 1, 1];
+  for (let i = 0; i < n; i++) v(i, 0, null, null, top);
+  for (let i = 0; i < n; i++) v(i, 1, null, null, under);
+  const gi = g.index.array;
+  for (let k = 0; k < gi.length; k += 3) {
+    idx.push(gi[k], gi[k + 1], gi[k + 2]);
+    idx.push(n + gi[k], n + gi[k + 2], n + gi[k + 1]);
+  }
+  // rim: walk the border; each edge a quad of its own (hard edge), turned to face away from the middle
+  const loop = [];
+  for (let i = 0; i < res; i++) loop.push(i);
+  for (let j = 0; j < res; j++) loop.push(j * row + res);
+  for (let i = res; i > 0; i--) loop.push(res * row + i);
+  for (let j = res; j > 0; j--) loop.push(j * row);
+  let mx = 0, mz = 0;
+  for (let i = 0; i < n; i++) { mx += P.getX(i); mz += P.getZ(i); }
+  mx /= n; mz /= n;
+  let s = 0;
+  for (let k = 0; k < loop.length; k++) {
+    const a = loop[k], b = loop[(k + 1) % loop.length];
+    const len = Math.hypot(P.getX(b) - P.getX(a), P.getZ(b) - P.getZ(a));
+    const c = [(1 + under[0]) / 2, (1 + under[1]) / 2, (1 + under[2]) / 2];
+    const a0 = v(a, 0, s, 0, c), b0 = v(b, 0, s + len, 0, c), a1 = v(a, 1, s, t, c), b1 = v(b, 1, s + len, t, c);
+    s += len;
+    // outward = away from the sheet's middle in x/z; flip the winding when the quad faces inward
+    const ex = P.getX(b) - P.getX(a), ez = P.getZ(b) - P.getZ(a);
+    const ox = (P.getX(a) + P.getX(b)) / 2 - mx, oz = (P.getZ(a) + P.getZ(b)) / 2 - mz;
+    const nx = -ez, nz = ex; // the facing of (a0, a1, b0): down × edge
+    if (nx * ox + nz * oz > 0) idx.push(a0, a1, b0, b0, a1, b1);
+    else idx.push(a0, b0, a1, b0, b1, a1);
+  }
+  return finish(pos, null, uvs, idx, col);
 }
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

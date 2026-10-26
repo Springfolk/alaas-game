@@ -14,6 +14,9 @@ const TAU = Math.PI * 2;
 const W = 7.5, D = 10;           // half sizes (x: 15 m, z: 20 m)
 const GATE = { x: -W, z0: 3.2, z1: 5.9 }; // gate gap on the west side
 const RAILS = [0.42, 0.82, 1.2];
+const HOLE_R = 0.06; // gate-post mortise radius (gate rails 0.047)
+const SIDE = 0.15;  // fence rails run along the gate posts' inner face, this far from their axis
+const smooth = (e0, e1, x) => { const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 
 export default async function build(ctx, placement) {
   const { rng } = ctx;
@@ -49,11 +52,17 @@ export default async function build(ctx, placement) {
     for (const n of loop) {
       if (n.gate) {
         // thick mortised gate post, 18 cm, 1.55 m
-        const H = 1.55;
-        const g = turned(logProfile(H + 0.3, 0.095, 0.08, { step: 0.12 }), { radial: 14, rng, noise: 0.05, oval: 0.06, bend: bow(rng, H, 0.02), color: stakeTone(0.92) });
-        g.translate(0, n.gy - 0.3, 0);
-        // flat top, end grain darker
-        g.translate(n.x, 0, n.z);
+        // the rails' mortises are cut into the post (a dark recess at each rail on both faces), not
+        // tubes stuck on it; the post is nearly straight so the gate rails run true through both
+        const H = 1.55, tone = stakeTone(0.92);
+        const holeY = RAILS.map((h) => 0.35 + h), extra = holeY.flatMap((y) => [-0.075, -0.05, -0.03, -0.012, 0, 0.012, 0.03, 0.05, 0.075].map((d) => y + d));
+        const hole = (y, a, r) => Math.min(...holeY.map((yh) => Math.hypot(Math.cos(a) * r / HOLE_R, (y - yh) / HOLE_R)));
+        const g = turned(logProfile(H + 0.3, 0.095, 0.08, { step: 0.12, extra }), {
+          radial: 28, rng, noise: 0.03, oval: 0.03, bend: bow(rng, H, 0.006), capTop: true,
+          carve: (y, a, r) => -0.035 * smooth(1, 0.7, hole(y, a, r)),
+          color: (y, a, c) => { tone(y, a, c); const k = smooth(1.25, 0.9, hole(y, a, 0.09)); for (let i = 0; i < 3; i++) c[i] += (0.09 - c[i]) * k; },
+        });
+        g.translate(n.x, n.gy - 0.3, n.z);
         gateWood.push(g);
         continue;
       }
@@ -86,7 +95,7 @@ export default async function build(ctx, placement) {
       const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L;
       for (let h = 0; h < 3; h++) {
         if (rng() < 0.03) continue; // one or two rails missing — knocked down
-        const over0 = a.gate ? 0.0 : 0.25 + rng() * 0.3, over1 = b.gate ? 0.0 : 0.25 + rng() * 0.3;
+        const over0 = a.gate ? 0.14 : 0.25 + rng() * 0.3, over1 = b.gate ? 0.14 : 0.25 + rng() * 0.3;
         const r = 0.042 + rng() * 0.016;
         const stack = (h % 2 ? 1 : -1) * 0.02; // overlapping ends ride on each other
         const ya = a.gy + RAILS[h] + stack + (rng() - 0.5) * 0.06, yb = b.gy + RAILS[h] - stack + (rng() - 0.5) * 0.06;
@@ -99,14 +108,14 @@ export default async function build(ctx, placement) {
           color: (y, ang, c) => { const k = fresh ? 1.1 : 0.85 + rng() * 0.002; c[0] = fresh ? 0.95 : 0.9 * k; c[1] = fresh ? 0.86 : 0.86 * k; c[2] = fresh ? 0.66 : 0.8 * k; },
         });
         // sag: bow downward (bend x is in the rail's local frame → after orient points down if roll fits)
-        // rails meeting a gate post are lashed to its inner face, clear of the sliding gate rails
-        const ia = a.gate ? 0.13 : 0, ib = b.gate ? 0.13 : 0;
+        // rails meeting a gate post run past its inner face, lashed to it, clear of the sliding gate rails
+        const ia = a.gate ? SIDE : 0, ib = b.gate ? SIDE : 0;
         const p0 = [a.x - ux * over0 + ia, ya, a.z - uz * over0], p1 = [b.x + ux * over1 + ib, yb, b.z + uz * over1];
         orientRail(g, p0, p1, sag);
         (fresh ? railsFresh : rails).push(g);
         // lashing loops at both ends (around both stakes of the pair), under the rail
         for (const [n, end] of [[a, 0], [b, 1]]) {
-          if (n.gate) continue;
+          if (n.gate) { lashes.push(postLashing(rng, n, end ? yb : ya, end ? r * 0.8 : r)); continue; }
           if (end === 1 && h % 2 === 0) continue; // one lashing per height per pair
           lashes.push(lashing(rng, n, (end ? yb : ya) - r - 0.01));
         }
@@ -135,23 +144,12 @@ export default async function build(ctx, placement) {
   const gateMesh = new THREE.Mesh(gateGeo, barkPole(ctx));
   gate.add(gateMesh);
   object.add(gate);
-  // mortise holes: dark sockets on both posts at the rail heights
-  const holes = [];
-  for (const n of [gN, gS]) for (const h of RAILS) {
-    const hole = new THREE.CylinderGeometry(0.052, 0.052, 0.2, 10, 1, true).toNonIndexed();
-    hole.rotateZ(Math.PI / 2); hole.rotateY(Math.PI / 2);
-    hole.translate(n.x, n.gy + h + 0.05, n.z);
-    holes.push(hole);
-  }
-  const holeG = merge(holes.map((g) => { g.setIndex([...Array(g.attributes.position.count).keys()]); g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(g.attributes.position.count * 3).fill(0.08), 3)); return g; }));
-
   // ── meshes ──
   const add = (g, m, name, cast = true) => { if (!g) return null; const o = new THREE.Mesh(g, m); o.name = name; o.castShadow = cast; object.add(o); return o; };
   const stakeMesh = add(fence.stakes, larch(ctx, { key: 'larch-fence', lichen: 0.5 }), 'stakes');
   const railMesh = add(fence.rails, barkPole(ctx), 'rails');
   add(fence.fresh, larch(ctx, { key: 'larch-fresh', tint: 0xfff0d0, lichen: 0 }), 'rails-fresh');
   add(fence.lashes, rope({ key: 'willow', colors: [0x8d7c62, 0x6e5f4a], plies: 2, pitch: 0.03, radius: 0.006, sheen: 0.2 }), 'lashings', false);
-  add(holeG, plain('hole', { roughness: 1 }), 'holes', false);
 
   // trodden earth inside the pen, spilling out through the gate; dung pats
   const shape = (x, z) => {
@@ -293,6 +291,20 @@ function lashing(rng, n, y) {
     // a stadium around the two stakes: long axis across the fence
     const ex = Math.cos(a) * (sp + 0.065), ez = Math.sin(a) * 0.075;
     pts.push(new THREE.Vector3(n.x + px * ex + n.dir[0] * ez, y + t * 0.025 + (rng() - 0.5) * 0.004, n.z + pz * ex + n.dir[1] * ez));
+  }
+  return tube(pts, 0.007, { radial: 4 });
+}
+
+// Willow band binding a fence rail to a gate post's inner face: two turns around the post, one
+// over the rail and one under it, so the rail hangs in the band. yc / rr: the rail's axis height and radius.
+function postLashing(rng, n, yc, rr) {
+  const west = -0.118, cu = (SIDE + west) / 2, eu = (SIDE - west) / 2, ev = 0.125, R = rr * 1.22 + 0.009;
+  const pts = [], N = 26;
+  for (let k = 0; k <= N * 2; k++) {
+    const t = k / N, a = Math.PI + t * TAU, s = t < 1 ? 1 : -1; // turns start and swap behind the post
+    const u = cu + Math.cos(a) * eu, v = Math.sin(a) * ev;
+    const y = yc + s * Math.sqrt(Math.max(0, R * R - (u - SIDE) ** 2)) + (rng() - 0.5) * 0.004;
+    pts.push(new THREE.Vector3(n.x + u, y, n.z + v));
   }
   return tube(pts, 0.007, { radial: 4 });
 }

@@ -12,6 +12,8 @@ import { buildShell } from './balagan/shell.js';
 import { buildHearth } from './balagan/hearth.js';
 import { buildInterior } from './balagan/interior.js';
 import { PlantBatch, sodRoof } from './balagan/plants.js';
+import { groundOf, troddenPatch, blob } from './yard/bits.js';
+import { trodden } from './yard/mat.js';
 import { FX, FZ, H, ZD, DW, DH, XD, ROOF, HEARTH, WIN, KH, inner } from './balagan/dims.js';
 
 const OUTSIDE_EXPOSURE = 0.62, INSIDE_EXPOSURE = 1.9;
@@ -53,8 +55,8 @@ export default async function build(ctx, placement) {
     for (let k = 0; k < (winter ? 240 : 180); k++) {
       const u = rng(), off = rng();
       const [x0, z0] = rrect(bhx - 0.5 + off * 0.5, bhz - 0.5 + off * 0.5, 0.55, u);
-      if (x0 > 0 && Math.abs(z0 - ZD) < DW / 2 + 0.2) continue;
-      const y = 0.56 - off * 0.25;
+      const y = shell.berm.height(0.56 - off * 0.25, x0, z0);   // lower where the earth slumps to the door
+      if (y < 0.15) continue;
       P.tuft(x0, y, z0, rng, { n: 5, h: 0.3 + rng() * 0.25, dry: 0.25 });
     }
     B.add(M.plants, P.geometry());
@@ -71,8 +73,9 @@ export default async function build(ctx, placement) {
     for (let k = 0; k < 90; k++) {
       const u = rng();
       const [x, z] = rrect(bhx - 0.35 - rng() * 0.25, bhz - 0.35 - rng() * 0.25, 0.55, u);
-      if (x > 0 && Math.abs(z - ZD) < DW / 2 + 0.2) continue;
-      crumb(x, 0.5, z, 0.02 + rng() * 0.03);
+      const y = shell.berm.height(0.5, x, z);
+      if (y < 0.15) continue;
+      crumb(x, y, z, 0.02 + rng() * 0.03);
     }
   });
   B.build(root);
@@ -303,6 +306,16 @@ export default async function build(ctx, placement) {
       sunLocal.copy(eng.sun.position).normalize().applyQuaternion(qInv);
       if (sunLocal.distanceToSquared(lastSun) > 1e-6) { lastSun.copy(sunLocal); rebuildShafts(sunLocal); }
     }
+  }
+
+  // dung-trodden apron outside the barn door: the yard's trodden earth, its frayed edge fading into the ground
+  {
+    const ground = groundOf(ctx, placement);
+    const { KZD: kz, kxd: kx } = shell.berm;
+    const tg = section(() => troddenPatch(ground, kx, kx + 2.8, kz - 1.6, kz + 1.6, (x, z) => (x < kx + 0.05 ? 0 : Math.max(blob(kx + 0.8, kz, 1.5, 1.05, 7)(x, z), blob(kx + 0.25, kz, 0.5, 0.7, 9)(x, z))), { step: 0.3, lift: 0.02 }));
+    const apron = new THREE.Mesh(tg, trodden(ctx, { key: 'trodden-khoton', hoof: 1.2 }));
+    apron.receiveShadow = true; apron.castShadow = false; apron.renderOrder = -1;
+    root.add(apron);
   }
 
   // grass hints: bare earth under the house (with its door passage) and the khoton; the barn's dung-trodden way in

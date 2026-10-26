@@ -69,14 +69,12 @@ export default async function build(ctx, placement) {
     }
     const topY = Y0 + 0.11 + (COURSES - 0.5) * STEP + 0.11; // top of the side walls
     // plate logs: a last half course on the front/back walls so the ceiling poles bear on all four walls
-    for (const sx of [-1, 1]) addLog([sx * HW, g0 + topY - 0.02, -HW - OVER], [sx * HW, g0 + topY - 0.02, HW + OVER], 0.1);
-    // sill beams under the side walls and corner sill blocks
+    // (sat low and thick enough to close on the top course: a thinner, higher plate left a sky slit under it)
+    for (const sx of [-1, 1]) addLog([sx * HW, g0 + topY - 0.05, -HW - OVER], [sx * HW, g0 + topY - 0.05, HW + OVER], 0.115);
+    // sill logs under the side walls (sawn ends, half sunk: a board's square end stuck out under the corners)
+    // and corner sill blocks
     const sills = [];
-    for (const sz of [-1, 1]) {
-      const b = board(4.5, 0.2, 0.22, { color: [0.62, 0.58, 0.52] });
-      b.translate(0, g0 + 0.1, sz * HW);
-      sills.push(b);
-    }
+    for (const sz of [-1, 1]) addLog([-HW - 0.3 - rng() * 0.04, g0 + 0.08, sz * HW], [HW + 0.3 + rng() * 0.04, g0 + 0.08, sz * HW], 0.125, { k: 0.72 });
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       const b = turned(logProfile(0.28, 0.16, 0.15, { step: 0.14 }), { radial: 12, rng, noise: 0.06, capTop: true, color: (y, a, c) => { c[0] = 0.55; c[1] = 0.5; c[2] = 0.44; } });
       b.translate(sx * HW, g0 - 0.2 + Y0, sz * HW);
@@ -98,7 +96,21 @@ export default async function build(ctx, placement) {
       const r = 0.055 + rng() * 0.015;
       addLog([z, poleY + (rng() - 0.5) * 0.02, -HW - 0.3 - rng() * 0.15], [z + (rng() - 0.5) * 0.04, poleY, HW + 0.3 + rng() * 0.15], r, { k: 0.7 + rng() * 0.2 });
     }
-    return { walls: merge([...logs, ...sills, ...jambs]), lintelY, thresholdY, poleY };
+    // moss caulk in the wall's mid-plane: where two tapered, bowed logs leave a gap between courses, it shows
+    // dark moss instead of daylight
+    const moss = [];
+    const caulk = (cx, cz, lx, lz, y0, y1) => {
+      const m = board(lx, y1 - y0, lz, { color: [0.3, 0.3, 0.24] });
+      m.translate(cx, g0 + (y0 + y1) / 2, cz);
+      moss.push(m);
+    };
+    const cy0 = 0.18, cy1 = topY - 0.04, dz0 = DOOR.z0 - 0.06, dz1 = DOOR.z1 + 0.06;
+    caulk(-HW, 0, 0.03, 2 * HW, cy0, cy1);
+    for (const sz of [-1, 1]) caulk(0, sz * HW, 2 * HW, 0.03, cy0 + 0.1, cy1);
+    caulk(HW, (-HW + dz0) / 2, 0.03, dz0 + HW, cy0, cy1);
+    caulk(HW, (HW + dz1) / 2, 0.03, HW - dz1, cy0, cy1);
+    caulk(HW, 0, 0.03, dz1 - dz0, lintelY + 0.06, cy1);
+    return { walls: merge([...logs, ...sills, ...jambs, ...moss]), lintelY, thresholdY, poleY };
   });
 
   const { lintelY, thresholdY, poleY } = house;
@@ -282,13 +294,19 @@ function uvMetres(g) {
   return g;
 }
 
+// 0 at the roof's centre → 1 at its edge: a rounded square (p-norm), so the mound has no pyramid creases
+// along its diagonals and thins out to the corners
+function edgeOf(x, z, half) {
+  return Math.min(1, Math.pow(Math.abs(x) ** 4 + Math.abs(z) ** 4, 0.25) / half);
+}
+
 // A lumpy earth mound on the ceiling poles; returns the mesh and grass blades for its top.
 function earthRoof(ctx, rng, y0, half, depth) {
   const n = 28;
   const pos = [], idx = [], col = [];
   for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) {
     const x = -half + (i / n) * 2 * half, z = -half + (j / n) * 2 * half;
-    const e = Math.max(Math.abs(x), Math.abs(z)) / half; // 0 centre → 1 edge
+    const e = edgeOf(x, z, half); // 0 centre → 1 edge
     const shoulder = Math.min(1, (1 - e) / 0.14);
     const lump = Math.sin(x * 2.1 + 1.3) * Math.sin(z * 1.7) * 0.04 + Math.sin(x * 5.3 + z * 3.1) * 0.015;
     const y = y0 + (depth + lump) * Math.pow(Math.max(0, shoulder), 0.45) + (e >= 0.999 ? -0.03 : 0);
@@ -299,6 +317,11 @@ function earthRoof(ctx, rng, y0, half, depth) {
     const a = i * (n + 1) + j, b = a + n + 1;
     idx.push(a, a + 1, b, a + 1, b + 1, b);
   }
+  // underlay: the earth seen from inside between the ceiling poles, facing down (the mound is one-sided, so
+  // the sky showed through the gaps)
+  const u0 = pos.length / 3, uy = y0 - 0.035, uh = half + 0.02;
+  for (const [x, z] of [[-uh, -uh], [uh, -uh], [-uh, uh], [uh, uh]]) { pos.push(x, uy, z); col.push(0.45, 0.42, 0.4); }
+  idx.push(u0, u0 + 1, u0 + 2, u0 + 1, u0 + 3, u0 + 2);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -318,7 +341,7 @@ function earthRoof(ctx, rng, y0, half, depth) {
   // grass: clumps scattered on the flat top, thinner towards the edges
   const parts = [];
   const surf = (x, z) => {
-    const e = Math.max(Math.abs(x), Math.abs(z)) / half, shoulder = Math.min(1, (1 - e) / 0.14);
+    const e = edgeOf(x, z, half), shoulder = Math.min(1, (1 - e) / 0.14);
     const lump = Math.sin(x * 2.1 + 1.3) * Math.sin(z * 1.7) * 0.04 + Math.sin(x * 5.3 + z * 3.1) * 0.015;
     return y0 + (depth + lump) * Math.pow(Math.max(0, shoulder), 0.45);
   };
@@ -345,17 +368,39 @@ function platform(rng, g0, P) {
   }
   // rolled hides at the north end, a folded one at the south end
   for (let i = 0; i < 3; i++) {
-    const g = new THREE.CylinderGeometry(0.11 + rng() * 0.03, 0.12 + rng() * 0.03, 0.62, 18, 1);
+    const g = hideRoll(rng, 0.62, 0.115 + rng() * 0.03);
     g.rotateX(Math.PI / 2); g.rotateY(Math.PI / 2 + (rng() - 0.5) * 0.3);
     g.translate((x0 + x1) / 2 + (rng() - 0.5) * 0.05, top + 0.12 + (i === 2 ? 0.2 : 0), 0.95 + (i === 1 ? 0.24 : 0) + (i === 2 ? 0.12 : 0));
     P.hides.push(coat(g, i === 1 ? [0.05, 0.04, 0.03] : [0.15, 0.08, 0.045]));
   }
-  const fold = new THREE.BoxGeometry(0.62, 0.12, 0.52, 6, 2, 6);
+  const fold = new THREE.BoxGeometry(0.62, 0.12, 0.52, 10, 4, 10);
   const p = fold.attributes.position;
+  pillow(p, 0.31, 0.06, 0.26, 0.055); // soft folded edges, not a box's
   for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) + Math.sin(p.getX(i) * 7) * 0.012 + Math.cos(p.getZ(i) * 9) * 0.01 - Math.abs(p.getX(i)) * 0.05);
   fold.computeVertexNormals();
   fold.translate((x0 + x1) / 2, top + 0.05, 1.55 - 0.3);
   P.hides.push(coat(fold, [0.12, 0.1, 0.09]));
+}
+
+// A rolled hide: a soft roll whose ends show the wound layers (stepped rings, dished in), not a flat disc.
+function hideRoll(rng, L, r) {
+  const end = [[0.03, 0], [0.026, r * 0.28], [0.014, r * 0.31], [0.018, r * 0.58], [0.006, r * 0.62], [0.009, r * 0.88], [0.0, r * 0.93], [0.012, r]];
+  const prof = [...end, [L * 0.3, r * 1.03], [L * 0.7, r * 1.02], ...end.map(([y, rr]) => [L - y, rr]).reverse()];
+  const g = turned(prof, { radial: 18, rng, noise: 0.05, oval: 0.1 });
+  g.translate(0, -L / 2, 0);
+  return g;
+}
+
+// Round a box's edges: each vertex is pulled onto a rounded box of half sizes hx, hy, hz and edge radius rr.
+function pillow(p, hx, hy, hz, rr) {
+  const v = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    c.set(Math.max(-hx + rr, Math.min(hx - rr, v.x)), Math.max(-hy + rr, Math.min(hy - rr, v.y)), Math.max(-hz + rr, Math.min(hz - rr, v.z)));
+    v.sub(c);
+    if (v.lengthSq() > 1e-10) v.setLength(rr);
+    p.setXYZ(i, c.x + v.x, c.y + v.y, c.z + v.z);
+  }
 }
 
 // Cylinders/boxes get a coat colour and uv in metres.

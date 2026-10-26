@@ -298,53 +298,87 @@ export function buildShell({ M, rng, winter, root }) {
   kd.rotation.y = winter ? 0 : 1.9;
   root.add(kd);
   colliders.push({ x: 0, z: (KR.z1 - 0.6 - 3.4) / 2, hw: klin(KH.hx, 0) + PL + 0.35, hd: (KR.z1 - 0.6 + 3.4) / -2 }); // to the berm's foot
-  // dung-trodden apron outside the barn door
-  section(() => {
-    const ap = sheet(8, 8, (u, v) => [kxd + 0.1 + u * 1.6, 0.012 + 0.01 * fbm2(u * 5, v * 5, 3), KZD - 1 + v * 2], { uvf: (u, v) => [u * 1.6, v * 2], face: () => [0, 1, 0] });
-    B.add(M.soil, ap);
-  });
-
   // ---------- earth berm (кунус) round the foot, held by horizontal logs on stakes ----------
-  const berm = (hxF, hzF, cz, skipF, seed, scale = 1) => {
+  // Two cross-sections (offset out from the wall foot, height), blended per point round the perimeter:
+  // CURB where the retaining logs stand (the earth heaps over the top log, its face hidden behind them),
+  // FREE elsewhere (corners, the khoton, the door ends): a slumped toe running out into the ground.
+  const CURB = [[0.02, 0.58], [0.3, 0.44], [0.48, 0.37], [0.575, 0.3], [0.6, 0.02], [0.66, -0.25]];
+  const FREE = [[0.02, 0.58], [0.3, 0.44], [0.5, 0.32], [0.7, 0.13], [0.88, -0.01], [0.95, -0.25]];
+  const SLUMP = 0.55, Y_END = 0.03;   // a door gap's earth slumps down over this run to a crumbled end at the threshold
+  const ease = (t) => { t = Math.min(1, Math.max(0, t)); return 1 - (1 - t) * (1 - t); };
+  const slumped = (y, s) => (y > Y_END ? Y_END + (y - Y_END) * s : y);
+  // cut(x, z) → true where the berm is left out; curb(x, z), slump(x, z): 0..1 (slump 1 = full height). All three
+  // are asked at the perimeter point where the logs stand (local to the berm's centre), so a cut meets a slumped end.
+  const berm = (hxF, hzF, cz, cut, seed, { curb = () => 0, slump = () => 1, NU = 440 } = {}) => {
     const p0x = hxF(0), p0z = hzF(0);
-    const rings = [[hxF(0.72 * scale) - 0.16, hzF(0.72 * scale) - 0.16, 0.72 * scale], [p0x + 0.02, p0z + 0.02, 0.58 * scale], [p0x + 0.32, p0z + 0.32, 0.42 * scale], [p0x + 0.55, p0z + 0.55, 0.33 * scale], [p0x + 0.6, p0z + 0.6, 0.02], [p0x + 0.66, p0z + 0.66, -0.25]];
-    const NU = 220, f = (u, v) => {
-      const k = Math.round(v * (rings.length - 1));
-      const [rx, rz, y] = rings[k];
+    const NR = CURB.length + 1;   // NU columns: ~8 cm each on the house, so a slumped end gets several
+    const at = (u) => rrect(p0x + 0.6, p0z + 0.6, 0.55, u);
+    const skipF = (u) => { const [x, z] = at(u); return cut(x, z); };
+    const f = (u, v) => {
+      const k = Math.round(v * (NR - 1));
+      const [ox, oz] = at(u);
+      const c = curb(ox, oz), s = slump(ox, oz);
+      let rx, rz, y;
+      if (k === 0) {   // inside the wall; at a slumped end it comes down to the foot, just inside the bay front
+        const w = (p0, r) => p0 - 0.05 + (r - 0.11 - p0) * s;
+        rx = w(p0x, hxF(0.72)); rz = w(p0z, hzF(0.72)); y = slumped(0.72, s);
+      }
+      else {
+        const [cd, cy] = CURB[k - 1], [fd, fy] = FREE[k - 1];
+        const d = 0.02 + (fd + (cd - fd) * c - 0.02) * Math.sqrt(s);   // a slumping end narrows to a rounded nose
+        rx = p0x + d; rz = p0z + d; y = slumped(fy + (cy - fy) * c, s);
+      }
       const [x, z, nx, nz] = rrect(rx, rz, 0.55, u);
-      const j = 0.06 * fbm2(u * 50, k * 2, seed);
-      return [x + nx * j, y + (k > 0 && k < 4 ? 0.05 * fbm2(u * 70, k, seed + 2) : 0), cz + z + nz * j];
+      const j = 0.06 * fbm2(u * 50, k * 2, seed) * (k >= 3 ? 1 - 0.8 * c : 1) * (0.3 + 0.7 * Math.sqrt(s));   // the curbed face keeps behind the logs
+      const dy = k > 0 && k < 4 && y > Y_END ? 0.05 * fbm2(u * 70, k, seed + 2) * s : 0;
+      return [x + nx * j, y + dy, cz + z + nz * j];
     };
-    B.add(M.sod, sheet(NU, rings.length - 1, f, { uvf: (u, v) => [u * 30, v], skip: skipF, face: (x, y, z) => [x * 0.3, 1, (z - cz) * 0.3] }));
-    // where the berm is cut (door gaps, the khoton joint) a soil face closes its cross-section down into the ground
+    B.add(M.sod, sheet(NU, NR - 1, f, { uvf: (u, v) => [u * 30, v * 1.4], skip: skipF, face: (x, y, z) => [x * 0.3, 1, (z - cz) * 0.3] }));
+    // where the berm is cut (door gaps, the khoton joint) a soil face closes its cross-section down into the ground;
+    // at the doors the earth has slumped to a few centimetres there, at the khoton joint it lies inside the house berm
     for (let i = 0; i < NU; i++) {
       const a = skipF((i - 0.5) / NU), b = skipF((i + 0.5) / NU);
       if (a === b) continue;
       const u = i / NU, q = f(u, 0.5), q2 = f(u + (a ? -1 : 1) / NU, 0.5), out = [q2[0] - q[0], 0, q2[2] - q[2]];
-      const n = rings.length - 1;   // from ring 1 out: ring 0 lies inside the wall (and the door bay)
+      const n = NR - 1;   // from ring 1 out: ring 0 lies inside the wall (and the door bay)
       B.add(M.soil, sheet(1, n - 1, (w, v) => { const P = f(u, (1 + v * (n - 1)) / n); return w ? [P[0], -0.3, P[2]] : P; },
         { uvf: (w, v, P) => [v * 1.2, P[1]], face: () => out }));
     }
-    return rings[3];
+    return [p0x + 0.55, p0z + 0.55, 0.33];
   };
-  const doorGap = (rx, rz, cz) => (u) => { const [x, z] = rrect(rx, rz, 0.55, u); return x > 0 && Math.abs(cz + z - ZD) < DW / 2 + 0.05; };
-  const hb = section(() => berm((y) => hp(FX, y), (y) => hp(FZ, y), 0, doorGap(hp(FX, 0) + 0.5, hp(FZ, 0) + 0.5, 0), 51));
-  const kb = section(() => berm((y) => klin(KH.hx, y) + PL, (y) => klin(KH.hz, y) + PL, kcz, (u) => { const [x, z] = rrect(KH.hx + 1, KH.hz + 1, 0.55, u); return z + kcz > -3.3 || (x > 0 && Math.abs(z + kcz - KZD) < 0.6); }, 61));
-  // retaining logs along each straight side of the house berm (gap at the door)
+  // the house berm's logs: x = ±bx (east, west), z = bz (south); the north side lies inside the khoton
+  const p0x = hp(FX, 0), p0z = hp(FZ, 0), bx = p0x + 0.62, bz = p0z + 0.62;
+  const doorCut = DW / 2 + 0.05, logGap = doorCut + SLUMP;   // logs stop where the earth starts to slump
+  const span = (t, a, b) => Math.min(1, Math.max(0, Math.min(t - a, b - t) / 0.25 + 0.4));   // 1 along a log, 0 0.1 m past its end
+  const logEnd = { x: bx - 0.5, z: bz - 0.5 };
+  const houseCurb = (x, z) => {
+    if (x > p0x) return z < ZD ? span(z, -logEnd.z, ZD - logGap) : span(z, ZD + logGap, logEnd.z);
+    if (x < -p0x) return span(z, -logEnd.z, logEnd.z);
+    if (z > p0z) return span(x, -logEnd.x, logEnd.x);
+    return 0;
+  };
+  const houseSlump = (x, z) => (x > 0 ? ease((Math.abs(z - ZD) - doorCut) / SLUMP) : 1);
+  const kSlump = (x, z) => (x > 0 ? ease((Math.abs(z + kcz - KZD) - 0.6) / SLUMP) : 1);
+  const hb = section(() => berm((y) => hp(FX, y), (y) => hp(FZ, y), 0, (x, z) => x > 0 && Math.abs(z - ZD) < doorCut, 51, { curb: houseCurb, slump: houseSlump }));
+  // the khoton's bank ends inside the house berm (z > -3.3) and at its door
+  const kb = section(() => berm((y) => klin(KH.hx, y) + PL, (y) => klin(KH.hz, y) + PL, kcz, (x, z) => z + kcz > -3.3 || (x > 0 && Math.abs(z + kcz - KZD) < 0.6), 61, { slump: kSlump, NU: 300 }));
+  // retaining logs along each straight side of the house berm, on stakes; the earth slumps off past their ends.
+  // Bark faces out and up (`outw`): the material darkens faces across `outw` as clay-packed joints.
   section(() => {
-    const rl = (a, b) => B.add(M.logs, log(a, b, 0.085, 0.075, rng, { caps: true, seg: 7, bow: 0.02 }), { color: [0.75, 0.72, 0.68], extra: { outw: [0, 1, 0] } });
-    const bx = hb[0] + 0.07, bz = hb[1] + 0.07;
-    for (const y of [0.08, 0.24]) {
-      rl([-bx + 0.4, y, bz], [bx - 0.4, y, bz]);
-      rl([-bx, y, -bz + 0.4], [-bx, y, bz - 0.4]);
-      rl([bx, y, -bz + 0.4], [bx, y, ZD - DW / 2 - 0.12]);
-      rl([bx, y, ZD + DW / 2 + 0.12], [bx, y, bz - 0.4]);
+    const rl = (a, b, outw, r = 0.09) => B.add(M.logs, log(a, b, r, r * 0.9, rng, { caps: true, seg: 8, bow: 0.004, knob: 0.06 }), { color: [0.75, 0.72, 0.68], extra: { outw } });
+    const OUT_S = [0, 0.6, 0.8], OUT_W = [-0.8, 0.6, 0], OUT_E = [0.8, 0.6, 0];
+    for (const y of [0.075, 0.235]) {
+      rl([-logEnd.x, y, bz], [logEnd.x, y, bz], OUT_S);
+      rl([-bx, y, -logEnd.z], [-bx, y, logEnd.z], OUT_W);
+      rl([bx, y, -logEnd.z], [bx, y, ZD - logGap], OUT_E);
+      rl([bx, y, ZD + logGap], [bx, y, logEnd.z], OUT_E);
     }
-    for (let x = -bx + 0.5; x < bx - 0.3; x += 1.6 + rng() * 0.3) rl([x, -0.2, bz + 0.11], [x + (rng() - 0.5) * 0.04, 0.42, bz + 0.12]);
-    for (let z = -bz + 0.5; z < bz - 0.3; z += 1.6 + rng() * 0.3) {
-      rl([-bx - 0.11, -0.2, z], [-bx - 0.12, 0.42, z]);
-      if (Math.abs(z - ZD) > 0.7) rl([bx + 0.11, -0.2, z], [bx + 0.12, 0.42, z]);
-    }
+    const stake = (x, z, dir) => rl([x, -0.2, z], [x + (rng() - 0.5) * 0.03, 0.42, z + (rng() - 0.5) * 0.03], dir, 0.065);
+    const run = (a, b, put) => { const n = Math.max(1, Math.round((b - a) / 1.6)); for (let i = 0; i <= n; i++) put(a + 0.12 + (b - a - 0.24) * i / n + (i > 0 && i < n ? (rng() - 0.5) * 0.3 : 0)); };
+    run(-logEnd.x, logEnd.x, (x) => stake(x, bz + 0.15, [0, 0, 1]));
+    run(-logEnd.z, logEnd.z, (z) => stake(-bx - 0.15, z, [-1, 0, 0]));
+    run(-logEnd.z, ZD - logGap, (z) => stake(bx + 0.15, z, [1, 0, 0]));
+    run(ZD + logGap, logEnd.z, (z) => stake(bx + 0.15, z, [1, 0, 0]));
   });
 
   // ---------- canopy (чарапчы) over the door: two posts, a beam, poles and a thin earth layer ----------
@@ -363,10 +397,17 @@ export function buildShell({ M, rng, winter, root }) {
     const cTop = (u, v) => cy + 0.5 - u * 0.21 + 0.05 * Math.sin(v * Math.PI) + 0.02 * fbm2(u * 6, v * 6, 4);
     const cX = (u) => XD - 0.1 + u * (cx + 0.12 - XD + 0.1), cZ = (v) => ZD - cw - 0.12 + v * (2 * cw + 0.24);
     const cs = sheet(10, 10, (u, v) => [cX(u), cTop(u, v), cZ(v)], { face: () => [0, 1, 0] });
-    // the earth layer's ragged edges (front and both sides)
-    const edgeF = sheet(16, 1, (u, v) => [cX(1) + 0.02 * fbm2(u * 9, 1, 3), v ? cTop(1, u) : cy + 0.12, cZ(u)], { uvf: (u, v) => [u * 2.6, v * 0.25], face: () => [1, 0, 0] });
-    B.add(M.soil, edgeF);
-    for (const sv of [0, 1]) B.add(M.soil, sheet(12, 1, (u, v) => [cX(u), v ? cTop(u, sv) : cy + 0.3 - u * 0.18, cZ(sv) + (sv ? 1 : -1) * 0.02 * fbm2(u * 9, sv, 5)], { uvf: (u, v) => [u * 2, v * 0.25], face: () => [0, 0, sv ? 1 : -1] }));
+    // the earth layer's edges (front and both sides): a crumbled, bulging lip that meets the sod's edge on top
+    // (one flat strip read as a board)
+    const lip = (n, base, out, yb, yt, seed) => sheet(n, 3, (t, v) => {
+      const k = Math.round(v * 3), [x, z] = base(t), y0 = yb(t), y1 = yt(t);
+      const e = Math.min(1, 12 * t * (1 - t));   // the ends close onto the corner line, where the next lip starts
+      const o = e * [-0.02 + 0.02 * fbm2(t * 13, 0, seed), 0.022 + 0.02 * fbm2(t * 11, 1, seed), 0.012 + 0.015 * fbm2(t * 17, 2, seed), 0][k];
+      const y = [y0 + 0.03 * e * fbm2(t * 13, 3, seed), y0 + 0.4 * (y1 - y0), y0 + 0.8 * (y1 - y0), y1][k];
+      return [x + out[0] * o, y, z + out[1] * o];
+    }, { uvf: (t, v, P) => [P[0] + P[2], P[1]], face: () => [out[0], 0, out[1]] });
+    B.add(M.soil, lip(24, (t) => [cX(1), cZ(t)], [1, 0], () => cy + 0.12, (t) => cTop(1, t), 3));
+    for (const sv of [0, 1]) B.add(M.soil, lip(16, (t) => [cX(t), cZ(sv)], [0, sv ? 1 : -1], (t) => cy + 0.3 - t * 0.18, (t) => cTop(t, sv), 5 + sv));
     B.add(M.sod, cs);
   });
 
@@ -376,5 +417,5 @@ export function buildShell({ M, rng, winter, root }) {
   const B2 = { chim, chTop };
 
   const meshes = B.build(root);
-  return { colliders, door, kDoor: kd, windows: win, roofTop, kRoof: { hx: KR.hx, hz: KR.hz, cz: KR.cz, top: kTop }, canopy: { x0: XD - 0.1, x1: cx + 0.12, z0: ZD - cw - 0.12, z1: ZD + cw + 0.12, y: cy + 0.5 }, berm: { hb, kb, kcz, KZD, kxd }, chim: B2, meshes };
+  return { colliders, door, kDoor: kd, windows: win, roofTop, kRoof: { hx: KR.hx, hz: KR.hz, cz: KR.cz, top: kTop }, canopy: { x0: XD - 0.1, x1: cx + 0.12, z0: ZD - cw - 0.12, z1: ZD + cw + 0.12, y: cy + 0.5 }, berm: { hb, kb, kcz, KZD, kxd, height: (y, x, z) => slumped(y, houseSlump(x, z)) }, chim: B2, meshes };
 }

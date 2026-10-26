@@ -35,7 +35,7 @@ export function smithy(K, x, z, yaw) {
     const slope = Math.atan2(FH - BH, 3.6);
     for (let i = 0; i < 8; i++) {
       const sz = -1.75 + i * 0.5 + (rng() - 0.5) * 0.05;
-      const sl = sheetGeo(3.75, 0.56, rng, { curl: 0, warp: 0.02, res: 10 });
+      const sl = sheetGeo(3.75, 0.56, rng, { curl: 0, warp: 0.02, res: 10, thick: 0.015 });
       // curl across the slab (bark dries cupped)
       const p = sl.attributes.position;
       for (let k = 0; k < p.count; k++) p.setY(k, p.getY(k) - 0.06 * (p.getZ(k) / 0.28) ** 2 + 0.03);
@@ -203,7 +203,7 @@ export function smithy(K, x, z, yaw) {
       F.add(boxUV(kb, 6), M.iron, mtx([-0.47, top + 0.075, 0.93], [0, 1.1, 0]), [0.55, 0.5, 0.48]);
       // hammer (head like a small axe with a heavy poll) lying on the stump
       F.add(boxUV(new THREE.BoxGeometry(0.1, 0.034, 0.034), 6), M.iron, mtx([-0.36, top + 0.02, 1.08], [0, -0.4, 0]));
-      addLog(K.b, Wy(-0.36, top + 0.02, 1.08), Wy(-0.5, top - 0.1, 1.41), 0.014, 0.012, rng, M.fresh, null, { seg: 6, step: 0.1 }, [0.6, 0.5, 0.42]);
+      addLog(K.b, Wy(-0.36, top + 0.02, 1.08), Wy(-0.5, top - 0.1, 1.41), 0.014, 0.012, rng, M.fresh, M.end, { seg: 6, step: 0.1 }, [0.6, 0.5, 0.42]);
       K.colliders.push({ x: ax, z: az, r: 0.27 });
       // low stool for the smith
       const [sx, sz] = F.tw(-1.0, 0.55);
@@ -211,10 +211,10 @@ export function smithy(K, x, z, yaw) {
       K.b.add(sg.side, M.darkwood, mtx([sx, K.b.ground(sx, sz) - 0.02, sz])); K.b.add(sg.caps, M.end, mtx([sx, K.b.ground(sx, sz) - 0.02, sz]), [0.7, 0.65, 0.6]);
     }
     // tongs (long reins, blackened jaws) leaning on the forge
-    for (const s of [-1, 1]) addLog(K.b, Wy(-0.05, fy + 0.005, 0.72 + s * 0.02), Wy(FX - FD / 2 - 0.02, fy + 0.58, 0.55 - s * 0.02), 0.007, 0.006, rng, M.soot, null, { seg: 5, step: 0.2, bend: 0.01 });
+    for (const s of [-1, 1]) addLog(K.b, Wy(-0.05, fy + 0.005, 0.72 + s * 0.02), Wy(FX - FD / 2 - 0.02, fy + 0.58, 0.55 - s * 0.02), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2, bend: 0.01 });
     // a second pair and a file hung on pegs on the back wall
-    for (const s of [-1, 1]) addLog(K.b, Wy(1.5, fy + 0.7, -0.75 + s * 0.015), Wy(1.52, fy + 1.25, -0.72 - s * 0.015), 0.007, 0.006, rng, M.soot, null, { seg: 5, step: 0.2 });
-    addLog(K.b, Wy(1.48, fy + 1.27, -0.75), Wy(1.3, fy + 1.27, -0.75), 0.012, 0.012, rng, M.wood, null, { seg: 5 });
+    for (const s of [-1, 1]) addLog(K.b, Wy(1.5, fy + 0.7, -0.75 + s * 0.015), Wy(1.52, fy + 1.25, -0.72 - s * 0.015), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2 });
+    addLog(K.b, Wy(1.48, fy + 1.27, -0.75), Wy(1.3, fy + 1.27, -0.75), 0.012, 0.012, rng, M.wood, M.end, { seg: 5 });
     F.add(boxUV(new THREE.BoxGeometry(0.012, 0.3, 0.02), 6), M.iron, mtx([1.5, fy + 0.95, -0.45], [0, 0, 0.08]), [0.7, 0.7, 0.72]);
     // quench tub (birch bark) with water
     {

@@ -45,7 +45,8 @@ const SOUTH = [0.75, [[5.4, 8.6], [6.2, 18], [8.2, 26], [6.5, 38], [5, 50], [4.5
 export default async function build(ctx, placement) {
   const { THREE: T, terrain, rng } = ctx;
   const px = placement.x, pz = placement.z, py = placement.y;
-  const ground = (x, z) => terrain.heightFast(px + x, pz + z) - py; // per-vertex grime (kit.js Bucket)
+  const hf = terrain.heightFast ? terrain.heightFast.bind(terrain) : terrain.height; // the viewer's flat terrain has no heightFast
+  const ground = (x, z) => hf(px + x, pz + z) - py; // per-vertex grime (kit.js Bucket)
   const group = new T.Group();
   group.name = 'yardlife';
   const M = yardMats();

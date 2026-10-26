@@ -105,7 +105,7 @@ export function log(a, b, r0, r1, rng, { seg = 7, bow = 0.02, knob = 0.12, caps 
   }
   for (let j = 0; j < rows; j++) for (let i = 0; i < seg; i++) {
     const a0 = j * ring + i, a1 = a0 + 1, b0 = a0 + ring, b1 = b0 + 1;
-    idx.push(a0, b0, a1, a1, b0, b1);
+    idx.push(a0, a1, b0, a1, b1, b0);   // counter-clockwise seen from outside: normals face out
   }
   if (caps) {
     for (const [j, flip] of [[0, true], [rows, false]]) {

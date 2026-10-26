@@ -7,7 +7,7 @@ import * as THREE from 'three/webgpu';
 import { texture, uv, uniform, positionLocal, positionWorld, cameraPosition, smoothstep, mix, float, color, exp, attribute, mx_noise_float } from 'three/tsl';
 import { LAKE } from '../world/terrain.js';
 import {
-  Bucket, addLog, blob, decalMat, jitterTint, lathe, mtx, patchGeo, pmat, ribbonGeo, sheetGeo, sleep, tube, TAU,
+  Bucket, addLog, blob, decalMat, jitterTint, lathe, mtx, patchGeo, pmat, ribbonGeo, sleep, tube, TAU,
 } from './yardlife/kit.js';
 import { yardMats } from './yardlife/mats.js';
 import { maps } from '../engine/materials.js';
@@ -172,10 +172,19 @@ export default async function build(ctx, placement) {
       // hair scoop (кыл хамыйах): willow ring with a hair net on a handle
       const [x1, z1] = poles[0];
       const h0 = [x1 - 0.5, g(x1 - 0.5, z1 + 0.3) + 0.02, z1 + 0.3], h1 = [x1 - 0.03, g(x1, z1) + 1.45, z1 + 0.07];
-      addLog(B, h0, h1, 0.017, 0.015, rng, M.willow, null, { seg: 6 }, [0.7, 0.62, 0.52]);
+      addLog(B, h0, h1, 0.017, 0.015, rng, M.willow, M.endFresh, { seg: 6 }, [0.7, 0.62, 0.52]);
       const ring = mtx([h1[0] + 0.02, h1[1] + 0.13, h1[2] + 0.03], [0, 0.3, 0.1]);
       B.add(new T.TorusGeometry(0.125, 0.008, 5, 18), M.willow, ring.clone().multiply(mtx([0, 0, 0], [0, 0, 0])), [0.7, 0.62, 0.52]);
-      B.add(new T.CircleGeometry(0.122, 16), M.hair, ring, [1.4, 1.3, 1.2]);
+      // the woven horsehair: a shallow bag sagging from the ring, see-through (the net's two-sided material, dark)
+      const hairNet = new T.CircleGeometry(0.122, 16, 0, TAU);
+      const hp = hairNet.attributes.position, hu = hairNet.attributes.uv;
+      for (let i = 0; i < hp.count; i++) {
+        const r2 = (hp.getX(i) ** 2 + hp.getY(i) ** 2) / 0.122 ** 2;
+        hp.setZ(i, -0.05 * (1 - r2));
+        hu.setXY(i, hu.getX(i) * 0.35, hu.getY(i) * 0.35); // a finer mesh than the seine
+      }
+      hairNet.computeVertexNormals();
+      B.add(hairNet, net, ring, [0.42, 0.38, 0.35]);
     }
   });
 
@@ -218,16 +227,19 @@ export default async function build(ctx, placement) {
     B.add(hull, hullMat, m);
     // a double-bladed paddle lying in it
     const paddle = mtx([0.2, -D + 0.12, 0.05], [0, 0.04, 0.06]);
-    const shaft = addLog({ add: (geo, mat, mm, t) => B.add(geo, mat, m.clone().multiply(paddle).multiply(mm), t), ground: B.ground }, [-1.3, 0, 0], [1.3, 0, 0], 0.017, 0.017, rng, M.fresh, null, { seg: 6 }, [0.7, 0.62, 0.52]);
+    const shaft = addLog({ add: (geo, mat, mm, t) => B.add(geo, mat, m.clone().multiply(paddle).multiply(mm), t), ground: B.ground }, [-1.3, 0, 0], [1.3, 0, 0], 0.017, 0.017, rng, M.fresh, M.endFresh, { seg: 6 }, [0.7, 0.62, 0.52]);
     void shaft;
     for (const sx of [-1, 1]) {
-      const bl = sheetGeo(0.42, 0.12, rng, { curl: 0.01, warp: 0.002, res: 6 });
-      const p = bl.attributes.position;
-      for (let i = 0; i < p.count; i++) { const u = p.getX(i) / 0.21; p.setZ(i, p.getZ(i) * Math.sqrt(Math.max(0.05, 1 - u * u * 0.9))); }
+      // a carved blade with thickness: thick along the spine, thinning to rounded edges and tip
+      const bl = blob(0.21, 0.008, 0.06, rng, { detail: 2, rough: 0.03, flatBottom: false });
+      bl.translate(0, -0.008 * 0.15, 0);
       B.add(bl, M.fresh, m.clone().multiply(paddle).multiply(mtx([sx * 1.42, 0, 0], [0, 0, sx * 0.05])), [0.66, 0.58, 0.5]);
     }
     return { x: cx, z: cz, hw: L / 2, hd: Bm / 2 + 0.05, rot: yaw };
   }));
+  // no blades through the hull: the grass under the pulled-up dugout is crushed (circles along its keel)
+  const boat = colliders.at(-1), boatBare = [];
+  for (let t = -1; t <= 1.001; t += 0.2) boatBare.push({ x: boat.x + Math.cos(boat.rot) * boat.hw * t * 0.95, z: boat.z - Math.sin(boat.rot) * boat.hw * t * 0.95, r: boat.hd + 0.08 - Math.abs(t) ** 3 * 0.18 });
 
   // a few stones along the shore
   section(() => {
@@ -337,6 +349,7 @@ export default async function build(ctx, placement) {
   interactables.push({ entry: 'alaas', zone: { x: 9, z: 4, r: 4.5 } });
 
   for (const m of B.build(group)) if (m.material === net) m.castShadow = false; // twine throws only a faint, broken shadow
+  group.userData.bare = boatBare;
   group.userData.paths = [{ w: 0.75, pts: [[0, -9], [0.6, -4], [-0.8, 1], [-1.8, 5], [stoneX, stoneZ - 0.9]] }, { w: 0.55, pts: [[-0.8, 1], [-4, 3.5], [-6.5, 6.5]] }];
   return { object: group, colliders, interactables, update: (dt) => { for (const u of ups) u(dt); } };
 }

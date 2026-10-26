@@ -211,7 +211,8 @@ export function buildFrame(rng, P) {
   const jz = DOOR.hw + 0.065;
   for (const s of [-1, 1]) G.timber.push(beam([DOOR.rAt(-0.12), -0.12, s * jz], [DOOR.rTop, DOOR.h + 0.115, s * jz], 0.13, 0.2, 0.015));
   G.timber.push(beam([DOOR.rTop, DOOR.h + 0.06, -(jz + 0.2)], [DOOR.rTop, DOOR.h + 0.06, jz + 0.2], 0.22, 0.12, 0.015));
-  G.timber.push(tube([new THREE.Vector3(DOOR.r - 0.07, 0.04, -jz - 0.08), new THREE.Vector3(DOOR.r - 0.07, 0.045, jz + 0.08)], () => 0.065, 10, { capStart: true, capEnd: true }));
+  // the threshold ends inside the jambs: a straight log past them stood out of the curving bark, its flat end showing
+  G.timber.push(tube([new THREE.Vector3(DOOR.r - 0.07, 0.04, -jz - 0.03), new THREE.Vector3(DOOR.r - 0.07, 0.045, jz + 0.03)], () => 0.065, 10, { capStart: true, capEnd: true }));
 
   const geoms = {};
   for (const [k, list] of Object.entries(G)) geoms[k] = merge(list);
