@@ -106,7 +106,19 @@ function groundMaterial() {
   const w = (v) => v.add(edge).clamp(0, 1).smoothstep(0.25, 0.75);
   // low/mobile: the normals from one scale only (5 of the pixel's 21 samples; the colour keeps both, so tiling stays hidden)
   const oneNor = TIER.quality === 'low';
-  const sample = (m, key) => (oneNor && key === 'nor' ? texture(m[key], uvA) : mix(texture(m[key], uvA), texture(m[key], uvB), brk));
+  // phones: a set is sampled only where it shows (most pixels show one or two of the five). Samples in a branch take
+  // their gradients from outside it (textureGrad), so filtering stays right at the branch's edges.
+  // (TSL emits a node where it is first used: the gradients and the scale pick are assigned before any branch)
+  const lean = TIER.name === 'mobile';
+  let gA = null, gB = null, pick = brk;
+  const before = () => {
+    const v = (n, x) => { const o = n.toVar(); o.assign(x); return o; };
+    gA = [v(vec2(0), uvA.dFdx()), v(vec2(0), uvA.dFdy())]; gB = [v(vec2(0), uvB.dFdx()), v(vec2(0), uvB.dFdy())]; pick = v(float(0), brk);
+  };
+  const look = (t, u, g) => (g ? texture(t, u).grad(g[0], g[1]) : texture(t, u));
+  const sample = (m, key) => (oneNor && key === 'nor' ? look(m[key], uvA, gA) : mix(look(m[key], uvA, gA), look(m[key], uvB, gB), pick));
+  const when = (need, get) => { if (!lean) return get(); const out = vec4(0).toVar(); If(need, () => { out.assign(get()); }); return out; };
+  const on = (x) => x.greaterThan(0.002);
   const lum = (c) => c.dot(vec3(0.3, 0.55, 0.15));
   const lin = (hex) => { const c = new THREE.Color(hex); return vec3(c.r, c.g, c.b); };
 
@@ -122,30 +134,37 @@ function groundMaterial() {
   const H = makeHooks();
   const fM = (H.maskNode = texture(blank(), wp.sub(H.maskXf.xy).mul(H.maskXf.z)));
   const grazed = fM.z, bareG = fM.w;
+  const wD = w(s.w), wF = w(s.x), wP = w(s.z), wS = w(s.y);
   const layer = (key) => {
     const get = (n) => sample(sets[n], key);
-    if (key === 'ar') {
+    const ar = key === 'ar', kP = ar ? wP.mul(0.85) : wP, bare = ar ? bareG.mul(0.8) : float(0);
+    // what each set still shows after the ones mixed over it (shore over path over forest over grass/dry)
+    const cS = float(1).sub(wS), cP = cS.mul(float(1).sub(kP)), cF = cP.mul(float(1).sub(wF)), cG = cF.mul(float(1).sub(bare));
+    const pv = when(on(cS).and(on(kP).or(on(bare))), () => get('path'));
+    let v = when(on(cG).and(on(float(1).sub(wD))), () => get('grass'));
+    const dv = when(on(cG).and(on(wD)), () => get('dry'));
+    const fv = when(on(cP).and(on(wF)), () => get('forest'));
+    const sv = when(on(wS), () => get('shore'));
+    if (ar) {
       // trodden earth: dusty and pale, not dark mud bands
-      const pv = get('path'), path = vec4(mix(pv.rgb.mul(1.3), lin(0x8a7c5e), 0.4), pv.a);
-      let v = get('grass'); v = vec4(regrade(v.rgb, 0.045, meadowTint, 0.9), v.a);
-      const dv = get('dry'); v = mix(v, vec4(regrade(dv.rgb, 0.2, mix(meadowTint, lin(0x9a9050), 0.4), 0.85), dv.a), w(s.w));
+      const path = vec4(mix(pv.rgb.mul(1.3), lin(0x8a7c5e), 0.4), pv.a);
+      v = vec4(regrade(v.rgb, 0.045, meadowTint, 0.9), v.a);
+      v = mix(v, vec4(regrade(dv.rgb, 0.2, mix(meadowTint, lin(0x9a9050), 0.4), 0.85), dv.a), wD);
       // grazed sward: tighter, greener-yellow, broken by bare trodden soil (same patches the grass leaves)
       v = vec4(mix(v.rgb, regrade(v.rgb, 0.045, mix(lin(0x55622a), lin(0x6c6d34), macro2), 0.9), grazed), v.a);
-      v = mix(v, path, bareG.mul(0.8));
-      v = mix(v, get('forest'), w(s.x));
-      v = mix(v, path, w(s.z).mul(0.85));
-      v = mix(v, get('shore'), w(s.y));
-      return v;
+      v = mix(v, path, bare);
+      v = mix(v, fv, wF);
+      v = mix(v, path, kP);
+      return mix(v, sv, wS);
     }
-    let v = get('grass');
-    v = mix(v, get('dry'), w(s.w));
-    v = mix(v, get('forest'), w(s.x));
-    v = mix(v, get('path'), w(s.z));
-    v = mix(v, get('shore'), w(s.y));
-    return v;
+    v = mix(v, dv, wD);
+    v = mix(v, fv, wF);
+    v = mix(v, pv, wP);
+    return mix(v, sv, wS);
   };
+  const layerOf = (key) => (lean ? Fn(() => { before(); return layer(key); })() : layer(key));
   const mat = new THREE.MeshPhysicalNodeMaterial({ roughness: 1, metalness: 0 });
-  const ar = layer('ar');
+  const ar = layerOf('ar');
   // the wet band at the waterline and the lake bed below it: darker and smoother
   const wet = float(1).sub(smoothstep(LAKE.level + 0.05, LAKE.level + 0.45, positionWorld.y));
   const tone = slow.z.mul(0.08).add(1);
@@ -175,7 +194,7 @@ function groundMaterial() {
   mat.metalnessNode = float(0);
   // rough soil has almost no specular: kills the grey sky sheen at grazing angles
   mat.specularIntensityNode = mix(float(0.25), float(0.8), wet);
-  mat.normalNode = normalMap(layer('nor').rgb.mul(2).sub(1).normalize().mul(0.5).add(0.5));
+  mat.normalNode = normalMap(layerOf('nor').rgb.mul(2).sub(1).normalize().mul(0.5).add(0.5));
   mat.name = 'ground';
   mat.userData.hooks = H; // filled by src/nature/grass.js
   // resolves once every map has its image (world.js shows the ground then, not black)

@@ -34,6 +34,13 @@ export function setTier(name, extra = {}) {
 // Phones/tablets → mobile; on desktop no WebGPU (WebGL2 fallback), few cores, little memory or an older
 // integrated GPU → low; everything else → medium. `high` (GTAO) is never picked automatically.
 // Phones and tablets: the UA, iPadOS (which reports a Mac), or a coarse pointer on a small screen.
+// Fractal-noise octaves for model materials: phones drop the two finest (keeping ≥1) — a building filling the screen
+// cost a warm iPhone ~74 ms a frame in noise (urasa cover) — and scale the sum back to the full one's range (gain 0.5).
+export function octaves(o) {
+  const n = TIER.name === 'mobile' ? Math.max(1, o - 2) : o;
+  return { n, k: (1 - 0.5 ** o) / (1 - 0.5 ** n) };
+}
+
 export function isPhone() {
   const n = typeof navigator !== 'undefined' ? navigator : {}, ua = n.userAgent || '';
   const coarse = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;

@@ -656,23 +656,27 @@ export default async function build(ctx, world) {
   // the near blades (same 5.6 m chunks, wider cells) and draw two blades per mid tuft instead of three
   const eng = world.engine, tier = eng.tier ?? eng.opts?.tier ?? eng.opts?.quality ?? 'medium';
   const low = tier === 'low' || tier === 'mobile' || tier === 'phone' || (eng.opts?.dpr ?? 1) < 1;
-  // phones: fewer blade triangles in the main pass (a tile GPU's geometry buffer overflowed near the homestead,
-  // every frame then ~3× slower): coarse blades sooner, a 45 m mid ring, ~36% fewer flowers
+  // phones: the frame rate a warm iPhone sustains follows the frame's total GPU work (iPhone 14 Pro, tools/iphone.mjs),
+  // so no mid ring (the ground's meadow tint carries on from 11 m; with the sparser near ring ~+45% sustained fps),
+  // the near ring at about half the blades (wider), coarse from 6 m, about half the flowers
   const phone = !KEYART && (tier === 'mobile' || tier === 'phone');
   // liteAt: coarser blades from there (bladeGeometry); near from 11 m, where it cross-fades to the mid ring (from 7 m the meadow read thinner)
   const near = grassMesh(world, F, W, {
-    name: 'near', near: true, liteAt: KEYART ? Infinity : phone ? 6 : 11, C: low ? 40 : 56, K: 7, S: low ? 0.14 : 0.1, segs: 3, nb: 3, tuft: 0.1, rIn: 11, rOut: 16.5, salt: 11, upBlend: 0.25, minPx: 1.3,
-    wMul: () => float(1),
+    name: 'near', near: true, liteAt: KEYART ? Infinity : phone ? 6 : 11, C: phone ? 28 : low ? 40 : 56, K: 7, S: phone ? 0.2 : low ? 0.14 : 0.1, segs: 3, nb: 3, tuft: 0.1, rIn: 11, rOut: 16.5, salt: 11, upBlend: 0.25, minPx: 1.3,
+    wMul: () => float(phone ? 1.3 : 1),
   });
   near.traverse((o) => o.layers.set(1)); // layer 1 only: the lake reflector's camera skips it
   world.engine.camera.layers.enable(1);
-  const mid = grassMesh(world, F, W, {
-    // ?keyart: the mid ring reaches over the whole alaas (90 m chunks); beyond 60 m the px rule alone widens blades
-    name: 'mid', near: false, liteAt: KEYART ? Infinity : phone ? 20 : 30, C: KEYART ? 252 : 84, K: KEYART ? 17 : 5, S: 0.36, segs: 2, nb: low ? 2 : 3, tuft: 0.35, rIn: 11, rOut: KEYART ? 700 : phone ? 45 : 60, salt: 23, upBlend: 0.3, minPx: 1.6,
-    wMul: (d) => (KEYART ? d.min(60) : d).mul(0.065).add(1.3).mul(low ? 1.4 : 1),
-  });
-  mid.traverse((o) => o.layers.set(1)); // the reflection keeps only the static shore plants
-  world.scene.add(near, mid);
+  world.scene.add(near);
+  if (!phone) {
+    const mid = grassMesh(world, F, W, {
+      // ?keyart: the mid ring reaches over the whole alaas (90 m chunks); beyond 60 m the px rule alone widens blades
+      name: 'mid', near: false, liteAt: KEYART ? Infinity : 30, C: KEYART ? 252 : 84, K: KEYART ? 17 : 5, S: 0.36, segs: 2, nb: low ? 2 : 3, tuft: 0.35, rIn: 11, rOut: KEYART ? 700 : 60, salt: 23, upBlend: 0.3, minPx: 1.6,
+      wMul: (d) => (KEYART ? d.min(60) : d).mul(0.065).add(1.3).mul(low ? 1.4 : 1),
+    });
+    mid.traverse((o) => o.layers.set(1)); // the reflection keeps only the static shore plants
+    world.scene.add(mid);
+  }
 
   // where: 'meadow' (× mix(dry[0], dry[1], dry)), 'grazed' sward, or the forest 'edge'
   const species = [
@@ -684,7 +688,7 @@ export default async function build(ctx, world) {
   ];
   for (const sp of species) {
     if (KEYART) { sp.C *= Math.ceil(60 / (sp.C * sp.S)); sp.R = 250; sp.K = 2 * Math.ceil(sp.R / (sp.C * sp.S)) + 1; } // ?keyart: to 250 m
-    if (phone) { const C = Math.round(sp.C * 0.8); sp.S *= sp.C / C; sp.C = C; } // same cover, 36% fewer instances
+    if (phone) { const C = Math.round(sp.C * 0.7); sp.S *= sp.C / C; sp.C = C; } // same cover, about half the instances
     const f = flowerMesh(world, F, W, sp);
     f.traverse((o) => o.layers.set(1));
     world.scene.add(f);

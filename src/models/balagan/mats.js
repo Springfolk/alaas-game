@@ -7,6 +7,7 @@ import {
 } from 'three/tsl';
 
 import { FX, FZ, H, OUT, GAP, XD, ZD, KH } from './dims.js';
+import { octaves } from '../../engine/tier.js';
 
 const S = THREE.MeshStandardNodeMaterial;
 
@@ -27,7 +28,7 @@ const enclosed = (p, margin = 0.05) => {
 };
 const indoorAO = (p, k = 0.1, margin) => mix(float(1), float(k), enclosed(p, margin));
 const nz = (p) => mx_noise_float(p).mul(0.5).add(0.5);          // 0..1
-const fz = (p, o = 3) => mx_fractal_noise_float(p, o, 2.0, 0.5).mul(0.5).add(0.5);
+const fz = (p, o = 3) => { const { n, k } = octaves(o); return mx_fractal_noise_float(p, n, 2.0, 0.5).mul(0.5 * k).add(0.5); };
 
 export function makeMats(maps, { winter = false } = {}) {
   const M = {};

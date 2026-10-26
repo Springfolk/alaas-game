@@ -5,9 +5,10 @@ import * as THREE from 'three/webgpu';
 import {
   Fn, uv, texture, vec2, vec3, float, mix, positionLocal, normalLocal, positionView, normalView, attribute, uniform, abs,
   max, min, fract, floor, cos, atan, length, dot, step, mx_noise_float, mx_fractal_noise_float, mx_worley_noise_float,
-  normalMap, faceDirection, select, hash,
+  normalMap, faceDirection, select, hash, varying,
 } from 'three/tsl';
 import { tex, maps } from '../../engine/materials.js';
+import { octaves, TIER } from '../../engine/tier.js';
 import { APEX_Y, DOOR, makeProfile } from './frame.js';
 
 const R0 = makeProfile().rAtY(0); // the cone's radius at the ground
@@ -15,7 +16,7 @@ const R0 = makeProfile().rAtY(0); // the cone's radius at the ground
 const T = (f, srgb = false) => tex(`${import.meta.env.BASE_URL}assets/tex/tuos_sheet/${f}`, { srgb });
 const lum = (c) => dot(c, vec3(0.299, 0.587, 0.114));
 const n3 = (p) => mx_noise_float(p).mul(0.5).add(0.5); // 0..1
-const fbm3 = (p, o = 3) => mx_fractal_noise_float(p, o, 2, 0.5).mul(0.5).add(0.5);
+const fbm3 = (p, o = 3) => { const { n, k } = octaves(o); return mx_fractal_noise_float(p, n, 2, 0.5).mul(0.5 * k).add(0.5); };
 
 // Surface-gradient bump (Mikkelsen) from a procedural height in metres; base = view normal to perturb.
 export const bump = (h, base = normalView) => {
@@ -74,7 +75,15 @@ export function makeMats() {
     const tint = select(h2.lessThan(0.4), vec3(1.0, 0.94, 0.82), select(h2.lessThan(0.75), vec3(0.78, 0.74, 0.66), vec3(0.7, 0.57, 0.43)));
     let c = d.mul(h1.mul(0.25).add(0.75)).mul(tint);
     // weathering: cream → grey-brown, patchy, more on the upper rings that get the sun
-    const w = fbm3(p.mul(vec3(1.0, 0.6, 1.0)), 4);
+    // the six slow position-only noises (≤ 18/m): phones evaluate them per vertex (~12 cm apart), two varyings —
+    // the cover filling the screen cost a warm iPhone ~44 ms a frame in these alone
+    const N = (() => {
+      const a = vec3(fbm3(p.mul(vec3(1.0, 0.6, 1.0)), 4), fbm3(p.mul(vec3(2.2, 1.4, 2.2)), 3), fbm3(p.mul(5.5), 4));
+      const b = vec3(fbm3(p.mul(vec3(3, 0.7, 3)), 3), fbm3(p.mul(vec3(9, 3, 9)), 3), fbm3(p.mul(18), 3));
+      const [va, vb] = TIER.name === 'mobile' ? [varying(a), varying(b)] : [a, b];
+      return { w: va.x, edgeK: va.y, lich: va.z, soot: vb.x, dirt: vb.y, splash: vb.z };
+    })();
+    const w = N.w;
     const age = w.mul(1.1).add(y.div(APEX_Y).mul(0.2)).add(ring.y.mul(0.25)).sub(0.38).clamp(0, 0.9);
     const grey = vec3(lum(c)).mul(vec3(0.7, 0.6, 0.48));
     c = mix(c, grey, age);
@@ -83,7 +92,7 @@ export function makeMats() {
     const eu = min(lu, float(1).sub(lu)).mul(0.8); // metres to the sheet end
     const en = fbm3(vec3(t.x.mul(40), t.y.mul(8), ring.x), 3);
     const edgeDirt = smoothstep(0.06, 0.0, eu.sub(en.mul(0.02))).add(smoothstep(0.1, 0.0, t.y.sub(en.mul(0.03)))).clamp(0, 1);
-    const edgeK = smoothstep(0.35, 0.75, fbm3(p.mul(vec3(2.2, 1.4, 2.2)), 3)).mul(h1.mul(0.7).add(0.3)); // only here and there
+    const edgeK = smoothstep(0.35, 0.75, N.edgeK).mul(h1.mul(0.7).add(0.3)); // only here and there
     c = mix(c, c.mul(vec3(0.55, 0.47, 0.38)), edgeDirt.mul(edgeK).mul(0.6));
     // patched sheets: a smaller, browner piece sewn on with a row of stitches round it
     const isPatch = h3.lessThan(0.13);
@@ -96,7 +105,7 @@ export function makeMats() {
     c = c.mul(float(1).sub(inPatch.mul(smoothstep(0.006, 0.0, pd)).mul(0.5)));
     // grey-green lichen low on the shaded north side
     const north = smoothstep(0.2, -0.8, p.z.div(length(vec2(p.x, p.z)).add(0.01)));
-    const lich = smoothstep(0.6, 0.72, fbm3(p.mul(5.5), 4)).mul(smoothstep(1.9, 0.2, y)).mul(north);
+    const lich = smoothstep(0.6, 0.72, N.lich).mul(smoothstep(1.9, 0.2, y)).mul(north);
     c = mix(c, vec3(0.42, 0.45, 0.34), lich.mul(0.7));
     // rain and grime streaks running down from each ring's lower edge onto the one below
     const st = n3(vec3(t.x.mul(1.6 * 30), t.y.mul(1.2), ring.x.mul(3.1)));
@@ -104,11 +113,11 @@ export function makeMats() {
     const streak = smoothstep(0.5, 0.85, st).mul(smoothstep(0.3, 0.8, t.y)).mul(st2.mul(0.6).add(0.4));
     c = mix(c, c.mul(vec3(0.62, 0.56, 0.48)), streak.mul(0.6));
     // soot round the smoke hole, ground splash at the foot
-    const soot = smoothstep(APEX_Y - 3.6, APEX_Y - 1.1, y).mul(fbm3(p.mul(vec3(3, 0.7, 3)), 3).mul(0.6).add(0.55)).clamp(0, 1);
+    const soot = smoothstep(APEX_Y - 3.6, APEX_Y - 1.1, y).mul(N.soot.mul(0.6).add(0.55)).clamp(0, 1);
     c = mix(c, vec3(0.09, 0.075, 0.065), soot.mul(0.9));
-    const dirt = smoothstep(0.75, 0.0, y.add(fbm3(p.mul(vec3(9, 3, 9)), 3).mul(0.3))).clamp(0, 1);
+    const dirt = smoothstep(0.75, 0.0, y.add(N.dirt.mul(0.3))).clamp(0, 1);
     c = mix(c, vec3(0.22, 0.18, 0.13), dirt.mul(0.85));
-    const splash = smoothstep(0.3, 0.0, y).mul(smoothstep(0.55, 0.75, fbm3(p.mul(18), 3)));
+    const splash = smoothstep(0.3, 0.0, y).mul(smoothstep(0.55, 0.75, N.splash));
     c = mix(c, vec3(0.2, 0.24, 0.12), splash.mul(0.6)); // mud and grass splash at the foot
     // contact shadow under the ring above, dark rim on the cut edge
     const under = smoothstep(vNext.sub(0.05), vNext, t.y).mul(step(t.y, vNext.add(0.002)));
