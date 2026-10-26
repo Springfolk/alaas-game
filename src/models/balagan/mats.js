@@ -451,6 +451,9 @@ export function makeMats(maps, { winter = false } = {}) {
     if (v?.isMaterial) occ(v);
     else if (typeof v === 'function') M[k] = (...a) => occ(v(...a));
   }
+  // door leaves: built in their pivot's space, where the indoor cut above (keyed to model-local position) would
+  // read them as deep inside the house and turn them black in full sun; so no indoor cut
+  M.doorWood = woodMat('doorwood', T.wood, { soot: false, scale: [0.7, 0.45], env: 1, rough: 1 });
   M.soot.aoNode = float(0.15);
   M.soot.roughness = 1;
   // interior materials take the sky light at reduced strength (diffuse and specular): see setEnv()

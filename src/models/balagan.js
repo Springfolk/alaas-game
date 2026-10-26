@@ -47,6 +47,7 @@ export default async function build(ctx, placement) {
     for (let k = 0; k < 150; k++) {
       const x = cn.x0 + 0.1 + rng() * (cn.x1 - cn.x0 - 0.2), z = cn.z0 + rng() * (cn.z1 - cn.z0);
       const edge = Math.min(x - cn.x0, cn.x1 - x, z - cn.z0, cn.z1 - z);
+      if (edge > 0.25 && rng() < 0.45) continue;   // the canopy's middle is out of sight from the ground
       const y = cn.y - (x - cn.x0) / (cn.x1 - cn.x0) * 0.21 + 0.04;
       P.tuft(x, y, z, rng, edge < 0.15 ? { n: 5, h: 0.3, out: [x > cn.x1 - 0.2 ? 1 : 0, z < cn.z0 + 0.2 ? -1 : z > cn.z1 - 0.2 ? 1 : 0], droop: 0.8 } : { n: 5, h: 0.22 });
     }
@@ -62,7 +63,7 @@ export default async function build(ctx, placement) {
     B.add(M.plants, P.geometry());
     // soil crumbs: fallen from the roof lip onto the berm, and loose on the roof edge itself
     const crumb = (x, y, z, r) => {
-      const g = new THREE.IcosahedronGeometry(r, 0);
+      const g = new THREE.OctahedronGeometry(r, 0);   // 8 faces: a crumb 2–5 cm across
       g.scale(1 + rng() * 0.6, 0.45 + rng() * 0.3, 1 + rng() * 0.6).rotateY(rng() * 6).translate(x, y, z);
       B.add(M.soil, g);
     };

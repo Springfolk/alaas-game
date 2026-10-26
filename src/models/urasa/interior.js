@@ -45,7 +45,7 @@ export function buildInterior(rng) {
   // ---- floor: a polar grid, hard earth with a slight dip round the hearth; its rim ends between the two bark
   // layers (inner at +0.042, outer from ~+0.054), so no earth lip shows outside the cover
   G.floor.push(grid(72, 16, (u, v) => {
-    const a = u * TAU, r = 0.0001 + v * (makeProfile().rAtY(0) + 0.048);
+    const a = u * TAU, r = 0.0001 + v * (makeProfile().rAtY(0) + 0.05);
     const y = 0.012 + valueNoise(Math.cos(a) * r * 2, Math.sin(a) * r * 2, 21) * 0.008 - Math.exp(-(((r - 1.05) / 0.3) ** 2)) * 0.006;
     return [Math.cos(a) * r, y, Math.sin(a) * r];
   }, (u, v) => [u, v], true));

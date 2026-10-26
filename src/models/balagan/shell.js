@@ -47,7 +47,7 @@ export function buildShell({ M, rng, winter, root }) {
         for (const [y0, y1] of segs) {
           const lean = (rng() - 0.5) * 0.03;
           const a = at(sd, lin(sd.F, y0) + r, lat, y0), b = at(sd, lin(sd.F, y1) + r + lean, lat + (rng() - 0.5) * 0.03, y1);
-          const g = log(a, b, r * 1.05, r * 0.9, rng, { seg: 7, bow: 0.015, knob: 0.12, caps: y0 > 0 || !pointed, capTop: pointed && y1 === ytop ? 0.12 : 0 });
+          const g = log(a, b, r * 1.05, r * 0.9, rng, { seg: 7, bow: 0.015, knob: 0.12, caps: y0 > 0 || !pointed, capTop: pointed && y1 === ytop ? 0.12 : 0, rowLen: pointed ? 0.5 : 0.7 });
           B.add(M.logs, g, { color: [tint + warm, tint, tint - warm], extra: { outw: [sd.n[0], 0, sd.n[1]] } });
         }
       }
@@ -78,7 +78,7 @@ export function buildShell({ M, rng, winter, root }) {
       const pz = lin(FZ, yc(FX)) + 0.12;   // the poles end inside the plaster (no ends show under the roof)
       for (let z = -pz; z < pz; z += 0.1 + rng() * 0.012) {
         const r = 0.045 + rng() * 0.012;
-        B.add(M.logs, log([sgn * 0.05, yc(0) + r, z], [sgn * (lin(FX, yc(FX)) + 0.2), yc(FX) - 0.06 + r, z + (rng() - 0.5) * 0.04], r, r * 0.85, rng, { seg: 5, knob: 0.06, bow: 0.015 }),
+        B.add(M.logs, log([sgn * 0.05, yc(0) + r, z], [sgn * (lin(FX, yc(FX)) + 0.2), yc(FX) - 0.06 + r, z + (rng() - 0.5) * 0.04], r, r * 0.85, rng, { seg: 5, knob: 0.06, bow: 0.015, rowLen: 1.0 }),
           { color: [0.7 + rng() * 0.2, 0.68, 0.64], extra: { outw: [0, 1, 0] } });
       }
     }
@@ -90,7 +90,7 @@ export function buildShell({ M, rng, winter, root }) {
   });
 
   // ---------- plaster shell (lofted rounded box, holes where it flaked) ----------
-  const Nring = 260, rows = 22, y0p = -0.15, y1p = ROOF.under + 0.05;
+  const Nring = 200, rows = 16, y0p = -0.15, y1p = ROOF.under + 0.05;
   const perim = 2 * (2 * hp(FX, 1) + 2 * hp(FZ, 1));
   const plasterLoft = (hxF, hzF, cz, skipFace, seed, yTop = y1p) => sheet(Nring, rows, (u, v) => {
     const y = y0p + v * (yTop - y0p);
@@ -174,8 +174,8 @@ export function buildShell({ M, rng, winter, root }) {
   const DB = new Buckets();
   const nP = 4, pw = DW / nP;
   section(() => {
-    for (let i = 0; i < nP; i++) DB.add(M.outWood, box(0.055, DH - 0.03 - rng() * 0.03, pw - 0.006, { p: [0, (DH - 0.03) / 2, (i + 0.5) * pw], r: [0, 0, (rng() - 0.5) * 0.008] }), { color: [0.78 + rng() * 0.15, 0.74, 0.7] });
-    for (const y of [0.3, DH - 0.35]) DB.add(M.outWood, box(0.04, 0.12, DW - 0.06, { p: [-0.045, y, DW / 2], r: [0.03, 0, 0] }), { color: [0.7, 0.66, 0.62] });
+    for (let i = 0; i < nP; i++) DB.add(M.doorWood, box(0.055, DH - 0.03 - rng() * 0.03, pw - 0.006, { p: [0, (DH - 0.03) / 2, (i + 0.5) * pw], r: [0, 0, (rng() - 0.5) * 0.008] }), { color: [0.78 + rng() * 0.15, 0.74, 0.7] });
+    for (const y of [0.3, DH - 0.35]) DB.add(M.doorWood, box(0.04, 0.12, DW - 0.06, { p: [-0.045, y, DW / 2], r: [0.03, 0, 0] }), { color: [0.7, 0.66, 0.62] });
     for (const y of [0.28, DH - 0.33]) DB.add(M.leather, box(0.09, 0.08, 0.14, { p: [0.0, y, 0.0] }), { color: [0.5, 0.4, 0.32] });
     DB.add(M.leather, tube([[0.04, 0.95, DW - 0.12], [0.08, 0.9, DW - 0.13], [0.04, 0.85, DW - 0.12]], 0.012, 5), { color: [0.45, 0.35, 0.28] });
   });
@@ -291,8 +291,8 @@ export function buildShell({ M, rng, winter, root }) {
   kd.position.set(kxd + 0.08, 0.02, KZD - 0.5);
   const KB = new Buckets();
   section(() => {
-    for (let i = 0; i < 4; i++) KB.add(M.outWood, box(0.05, 1.4 - rng() * 0.05, 0.245, { p: [0, 0.7, 0.125 + i * 0.25], r: [0, 0, (rng() - 0.5) * 0.02] }), { color: [0.7 + rng() * 0.1, 0.67, 0.62] });
-    KB.add(M.outWood, box(0.04, 0.1, 0.95, { p: [-0.04, 0.35, 0.5], r: [0.25, 0, 0] }), { color: [0.6, 0.57, 0.52] });
+    for (let i = 0; i < 4; i++) KB.add(M.doorWood, box(0.05, 1.4 - rng() * 0.05, 0.245, { p: [0, 0.7, 0.125 + i * 0.25], r: [0, 0, (rng() - 0.5) * 0.02] }), { color: [0.7 + rng() * 0.1, 0.67, 0.62] });
+    KB.add(M.doorWood, box(0.04, 0.1, 0.95, { p: [-0.04, 0.35, 0.5], r: [0.25, 0, 0] }), { color: [0.6, 0.57, 0.52] });
   });
   KB.build(kd);
   kd.rotation.y = winter ? 0 : 1.9;
@@ -309,9 +309,9 @@ export function buildShell({ M, rng, winter, root }) {
   const slumped = (y, s) => (y > Y_END ? Y_END + (y - Y_END) * s : y);
   // cut(x, z) → true where the berm is left out; curb(x, z), slump(x, z): 0..1 (slump 1 = full height). All three
   // are asked at the perimeter point where the logs stand (local to the berm's centre), so a cut meets a slumped end.
-  const berm = (hxF, hzF, cz, cut, seed, { curb = () => 0, slump = () => 1, NU = 440 } = {}) => {
+  const berm = (hxF, hzF, cz, cut, seed, { curb = () => 0, slump = () => 1 } = {}) => {
     const p0x = hxF(0), p0z = hzF(0);
-    const NR = CURB.length + 1;   // NU columns: ~8 cm each on the house, so a slumped end gets several
+    const NR = CURB.length + 1;
     const at = (u) => rrect(p0x + 0.6, p0z + 0.6, 0.55, u);
     const skipF = (u) => { const [x, z] = at(u); return cut(x, z); };
     const f = (u, v) => {
@@ -333,13 +333,20 @@ export function buildShell({ M, rng, winter, root }) {
       const dy = k > 0 && k < 4 && y > Y_END ? 0.05 * fbm2(u * 70, k, seed + 2) * s : 0;
       return [x + nx * j, y + dy, cz + z + nz * j];
     };
-    B.add(M.sod, sheet(NU, NR - 1, f, { uvf: (u, v) => [u * 30, v * 1.4], skip: skipF, face: (x, y, z) => [x * 0.3, 1, (z - cz) * 0.3] }));
+    // columns round the perimeter: ~8 cm where an end slumps (it needs several), ~18 cm elsewhere
+    const us = [];
+    const fine = (u) => [-0.008, 0, 0.008].some((d) => { const [x, z] = at(u + d); return slump(x, z) < 0.999; });
+    for (let u = 0; u < 1; u += fine(u) ? 1 / 440 : 1 / 200) us.push(u);
+    us.push(1);
+    const NU = us.length - 1, U = (t) => us[Math.round(t * NU)];
+    const skipQ = (i) => skipF((us[(i + NU) % NU] + us[(i + NU) % NU + 1]) / 2);
+    B.add(M.sod, sheet(NU, NR - 1, (t, v) => f(U(t), v), { uvf: (t, v) => [U(t) * 30, v * 1.4], skip: (t) => skipQ(Math.floor(t * NU)), face: (x, y, z) => [x * 0.3, 1, (z - cz) * 0.3] }));
     // where the berm is cut (door gaps, the khoton joint) a soil face closes its cross-section down into the ground;
     // at the doors the earth has slumped to a few centimetres there, at the khoton joint it lies inside the house berm
     for (let i = 0; i < NU; i++) {
-      const a = skipF((i - 0.5) / NU), b = skipF((i + 0.5) / NU);
+      const a = skipQ(i - 1), b = skipQ(i);
       if (a === b) continue;
-      const u = i / NU, q = f(u, 0.5), q2 = f(u + (a ? -1 : 1) / NU, 0.5), out = [q2[0] - q[0], 0, q2[2] - q[2]];
+      const u = us[i], q = f(u, 0.5), q2 = f(us[(i + (a ? -1 : 1) + NU) % NU], 0.5), out = [q2[0] - q[0], 0, q2[2] - q[2]];
       const n = NR - 1;   // from ring 1 out: ring 0 lies inside the wall (and the door bay)
       B.add(M.soil, sheet(1, n - 1, (w, v) => { const P = f(u, (1 + v * (n - 1)) / n); return w ? [P[0], -0.3, P[2]] : P; },
         { uvf: (w, v, P) => [v * 1.2, P[1]], face: () => out }));
@@ -361,24 +368,23 @@ export function buildShell({ M, rng, winter, root }) {
   const kSlump = (x, z) => (x > 0 ? ease((Math.abs(z + kcz - KZD) - 0.6) / SLUMP) : 1);
   const hb = section(() => berm((y) => hp(FX, y), (y) => hp(FZ, y), 0, (x, z) => x > 0 && Math.abs(z - ZD) < doorCut, 51, { curb: houseCurb, slump: houseSlump }));
   // the khoton's bank ends inside the house berm (z > -3.3) and at its door
-  const kb = section(() => berm((y) => klin(KH.hx, y) + PL, (y) => klin(KH.hz, y) + PL, kcz, (x, z) => z + kcz > -3.3 || (x > 0 && Math.abs(z + kcz - KZD) < 0.6), 61, { slump: kSlump, NU: 300 }));
+  const kb = section(() => berm((y) => klin(KH.hx, y) + PL, (y) => klin(KH.hz, y) + PL, kcz, (x, z) => z + kcz > -3.3 || (x > 0 && Math.abs(z + kcz - KZD) < 0.6), 61, { slump: kSlump }));
   // retaining logs along each straight side of the house berm, on stakes; the earth slumps off past their ends.
-  // Bark faces out and up (`outw`): the material darkens faces across `outw` as clay-packed joints.
   section(() => {
-    const rl = (a, b, outw, r = 0.09) => B.add(M.logs, log(a, b, r, r * 0.9, rng, { caps: true, seg: 8, bow: 0.004, knob: 0.06 }), { color: [0.75, 0.72, 0.68], extra: { outw } });
-    const OUT_S = [0, 0.6, 0.8], OUT_W = [-0.8, 0.6, 0], OUT_E = [0.8, 0.6, 0];
+    // weathered larch like the canopy posts (M.logs is the house's wall timber: its sky light is cut for indoors)
+    const rl = (a, b, r = 0.09) => B.add(M.outWood, log(a, b, r, r * 0.9, rng, { caps: true, seg: 8, bow: 0.004, knob: 0.06, rowLen: 1.0 }), { color: [0.72, 0.69, 0.64] });
     for (const y of [0.075, 0.235]) {
-      rl([-logEnd.x, y, bz], [logEnd.x, y, bz], OUT_S);
-      rl([-bx, y, -logEnd.z], [-bx, y, logEnd.z], OUT_W);
-      rl([bx, y, -logEnd.z], [bx, y, ZD - logGap], OUT_E);
-      rl([bx, y, ZD + logGap], [bx, y, logEnd.z], OUT_E);
+      rl([-logEnd.x, y, bz], [logEnd.x, y, bz]);
+      rl([-bx, y, -logEnd.z], [-bx, y, logEnd.z]);
+      rl([bx, y, -logEnd.z], [bx, y, ZD - logGap]);
+      rl([bx, y, ZD + logGap], [bx, y, logEnd.z]);
     }
-    const stake = (x, z, dir) => rl([x, -0.2, z], [x + (rng() - 0.5) * 0.03, 0.42, z + (rng() - 0.5) * 0.03], dir, 0.065);
+    const stake = (x, z) => rl([x, -0.2, z], [x + (rng() - 0.5) * 0.03, 0.42, z + (rng() - 0.5) * 0.03], 0.065);
     const run = (a, b, put) => { const n = Math.max(1, Math.round((b - a) / 1.6)); for (let i = 0; i <= n; i++) put(a + 0.12 + (b - a - 0.24) * i / n + (i > 0 && i < n ? (rng() - 0.5) * 0.3 : 0)); };
-    run(-logEnd.x, logEnd.x, (x) => stake(x, bz + 0.15, [0, 0, 1]));
-    run(-logEnd.z, logEnd.z, (z) => stake(-bx - 0.15, z, [-1, 0, 0]));
-    run(-logEnd.z, ZD - logGap, (z) => stake(bx + 0.15, z, [1, 0, 0]));
-    run(ZD + logGap, logEnd.z, (z) => stake(bx + 0.15, z, [1, 0, 0]));
+    run(-logEnd.x, logEnd.x, (x) => stake(x, bz + 0.15));
+    run(-logEnd.z, logEnd.z, (z) => stake(-bx - 0.15, z));
+    run(-logEnd.z, ZD - logGap, (z) => stake(bx + 0.15, z));
+    run(ZD + logGap, logEnd.z, (z) => stake(bx + 0.15, z));
   });
 
   // ---------- canopy (чарапчы) over the door: two posts, a beam, poles and a thin earth layer ----------
@@ -392,7 +398,7 @@ export function buildShell({ M, rng, winter, root }) {
     B.add(M.outWood, log([cx, cy + 0.02, ZD - cw - 0.25], [cx, cy + 0.02, ZD + cw + 0.25], 0.085, 0.08, rng, { caps: true, seg: 8 }), { color: [0.7, 0.68, 0.64] });
     for (let z = ZD - cw - 0.2; z < ZD + cw + 0.2; z += 0.085 + rng() * 0.01) {
       const r = 0.035 + rng() * 0.01;
-      B.add(M.outWood, log([XD - 0.1, cy + 0.33, z], [cx + 0.14 + rng() * 0.06, cy + 0.13, z + (rng() - 0.5) * 0.04], r, r * 0.85, rng, { seg: 5, caps: true }), { color: [0.68 + rng() * 0.1, 0.66, 0.62] });
+      B.add(M.outWood, log([XD - 0.1, cy + 0.33, z], [cx + 0.14 + rng() * 0.06, cy + 0.13, z + (rng() - 0.5) * 0.04], r, r * 0.85, rng, { seg: 5, caps: true, rowLen: 1.0 }), { color: [0.68 + rng() * 0.1, 0.66, 0.62] });
     }
     const cTop = (u, v) => cy + 0.5 - u * 0.21 + 0.05 * Math.sin(v * Math.PI) + 0.02 * fbm2(u * 6, v * 6, 4);
     const cX = (u) => XD - 0.1 + u * (cx + 0.12 - XD + 0.1), cZ = (v) => ZD - cw - 0.12 + v * (2 * cw + 0.24);

@@ -400,6 +400,42 @@ export function lathe(profile, seg = 20, rng, wob = 0) {
   }
   return g;
 }
+/**
+ * The fill of a lathed vessel (water, coal, grain): a disc whose rim follows the vessel's inner wall between
+ * profile points a and b at fraction t (so it meets the wobbled wall all round), domed by `mound` in the middle
+ * and roughened by `lump` (metres). Call before the vessel goes into a bucket. uv: x/z in metres.
+ */
+export function fillLathe(g, seg, a, b, t, { mound = 0, lump = 0, inset = 0.997, rings = 4 } = {}) {
+  const P = g.attributes.position, row = seg + 1;
+  const pos = [[0, 0, 0]], idx = [];
+  let y0 = 0;
+  const rim = [];
+  for (let j = 0; j < seg; j++) {
+    const A = a * row + j, B = b * row + j;
+    const x = P.getX(A) + (P.getX(B) - P.getX(A)) * t, y = P.getY(A) + (P.getY(B) - P.getY(A)) * t, z = P.getZ(A) + (P.getZ(B) - P.getZ(A)) * t;
+    rim.push([x * inset, y, z * inset]); y0 += y / seg;
+  }
+  pos[0] = [0, y0 + mound, 0];
+  for (let k = 1; k <= rings; k++) {
+    const f = k / rings;
+    for (let j = 0; j < seg; j++) {
+      const [x, y, z] = rim[j];
+      const bump = k < rings ? lump * Math.sin(j * 2.7 + k * 4.1) * Math.sin(j * 1.3 - k * 2.3) : 0;
+      pos.push([x * f, y0 + (y - y0) * f + mound * (1 - f * f) + bump, z * f]);
+    }
+  }
+  const at = (k, j) => (k === 0 ? 0 : 1 + (k - 1) * seg + (j % seg));
+  for (let j = 0; j < seg; j++) idx.push(0, at(1, j), at(1, j + 1));
+  for (let k = 1; k < rings; k++) for (let j = 0; j < seg; j++) {
+    idx.push(at(k, j), at(k + 1, j), at(k + 1, j + 1), at(k, j), at(k + 1, j + 1), at(k, j + 1));
+  }
+  // facing up: check the first triangle and flip all if needed
+  const [p0, p1, p2] = [pos[idx[0]], pos[idx[1]], pos[idx[2]]];
+  const ny = (p1[2] - p0[2]) * (p2[0] - p0[0]) - (p1[0] - p0[0]) * (p2[2] - p0[2]);
+  if (ny < 0) for (let i = 0; i < idx.length; i += 3) [idx[i + 1], idx[i + 2]] = [idx[i + 2], idx[i + 1]];
+  return finish(pos.flat(), null, pos.flatMap((p) => [p[0], p[2]]), idx);
+}
+
 function weld(g, rings, row) {
   const n = g.attributes.normal;
   for (let i = 0; i < rings; i++) {
@@ -531,12 +567,12 @@ export function fence(bucket, ground, pts, rng, mats, { rails = [0.42, 0.82, 1.2
       for (const side of [-1, 1]) {
         const h = 1.45 + rng() * 0.2, lean = 0.05 + rng() * 0.03;
         const bx0 = x + nx * side * 0.11, bz0 = z + nz * side * 0.11;
-        addLog(bucket, [bx0, y - 0.15, bz0], [x - nx * side * lean + dx * (rng() - 0.5) * 0.05, y + h, z - nz * side * lean], 0.055 + rng() * 0.012, 0.042, rng, mats.wood, mats.end, { seg: 7, step: 0.4 });
+        addLog(bucket, [bx0, y - 0.15, bz0], [x - nx * side * lean + dx * (rng() - 0.5) * 0.05, y + h, z - nz * side * lean], 0.055 + rng() * 0.012, 0.042, rng, mats.wood, mats.end, { seg: 6, step: 0.8 });
       }
       // willow-bark lashings binding the stakes under each rail
       for (const ry of rails) {
         const ly = y + ry - 0.06;
-        bucket.add(new THREE.TorusGeometry(0.15, 0.012, 4, 10), mats.lash, mtx([x, ly, z], [Math.PI / 2, 0, Math.atan2(dz, dx)], [1, 1, 0.6]), jitterTint(rng, 0.15));
+        bucket.add(new THREE.TorusGeometry(0.15, 0.012, 3, 8), mats.lash, mtx([x, ly, z], [Math.PI / 2, 0, Math.atan2(dz, dx)], [1, 1, 0.6]), jitterTint(rng, 0.15));
       }
     }
     // rails between successive posts, overlapping at the stakes; one bay is open where a gap lies
@@ -548,7 +584,7 @@ export function fence(bucket, ground, pts, rng, mats, { rails = [0.42, 0.82, 1.2
         // slid-out gate rails lying in the grass beside the gap
         for (let k = 0; k < 2; k++) {
           const ox = nx * (0.6 + k * 0.25), oz = nz * (0.6 + k * 0.25);
-          addLog(bucket, [A[0] + ox, ground(A[0] + ox, A[1] + oz) + 0.05, A[1] + oz], [B[0] + ox + dx * 0.4, ground(B[0] + ox, B[1] + oz) + 0.05, B[1] + oz + dz * 0.4], 0.05, 0.04, rng, mats.wood, mats.end, { seg: 6, step: 0.6 });
+          addLog(bucket, [A[0] + ox, ground(A[0] + ox, A[1] + oz) + 0.05, A[1] + oz], [B[0] + ox + dx * 0.4, ground(B[0] + ox, B[1] + oz) + 0.05, B[1] + oz + dz * 0.4], 0.05, 0.04, rng, mats.wood, mats.end, { seg: 6, step: 1.0 });
         }
         continue;
       }
@@ -558,7 +594,7 @@ export function fence(bucket, ground, pts, rng, mats, { rails = [0.42, 0.82, 1.2
         const sag = (rng() - 0.3) * 0.05;
         const ex = dx * 0.3, ez = dz * 0.3;
         const fresh = rng() < 0.08;
-        addLog(bucket, [A[0] - ex, ya + ry + sag, A[1] - ez], [B[0] + ex, yb + ry - sag, B[1] + ez], 0.05 + rng() * 0.012, 0.038, rng, fresh ? mats.fresh : mats.wood, mats.end, { seg: 7, step: 0.5, bend: 0.006 });
+        addLog(bucket, [A[0] - ex, ya + ry + sag, A[1] - ez], [B[0] + ex, yb + ry - sag, B[1] + ez], 0.05 + rng() * 0.012, 0.038, rng, fresh ? mats.fresh : mats.wood, mats.end, { seg: 6, step: 0.9, bend: 0.006 });
       }
       const L2 = Math.hypot(B[0] - A[0], B[1] - A[1]);
       colliders.push({ x: mx, z: mz, hw: L2 / 2, hd: 0.15, rot: -Math.atan2(B[1] - A[1], B[0] - A[0]) });

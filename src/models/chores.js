@@ -51,7 +51,7 @@ export default async function build(ctx, placement) {
     B.add(tube([[0, H + 0.04, -R1], [0, H + 0.2, -R1 * 0.75], [0, H + 0.27, 0], [0, H + 0.2, R1 * 0.75], [0, H + 0.04, R1]], 0.007, 5), M.rope);
     for (const m of B.build(pail)) m.castShadow = true;
     // water, shown when filled (built now so its shader is warmed with the rest)
-    const water = new T.Mesh(new T.CircleGeometry(R1 - W - 0.004, 24).rotateX(-Math.PI / 2),
+    const water = new T.Mesh(new T.CircleGeometry(R1 - W - 0.0015, 28).rotateX(-Math.PI / 2),
       new T.MeshStandardNodeMaterial({ color: 0x24302c, roughness: 0.04, metalness: 0 }));
     water.position.y = H - 0.05; water.visible = false; water.castShadow = false; water.name = 'pail-water';
     pail.add(water);
@@ -143,7 +143,7 @@ export default async function build(ctx, placement) {
 const STALK = 0.085;
 function strawberryLeaf(T) {
   const pos = [], col = [], idx = [];
-  const L = 0.04, W = 0.0135, TEETH = 7;
+  const L = 0.04, W = 0.0135, TEETH = 5;
   const leaflet = (yaw, tilt) => {
     const c = Math.cos(yaw), sn = Math.sin(yaw), base = pos.length / 3;
     const put = (x, z, g) => {
@@ -190,7 +190,7 @@ function strawberryLeaf(T) {
 // stalk that rises ~3 cm towards the leaves. Origin = the berry's centre.
 function strawberryBerry(T) {
   const R = 0.006;
-  const berry = new T.SphereGeometry(R, 8, 6);
+  const berry = new T.SphereGeometry(R, 6, 5); // 1–1.5 cm
   const bp = berry.attributes.position;
   for (let i = 0; i < bp.count; i++) {
     const y = bp.getY(i) / R, w = 1 - 0.45 * Math.max(0, -y); // -1 tip … 1 calyx

@@ -24,8 +24,9 @@ export class PlantBatch {
     const dx = Math.cos(az), dz = Math.sin(az);
     const pts = [], ws = [];
     const curl = 0.8 + rng() * 1.2;
-    for (let k = 0; k <= 3; k++) {
-      const t = k / 3;
+    const segs = h < 0.3 && tilt < 0.6 ? 2 : 3;   // short upright blades don't show a third bend
+    for (let k = 0; k <= segs; k++) {
+      const t = k / segs;
       const bend = Math.sin(tilt) * h * Math.pow(t, curl);
       pts.push([x + dx * bend, y + Math.cos(tilt) * h * t - Math.pow(t, 2.5) * Math.max(0, tilt - 0.7) * h * 0.6, z + dz * bend, t]);
       ws.push(w * (1 - t * 0.92));
@@ -52,8 +53,8 @@ export class PlantBatch {
     this.quadStrip(sp, sp.map(() => 0.004), [0.32, 0.22, 0.14], [1, 0, 0]);
     this.quadStrip(sp, sp.map(() => 0.004), [0.32, 0.22, 0.14], [0, 0, 1]);
     // leaves
-    for (let k = 0; k < 12; k++) {
-      const t = 0.1 + (k / 12) * 0.62;
+    for (let k = 0; k < 9; k++) {
+      const t = 0.1 + (k / 9) * 0.62;
       const [sx, sy, sz] = stem(t);
       const a = k * 2.4 + az, L = 0.09 * (1 - t * 0.5) + rng() * 0.03;
       const dx = Math.cos(a), dz = Math.sin(a);
@@ -61,10 +62,10 @@ export class PlantBatch {
       this.quadStrip(pts, [0.002, 0.009, 0.001], [0.2, 0.3, 0.1], [-dz * 0.3, 0.95, dx * 0.3]);
     }
     // raceme: open flowers below, buds above
-    for (let k = 0; k < 18; k++) {
-      const t = 0.74 + (k / 18) * 0.26;
+    for (let k = 0; k < 14; k++) {
+      const t = 0.74 + (k / 14) * 0.26;
       const [sx, sy, sz] = stem(t);
-      const a = k * 2.4 + rng(), bud = k > 11;
+      const a = k * 2.4 + rng(), bud = k > 8;
       const r = bud ? 0.012 : 0.03, dx = Math.cos(a), dz = Math.sin(a);
       const cx = sx + dx * (bud ? 0.01 : 0.025), cz = sz + dz * (bud ? 0.01 : 0.025);
       const col = bud ? [0.42, 0.12, 0.25] : [0.86, 0.3 + rng() * 0.1, 0.58];
@@ -102,6 +103,7 @@ export function sodRoof(P, rng, { hx, hz, cz = 0, top, count, fireweed = 0, avoi
     if (avoid && avoid(x, cz + z)) continue;
     const ex = hx - Math.abs(x), ez = hz - Math.abs(z), e = Math.min(ex, ez);
     if (Math.hypot(Math.max(0, 0.5 - ex), Math.max(0, 0.5 - ez)) > 0.5) continue; // rounded corners
+    if (e > 0.9 && rng() < 0.5) continue;   // the roof's middle can't be seen from the ground: half as dense
     const y = top(x, z);
     if (e < 0.3) {
       const out = ex < ez ? [Math.sign(x), 0] : [0, Math.sign(z)];
@@ -109,12 +111,12 @@ export function sodRoof(P, rng, { hx, hz, cz = 0, top, count, fireweed = 0, avoi
     } else P.tuft(x, y, cz + z, rng, { n: 5 + Math.floor(rng() * 4), h: 0.22 + rng() * 0.35, dry: 0.15 });
   }
   // grass hanging over the roof edge all round
-  const per = 2 * (2 * hx + 2 * hz);
-  for (let k = 0; k < per / 0.085; k++) {
-    const u = (k + rng() * 0.7) / (per / 0.085);
+  const per = 2 * (2 * hx + 2 * hz), gap = 0.1;
+  for (let k = 0; k < per / gap; k++) {
+    const u = (k + rng() * 0.7) / (per / gap);
     const [x, z, nx, nz] = rrect(hx - 0.06, hz - 0.06, 0.45, u);
     if (avoid && avoid(x, cz + z)) continue;
-    P.tuft(x + nx * 0.04, top(x, z) - 0.05, cz + z + nz * 0.04, rng, { n: 6, h: 0.4 + rng() * 0.4, out: [nx, nz], droop: 0.9 + rng() * 0.7, dry: 0.45, w: 1.7 });
+    P.tuft(x + nx * 0.04, top(x, z) - 0.05, cz + z + nz * 0.04, rng, { n: 5, h: 0.4 + rng() * 0.4, out: [nx, nz], droop: 0.9 + rng() * 0.7, dry: 0.45, w: 1.7 });
   }
   for (let k = 0; k < fireweed; k++) {
     const x = (rng() * 2 - 1) * (hx - 0.5), z = (rng() * 2 - 1) * (hz - 0.5);

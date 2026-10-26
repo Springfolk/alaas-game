@@ -2,7 +2,7 @@
 // and the birch-bark craft spot outside the uraha.
 import * as THREE from 'three/webgpu';
 import {
-  addLog, blob, boxUV, decalMat, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, rollGeo, sheetGeo, splitGeo, tube, TAU,
+  addLog, blob, boxUV, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, rollGeo, sheetGeo, splitGeo, tube, TAU,
 } from './kit.js';
 import { makeSmoke } from './smoke.js';
 import { geoMats } from '../../load/geocache.js';
@@ -248,8 +248,9 @@ export function craft(K, x, z, yaw = 0) {
         addLog(K.b, [ax, K.b.ground(ax, az) + 0.02, az], [bx, K.b.ground(bx, bz) + 0.05, bz], 0.02, 0.015, rng, M.charcoal, M.charcoal, { seg: 5, step: 0.2 });
       }
       const pot = lathe([[0.0, 0.0], [0.07, 0.006], [0.14, 0.04], [0.175, 0.1], [0.18, 0.16], [0.172, 0.2], [0.19, 0.21], [0.188, 0.22], [0.165, 0.215], [0.158, 0.16], [0.15, 0.1], [0.12, 0.05], [0.0, 0.03]], 24);
+      const surf = fillLathe(pot, 24, 9, 8, 0.18, { rings: 1 }); // water out to the inner wall
       F.add(pot, M.soot, mtx([cx, gy + 0.11, cz]));
-      F.add(new THREE.CircleGeometry(0.155, 20).rotateX(-Math.PI / 2), water, mtx([cx, gy + 0.11 + 0.17, cz]));
+      F.add(surf, water, mtx([cx, gy + 0.11, cz]));
       // a strip of bark curling out of the water
       F.add(sheetGeo(0.32, 0.07, rng, { curl: 0.1, res: 6 }), bark, mtx([cx + 0.08, gy + 0.11 + 0.22, cz], [0, 0.5, -0.9]));
       F.add(blob(0.12, 0.08, 0.1, rng), M.stone, mtx([cx + 0.17, gy, cz - 0.17]), [0.4, 0.38, 0.36]);

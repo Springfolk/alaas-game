@@ -3,7 +3,7 @@
 // tongs, hammer, a knife blank, the quench tub, a basket of charcoal, ore and slag by the door.
 // The smith is away. Pumping the bellows (the act) makes the coals flare.
 import * as THREE from 'three/webgpu';
-import { addLog, blob, boxUV, decalMat, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, sheetGeo, sleep, TAU } from './kit.js';
+import { addLog, blob, boxUV, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, sheetGeo, sleep, TAU } from './kit.js';
 import { water } from './pieces.js';
 
 export function smithy(K, x, z, yaw) {
@@ -219,15 +219,20 @@ export function smithy(K, x, z, yaw) {
     // quench tub (birch bark) with water
     {
       const tub = lathe([[0.19, 0], [0.2, 0.15], [0.205, 0.28], [0.19, 0.28], [0.185, 0.03]], 22, rng, 0.02);
+      const surf = fillLathe(tub, 22, 4, 3, 0.76, { rings: 1 }); // the water meets the wobbled wall all round
       F.add(tub, K.barkCraft, mtx([-0.25, g(-0.25, -0.85), -0.85]), [0.75, 0.65, 0.55]);
-      F.add(new THREE.CircleGeometry(0.19, 20).rotateX(-Math.PI / 2), water, mtx([-0.25, g(-0.25, -0.85) + 0.22, -0.85]));
+      F.add(surf, water, mtx([-0.25, g(-0.25, -0.85), -0.85]));
       for (const hy of [0.03, 0.26]) F.add(new THREE.TorusGeometry(0.203, 0.006, 4, 24), M.willow, mtx([-0.25, g(-0.25, -0.85) + hy, -0.85], [Math.PI / 2, 0, 0]), [0.8, 0.75, 0.7]);
       K.colliders.push(F.col({ x: -0.25, z: -0.85, r: 0.25 }));
     }
     // birch-bark basket of charcoal by the back corner
     {
       const bx = 1.05, bz = -1.05, by = g(bx, bz);
-      F.add(lathe([[0.17, 0], [0.22, 0.28], [0.21, 0.28], [0.165, 0.02]], 20, rng, 0.03), K.barkCraft, mtx([bx, by, bz]), [0.55, 0.5, 0.45]);
+      const bk = lathe([[0.17, 0], [0.22, 0.28], [0.21, 0.28], [0.165, 0.02]], 20, rng, 0.03);
+      // the charcoal fill: a low mound out to the inner wall, under the loose lumps (an empty basket showed through)
+      const coal = fillLathe(bk, 20, 3, 2, 0.9, { mound: 0.035, lump: 0.008 });
+      F.add(bk, K.barkCraft, mtx([bx, by, bz]), [0.55, 0.5, 0.45]);
+      F.add(coal, M.charcoal, mtx([bx, by, bz]));
       for (let i = 0; i < 26; i++) {
         const a = rng() * TAU, r = Math.sqrt(rng()) * 0.18, s = 0.022 + rng() * 0.02;
         F.add(blob(s, s * 0.8, s * 1.2, rng, { detail: 0, rough: 0.3 }), M.charcoal, mtx([bx + Math.cos(a) * r, by + 0.27 + (0.18 - r) * 0.3, bz + Math.sin(a) * r], [rng(), rng() * TAU, 0]));

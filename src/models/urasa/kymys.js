@@ -12,8 +12,8 @@ const plain = (g, k = 10) => setUV(g, (u, v) => [u + k, v]);
 
 // ---- chorons: lathe bodies; outer vertices get uv.y = height fraction (carving bands), inner ones plain
 function choronBody(prof, lipIndex, H, u0 = 0) {
-  const g = lathe(prof, 40, (r, y, a) => r * (1 + valueNoise(a * 2, y * 30, 17) * 0.006));
-  const segs = 40;
+  const g = lathe(prof, 28, (r, y, a) => r * (1 + valueNoise(a * 2, y * 30, 17) * 0.006));
+  const segs = 28;
   return setUV(g, (u, v, x, y, z, i) => {
     const row = Math.floor(i / (segs + 1));
     return row <= lipIndex ? [u + u0, y / H] : [u + 10, 2];

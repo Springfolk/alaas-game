@@ -77,13 +77,13 @@ function metricUV(g, w, h, d) {
 }
 
 // An irregular log from a to b: taper r0→r1, gentle bow, knobbly radius. u = around (m), v = along (m).
-export function log(a, b, r0, r1, rng, { seg = 7, bow = 0.02, knob = 0.12, caps = false, capTop = 0 } = {}) {
+export function log(a, b, r0, r1, rng, { seg = 7, bow = 0.02, knob = 0.12, caps = false, capTop = 0, rowLen = 0.5 } = {}) {
   const A = new V(...a), B = new V(...b);
   const axis = B.clone().sub(A), len = axis.length();
   axis.normalize();
   const side = Math.abs(axis.y) < 0.9 ? new V(0, 1, 0) : new V(1, 0, 0);
   const n1 = new V().crossVectors(axis, side).normalize(), n2 = new V().crossVectors(axis, n1).normalize();
-  const rows = Math.max(2, Math.ceil(len / 0.5));
+  const rows = Math.max(2, Math.ceil(len / rowLen));   // rowLen: metres per ring along the log
   const bowDir = n1.clone().multiplyScalar(Math.cos(rng() * 6.28)).addScaledVector(n2, Math.sin(rng() * 6.28));
   const bowAmt = (rng() - 0.3) * bow * len;
   const ph = [rng() * 6.28, rng() * 6.28, rng() * 6.28];

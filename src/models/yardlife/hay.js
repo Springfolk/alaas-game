@@ -20,7 +20,7 @@ function stackColors(g, rng, ageTop = 0.4) {
 
 // long stack (зарод): loaf of L × W × H, rounded ends, bulging sides
 function longStack(L, W, H, rng) {
-  const nu = 60, nv = 36;
+  const nu = 48, nv = 28;
   const nz = wobbler(rng, 5);
   const pos = [], uvs = [], idx = [];
   for (let i = 0; i <= nu; i++) {
@@ -53,7 +53,7 @@ function longStack(L, W, H, rng) {
 }
 
 // round stack (стог) or heap (копна): radius R at the bulge, height H, slight lean
-function roundStack(R, H, rng, { seg = 48, rings = 28, point = 0.12 } = {}) {
+function roundStack(R, H, rng, { seg = 40, rings = 22, point = 0.12 } = {}) {
   const nz = wobbler(rng, 5);
   const pos = [], uvs = [], idx = [];
   const lean = [(rng() - 0.5) * 0.08 * H, (rng() - 0.5) * 0.08 * H];
@@ -86,7 +86,7 @@ function roundStack(R, H, rng, { seg = 48, rings = 28, point = 0.12 } = {}) {
 
 // a windrow: a low wavy loaf of cut grass along a line
 function windrow(ground, x0, z0, x1, z1, rng) {
-  const L = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(L / 0.4), m = 8;
+  const L = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(L / 0.6), m = 6;
   const dx = (x1 - x0) / L, dz = (z1 - z0) / L;
   const nz = wobbler(rng, 4);
   const pos = [], uvs = [], idx = [];
@@ -183,7 +183,7 @@ export function hayMeadow(K) {
       for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
         if (rng() < 0.12) continue;
         const hx = x0 + c * 7 + (rng() - 0.5) * 2, hz = z0 + r * 8 + (rng() - 0.5) * 2;
-        const { g } = roundStack(0.7 + rng() * 0.15, 1.1 + rng() * 0.25, rng, { seg: 24, rings: 12, point: 0.25 });
+        const { g } = roundStack(0.7 + rng() * 0.15, 1.1 + rng() * 0.25, rng, { seg: 20, rings: 10, point: 0.25 });
         B.add(g, M.hay, mtx([hx, gr(hx, hz) - 0.02, hz], [0, rng() * TAU, 0]), jitterTint(rng, 0.08, [1.02, 1.04, 0.95]));
         K.colliders.push({ x: hx, z: hz, r: 0.65 });
       }
