@@ -248,9 +248,8 @@ function bendAt(W, xz, lean, h) {
 
 // K×K chunk meshes of C×C instance cells (cell size S) re-centred on the player each frame, so three
 // frustum-culls them. Matrices stay identity; `origin` (first cell) is per object.
-// TRAA velocity: every vertex-built material here sets positionPrevious to its built position, or three
-// reprojects from the raw (zero) attribute and TRAA throws its history away — the grass then aliases
-// and shimmers. Wind sway between two frames is ignored (sub-pixel).
+// Velocity (unused since SMAA replaced TRAA; kept for any motion-vector effect): every vertex-built
+// material here sets positionPrevious to its built position. Wind sway between two frames is ignored.
 let origin = null; // one for every chunked material (it reads the drawn object's origin)
 function originUniform() {
   return (origin ||= uniform(new THREE.Vector2()).onObjectUpdate(({ object }) => object.userData.origin));

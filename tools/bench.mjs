@@ -1,11 +1,11 @@
 // Headless render benchmark: per view, the frame's CPU time and CPU+GPU time (each frame waits for the GPU).
 // node tools/bench.mjs [chrome|webkit|phone] [query] — e.g. `node tools/bench.mjs phone "q=low"`. Needs the dev server (PORT).
-// Numbers are relative (one shared GPU); compare runs made back to back.
+// Numbers are relative (one shared GPU); compare runs made back to back. DPR env: desktop pixel ratio.
 import { launch, pageOptions, PORT as port } from './browser.mjs';
 const [kind = 'chrome', query = ''] = process.argv.slice(2);
 const VIEWS = { start: [62, -211, 1.69], yard: [9, -214, 1.2], inside: [0.4, -205.6, -1.4], lake: [6, -66, Math.PI], edge: [-60, -330, 0.3] };
 const browser = await launch(kind, { uncapped: true });
-const page = await browser.newPage(pageOptions(kind, { viewport: { width: 1440, height: 900 }, deviceScaleFactor: kind === 'webkit' ? 2 : 1 }));
+const page = await browser.newPage(pageOptions(kind, { viewport: { width: 1440, height: 900 }, deviceScaleFactor: +process.env.DPR || (kind === 'webkit' ? 2 : 1) }));
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); if (/warm-up|tier/.test(m.text())) errs.push(m.text()); });
