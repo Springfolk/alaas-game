@@ -1,8 +1,8 @@
 // Ground mesh (one warped grid: ~1.5 m cells at the homestead, ~40 m at the horizon) and its
 // splatted PBR material: meadow grass, forest floor, lake-shore mud, trodden earth, dry grass.
 import * as THREE from 'three/webgpu';
-import { texture, attribute, positionWorld, cameraPosition, vec2, vec3, vec4, mix, normalMap, float, smoothstep, mx_noise_float, uniform, floor, hash, length, select } from 'three/tsl';
-import { maps, firstTextureMax, onSharpen } from '../engine/materials.js';
+import { texture, attribute, positionWorld, cameraPosition, vec2, vec3, vec4, mix, normalMap, float, smoothstep, mx_noise_float, uniform, floor, hash, length, Fn, If, varying } from 'three/tsl';
+import { maps, firstTextureMax, onSharpen, aniso } from '../engine/materials.js';
 import { LAKE } from './terrain.js';
 import { groundSamples, groundArrays, packSet } from './ground-data.js';
 import { job } from '../load/workers.js';
@@ -69,7 +69,7 @@ function packed(id) {
   const t = new THREE.DataTexture();
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.generateMipmaps = true; t.anisotropy = 8; t.colorSpace = THREE.SRGBColorSpace;
+  t.generateMipmaps = true; t.anisotropy = aniso(8); t.colorSpace = THREE.SRGBColorSpace;
   // starts at 256 like every texture, then the device tier's cap (2048 → 1024 on low, 512 on phones) in play
   // (sharpenTextures); decoded and packed in a worker; the swap drops the GPU texture first (a rebind, no new shader)
   const base = `${import.meta.env.BASE_URL}assets/tex/${id}/`;
@@ -104,14 +104,17 @@ function groundMaterial() {
   // edge noise so splat borders are ragged, not smooth gradients
   const edge = mx_noise_float(wp.mul(0.45)).mul(0.22);
   const w = (v) => v.add(edge).clamp(0, 1).smoothstep(0.25, 0.75);
-  const sample = (m, key) => mix(texture(m[key], uvA), texture(m[key], uvB), brk);
+  // low/mobile: the normals from one scale only (5 of the pixel's 21 samples; the colour keeps both, so tiling stays hidden)
+  const oneNor = TIER.quality === 'low';
+  const sample = (m, key) => (oneNor && key === 'nor' ? texture(m[key], uvA) : mix(texture(m[key], uvA), texture(m[key], uvB), brk));
   const lum = (c) => c.dot(vec3(0.3, 0.55, 0.15));
   const lin = (hex) => { const c = new THREE.Color(hex); return vec3(c.r, c.g, c.b); };
 
   // meadow ground re-graded to the colour of the grass mass: darker under the near blades,
   // green-gold with hay-yellow patches from afar (the textures alone read as brown dirt)
-  const macro = mx_noise_float(wp.mul(0.009)).mul(0.5).add(0.5);
-  const macro2 = mx_noise_float(wp.mul(0.04).add(7.3)).mul(0.5).add(0.5);
+  // the slow noises (25–110 m) per vertex (~1.5 m apart near): three fewer noises per pixel
+  const slow = varying(vec3(mx_noise_float(wp.mul(0.009)), mx_noise_float(wp.mul(0.04).add(7.3)), mx_noise_float(wp.mul(0.012))));
+  const macro = slow.x.mul(0.5).add(0.5), macro2 = slow.y.mul(0.5).add(0.5);
   const far = smoothstep(8, 45, dist);
   const meadowTint = mix(mix(lin(0x3d4a1f), lin(0x55632a), macro2), mix(lin(0x617a2b), lin(0x84863c), macro.smoothstep(0.35, 0.8)), far);
   // texture detail fades with distance so its tiling never shows as a pattern across the meadow
@@ -145,21 +148,29 @@ function groundMaterial() {
   const ar = layer('ar');
   // the wet band at the waterline and the lake bed below it: darker and smoother
   const wet = float(1).sub(smoothstep(LAKE.level + 0.05, LAKE.level + 0.45, positionWorld.y));
-  const tone = mx_noise_float(wp.mul(0.012)).mul(0.08).add(1);
+  const tone = slow.z.mul(0.08).add(1);
   // cow pats on grazed ground, rare (one in ~14 cells of 2.4 m where grazing is heaviest): a lumpy outline,
-  // pale cracked dry crust, a browner moist middle and a dark rim where the low mound meets the grass
-  const cell = floor(wp.div(2.4)), seed = cell.x.add(16384).toUint().mul(73856093).bitXor(cell.y.add(16384).toUint().mul(19349663));
-  const hc = hash(seed), pc = cell.add(vec2(hash(seed.add(1)), hash(seed.add(2))).mul(0.7).add(0.15)).mul(2.4);
-  const pr = hash(seed.add(3)).mul(0.08).add(0.13);
-  const pd = length(wp.sub(pc).mul(vec2(1, hash(seed.add(4)).mul(0.4).add(0.8)))).div(pr)
-    .add(mx_noise_float(wp.mul(4)).mul(0.22)).add(mx_noise_float(wp.mul(13)).mul(0.08));
-  const pat = float(1).sub(smoothstep(0.85, 1, pd)).mul(select(hc.lessThan(grazed.mul(0.07)), float(1), float(0)));
-  // the slumped layers show as faint rings; cracks split the dry top
-  const ring = pd.mul(15).sin().mul(0.5).add(0.5).mul(smoothstep(0.15, 0.4, pd));
-  const crack = smoothstep(0.01, 0.05, mx_noise_float(wp.mul(30)).abs());
-  const crust = mix(lin(0x4a4130), mix(lin(0x5e5641), lin(0x6f6750), ring.mul(0.6).add(mx_noise_float(wp.mul(9)).mul(0.2))), crack);
-  const dung = mix(crust, lin(0x2f281d), smoothstep(0.78, 0.97, pd));
-  mat.colorNode = mix(ar.rgb, dung, pat.mul(0.95)).mul(vec3(tone, tone, tone.mul(0.97))).mul(mix(1, 0.5, wet));
+  // pale cracked dry crust, a browner moist middle and a dark rim where the low mound meets the grass.
+  // Its four noises run only inside a pat's cell and reach (a coherent branch; they were in every ground pixel).
+  const cow = Fn(() => {
+    const out = vec4(0).toVar();
+    const cell = floor(wp.div(2.4)), seed = cell.x.add(16384).toUint().mul(73856093).bitXor(cell.y.add(16384).toUint().mul(19349663));
+    If(hash(seed).lessThan(grazed.mul(0.07)), () => {
+      const pc = cell.add(vec2(hash(seed.add(1)), hash(seed.add(2))).mul(0.7).add(0.15)).mul(2.4);
+      const pr = hash(seed.add(3)).mul(0.08).add(0.13);
+      const pd0 = length(wp.sub(pc).mul(vec2(1, hash(seed.add(4)).mul(0.4).add(0.8)))).div(pr);
+      If(pd0.lessThan(1.35), () => { // the noise below moves the outline by < 0.3
+        const pd = pd0.add(mx_noise_float(wp.mul(4)).mul(0.22)).add(mx_noise_float(wp.mul(13)).mul(0.08));
+        // the slumped layers show as faint rings; cracks split the dry top
+        const ring = pd.mul(15).sin().mul(0.5).add(0.5).mul(smoothstep(0.15, 0.4, pd));
+        const crack = smoothstep(0.01, 0.05, mx_noise_float(wp.mul(30)).abs());
+        const crust = mix(lin(0x4a4130), mix(lin(0x5e5641), lin(0x6f6750), ring.mul(0.6).add(mx_noise_float(wp.mul(9)).mul(0.2))), crack);
+        out.assign(vec4(mix(crust, lin(0x2f281d), smoothstep(0.78, 0.97, pd)), float(1).sub(smoothstep(0.85, 1, pd))));
+      });
+    });
+    return out;
+  })();
+  mat.colorNode = mix(ar.rgb, cow.rgb, cow.a.mul(0.95)).mul(vec3(tone, tone, tone.mul(0.97))).mul(mix(1, 0.5, wet));
   mat.roughnessNode = mix(ar.a.mul(0.12).add(0.86), float(0.45), wet);
   mat.metalnessNode = float(0);
   // rough soil has almost no specular: kills the grey sky sheen at grazing angles

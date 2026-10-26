@@ -93,7 +93,7 @@ export class Engine {
     // so the shadows drifting over the alaas belong to the clouds overhead. Every lit material gets them.
     this.cloudShadow = uniform(0.7); // how dark a cloud shadow is (0 = none): ~1.5 EV, the sky still lights it
     this.cloudCover = cloudCover;    // noise threshold: lower = more of the ground in shadow
-    // The coarse cloud field is rendered each frame into a small texture around the view (cloudMap) and
+    // The coarse cloud field is rendered into a small texture around the view (cloudMap, 4×/s) and
     // sampled per pixel, instead of three noise octaves in every lit pixel.
     const cm = this.cloudMap = makeCloudMap();
     sun.colorNode = Fn(() => {
@@ -166,6 +166,7 @@ export class Engine {
     this.scene.add(this.sky);
     this.sky.showSunDisc.value = 1;
     this.scene.environment = this.envRT.texture;
+    if (this.lakeSky) this.lakeSky.value = this.envRT.texture; // the mirrorless lake (lake.js)
     (this.scene.environmentNode ||= fastPMREM(this.envRT.texture)).value = this.envRT.texture; // same light, cheaper shader builds (src/load/pmrem.js)
   }
 
@@ -293,7 +294,8 @@ const KNOBS = [
 
 // The coarse cloud field (sky.js cloudField, what cloud shadows use) over CLOUD_SPAN m of the cloud plane
 // around where the view's ground looks up to through the sun, in a 512² half-float texture (16 m texels;
-// the finest octave is ~110 m). Re-rendered each frame (it drifts), centred on a texel-snapped origin.
+// the finest octave is ~110 m), centred on a texel-snapped origin. Re-rendered 4×/s or when the origin moves a texel:
+// the clouds drift a texel in ~3 s, and every frame was ~30% of a phone-tier frame's GPU time.
 const CLOUD_SPAN = 8192;
 function makeCloudMap() {
   const N = 512;
@@ -307,10 +309,14 @@ function makeCloudMap() {
   const quad = new THREE.QuadMesh(mat);
   const step = CLOUD_SPAN / N;
   return {
-    rt, origin,
+    rt, origin, at: -1e9,
     render(renderer, camera, L) {
       const up = Math.max(L.y, 0.08), k = (CLOUD_Y - camera.position.y) / up;
-      origin.value.set(Math.round((camera.position.x + L.x * k) / step) * step, Math.round((camera.position.z + L.z * k) / step) * step);
+      const x = Math.round((camera.position.x + L.x * k) / step) * step, z = Math.round((camera.position.z + L.z * k) / step) * step;
+      const now = performance.now();
+      if (x === origin.value.x && z === origin.value.y && now - this.at < 250) return;
+      this.at = now;
+      origin.value.set(x, z);
       const prev = renderer.getRenderTarget();
       renderer.setRenderTarget(rt);
       quad.render(renderer);

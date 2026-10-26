@@ -14,7 +14,9 @@ const pending = new Set(); // image loads in flight (texturesLoaded)
 // Resolves once every texture requested so far has loaded (or failed), e.g. before baking impostors.
 export async function texturesLoaded() { while (pending.size) { const list = [...pending]; await Promise.all(list); for (const p of list) pending.delete(p); } }
 let maxAniso = 8, texMax = 4096;
-export function setAnisotropy(n) { maxAniso = n; }
+export function setAnisotropy(n) { maxAniso = aniso(n); }
+// anisotropic taps capped by the tier (phones 4: 16 taps on each of the ground's ~20 samples a pixel weigh on a phone GPU)
+export const aniso = (n) => Math.min(n, TIER.aniso || n);
 // Largest texture edge the device tier allows (Engine sets it before the world loads); the shipped size that
 // covers it is fetched (src/load/texsize.js), bigger images are scaled down. Decoded in load workers as
 // ImageBitmaps (pre-flipped, alpha not premultiplied).

@@ -213,7 +213,8 @@ class Game {
     let meshes = 0;
     for (let round = 0; round < 8; round++) {
       const n = s.total;
-      meshes = await this.inFrame(() => s.collect(e.scene, cam, () => e.render()));
+      // the sun's maps re-render every round, lazy or not (phones: Engine.lazyShadows), so each caster's shadow shader is built
+      meshes = await this.inFrame(() => s.collect(e.scene, cam, () => { e.sun.shadow.needsUpdate = true; e.render(); }));
       await s.drain();
       if (s.total === n) break;
     }

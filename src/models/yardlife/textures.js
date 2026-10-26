@@ -3,7 +3,7 @@
 // Each set: { diff (sRGB), nor (tangent-space, GL), arm? } as THREE.Textures with RepeatWrapping.
 import * as THREE from 'three/webgpu';
 import { mulberry32, valueNoise, fbm } from '../../util.js';
-import { maps } from '../../engine/materials.js';
+import { maps, aniso } from '../../engine/materials.js';
 
 const cache = new Map();
 
@@ -14,7 +14,7 @@ function makeTex(data, w, h, srgb) {
   t.generateMipmaps = true;
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.magFilter = THREE.LinearFilter;
-  t.anisotropy = 8;
+  t.anisotropy = aniso(8);
   t.needsUpdate = true;
   return t;
 }
