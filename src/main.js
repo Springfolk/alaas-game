@@ -505,7 +505,7 @@ document.getElementById('go').textContent = '· · ·';
 new Game().boot().catch(fail);
 
 // Frame pacing (perf): a steady 60 fps (30 with the battery saver) in play, on the title and in menus;
-// once the pause menu has settled (exposure adapted) no frames are drawn until it closes. Engine.pace counts
+// once the pause menu has settled (TRAA converged) no frames are drawn until it closes. Engine.pace counts
 // display refreshes, so a 120 Hz screen draws exactly every other one.
 Game.prototype.tick = function (now) {
   const e = this.engine, s = this.save.settings;

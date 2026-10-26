@@ -152,7 +152,7 @@ export async function buildImpostors(world, variants, trees, { R1, BAND }) {
   const mat = new THREE.MeshStandardNodeMaterial({ roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
   mat.positionNode = Fn(() => {
     const p = hidden.select(center, wpos).toVar();
-    positionPrevious.assign(p); // velocity from the billboard, not the unit quad (unused since SMAA)
+    positionPrevious.assign(p); // TRAA velocity from the billboard, not the unit quad
     return p;
   })();
   const cellUV = (f) => {

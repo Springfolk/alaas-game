@@ -160,8 +160,8 @@ export function buildBugs(ctx, world, { tier, W, F, K }) {
   })();
   mat.colorNode = shade.rgb;
   mat.opacityNode = shade.a;
-  // glassy dragonfly wings: a still screen-door dither (a per-frame one flickers without temporal AA), a hard cut elsewhere
-  mat.alphaTestNode = hash(screenCoordinate.xy).mul(0.98).add(0.01);
+  // stochastic transparency for the glassy dragonfly wings (TRAA averages it), a hard cut elsewhere
+  mat.alphaTestNode = hash(screenCoordinate.xy.add(fract(K.time.mul(7.31)).mul(97))).mul(0.98).add(0.01);
   mat.roughnessNode = select(vK.x.greaterThan(0.5).and(vK.x.lessThan(1.5)), float(0.25), float(0.7));
   // sunlight through the thin wings and leaves
   const toEye = normalize(positionWorld.sub(cameraPosition));

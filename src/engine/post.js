@@ -1,15 +1,15 @@
-// The post chain: [GTAO pre-pass →] scene pass (+ interior sky occlusion) → glare (bloom) → exposure →
-// AgX with a gentle "punchy" look → vignette → SMAA (on the display-referred image) → grain.
+// The post chain: [GTAO pre-pass →] scene pass (+ interior sky occlusion) → TRAA → sharpen → glare
+// (bloom) → exposure → AgX with a gentle "punchy" look → vignette, grain.
 // Also the exposure meter: a 64×36 log-luminance reduction read back a few times a second (eye adaptation).
 // Called once by Engine.init (engine.buildPost); reads engine.opts (quality); sets engine.pipeline/grade/meter.
 import * as THREE from 'three/webgpu';
 import {
   pass, mrt, normalView, velocity, packNormalToRGB, unpackRGBToNormal, sample, screenUV, uv,
-  builtinAOContext, uniform, vec4, Fn, float, vec2, vec3, dot, hash, floor, time, screenCoordinate,
-  luminance, mat3, min, log2, pow, mix,
+  builtinAOContext, uniform, vec4, Fn, output, float, vec2, vec3, dot, hash, floor, time, screenCoordinate,
+  luminance, mat3, max, min, log2, pow, clamp, mix,
 } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
-import { smaa } from 'three/addons/tsl/display/SMAANode.js';
+import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { interiorOcclusion } from './interiors.js';
 
@@ -39,31 +39,39 @@ export function buildPost(engine) {
   const interiors = interiorOcclusion();
   engine.syncInteriors = interiors.sync;
   const occl = interiors.node;
-  let scenePass;
+  let scenePass, depth, vel;
   if (engine.opts.ao) {
-    // high: a normals pre-pass feeds GTAO into the scene pass's ambient light (velocity unused, but without it
-    // three builds some tree/impostor pre-pass shaders against the wrong attributes: "wnd" / "uv" not found)
+    // high: a normals/velocity pre-pass feeds GTAO into the scene pass's ambient light
     const pre = pass(scene, camera);
     pre.transparent = false;
     pre.setMRT(mrt({ output: packNormalToRGB(normalView), velocity }));
     pre.getTexture('output').type = THREE.UnsignedByteType;
     const preNormal = sample((uv) => unpackRGBToNormal(pre.getTextureNode().sample(uv)));
-    const aoPass = engine.aoPass = ao(pre.getTextureNode('depth'), preNormal, camera);
+    depth = pre.getTextureNode('depth');
+    vel = pre.getTextureNode('velocity');
+    const aoPass = engine.aoPass = ao(depth, preNormal, camera);
     aoPass.resolutionScale = 0.5;
     aoPass.radius.value = 0.6;
     aoPass.thickness.value = 1.2;
+    aoPass.useTemporalFiltering = true;
     scenePass = pass(scene, camera);
     scenePass.contextNode = builtinAOContext(aoPass.getTextureNode().sample(screenUV).r.mul(occl));
   } else {
+    // medium/low: one scene pass writes colour and velocity together
     scenePass = pass(scene, camera);
+    scenePass.setMRT(mrt({ output, velocity }));
     scenePass.contextNode = builtinAOContext(occl);
+    depth = scenePass.getTextureNode('depth');
+    vel = scenePass.getTextureNode('velocity');
   }
-  const hdr = scenePass.getTextureNode('output');
+  const aa = traa(scenePass.getTextureNode('output'), depth, vel, camera);
+  aa.useSubpixelCorrection = false;
+  const aaTex = aa.getTextureNode();
 
   // glare: a soft veil from the brightest things (sun, sunlit cloud rims, glints on water). The input is
   // capped so the sun glows as through a lens instead of whiting out the frame.
   const useBloom = engine.opts.bloom ?? tier !== 'low';
-  const glow = engine.bloom = bloom(hdr, 0.1, 0.55, 2.5);
+  const glow = engine.bloom = bloom(aa, 0.1, 0.55, 2.5);
   glow.smoothWidth.value = 6;
   glow.highPassFn = Fn(({ input, threshold, smoothWidth }) => {
     const l = luminance(input.rgb);
@@ -73,28 +81,31 @@ export function buildPost(engine) {
 
   // exposure (set by Engine.update), look and grade
   engine.grade = {
-    exposure: uniform(1),
+    exposure: uniform(1), sharpen: uniform(0.8),
     power: uniform(1.12), saturation: uniform(1.18), vignette: uniform(0.16), grain: uniform(tier === 'low' ? 0 : 0.01),
   };
   const g = engine.grade;
   pipe.outputColorTransform = false;
-  const graded = Fn(() => {
-    let col = hdr.sample(screenUV).rgb;
+  pipe.outputNode = Fn(() => {
+    // TRAA leaves the image soft: a strong, halo-free sharpen (clamped to the local range; SMAA, tried, shimmered in motion)
+    const d = vec2(1).div(vec2(aaTex.size(0)));
+    const c = aaTex.sample(screenUV).rgb;
+    const n = aaTex.sample(screenUV.add(vec2(0, d.y))).rgb, s = aaTex.sample(screenUV.sub(vec2(0, d.y))).rgb;
+    const e = aaTex.sample(screenUV.add(vec2(d.x, 0))).rgb, w = aaTex.sample(screenUV.sub(vec2(d.x, 0))).rgb;
+    const lo = min(min(min(n, s), min(e, w)), c), hi = max(max(max(n, s), max(e, w)), c);
+    let col = clamp(c.add(c.mul(4).sub(n).sub(s).sub(e).sub(w).mul(g.sharpen.mul(0.25))), lo, hi);
     if (useBloom) col = col.add(glow.rgb);
     let o = agx(col.mul(g.exposure), g.power, g.saturation);
     const v = screenUV.sub(0.5).mul(vec2(1.25, 1));
     o = o.mul(float(1).sub(dot(v, v).mul(g.vignette)));
-    // to sRGB: SMAA finds edges by display-space contrast
-    return vec4(mix(o.mul(12.92), pow(o, vec3(1 / 2.4)).mul(1.055).sub(0.055), o.greaterThan(vec3(0.0031308))), 1);
-  })();
-  const aa = smaa(graded);
-  // fine luminance grain after the AA, so SMAA never reads it as edges
-  pipe.outputNode = Fn(() => {
+    // to sRGB, then fine luminance grain in display space
+    o = mix(o.mul(12.92), pow(o, vec3(1 / 2.4)).mul(1.055).sub(0.055), o.greaterThan(vec3(0.0031308)));
     const seed = screenCoordinate.x.add(screenCoordinate.y.mul(2048)).toUint().add(floor(time.mul(60)).toUint().mul(2654435));
-    return vec4(aa.rgb.add(hash(seed).sub(0.5).mul(g.grain)), 1);
+    o = o.add(hash(seed).sub(0.5).mul(g.grain));
+    return vec4(o, 1);
   })();
 
-  // exposure meter: mean log2 luminance of the scene, centre-weighted, read back on the CPU
+  // exposure meter: mean log2 luminance of the anti-aliased frame, centre-weighted, read back on the CPU
   const W = 64, H = 36;
   const rt = new THREE.RenderTarget(W, H, { depthBuffer: false });
   const mat = new THREE.NodeMaterial();
@@ -102,7 +113,7 @@ export function buildPost(engine) {
   mat.fragmentNode = Fn(() => {
     let sum = float(0);
     for (const [i, j] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) {
-      sum = sum.add(log2(luminance(hdr.sample(uv().add(vec2(i / W, j / H))).rgb).max(1 / 65536)));
+      sum = sum.add(log2(luminance(aaTex.sample(uv().add(vec2(i / W, j / H))).rgb).max(1 / 65536)));
     }
     return vec4(sum.div(4).add(16).div(24).clamp(0, 1), 0, 0, 1);
   })();
