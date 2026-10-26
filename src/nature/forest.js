@@ -114,9 +114,16 @@ export default async function forest(ctx, world) {
   for (let i = 0; i < POOL; i++) { const c = { kind: 'circle', x: 1e7, z: 1e7, r: 0 }; pool.push(c); world.colliders.push(c); }
 
   // ---------- LOD refresh ----------
-  let lastX = 1e9, lastZ = 1e9, timer = 0;
+  let lastX = 1e9, lastZ = 1e9, lastYaw = 0, timer = 0;
+  const fwd = new THREE.Vector3();
   // ?keyart: only trees whose bounds (+40 m: shadows cast into view) touch the view frustum, or all lod0 would be ~0.5 G triangles
   const frustum = new THREE.Frustum(), sphere = new THREE.Sphere(), m4 = new THREE.Matrix4();
+  // view (every tier, not ?keyart): only trees in the camera's horizontal view cone (half-FOV + CONE margin) or
+  // within NEAR m; a full tree (it casts shadows) also when its shadow's tip lands in the cone. A turn past TURN
+  // refills at once (the updater, before this frame's render), so a turn never shows a gap.
+  const CONE = 0.45, TURN = 0.2, NEAR = 12;
+  const view = { on: false, fx: 0, fz: 1, cos: -1, sx: 0, sz: 0, sl: 0 };
+  const inView = (x, z, d) => view.fx * x + view.fz * z >= view.cos * d;
   const refresh = (ex, ez) => {
     for (const lod of sets) for (const s of lod) s.n = 0;
     const cam = KEYART && world.engine?.camera;
@@ -139,6 +146,13 @@ export default async function forest(ctx, world) {
         }
         // cross-fades: lod0 fades out over R0±BAND while lod1 fades in on the complementary dither;
         // lod1 fades out over R1±BAND while the impostors (shader side) fade in
+        let shadowOnly = false;
+        if (view.on && d > NEAR && !inView(X[k] - ex, Z[k] - ez, d)) {
+          if (d > R0 + BAND) continue;
+          const L = Math.min(60, variants[vi].H * S[k] * view.sl), tx = X[k] - ex + view.sx * L, tz = Z[k] - ez + view.sz * L;
+          if (!inView(tx, tz, Math.hypot(tx, tz))) continue;
+          shadowOnly = true; // only its shadow shows: the full tree, no lod1 cross-fade partner
+        }
         const f0 = Math.min(1, Math.max(0, (R0 + BAND - d) / (2 * BAND)));
         const f1 = Math.min(1, Math.max(0, (R1 + BAND - d) / (2 * BAND)));
         const put = (lod, f) => {
@@ -147,7 +161,7 @@ export default async function forest(ctx, world) {
           s.itr.array.set([X[k], Y[k], Z[k], ROT[k]], s.n * 4); s.isc.array.set([S[k], f, DEPTH[k]], s.n * 3); s.n++;
         };
         if (d < R0 + BAND) put(0, f0);
-        if (d > R0 - BAND) put(1, d < R0 + BAND ? (f0 > 0 ? -(1 - f0) : 1) : f1);
+        if (d > R0 - BAND && !shadowOnly) put(1, d < R0 + BAND ? (f0 > 0 ? -(1 - f0) : 1) : f1);
         if (d < 14 && nc < POOL) {
           const c = pool[nc++]; c.x = X[k]; c.z = Z[k]; c.r = variants[vi].trunkR * S[k] * 1.25 + 0.03;
         }
@@ -172,8 +186,21 @@ export default async function forest(ctx, world) {
     const e = camera.position;
     U.eye.value.copy(e);
     timer -= dt;
-    if (timer <= 0 || Math.hypot(e.x - lastX, e.z - lastZ) > 1.5) {
-      refresh(e.x, e.z); lastX = e.x; lastZ = e.z; timer = 0.5;
+    camera.getWorldDirection(fwd);
+    const h = Math.hypot(fwd.x, fwd.z), yaw = Math.atan2(fwd.x, fwd.z);
+    const turned = Math.abs(Math.atan2(Math.sin(yaw - lastYaw), Math.cos(yaw - lastYaw))) > TURN;
+    if (timer <= 0 || turned || Math.hypot(e.x - lastX, e.z - lastZ) > 1.5) {
+      // looking nearly straight up or down: no cone; else the half-FOV across (portrait phones: narrow) + margin
+      view.on = !KEYART && h > 0.25;
+      if (view.on) {
+        const half = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect);
+        view.fx = fwd.x / h; view.fz = fwd.z / h; view.cos = Math.cos(Math.min(Math.PI, half + CONE + TURN));
+        if (sun) { // shadow direction on the ground (away from the sun) and length per metre of height
+          const sd = sun.position, sh = Math.hypot(sd.x, sd.z) || 1;
+          view.sx = -sd.x / sh; view.sz = -sd.z / sh; view.sl = Math.min(4, sh / Math.max(1e-3, sd.y));
+        } else view.sl = 0;
+      }
+      refresh(e.x, e.z); lastX = e.x; lastZ = e.z; lastYaw = yaw; timer = 0.5;
     }
   });
   // first fill so the opening frame already has trees
