@@ -41,6 +41,10 @@ for (const name of names) {
     };
     return { key: a.key, w: a.rtA.width, h: a.rtA.height, albedo: await read(a.rtA), normal: await read(a.rtN) };
   }, name);
+  // a readback that came back (nearly) empty would ship a blank atlas (the forest vanished once): keep the old files
+  const filled = (b64) => { const b = Buffer.from(b64, 'base64'); let n = 0; for (let i = 3; i < b.length; i += 4) if (b[i]) n++; return n / (b.length / 4); };
+  const cover = Math.min(filled(res.albedo), filled(res.normal));
+  if (cover < 0.01) { console.log(`! ${name}: atlas read back ${(cover * 100).toFixed(2)}% filled, kept the shipped one — rerun`); process.exitCode = 1; continue; }
   for (const kind of ['albedo', 'normal']) {
     const p = `${out}${name}-${kind}`;
     writeFileSync(p + '.png', png(res.w, res.h, Buffer.from(res[kind], 'base64')));
