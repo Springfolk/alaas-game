@@ -2,7 +2,7 @@
 import * as THREE from 'three/webgpu';
 import { Engine } from './engine/engine.js';
 import { setAnisotropy, setTextureRenderer, sharpenTextures } from './engine/materials.js';
-import { bootDone, playLost, resumeSpot } from './engine/tier.js';
+import { bootDone, restoreLost, resumeSpot } from './engine/tier.js';
 import { World } from './world/world.js';
 import { START } from './world/layout.js';
 import { Input } from './input.js';
@@ -86,6 +86,7 @@ class Game {
     const at = params.get('at')?.split(',').map(Number) || resumeSpot(); // resumeSpot: back after a GPU loss in play
     // the loading view must see the world from where it will be played (again once the floors exist)
     const place = () => { if (at) this.player.place(at[0], at[1], at[2] ?? 0); else this.player.place(START.x, START.z, START.yaw); this.player.update(0); };
+    this.engine.onLost = () => restoreLost(at); // lost while loading: back to this same spot (in play: where the player stands, below)
     await this.world.build((f, stage) => { built = f; status(stage); }, () => { place(); return this.preview(status); }); // the homestead's build code starts once the sky shows
     place();
     mark('built');
@@ -133,7 +134,7 @@ class Game {
 
     this.clock = new THREE.Timer();
     // the GPU device lost in play, or a frame that keeps throwing (the canvas would freeze): reload, resume here
-    const lost = () => playLost([this.player.pos.x, this.player.pos.z, this.player.yaw]);
+    const lost = () => restoreLost([this.player.pos.x, this.player.pos.z, this.player.yaw]);
     this.engine.onLost = lost;
     // (Safari after the page was hidden: createCommandEncoder throws every few frames, no device-lost event)
     let bad = [];

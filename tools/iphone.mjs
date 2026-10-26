@@ -32,7 +32,7 @@ const out = await run(async (mode, spots, at, only, cycles, seq) => {
   if (mode === 'load') { // the boot marks (main.js mark) and what came over the network
     const res = performance.getEntriesByType('resource'), nav = performance.getEntriesByType('navigation')[0];
     const kb = (f) => Math.round(res.filter(f).reduce((s, x) => s + (x.transferSize || 0), 0) / 1024);
-    return { marks: JSON.stringify(window.loadMarks), transferKB: kb(() => true) + Math.round((nav?.transferSize || 0) / 1024), jsKB: kb((x) => /\.js/.test(x.name)), geoKB: kb((x) => /\/geo\//.test(x.name)), texKB: kb((x) => /\/tex\//.test(x.name)), impKB: kb((x) => /impostors/.test(x.name)), files: res.length };
+    return { backend: e.backend, losses: sessionStorage.getItem('alaas-losses'), marks: JSON.stringify(window.loadMarks), transferKB: kb(() => true) + Math.round((nav?.transferSize || 0) / 1024), jsKB: kb((x) => /\.js/.test(x.name)), geoKB: kb((x) => /\/geo\//.test(x.name)), texKB: kb((x) => /\/tex\//.test(x.name)), impKB: kb((x) => /impostors/.test(x.name)), files: res.length };
   }
   const wait0 = (ms) => new Promise((ok) => setTimeout(ok, ms));
   const pace0 = e.pace, dyn0 = e.dynamicResolution;

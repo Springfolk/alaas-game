@@ -7,7 +7,7 @@ import {
 import { buildPost } from './post.js';
 import { fastPMREM } from '../load/pmrem.js';
 import { leanEnvironment } from './leanenv.js';
-import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, bootFailed, isPhone } from './tier.js';
+import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, restoreLost, webgpuAdapter, gpuBroken } from './tier.js';
 import { setTextureMax } from './materials.js';
 import { makeSky, updateSky, cloudField, cloudCover, CLOUD_Y } from './sky.js';
 import { sunMask } from './master.js';
@@ -42,11 +42,12 @@ export class Engine {
 
   async init() {
     const auto = !PRESETS[this.requested.quality];
-    // boot guard (tier.js): after a load the OS killed, step down — 1: mobile → LITE, medium → low; 2: WebGL2 too
+    // boot guard (tier.js): after a load the OS killed, step down: mobile → LITE, medium → low
     const step = this.bootStep = KEYART ? 0 : bootStep(auto);
-    // phones: WebGL2 (most have no WebGPU; Safari's is opt-in and lost the device under load) unless ?webgpu;
-    // desktop: WebGPU, WebGL2 on step 2
-    if (step >= 2 || (isPhone() && !urlFlag('webgpu'))) this.requested = { ...this.requested, webgl: true };
+    // WebGPU wherever the browser gives an adapter, phones too (an iPhone 14 Pro: 17 ms a frame at the urasa where
+    // WebGL2 took 45, its per-draw cost far lower); WebGL2 only without one (or ?webgl)
+    // (a device that broke 3× within 2 min in this tab: WebGL2 for the tab's session, tier.js restoreLost)
+    if (!this.requested.webgl && (gpuBroken() || !(await webgpuAdapter()))) this.requested = { ...this.requested, webgl: true };
     if (auto) { // 'auto' (default): pick by device
       const d = await detectTier({ webgl: !!this.requested.webgl });
       this.tier = d.name;
@@ -68,9 +69,10 @@ export class Engine {
     setTextureMax(this.opts.texMax);
     const r = this.renderer = new THREE.WebGPURenderer({ canvas: this.canvas, antialias: false, forceWebGL: !!this.opts.webgl, trackTimestamp: this.opts.gpuTime ?? urlFlag('gputime') });
     r.library.addLight(SunLightNode, SunLight);
-    // lost while loading (bootDone not yet called): reload a step down; in play: main.js's onLost (reload, resume)
+    // device lost (the OS took the GPU back: memory pressure, a GPU reset, a page long hidden): restored by a reload
+    // at the same quality, where the player stood (main.js onLost; while loading, tier.js restoreLost)
     const lost = r.onDeviceLost.bind(r);
-    r.onDeviceLost = (info) => { lost(info); if (KEYART) return; bootFailed(); this.onLost?.(info); };
+    r.onDeviceLost = (info) => { lost(info); if (KEYART) return; if (this.onLost) this.onLost(info); else restoreLost(); };
     r.setPixelRatio(Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
     r.setSize(innerWidth, innerHeight, false);
     r.shadowMap.enabled = true;
@@ -78,6 +80,13 @@ export class Engine {
     r.toneMappingExposure = 1;
     await r.init();
     this.backend = r.backend.isWebGPUBackend ? 'webgpu' : 'webgl2';
+    // Safari can break a WebGPU device without losing it (mid-load, or after the page was hidden): every
+    // createCommandEncoder then throws and the canvas freezes. Treated as a loss at the first throw.
+    const dev = r.backend.device;
+    if (dev) {
+      const make = dev.createCommandEncoder.bind(dev);
+      dev.createCommandEncoder = (d) => { try { return make(d); } catch (err) { r.onDeviceLost({ api: 'WebGPU', message: String(err), reason: 'broken' }); throw err; } };
+    }
 
     const scene = this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 6000);

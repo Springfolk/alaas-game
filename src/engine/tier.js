@@ -48,17 +48,21 @@ export function isPhone() {
   return /Android|iPhone|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && n.maxTouchPoints > 1) || (coarse && small);
 }
 
+// A WebGPU adapter, if the browser gives one (asked once).
+let adapterAsk = null;
+export const webgpuAdapter = () => (adapterAsk ||= (typeof navigator !== 'undefined' && navigator.gpu
+  ? navigator.gpu.requestAdapter({ powerPreference: 'high-performance' }).catch(() => null) : Promise.resolve(null)));
+
 export async function detectTier({ webgl = false } = {}) {
   const n = typeof navigator !== 'undefined' ? navigator : {};
   const cores = n.hardwareConcurrency || 4, mem = n.deviceMemory || 8; // Safari reports no deviceMemory
-  // phones draw with WebGL2 (Engine.init; most have no WebGPU, and Safari's is opt-in): only memory and cores
-  // make one weak (LITE), not missing WebGPU
+  // phones: only memory and cores make one weak (LITE), not missing WebGPU (WebGL2 then draws)
   if (isPhone()) {
     const weak = mem <= 3 ? `${mem} GB` : cores < 4 ? `${cores} cores` : '';
     return weak ? { name: 'mobile', reason: `touch device, ${weak}`, extra: LITE } : { name: 'mobile', reason: 'touch device' };
   }
   let adapter = null;
-  if (!webgl && n.gpu) try { adapter = await n.gpu.requestAdapter({ powerPreference: 'high-performance' }); } catch { /* none */ }
+  if (!webgl) adapter = await webgpuAdapter();
   if (!adapter) return { name: 'low', reason: 'no WebGPU' };
   const info = adapter.info || {};
   const vendor = (info.vendor || '').toLowerCase(), arch = (info.architecture || '').toLowerCase();
@@ -73,10 +77,10 @@ export async function detectTier({ webgl = false } = {}) {
 // repeatedly occurred") leaves no JS error to react to, so each load marks itself in localStorage until ready
 // (bootDone) or a normal leave (pagehide); while hidden (locked, another app or tab) it is unmarked — the OS freezing
 // a background page is not the load failing. Finding an unfinished mark under 10 min old, the next load steps down:
-// 1 = auto picks mobile + LITE / low, 2 = also WebGL2. A load that finished at a step tries one step up next time,
+// 1 = auto picks mobile + LITE / low (never WebGL2: that only where WebGPU is missing). A load that finished at a step tries one step up next time,
 // at most once a day (a failed try blocks the next for a day), so two interrupted loads never demote a device for
 // good. A chosen quality resets it.
-const GUARD = 'alaas-boot3'; // 3: drops the steps the old keep-forever rule left
+const GUARD = 'alaas-boot4'; // 4: drops the old step 2 (WebGL2)
 const DAY = 86400000;
 let guard = { step: 0 }, loading = true;
 const keep = (g) => { guard = g; try { localStorage.setItem(GUARD, JSON.stringify(g)); } catch { /* storage blocked */ } };
@@ -85,7 +89,7 @@ export function bootStep(auto) {
   try { g = JSON.parse(localStorage.getItem(GUARD)) || {}; } catch { /* none */ }
   const now = Date.now();
   let step = auto ? g.step || 0 : 0;
-  if (auto && g.pending && now - g.pending < 600000) { step = Math.min(2, step + 1); g.tryAt = now; }
+  if (auto && g.pending && now - g.pending < 600000) { step = 1; g.tryAt = now; }
   else if (auto && step > 0 && g.ok && !(now - (g.tryAt || 0) < DAY)) { step--; g.tryAt = now; }
   keep({ ...g, step, ok: false, pending: now });
   addEventListener('pagehide', () => { if (guard.pending && !failed) keep({ ...guard, pending: 0 }); });
@@ -94,18 +98,26 @@ export function bootStep(auto) {
 }
 let failed = false;
 export const bootDone = () => { loading = false; keep({ ...guard, pending: 0, ok: true }); };
-// the GPU device was lost while loading (a GPU process crash or reset): reload one step down
-export const bootFailed = () => { if (!guard.pending || failed) return; failed = true; location.reload(); };
-// lost in play (iOS drops the GPU device under memory pressure or a GPU timeout, or hands it back broken after
-// the page was hidden: the canvas freezes on its last frame while the page still answers): reload where the player
-// stood (main.js resumes there, title screen). No tier step: these losses are not about the load being too big.
-const RESUME = 'alaas-resume';
-export function playLost(at) {
+// The GPU device lost (iOS takes it back under memory pressure or a GPU timeout, or hands it back broken after the
+// page was hidden: the canvas freezes on its last frame while the page still answers). three cannot rebuild a
+// renderer's GPU state in place, so it is restored by a reload where the player stood (main.js resumes there, title
+// screen), at the same quality and backend: a loss is not the load being too big, nor the device lacking WebGPU.
+// A hidden page waits until it is shown again (a background reload would only be frozen or lost again).
+// A device that breaks again and again (3× within 2 min, this tab) would reload forever: that tab then draws with WebGL2.
+const RESUME = 'alaas-resume', LOSSES = 'alaas-losses';
+const losses = () => { try { const now = Date.now(); return (JSON.parse(sessionStorage.getItem(LOSSES)) || []).filter((t) => now - t < 120000); } catch { return []; } };
+export const gpuBroken = () => losses().length >= 3;
+export function restoreLost(at = null) {
   if (failed) return;
   failed = true;
-  try { sessionStorage.setItem(RESUME, JSON.stringify({ at, t: Date.now() })); } catch { /* storage blocked */ }
+  try {
+    if (at) sessionStorage.setItem(RESUME, JSON.stringify({ at, t: Date.now() }));
+    sessionStorage.setItem(LOSSES, JSON.stringify([...losses(), Date.now()]));
+  } catch { /* storage blocked */ }
   keep({ ...guard, pending: 0 });
-  location.reload();
+  const go = () => { if (document.hidden) return; removeEventListener('pageshow', go); document.removeEventListener('visibilitychange', go); location.reload(); };
+  document.addEventListener('visibilitychange', go); addEventListener('pageshow', go);
+  go();
 }
 // the spot to resume at after playLost's reload (once, within a minute), else null
 export function resumeSpot() {
