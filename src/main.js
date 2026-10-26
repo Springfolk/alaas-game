@@ -20,7 +20,7 @@ import { instrument, event } from './load/prof.js';
 
 const KEY = 'alaas-v1';
 const params = new URLSearchParams(location.search);
-if (params.has('remotelog')) import('./load/remotelog.js'); // phone debugging: console + heartbeat to /__log (tools/phonelog.mjs)
+if (params.has('remotelog') || params.has('perftest')) import('./load/remotelog.js'); // phone debugging: console + heartbeat to /__log (tools/phonelog.mjs)
 const audioModules = import.meta.glob('./audio/audio.js');
 // load timeline (ms since navigation) for tools/loadprof.mjs
 const mark = (k) => { (window.loadMarks ||= {})[k] = Math.round(performance.now()); event(k); };
@@ -99,6 +99,7 @@ class Game {
     this.audio = await this.loadAudio();
     this.audio?.fetchClips();
     this.sharpening = sharpenTextures().then(() => { this.sharp = true; mark('sharp'); closeWorkers(); }); // 256 → the tier's size, in play
+    if (params.has('perftest')) this.sharpening.then(() => import('./load/perftest.js')).then((m) => m.perfTest(this)); // per-layer frame cost on a device
     this.player.onStep = (surface, speed) => this.audio?.step(surface, speed);
 
     this.title = true;
