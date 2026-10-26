@@ -10,11 +10,13 @@
 //   ground       ground grid vertices per side · fps = frame cap (battery saver halves it)
 //   atlasMax     largest impostor atlas edge · pipelines = GPU pipeline compiles in flight while loading
 //   release      drop each texture image's CPU/IOSurface copy once it is on the GPU (materials.js)
+const NATIVE = typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1;
 export const PRESETS = {
   high: { quality: 'high', ao: true, shadows: 2048, shadowFar: 150, reflection: 0.35, dpr: 2, resMin: 1, texMax: 4096, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
   medium: { quality: 'medium', ao: false, shadows: 2048, shadowFar: 110, reflection: 0.25, dpr: 1.5, resMin: 0.7, texMax: 2048, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
   low: { quality: 'low', ao: false, shadows: 1024, shadowFar: 70, reflection: 0.18, dpr: 0.75, resMin: 0.5, texMax: 1024, grassDensity: 0.6, forest: 0.8, ground: 512, fps: 60 },
-  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: 2, resMin: 1, texMax: 512, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
+  // phones: a fixed 75% of the screen's own resolution (dpr = resMin: no dynamic resolution, only the knobs)
+  mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0.15, dpr: NATIVE * 0.75, resMin: NATIVE * 0.75, texMax: 512, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 420, fps: 60 },
 };
 // A weak phone (≤3 GB, <4 cores, no WebGPU, under-default GPU limits) or one whose last load was killed:
 // mobile with these on top (TIER.lite). Memory can't be handed back at run time, so it is decided here.
@@ -59,7 +61,7 @@ export async function detectTier({ webgl = false } = {}) {
 // repeatedly occurred") leaves no JS error to react to, so each load marks itself in localStorage until ready
 // (bootDone) or a normal leave (pagehide). Finding an unfinished mark under 10 min old, the next load steps
 // down (and keeps that step): 1 = auto picks mobile + LITE / low, 2 = also WebGL2. A chosen quality resets it.
-const GUARD = 'alaas-boot';
+const GUARD = 'alaas-boot2'; // 2: drops the steps the first play-loss recovery added
 let guard = { step: 0 };
 const keep = (g) => { guard = g; try { localStorage.setItem(GUARD, JSON.stringify(g)); } catch { /* storage blocked */ } };
 export function bootStep(auto) {
@@ -75,16 +77,15 @@ let failed = false;
 export const bootDone = () => keep({ ...guard, pending: 0 });
 // the GPU device was lost while loading (a GPU process crash or reset): reload one step down
 export const bootFailed = () => { if (!guard.pending || failed) return; failed = true; location.reload(); };
-// lost in play (iOS drops the GPU device under memory pressure or a GPU timeout: the canvas freezes on its last
-// frame while the page still answers): reload where the player stood (main.js resumes there, title screen);
-// a second loss within 10 min also steps the auto tier down like a killed load.
+// lost in play (iOS drops the GPU device under memory pressure or a GPU timeout, or hands it back broken after
+// the page was hidden: the canvas freezes on its last frame while the page still answers): reload where the player
+// stood (main.js resumes there, title screen). No tier step: these losses are not about the load being too big.
 const RESUME = 'alaas-resume';
 export function playLost(at) {
   if (failed) return;
   failed = true;
   try { sessionStorage.setItem(RESUME, JSON.stringify({ at, t: Date.now() })); } catch { /* storage blocked */ }
-  const again = guard.lost && Date.now() - guard.lost < 600000;
-  keep({ ...guard, step: again ? Math.min(2, (guard.step || 0) + 1) : guard.step || 0, lost: Date.now(), pending: 0 });
+  keep({ ...guard, pending: 0 });
   location.reload();
 }
 // the spot to resume at after playLost's reload (once, within a minute), else null

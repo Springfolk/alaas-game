@@ -134,9 +134,15 @@ class Game {
     // the GPU device lost in play, or a frame that keeps throwing (the canvas would freeze): reload, resume here
     const lost = () => playLost([this.player.pos.x, this.player.pos.z, this.player.yaw]);
     this.engine.onLost = lost;
-    let bad = 0;
+    // (Safari after the page was hidden: createCommandEncoder throws every few frames, no device-lost event)
+    let bad = [];
     this.engine.renderer.setAnimationLoop((t) => {
-      try { this.tick(t); bad = 0; } catch (e) { if (bad++ === 0) console.error(e); if (bad > 60) lost(); }
+      try { this.tick(t); } catch (e) {
+        const now = performance.now();
+        bad = bad.filter((x) => now - x < 3000);
+        if (!bad.length) console.error(e);
+        if (bad.push(now) >= 5) lost();
+      }
     });
   }
 
