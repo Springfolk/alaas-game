@@ -13,6 +13,7 @@ import { yardMats } from './yardlife/mats.js';
 import { maps } from '../engine/materials.js';
 import { milk } from './yardlife/pieces.js';
 import { section } from '../load/geocache.js';
+import { versioned } from '../load/assetv.js';
 
 export default async function build(ctx, placement) {
   const { THREE: T, terrain, rng } = ctx;
@@ -39,7 +40,7 @@ export default async function build(ctx, placement) {
 
   // net: weathered twine, mesh holes from the opacity map, coverage dithered (alpha hash)
   const netMaps = maps('acg_net');
-  const opTex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/tex/acg_net/op.webp`);
+  const opTex = new THREE.TextureLoader().load(versioned(`${import.meta.env.BASE_URL}assets/tex/acg_net/op.webp`));
   opTex.wrapS = opTex.wrapT = THREE.RepeatWrapping;
   const NETS = 0.42; // metres per tile (≈ 3.5 cm mesh)
   const net = pmat('acg_net', { scale: NETS, tint: 0x9a8c78, double: true, dirt: 0.3, vary: 0.25, id: 'net' });

@@ -3,6 +3,7 @@
 // around the hollow; houses muffle the outside and have their own room tone and hearth crackle.
 import { ALAAS, LAKE } from '../world/terrain.js';
 import { smooth, rand, pick as pickWith } from '../util.js';
+import { versioned } from '../load/assetv.js';
 
 const BASE = (import.meta.env?.BASE_URL || '/') + 'audio/';
 const pick = (arr) => pickWith(Math.random, arr);
@@ -70,10 +71,10 @@ export class AudioScape {
   fetchClips() { return (this.ready ||= this.load()); }
 
   async load() {
-    try { this.manifest = await (await fetch(BASE + 'manifest.json')).json(); } catch (e) { console.warn('audio: no manifest', e); return; }
+    try { this.manifest = await (await fetch(BASE + 'manifest.json', { cache: 'no-cache' })).json(); } catch (e) { console.warn('audio: no manifest', e); return; }
     await Promise.all(this.manifest.files.map(async (name) => {
       try {
-        const data = await (await fetch(`${BASE}${name}.ogg`)).arrayBuffer();
+        const data = await (await fetch(versioned(`${BASE}${name}.ogg`))).arrayBuffer();
         this.buffers[name] = await this.ctx.decodeAudioData(data);
       } catch (e) { console.warn(`audio: ${name} failed`, e); }
     }));
