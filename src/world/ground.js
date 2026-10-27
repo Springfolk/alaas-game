@@ -85,11 +85,11 @@ function packed(id) {
 
 // Filled by src/nature/grass.js once the models are placed (before the first frame):
 // the homestead mask (cut, mown, grazed, bare soil) the grass grows from, so the ground under it agrees.
-// One texture only: the five splat sets already use ten of the sixteen a WebGPU stage allows. xf = (x0, z0, 1/size).
+// One texture only: the five splat sets already use ten of the sixteen a WebGPU stage allows. xf = (x0, z0, 1/w, 1/d).
 // A 1×1 placeholder until then; grass.js points `maskNode` at its own mask texture (a binding change, not
 // a new shader), so no texture is ever resized in place.
 const blank = () => { const t = new THREE.DataTexture(new Uint8Array(4), 1, 1); t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t; };
-const makeHooks = () => ({ maskXf: uniform(new THREE.Vector3(0, 0, 0)) });
+const makeHooks = () => ({ maskXf: uniform(new THREE.Vector4(0, 0, 0, 0)) });
 
 function groundMaterial() {
   const ids = { grass: 'sparse_grass', dry: 'leafy_grass', forest: 'forest_leaves_04', shore: 'mud_forest', path: 'forest_ground_04' };
@@ -132,7 +132,7 @@ function groundMaterial() {
   // texture detail fades with distance so its tiling never shows as a pattern across the meadow
   const regrade = (c, mean, tint, k) => mix(c, tint.mul(mix(lum(c).div(mean), float(1), far.mul(0.75))), k);
   const H = makeHooks();
-  const fM = (H.maskNode = texture(blank(), wp.sub(H.maskXf.xy).mul(H.maskXf.z)));
+  const fM = (H.maskNode = texture(blank(), wp.sub(H.maskXf.xy).mul(H.maskXf.zw)));
   const grazed = fM.z, bareG = fM.w;
   const wD = w(s.w), wF = w(s.x), wP = w(s.z), wS = w(s.y);
   const layer = (key) => {

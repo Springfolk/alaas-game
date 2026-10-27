@@ -320,9 +320,10 @@ export default async function build(ctx, placement) {
   }
 
   // grass hints: bare earth under the house (with its door passage) and the khoton; the barn's dung-trodden way in
+  // (summer only: the winter barn has stood empty since spring and its way in has grown over)
   const { KZD, kxd } = shell.berm;
   root.userData.bare = [{ x: 0, z: 0, hw: XD + 0.05, hd: 3.4 }, { x: 0, z: KH.zc, hw: kxd, hd: KH.hz + 1.1 }];
-  root.userData.paths = [{ w: 1.6, pts: [[kxd + 1.7, KZD], [kxd - 0.5, KZD]] }];
+  root.userData.paths = winter ? [] : [{ w: 1.6, pts: [[kxd + 1.7, KZD], [kxd - 0.5, KZD]] }];
 
   // the low door passage: the player stoops under its lintel
   const lows = [{ x: (XD + 0.15 + inner(FX, DH) - 0.1) / 2, z: ZD, hw: (XD + 0.15 - inner(FX, DH) + 0.1) / 2, hd: DW / 2 + 0.05, h: DH + 0.01 }];
