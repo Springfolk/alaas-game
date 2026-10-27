@@ -122,6 +122,28 @@
   #title .keys { grid-template-columns: repeat(3, auto 1fr); column-gap: 10px; text-shadow: 0 1px 3px rgba(0,10,30,.8); padding-top: 12px; border-top: 1px solid rgba(255,255,255,.18); width: 100%; }
   @media (max-width: 760px) { #title .keys { grid-template-columns: repeat(2, auto 1fr); } }
   @media (max-width: 480px), (pointer: coarse) { #title .keys { display: none; } #title .dock { padding: 16px 14px 14px; } }
+  /* studio mark (Springfolk brand: dark-background lockup, unaltered, on a soft dark corner) and the links row */
+  #title::before { content: ''; position: absolute; left: 0; top: 0; width: 360px; height: 180px; pointer-events: none;
+    background: radial-gradient(ellipse at 0 0, rgba(4,14,26,.55), rgba(4,14,26,0) 70%); }
+  .studio { position: absolute; left: max(20px, 2.2vw); top: max(18px, 2.2vw); display: block; line-height: 0; animation: fadein 1.4s .5s both; }
+  .studio img { height: clamp(26px, 3.2vw, 38px); width: auto; }
+  .links { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 14px; margin-top: 12px; font-size: 12.5px; color: var(--dim);
+    text-shadow: 0 1px 4px rgba(0,10,30,.8); cursor: default; animation: rise 1.2s .45s var(--ease) both; }
+  .links a { color: var(--ink); text-decoration: none; border-bottom: 1px solid rgba(228,240,252,.35); }
+  .links a:hover { border-bottom-color: var(--ink); }
+  .links .issue { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px; border-radius: 999px; border: 1px solid rgba(246,178,74,.75);
+    background: rgba(40,24,4,.45); color: #ffe2b0; font-weight: 600; text-shadow: none; }
+  .links .issue:hover { background: rgba(70,42,6,.6); border-color: #f6b24a; }
+  .links .issue::before { content: '!'; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: #f6b24a; color: #3a2400; font-size: 11px; font-weight: 800; }
+  .about { display: flex; flex-direction: column; gap: 12px; color: var(--c-ink); }
+  .about .logo { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 6px; background: #333; }
+  .about .logo img { height: 34px; width: auto; }
+  .about .logo span { margin-left: auto; color: #f0f0f0; font-size: 12.5px; }
+  .about p { margin: 0; }
+  .about .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .about .row a { text-decoration: none; }
+  .about .btn.issue { color: #3a2400; border-color: #b9761a; background: linear-gradient(180deg, #ffe7b8 0%, #f9c56a 48%, #f0a83a 52%, #f7c160 100%); }
+  .about small { color: var(--c-dim); font-size: 12px; line-height: 1.5; }
 
   /* ---- crosshair + look prompt ---- */
   #dot { position: fixed; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: rgba(255,255,255,.8); box-shadow: 0 0 3px rgba(0,0,0,.6); pointer-events: none; transition: transform .25s var(--ease), background .25s, box-shadow .25s; }
@@ -375,7 +397,7 @@
   <div class="menu win glass" onclick="event.stopPropagation()">
     <div class="win-head"><span class="orb"></span><h2 data-t="paused">Тохтобул</h2></div>
     <div class="client">
-      <div class="tabs"><button data-tab="settings" class="on" data-t="settings"></button><button data-tab="controls" data-t="controls"></button></div>
+      <div class="tabs"><button data-tab="settings" class="on" data-t="settings"></button><button data-tab="controls" data-t="controls"></button><button data-tab="about" data-t="about"></button></div>
       <div class="tab on" id="tab-settings">
         <div class="settings">
           <label><span data-t="language"></span><select id="s-lang"><option value="sah">Сахалыы</option><option value="en">English</option><option value="ru">Русский</option></select></label>
@@ -395,6 +417,18 @@
         </div>
       </div>
       <div class="tab" id="tab-controls"><div class="keys" id="keys-pause"></div></div>
+      <div class="tab" id="tab-about">
+        <div class="about">
+          <div class="logo"><img src="/assets/ui/springfolk-logo.svg" alt="Springfolk"><span class="ver"></span></div>
+          <p data-t="aboutText"></p>
+          <div class="row">
+            <a class="btn issue" href="https://github.com/Springfolk/alaas-game/issues/new" target="_blank" rel="noopener" data-t="issue"></a>
+            <a class="btn" href="https://github.com/Springfolk/alaas-game" target="_blank" rel="noopener" data-t="openSource"></a>
+            <a class="btn" href="https://github.com/Springfolk/alaas-game/blob/main/docs/credits.md" target="_blank" rel="noopener" data-t="credits"></a>
+          </div>
+          <small data-t="licence"></small>
+        </div>
+      </div>
     </div>
   </div>
   <button class="btn primary" id="resume" data-t="resume"></button>
@@ -415,6 +449,13 @@
     <div class="seg" id="title-langs" onclick="event.stopPropagation()"></div>
     <div class="keys" id="keys-title"></div>
   </div>
+  <nav class="links" onclick="event.stopPropagation()">
+    <span class="ver"></span>
+    <a href="https://github.com/Springfolk/alaas-game" target="_blank" rel="noopener" data-t="openSource"></a>
+    <a href="https://github.com/Springfolk/alaas-game/blob/main/docs/credits.md" target="_blank" rel="noopener" data-t="credits"></a>
+    <a class="issue" href="https://github.com/Springfolk/alaas-game/issues/new" target="_blank" rel="noopener" data-t="issue"></a>
+  </nav>
+  <a class="studio" href="https://springfolk.co" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="/assets/ui/springfolk-logo.svg" alt="Springfolk"></a>
 </div>
 <div id="hints" class="keys glass"></div>
 <div id="fps" class="glass"></div>

@@ -108,4 +108,5 @@ first: it lists the checks to run and the content rules.
   CC BY-SA field recordings, reference images from Wikimedia Commons (public domain, CC0, CC BY and
   CC BY-SA), Open Sans and Noto Serif (SIL OFL 1.1). Each is listed with its author in
   [`docs/credits.md`](docs/credits.md).
+- **Springfolk name and logo** (`public/assets/ui/springfolk-logo.svg`): all rights reserved, not covered by the licences above.
 - Built with [three.js](https://threejs.org) and [Vite](https://vite.dev).

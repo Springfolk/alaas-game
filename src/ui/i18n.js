@@ -33,6 +33,20 @@ export const T = {
   smooth: { sah: 'Көрүү намчыта', en: 'Look smoothing', ru: 'Плавность обзора' },
   battery: { sah: 'Батарейканы харыстааһын', en: 'Battery saver', ru: 'Экономия батареи' },
   readMore: { sah: 'Сиһилии', en: 'Read more', ru: 'Подробнее' },
+  about: { sah: 'Оонньуу туһунан', en: 'About', ru: 'Об игре' },
+  openSource: { sah: 'Аһаҕас куод — GitHub', en: 'Open source on GitHub', ru: 'Открытый код на GitHub' },
+  credits: { sah: 'Ааптардар', en: 'Credits', ru: 'Авторы и источники' },
+  issue: { sah: 'Алҕаһы буллуҥ дуо? GitHub-ка суруй', en: 'Found a mistake? Open a ticket on GitHub', ru: 'Нашли ошибку? Сообщите на GitHub' },
+  aboutText: {
+    sah: 'Алаас — босхо, аһаҕас куодтаах оонньуу. Тиэкистэрэ, моделлара уонна куода бары GitHub-ка сыталлар. Алҕаһы буллаххына эбэтэр тугу эмит көннөрүөххүн баҕарар буоллаххына, онно суруй.',
+    en: 'Алаас is free and open source. Every text, model and line of code is on GitHub: if you spot a mistake or want to improve something, open a ticket or a pull request there.',
+    ru: 'Алаас — бесплатная игра с открытым кодом. Все тексты, модели и код лежат на GitHub: если вы нашли ошибку или хотите что-то улучшить, создайте там тикет или pull request.',
+  },
+  licence: {
+    sah: 'Куод — MIT. Тиэкистэр уонна бырайыак бэйэтин текстуралара — CC BY-SA 4.0. Атын ааптардар хаартыскалара, текстуралара, тыастара уонна шрифтара бэйэлэрин лицензияларынан («Ааптардар» диэни көр). Springfolk аата уонна логотиба бу лицензияларга киирбэттэр.',
+    en: 'Code: MIT. Texts and the project’s own textures: CC BY-SA 4.0. Photos, textures, sounds and fonts by others keep their own licences (see Credits). The Springfolk name and logo are not covered by these licences.',
+    ru: 'Код — MIT. Тексты и собственные текстуры проекта — CC BY-SA 4.0. Чужие фотографии, текстуры, звуки и шрифты — под своими лицензиями (см. «Авторы и источники»). Название и логотип Springfolk под эти лицензии не подпадают.',
+  },
 };
 
 // [keys, label]
