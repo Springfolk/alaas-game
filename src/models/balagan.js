@@ -1,6 +1,6 @@
 // Балаҕан — the Sakha sloping-walled house with its khoton on the north wall.
 // Default: the light summer balagan of the сайылык (door open, hearth alive, things in use).
-// variant 'winter': the empty winter house (кыстык) across the alaas in summer — closed up, cold hearth,
+// variant 'winter': the empty winter house (кыстык) across the alaas in summer: closed up, cold hearth,
 // fuller plaster, door shut but openable, emptied of dishes and vessels, its barn yard and doors grown over with weeds.
 // Parts live in ./balagan/: dims (sizes), geo (helpers), mats (TSL materials), shell, hearth, interior, plants.
 import * as THREE from 'three/webgpu';

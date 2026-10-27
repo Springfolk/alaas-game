@@ -1,5 +1,5 @@
-// The land: one Central Yakutia alaas — a thermokarst hollow with a lake, a mown/grazed meadow,
-// a ring of larch-birch taiga — and the summer homestead (сайылык) on its dry north slope.
+// The land: one Central Yakutia alaas (a thermokarst hollow with a lake, a mown/grazed meadow,
+// a ring of larch-birch taiga) and the summer homestead (сайылык) on its dry north slope.
 // Pure functions of (x, z). North is −Z, east is +X. Metres.
 import { fbm, smooth, lerp, clamp } from '../util.js';
 
