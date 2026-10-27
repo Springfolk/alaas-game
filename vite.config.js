@@ -1,5 +1,5 @@
 // Vite: defaults, plus the source keys of the baked geometry (tools/geo-keys.mjs, docs/loading.md) as
-// `window.__GEO_KEYS__` in every page (re-hashed per page load in dev). Dev and build warn when
+// `window.__GEO_KEYS__` in every page, at the end of <head> so the charset and link-preview tags come first (re-hashed per page load in dev). Dev and build warn when
 // public/assets/geo/ is stale: rerun `npm run bake-geometry`.
 import { defineConfig } from 'vite';
 import { geoKeys, staleGroups } from './tools/geo-keys.mjs';
@@ -12,7 +12,7 @@ const warnStale = (log) => {
 function geoKeysPlugin() {
   return {
     name: 'geo-keys',
-    transformIndexHtml: () => [{ tag: 'script', children: `window.__GEO_KEYS__=${JSON.stringify(geoKeys().keys)}`, injectTo: 'head-prepend' }],
+    transformIndexHtml: () => [{ tag: 'script', children: `window.__GEO_KEYS__=${JSON.stringify(geoKeys().keys)}`, injectTo: 'head' }],
     buildStart() { if (this.meta.watchMode === false) warnStale((m) => this.warn(m)); },
     configureServer(server) { warnStale((m) => server.config.logger.warn(m)); },
   };
