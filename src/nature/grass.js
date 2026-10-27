@@ -42,12 +42,12 @@ export function natureField(world) {
   const gh = world.ground?.material.userData.hooks;
   if (gh) {
     gh.maskNode.value = mask.tex;
-    gh.maskXf.value.set(MASK.x0, MASK.z0, 1 / MASK.size);
+    gh.maskXf.value.set(MASK.x0, MASK.z0, 1 / MASK.w, 1 / MASK.d);
   }
   world._field = {
     texA, texB, uvOf, mask, ready, // ready: the texels are in (until then every height reads 0)
     // TSL: (cut, mown) from the models' grass hints around the homestead
-    sampleM: (xz) => texture(mask.tex, xz.sub(vec2(MASK.x0, MASK.z0)).div(MASK.size)).level(0),
+    sampleM: (xz) => texture(mask.tex, xz.sub(vec2(MASK.x0, MASK.z0)).div(vec2(MASK.w, MASK.d))).level(0),
     // TSL: { y, lakeD } and { forest, path, dry, grazed } at a world xz (vertex-safe: level 0)
     sampleA: (xz) => texture(texA, uvOf(xz)).level(0),
     sampleB: (xz) => texture(texB, uvOf(xz)).level(0),
@@ -56,18 +56,19 @@ export function natureField(world) {
   return world._field;
 }
 
-// Fine mask (0.33 m texels) over the homestead and its lake shore, from the models' hints:
+// Fine mask (0.34 m texels) over the homestead, its lake shore and the winter place, from the models' hints:
 // R = cut (paths, trodden pens and posts, the offering stone; FLOOR under earth floors), G = mown/short. Edges of the region stay 0.
-const MASK = { x0: -262, z0: -370, size: 432, res: 1280 }; // reaches the sacred birch's path (x ≈ −248)
+// x: the sacred birch's path (≈ −248) to the winter place (≈ 276); 1624 × 1280 texels of 0.3375 m
+const MASK = { x0: -262, z0: -370, w: 548.1, d: 432, nx: 1624, nz: 1280 };
 function clearingMask(world) {
-  const { x0, z0, size, res } = MASK, px = size / res;
-  const R = new Float32Array(res * res), G = new Float32Array(res * res);
+  const { x0, z0, w, nx, nz } = MASK, px = w / nx;
+  const R = new Float32Array(nx * nz), G = new Float32Array(nx * nz);
   // stamp f(x, z) → 0..1 into ch over a world bbox
   const stamp = (ch, minX, minZ, maxX, maxZ, f) => {
-    const i0 = Math.max(1, Math.floor((minX - x0) / px)), i1 = Math.min(res - 2, Math.ceil((maxX - x0) / px));
-    const j0 = Math.max(1, Math.floor((minZ - z0) / px)), j1 = Math.min(res - 2, Math.ceil((maxZ - z0) / px));
+    const i0 = Math.max(1, Math.floor((minX - x0) / px)), i1 = Math.min(nx - 2, Math.ceil((maxX - x0) / px));
+    const j0 = Math.max(1, Math.floor((minZ - z0) / px)), j1 = Math.min(nz - 2, Math.ceil((maxZ - z0) / px));
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-      const v = f(x0 + (i + 0.5) * px, z0 + (j + 0.5) * px), k = j * res + i;
+      const v = f(x0 + (i + 0.5) * px, z0 + (j + 0.5) * px), k = j * nx + i;
       if (v > ch[k]) ch[k] = v;
     }
   };
@@ -121,9 +122,9 @@ function clearingMask(world) {
     stamp(G, sx - 7, sz - 7, sx + 7, sz + 7, (x, z) => 1 - smooth(3.5, 6, Math.hypot(x - sx, z - sz)));
   }
   // B = grazed (field formula, max mown), A = bare soil: baked in a worker, filled in when it arrives
-  const d = new Uint8Array(res * res * 4), spots = SPOTS();
+  const d = new Uint8Array(nx * nz * 4), spots = SPOTS();
   job('mask', { R, G, spots, mask: MASK }, () => maskTexels(R, G, spots, MASK)).then((m) => { d.set(m); tex.needsUpdate = true; });
-  const tex = new THREE.DataTexture(d, res, res, THREE.RGBAFormat);
+  const tex = new THREE.DataTexture(d, nx, nz, THREE.RGBAFormat);
   tex.magFilter = tex.minFilter = THREE.LinearFilter;
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.needsUpdate = true;

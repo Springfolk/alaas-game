@@ -22,7 +22,7 @@ const off = urlFlag('nogeo') || !KEYS || typeof DecompressionStream === 'undefin
 if (!KEYS) console.info('geo: no source keys in the page (a dev server started before vite.config.js?): geometry generated at load');
 const hex = (s) => (strHash(s) >>> 0).toString(16).padStart(8, '0');
 const manifest = off || baking ? Promise.resolve(null)
-  : fetch(BASE + 'manifest.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  : fetch(BASE + 'manifest.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 // key '*': never shipped (the tool's SKIP), generated without a warning
 const valid = (m, id) => { const e = m?.packs?.[id]; return e && (e.key === KEYS[e.group] || e.key === '*') ? e : null; };
 
@@ -30,7 +30,7 @@ const valid = (m, id) => { const e = m?.packs?.[id]; return e && (e.key === KEYS
 const loads = new Map();
 const load = (id, e) => {
   if (!loads.has(id)) {
-    const url = BASE + e.file;
+    const url = `${BASE}${e.file}?k=${e.key}`;   // a pack's name stays across rebakes: its key busts a cached old one
     loads.set(id, job('geo', { url }, () => fetchPack(url)).catch((err) => { console.warn(`geo ${id}:`, err.message); return null; }));
   }
   return loads.get(id);

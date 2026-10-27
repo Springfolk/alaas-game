@@ -3,6 +3,7 @@
 // index.html. The windows take the mouse through a drawn cursor while pointer lock stays on (cursor.js).
 import ENTRIES from '../data/entries.json';
 import HINTS from '../data/hints.json';
+import { versioned } from '../load/assetv.js';
 import { T } from './i18n.js';
 import { VirtualCursor } from './cursor.js';
 
@@ -31,7 +32,7 @@ const L = {
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const head = (e) => e.sah.split(/[;(]/)[0].trim();
-const imgSrc = (s) => /^(https?:|data:|\/)/.test(s) ? s : import.meta.env.BASE_URL + s.replace(/^(\.\/|public\/)/, '');
+const imgSrc = (s) => /^(https?:|data:|\/)/.test(s) ? s : versioned(import.meta.env.BASE_URL + s.replace(/^(\.\/|public\/)/, ''));
 
 // Title loading bar: mirrors main.js's `#go` status line ("45% · stage", then "preparing… 60%").
 {
