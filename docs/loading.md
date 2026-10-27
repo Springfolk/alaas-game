@@ -27,6 +27,7 @@ Order (`Game.boot` → `World.build`): engine → loading view (sky; the fade cl
 - Anything added to the scene before `warmUp` is built before play; adding a material later compiles in play.
 - No WebGPU validation errors: three's async pipeline creation marks a pipeline failed (never drawn) on any error caught in its scope.
 - Pure-CPU load work over ~50 ms goes to a worker job or a bake tool; dense per-vertex terrain lookups use `terrain.heightFast`.
+- Baked files keep their names across rebakes and Pages caches everything 10 min: fetch packs and atlases with `?k=<key>`, `manifest.json` / `meta.json` with `cache: 'no-cache'`.
 - Checks: `loadprof` (first pixel, playable, stalls before and 2.5 s after; `THROTTLE=4` = CPU ×4), `walkcheck` (0/0; `EARLY=1` from ready: no frame >50 ms), `shot` waits for complete.
 
 ## Measured (production build, headless on the Mac M3 Max, network emulated; 2026-10-26)

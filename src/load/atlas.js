@@ -10,7 +10,7 @@ import { loadBitmap } from './bitmap.js';
 
 const BASE = (import.meta.env?.BASE_URL || '/') + 'assets/impostors/';
 export const baking = urlFlag('bakeimpostors');
-const meta = baking ? Promise.resolve({}) : fetch(BASE + 'meta.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+const meta = baking ? Promise.resolve({}) : fetch(BASE + 'meta.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
 
 export const atlasKey = (s) => (strHash(s) >>> 0).toString(16);
 
@@ -34,7 +34,7 @@ export async function shippedAtlas(name, key) {
     if (m) console.warn(`impostors ${name}: the shipped atlas is stale (baked at load instead): npm run bake-impostors`);
     return null;
   }
-  try { return await Promise.all([load(`${name}-albedo.webp`), load(`${name}-normal.webp`)]); } catch { return null; }
+  try { return await Promise.all([load(`${name}-albedo.webp?k=${key}`), load(`${name}-normal.webp?k=${key}`)]); } catch { return null; } // key: no cached old atlas
 }
 
 // for the tool: the load-time bake's targets, once `done` resolves
