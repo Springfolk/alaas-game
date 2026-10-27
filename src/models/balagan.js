@@ -118,8 +118,8 @@ export default async function build(ctx, placement) {
   const shaftPos = new Float32Array(shell.windows.length * 4 * 4 * 3), shaftUV = new Float32Array(shell.windows.length * 4 * 4 * 2);
   const shaftIdx = [];
   for (let w = 0; w < shell.windows.length; w++) for (let f = 0; f < 4; f++) { const a = (w * 4 + f) * 4; shaftIdx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
-  shaftGeo.setAttribute('position', new THREE.BufferAttribute(shaftPos, 3));
-  shaftGeo.setAttribute('uv', new THREE.BufferAttribute(shaftUV, 2));
+  shaftGeo.setAttribute('position', new THREE.BufferAttribute(shaftPos, 3).setUsage(THREE.DynamicDrawUsage)); // rewritten with the sun (src/load/release.js keeps it)
+  shaftGeo.setAttribute('uv', new THREE.BufferAttribute(shaftUV, 2).setUsage(THREE.DynamicDrawUsage));
   shaftGeo.setIndex(shaftIdx);
   const shafts = new THREE.Mesh(shaftGeo, M.shaft);
   shafts.castShadow = false; shafts.receiveShadow = false; shafts.frustumCulled = false;

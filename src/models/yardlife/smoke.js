@@ -19,7 +19,7 @@ export function makeSmoke(origin, wind, opts = {}) {
   const { count = 56, rate = 4, life = 14, size = [0.7, 5.5], rise = 0.45, tint = 0xc9c6bf, shade = 0x6d6c6a, alpha = 0.55, spread = 0.5, seed = 1 } = opts;
   const geo = new THREE.PlaneGeometry(1, 1);
   const fade = new Float32Array(count * 3); // alpha, seed, age 0..1
-  const attr = new THREE.InstancedBufferAttribute(fade, 3);
+  const attr = new THREE.InstancedBufferAttribute(fade, 3).setUsage(THREE.DynamicDrawUsage);
   const a = instancedBufferAttribute(attr);
   const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: true });
   const tex = puffTexture();

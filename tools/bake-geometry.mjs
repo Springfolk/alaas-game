@@ -133,7 +133,8 @@ const near = (x = '', y = '') => {
   return p.every((v, i) => Math.abs(v - q[i]) <= 2e-3 + 1e-5 * Math.abs(v));
 };
 // two generated runs: lines that differ between them are animation (smoke, fire light, curtain), not the bake
-const live = await run('nogeo', fingerprint), live2 = await run('nogeo', fingerprint), baked = await run('', fingerprint);
+// keepgeo: the fingerprint reads vertex arrays, which the game otherwise frees after the warm-up (src/load/release.js)
+const live = await run('nogeo&keepgeo', fingerprint), live2 = await run('nogeo&keepgeo', fingerprint), baked = await run('keepgeo', fingerprint);
 for (const wn of baked.warns.filter((w) => /geo /.test(w))) console.log('  ' + wn);
 let diffs = 0;
 for (const k of new Set([...Object.keys(live.r), ...Object.keys(baked.r)])) {

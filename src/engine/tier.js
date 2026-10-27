@@ -80,15 +80,18 @@ export async function detectTier({ webgl = false } = {}) {
 // 1 = auto picks mobile + LITE / low (never WebGL2: that only where WebGPU is missing). A load that finished at a step tries one step up next time,
 // on a phone at most once a day (a failed try blocks the next for a day: no jetsam crash loop), on a desktop at once —
 // so interrupted loads never demote a device for good. A chosen quality resets it.
-const GUARD = 'alaas-boot4'; // 4: drops the old step 2 (WebGL2)
+// A phone that doesn't report its memory (Safari: an iPhone 11 has 4 GB, a 16 Pro 8) starts at step 1 and steps up
+// after it finished there; a start that fails with an error (main.js "failed to start") steps down like a killed one.
+const GUARD = 'alaas-boot5'; // 5: unknown phones start at step 1 (4: drops the old step 2, WebGL2)
 const DAY = 86400000;
 let guard = { step: 0 }, loading = true;
 const keep = (g) => { guard = g; try { localStorage.setItem(GUARD, JSON.stringify(g)); } catch { /* storage blocked */ } };
 export function bootStep(auto) {
   let g = {};
-  try { g = JSON.parse(localStorage.getItem(GUARD)) || {}; } catch { /* none */ }
+  try { g = JSON.parse(localStorage.getItem(GUARD)) || {}; localStorage.removeItem('alaas-boot4'); } catch { /* none */ }
   const now = Date.now();
-  let step = auto ? g.step || 0 : 0;
+  const unknown = !('step' in g) && isPhone() && !(typeof navigator !== 'undefined' && navigator.deviceMemory);
+  let step = auto ? g.step ?? (unknown ? 1 : 0) : 0;
   if (auto && g.pending && now - g.pending < 600000) { step = 1; g.tryAt = now; }
   else if (auto && step > 0 && g.ok && (!isPhone() || !(now - (g.tryAt || 0) < DAY))) { step--; g.tryAt = now; }
   keep({ ...g, step, ok: false, pending: now });
@@ -98,6 +101,8 @@ export function bootStep(auto) {
 }
 let failed = false;
 export const bootDone = () => { loading = false; keep({ ...guard, pending: 0, ok: true }); };
+// a start that threw: the next load steps down (a phone tries back up a day later, bootStep)
+export const bootFailed = () => { if (failed) return; failed = true; keep({ ...guard, step: Math.max(1, guard.step || 0), pending: 0, ok: false, tryAt: Date.now() }); };
 // The GPU device lost (iOS takes it back under memory pressure or a GPU timeout, or hands it back broken after the
 // page was hidden: the canvas freezes on its last frame while the page still answers). three cannot rebuild a
 // renderer's GPU state in place, so it is restored by a reload where the player stood (main.js resumes there, title

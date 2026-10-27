@@ -35,6 +35,8 @@ const load = (id, e) => {
   }
   return loads.get(id);
 };
+// once the world is built (src/load/release.js): the decoded packs were copied into the geometries
+export const dropPacks = () => loads.clear();
 // every model and forest pack starts loading as soon as the manifest is in (jobs: when asked for)
 manifest.then((m) => {
   const ids = Object.entries(m?.packs || {}).filter(([id, e]) => !e.lazy && !e.empty && valid(m, id));
@@ -184,13 +186,14 @@ let cur = null;
 const states = (list) => list.map((r) => r.state());
 const sameStates = (list, s) => list.length === s.length && list.every((r, i) => r.state() === s[i]);
 
-async function begin(group, inputs, track = true) {
+async function begin(group, inputs, track = true, live = false) {
   const id = `${group}#${hex(inputs)}`, s = { id, group, mode: 'live', depth: 0, si: 0, bi: 0, rngs: [], mats: [] };
   if (baking) { s.mode = 'bake'; s.w = new Writer(); s.tape = { s: [], b: [] }; }
-  else if (!off) {
+  else if (!off && !live) {
     const m = await manifest, e = valid(m, id);
     if (e?.empty) { cur = s; rngs.list = track ? s.rngs : null; s.track = track; return s; }
     const pack = e && await load(id, e);
+    loads.delete(id); // read once: the geometries get copies
     if (pack) { s.mode = 'replay'; s.r = new Reader(pack); s.tape = pack.head.tape; }
     else if (m) console.warn(`geo ${id}: ${m.packs?.[id] ? 'stale' : 'not baked'} (generated at load): npm run bake-geometry`);
   }
@@ -213,7 +216,7 @@ export async function geoBuild(group, inputs, fn, { rngs: track = true } = {}) {
     end(s, e);
     if (!(e instanceof Mismatch)) throw e;
     console.warn(`geo ${s.id}: ${e.message} — generated at load instead: npm run bake-geometry`);
-    const live = await begin(group, inputs, track); live.mode = 'live';
+    const live = await begin(group, inputs, track, true);
     try { return await fn(); } finally { end(live); }
   }
 }
@@ -325,6 +328,6 @@ export function cachedJob(type, args, run) {
     const e = valid(m, id);
     if (e?.empty) return run();
     if (!e) { if (m) console.warn(`geo ${id}: ${m.packs?.[id] ? 'stale' : 'not baked'} (computed at load): npm run bake-geometry`); return run(); }
-    return load(id, e).then((p) => { if (!p) return run(); const v = new Reader(p).dec(p.head.tape.v); return PACKED[type]?.dec(v) ?? v; });
+    return load(id, e).then((p) => { loads.delete(id); if (!p) return run(); const v = new Reader(p).dec(p.head.tape.v); return PACKED[type]?.dec(v) ?? v; });
   });
 }

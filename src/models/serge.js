@@ -219,6 +219,7 @@ export default async function build(ctx, placement) {
   // the player's ribbon, tied at the knot (hidden until tied)
   const mine = new THREE.Mesh(ribbon(rng, knot.clone().add(new THREE.Vector3(0.004, -0.004, -0.01)).toArray(), { len: 0.22, width: 0.026, color: [1, 1, 1], dir: [0.25, -1, -0.05] }), cloth('serge-mine'));
   mine.visible = false; mine.castShadow = false;
+  mine.geometry.attributes.color.setUsage(THREE.DynamicDrawUsage); // painted at the act (src/load/release.js keeps it)
   const salama = new THREE.Group();
   salama.name = 'salama';
   salama.add(salRope, salHair, salCloth, salBark, mine);
