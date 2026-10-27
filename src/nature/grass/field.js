@@ -40,7 +40,7 @@ export function maskTexels(R, G, spots, { x0, z0, w, nx, nz }) {
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
     const k = j * nx + i, x = x0 + (i + 0.5) * px, z = z0 + (j + 0.5) * px;
     const g = Math.max(grazedAt(x, z, spots), G[k]);
-    const bare = R[k] >= FLOOR ? 1 : Math.min(1, smooth(0.06, 0.3, fbm(x * 0.55, z * 0.55, 91, 3)) * g * 0.85 + smooth(0.25, 0.75, R[k]) * 0.5);
+    const bare = R[k] >= FLOOR ? 1 : Math.min(1, (g > 0 ? smooth(0.06, 0.3, fbm(x * 0.55, z * 0.55, 91, 3)) * g * 0.85 : 0) + smooth(0.25, 0.75, R[k]) * 0.5); // fbm only where grazed: most texels aren't
     d[k * 4] = Math.min(1, R[k]) * 255; d[k * 4 + 1] = G[k] * 255; d[k * 4 + 2] = g * 255; d[k * 4 + 3] = bare * 255;
   }
   return d;
