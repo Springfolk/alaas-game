@@ -1,7 +1,7 @@
 // Балаҕан — the Sakha sloping-walled house with its khoton on the north wall.
 // Default: the light summer balagan of the сайылык (door open, hearth alive, things in use).
 // variant 'winter': the empty winter house (кыстык) across the alaas in summer — closed up, cold hearth,
-// fuller plaster, door shut but openable, a few things left behind.
+// fuller plaster, door shut but openable, emptied of dishes and vessels, its barn yard and doors grown over with weeds.
 // Parts live in ./balagan/: dims (sizes), geo (helpers), mats (TSL materials), shell, hearth, interior, plants.
 import * as THREE from 'three/webgpu';
 import { uniform, vec3, vec4, uv, length, smoothstep, mx_fractal_noise_float, time } from 'three/tsl';
@@ -59,6 +59,22 @@ export default async function build(ctx, placement) {
       const y = shell.berm.height(0.56 - off * 0.25, x0, z0);   // lower where the earth slumps to the door
       if (y < 0.15) continue;
       P.tuft(x0, y, z0, rng, { n: 5, h: 0.3 + rng() * 0.25, dry: 0.25 });
+    }
+    // winter: tall weeds round the berms' foot and before both doors, where no one has walked since spring
+    if (winter) {
+      const weed = (x, z) => (rng() < 0.3 ? P.fireweed(x, 0, z, rng) : P.tuft(x, 0, z, rng, { n: 9, h: 0.85 + rng() * 0.45, dry: 0.15, w: 1.6 }));
+      for (let k = 0; k < 160; k++) {
+        const [x, z] = rrect(bhx + 0.35 + rng() * 0.45, bhz + 0.35 + rng() * 0.45, 0.55, rng());
+        if (z > -bhz + 0.6) weed(x, z);   // the north side lies inside the khoton
+      }
+      const [khx, khz] = shell.berm.kb, kcz = shell.berm.kcz;
+      for (let k = 0; k < 120; k++) {
+        const [x, z] = rrect(khx + 0.35 + rng() * 0.45, khz + 0.35 + rng() * 0.45, 0.55, rng());
+        if (z + kcz < -3.3) weed(x, z + kcz);   // its bank ends inside the house berm
+      }
+      for (const [dx, dz] of [[XD + 0.25, ZD], [shell.berm.kxd + 0.25, shell.berm.KZD]]) {
+        for (let k = 0; k < 16; k++) weed(dx + rng() * 1.3, dz + (rng() - 0.5) * 1.4);
+      }
     }
     B.add(M.plants, P.geometry());
     // soil crumbs: fallen from the roof lip onto the berm, and loose on the roof edge itself
@@ -177,10 +193,10 @@ export default async function build(ctx, placement) {
   its.push({ entry: 'khappakhchy', target: T.khappakhchy });
   its.push({ entry: 'toyon-baghana', target: T.toyon });
   its.push({ entry: 'sakha-calendar', target: T.calendar });
-  its.push({ entry: 'kytyya', target: T.kytyya });
-  its.push({ entry: 'birch-bark', target: T.birchShelf });
-  its.push({ entry: 'birch-bark', target: T.birch });
   if (!winter) {
+    its.push({ entry: 'kytyya', target: T.kytyya });
+    its.push({ entry: 'birch-bark', target: T.birchShelf });
+    its.push({ entry: 'birch-bark', target: T.birch });
     its.push({ entry: 'kytyya', target: T.kytyyaTable });
     its.push({ entry: 'khamyiakh-ladle', target: T.ladle });
     its.push({ entry: 'clothing', target: T.clothing });
@@ -310,7 +326,8 @@ export default async function build(ctx, placement) {
   }
 
   // dung-trodden apron outside the barn door: the yard's trodden earth, its frayed edge fading into the ground
-  {
+  // (summer only: the winter barn's has grassed over since spring)
+  if (!winter) {
     const ground = groundOf(ctx, placement);
     const { KZD: kz, kxd: kx } = shell.berm;
     const tg = section(() => troddenPatch(ground, kx, kx + 2.8, kz - 1.6, kz + 1.6, (x, z) => (x < kx + 0.05 ? 0 : Math.max(blob(kx + 0.8, kz, 1.5, 1.05, 7)(x, z), blob(kx + 0.25, kz, 0.5, 0.7, 9)(x, z))), { step: 0.3, lift: 0.02 }));
