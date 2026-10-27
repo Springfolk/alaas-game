@@ -16,6 +16,7 @@ import { closeWorkers } from './load/workers.js';
 import { isShadowProxy } from './engine/merge.js';
 import { T, CONTROLS, LANGS, LANG_NAMES, tr, detectLang } from './ui/i18n.js';
 import { Guide } from './ui/guide.js';
+import { version } from '../package.json';
 import { instrument, event } from './load/prof.js';
 
 const KEY = 'alaas-v1';
@@ -239,6 +240,7 @@ class Game {
     const lang = this.state.lang;
     document.documentElement.lang = lang;
     for (const el of document.querySelectorAll('[data-t]')) el.textContent = this.tt(T[el.dataset.t]);
+    for (const el of document.querySelectorAll('.ver')) el.textContent = 'v' + version;
     const keys = (mini) => CONTROLS.filter((c) => !mini || !['F3', 'L', '1 2 3'].includes(c[0]))
       .map(([k, l]) => `<kbd>${typeof k === 'string' ? k : this.tt(k)}</kbd><span>${this.tt(l)}</span>`).join('');
     document.getElementById('keys-title').innerHTML = keys(false);

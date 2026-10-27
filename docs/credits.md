@@ -1,5 +1,7 @@
 # Credits
 
+- `public/assets/ui/springfolk-logo.svg` — Springfolk logo (from `Springfolk/branding`, unaltered), all rights reserved; not under MIT or CC BY-SA.
+
 ## Audio (`public/audio/`, baked by `tools/fetch-audio.mjs`)
 
 - **Khomus** (`khomus`, `discover`): "Klangdemonstration einer jakutischen Maultrommel" by DrTrumpet, player Roland Bades — CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:Klangdemonstration_einer_jakutischen_Maultrommel.wav. Trimmed, normalised, re-encoded; the derived clips are CC BY-SA 4.0.
