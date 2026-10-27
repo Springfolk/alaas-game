@@ -51,7 +51,7 @@
 ## Textures from Poly Haven (CC0, credit not required)
 - Every set in `tools/fetch-assets.mjs` `TEXTURES` — https://polyhaven.com/textures. Own baked sets (`canvas_*`, `tuos_sheet`, `carving`, `foliage`, `birch_bark`) are original (CC BY-SA 4.0, `LICENSE`); `carving` and `canvas_bowplate` hold ornament traced from the sources listed in `docs/patterns.md` (museum photos: motif shapes only).
 - Traced ornament (`tools/ornament-traces.mjs` → `tuos_sheet/band.webp`, the icon and banner): traced from Il-Gil's photo of the Suntar urasa (`urasa-1.webp` below), CC BY-SA 4.0; the traces are CC BY-SA 4.0.
-- The loading key art (`public/assets/ui/keyart-*`) is the project's own render of the game (`tools/key-art.mjs`): original, CC BY-SA 4.0.
+- The loading key art (`public/assets/ui/keyart-*`, also in `public/og.jpg`) is the project's own render of the game (`tools/key-art.mjs`): original, CC BY-SA 4.0.
 
 ## Textures from ambientCG (CC0, credit not required; listed for provenance)
 
