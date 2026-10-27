@@ -187,7 +187,7 @@ export function natureWind(world) {
 // Leaves are matte, waxy only faintly: a weak specular with almost no grazing Fresnel, so blades seen
 // edge-on against the sun or sky don't light up as hard silver lines.
 // Thin leaves let light through: a blade with the sun behind it (looking towards the sun) shows what passes
-// through it — about half its lit-side diffuse, greener — shadowed and cloud-dimmed like the sun itself.
+// through it (about half its lit-side diffuse, greener), shadowed and cloud-dimmed like the sun itself.
 const LEAF_T = vec3(0.42, 0.56, 0.22);
 class LeafLighting extends THREE.PhysicalLightingModel {
   direct(inputs, builder) {

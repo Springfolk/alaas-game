@@ -58,8 +58,8 @@ export class Engine {
     }
     this.tierAuto = TIER.auto;
     this.resScale = this.opts.resStart ?? 1; // phones start low and climb (dynamicResolution)
-    // battery saver (30 fps) by default on phones — at 60 an iPhone heated within a minute, dimmed its screen and
-    // throttled to ~10 fps — and on a battery running low (≤20%, unplugged) where the Battery Status API reports it
+    // battery saver (30 fps) by default on phones (at 60 an iPhone heated within a minute, dimmed its screen and
+    // throttled to ~10 fps) and on a battery running low (≤20%, unplugged) where the Battery Status API reports it
     // (Chromium; Safari has none). The setting overrides it.
     this.autoSaver = this.tier === 'mobile';
     navigator.getBattery?.().then((b) => {

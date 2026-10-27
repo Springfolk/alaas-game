@@ -34,8 +34,8 @@ export function setTier(name, extra = {}) {
 // Phones/tablets → mobile; on desktop no WebGPU (WebGL2 fallback), few cores, little memory or an older
 // integrated GPU → low; everything else → medium. `high` (GTAO) is never picked automatically.
 // Phones and tablets: the UA, iPadOS (which reports a Mac), or a coarse pointer on a small screen.
-// Fractal-noise octaves for model materials: phones drop the two finest (keeping ≥1) — a building filling the screen
-// cost a warm iPhone ~74 ms a frame in noise (urasa cover) — and scale the sum back to the full one's range (gain 0.5).
+// Fractal-noise octaves for model materials: phones drop the two finest (keeping ≥1) and scale the sum
+// back to the full one's range (gain 0.5): a building filling the screen cost a warm iPhone ~74 ms a frame in noise (urasa cover).
 export function octaves(o) {
   const n = TIER.name === 'mobile' ? Math.max(1, o - 2) : o;
   return { n, k: (1 - 0.5 ** o) / (1 - 0.5 ** n) };
@@ -75,9 +75,9 @@ export async function detectTier({ webgl = false } = {}) {
 
 // Boot guard: a load the OS kills (iOS jetsam on memory: Safari reloads the page, then gives up with "A problem
 // repeatedly occurred") leaves no JS error to react to, so each load marks itself in localStorage until ready
-// (bootDone) or a normal leave (pagehide); while hidden (locked, another app or tab) it is unmarked — the OS freezing
+// (bootDone) or a normal leave (pagehide); while hidden (locked, another app or tab) it is unmarked: the OS freezing
 // a background page is not the load failing. Finding an unfinished mark under 10 min old, the next load steps down:
-// 1 = auto picks mobile + LITE / low (never WebGL2: that only where WebGPU is missing). A load that finished at a step tries one step up next time —
+// 1 = auto picks mobile + LITE / low (never WebGL2: that only where WebGPU is missing). A load that finished at a step tries one step up next time,
 // on a phone at most once a day (a failed try blocks the next for a day: no jetsam crash loop), on a desktop at once —
 // so interrupted loads never demote a device for good. A chosen quality resets it.
 const GUARD = 'alaas-boot4'; // 4: drops the old step 2 (WebGL2)

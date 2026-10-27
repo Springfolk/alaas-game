@@ -65,8 +65,8 @@ class Game {
     this.ray.far = 3.4;
     this.applySettings();
 
-    // Loading (docs/loading.md): the world is drawn behind the title from the first frames — sky, ground,
-    // homestead, then nature — while its shaders build in time slices (src/load/stream.js) and pure-CPU
+    // Loading (docs/loading.md): the world is drawn behind the title from the first frames (sky, ground,
+    // homestead, then nature) while its shaders build in time slices (src/load/stream.js) and pure-CPU
     // generation runs in workers (src/load/workers.js); "click to walk" once nothing is left to build.
     const go = document.getElementById('go');
     let shown = 0, built = 0;

@@ -1,5 +1,5 @@
 // Sky occlusion inside the houses: a cheap analytic stand-in for baked AO. Every lit material's ambient
-// (environment) light is scaled by interiorOcclusion() — ~0.2 deep inside, rising towards the east door —
+// (environment) light is scaled by interiorOcclusion() (~0.2 deep inside, rising towards the east door),
 // so interiors are lit by the door, windows, smoke hole and fire instead of by the whole blue sky.
 // Shapes follow the model dimensions (inner wall faces + ~10 cm, so outer faces stay outside).
 import { Fn, float, vec2, uniform, positionWorld, smoothstep, min, mix, abs, length } from 'three/tsl';
