@@ -166,8 +166,8 @@ export function buildCurtain() {
     idx.push(a, a + 1, b, b, a + 1, b + 1);
   }
   const nor = new Float32Array(n * 3);
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); // draped live (src/load/release.js keeps it)
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3).setUsage(THREE.DynamicDrawUsage));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   const x0 = DOOR.rTop + 0.125, yTop = DOOR.h + 0.06; // against the lintel and jambs

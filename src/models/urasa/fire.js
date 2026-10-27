@@ -114,9 +114,9 @@ export function buildFire(rng, { holeY, holeR, coneR }) {
     sUV.set([0, 0, 1, 0, 1, 1, 0, 1], i * 8);
     const b = i * 4; sIdx.push(b, b + 1, b + 2, b, b + 2, b + 3);
   }
-  sg.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+  sg.setAttribute('position', new THREE.BufferAttribute(sPos, 3).setUsage(THREE.DynamicDrawUsage)); // rewritten per frame (src/load/release.js keeps it)
   sg.setAttribute('uv', new THREE.BufferAttribute(sUV, 2));
-  sg.setAttribute('aP', new THREE.BufferAttribute(sP, 4));
+  sg.setAttribute('aP', new THREE.BufferAttribute(sP, 4).setUsage(THREE.DynamicDrawUsage));
   sg.setIndex(sIdx);
   const uSunL = uniform(new THREE.Vector3(0, 1, 0)), uSunOn = uniform(1), uHole = uniform(new THREE.Vector3(0, holeY, 0));
   const inShaft = (p) => {

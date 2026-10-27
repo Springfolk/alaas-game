@@ -264,6 +264,7 @@ export default async function build(ctx, placement) {
   const mineParts = [];
   tie(mineSpot, [1, 1, 1], mineParts);
   const mineGeo = merge([...mineParts, noSway(knots.pop())]);
+  mineGeo.attributes.color.setUsage(THREE.DynamicDrawUsage); // painted at the act (src/load/release.js keeps it)
   const mineBase = Float32Array.from(mineGeo.attributes.color.array);
   const mine = new THREE.Mesh(mineGeo, cloth('sacred-birch-mine', 0.045));
   mine.visible = false; mine.castShadow = false;

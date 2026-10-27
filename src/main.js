@@ -2,7 +2,8 @@
 import * as THREE from 'three/webgpu';
 import { Engine } from './engine/engine.js';
 import { setAnisotropy, setTextureRenderer, sharpenTextures } from './engine/materials.js';
-import { bootDone, restoreLost, resumeSpot } from './engine/tier.js';
+import { bootDone, bootFailed, restoreLost, resumeSpot } from './engine/tier.js';
+import { releaseGeometry } from './load/release.js';
 import { World } from './world/world.js';
 import { START } from './world/layout.js';
 import { Input } from './input.js';
@@ -91,6 +92,7 @@ class Game {
     await this.world.build((f, stage) => { built = f; status(stage); }, () => { place(); return this.preview(status); }); // the homestead's build code starts once the sky shows
     place();
     mark('built');
+    releaseGeometry(this); // vertex arrays the GPU holds leave the JS heap before the warm-up (src/load/release.js)
     this.interact = new Interactions(this); // carrying, sitting, berries (src/interact)
     this.guide = new Guide(this); // the journal's finder (DOM only)
     this.ui.placed = new Set(this.world.interactables.map((i) => i.entry).filter(Boolean));
@@ -100,6 +102,7 @@ class Game {
 
     this.audio = await this.loadAudio();
     this.audio?.fetchClips();
+    releaseGeometry(this); // again: meshes first drawn in the warm-up
     this.sharpening = sharpenTextures().then(() => { this.sharp = true; mark('sharp'); closeWorkers(); }); // 256 → the tier's size, in play
     if (params.has('perftest')) this.sharpening.then(() => import('./load/perftest.js')).then((m) => m.perfTest(this)); // per-layer frame cost on a device
     this.player.onStep = (surface, speed) => this.audio?.step(surface, speed);
@@ -527,6 +530,7 @@ Game.prototype.fpsMeter = function (dt) {
 const fail = (e) => {
   if (window.game?.engine?.restoring) return; // a lost GPU device is being restored by a reload: not a failed start
   console.error(e, e?.stack);
+  bootFailed(); // the next load steps down (src/engine/tier.js)
   const go = document.getElementById('go');
   go.style.animation = 'none';
   go.style.textTransform = 'none';

@@ -77,8 +77,8 @@ function kymysSurface(inner, mat, cup, level) {
   const N = 28, pos = new Float32Array((N + 2) * 3), nor = new Float32Array((N + 2) * 3), idx = [];
   for (let i = 1; i <= N; i++) idx.push(0, i + 1, i);
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); // the level, refitted (src/load/release.js keeps it)
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3).setUsage(THREE.DynamicDrawUsage));
   g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array((N + 2) * 2), 2));
   g.setIndex(idx);
   const mesh = new THREE.Mesh(g, mat);
