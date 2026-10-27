@@ -24,6 +24,7 @@ function workers() {
       const done = (id) => { const p = waiting.get(id); waiting.delete(id); w.jobs--; if (p?.net) w.net--; dispatch(); return p; };
       w.onmessage = ({ data }) => { const p = done(data.id); if (data.error) p?.no(new Error(data.error)); else p?.ok(data.result); };
       w.onerror = (e) => { e.preventDefault?.(); for (const [id, p] of waiting) if (p.w === w) done(id).no(new Error('worker failed')); };
+      w.postMessage({ assetV: globalThis.__ASSET_V__ }); // before any job: the asset versions (src/load/assetv.js)
       w.jobs = 0; w.net = 0;
       pool.push(w);
     }

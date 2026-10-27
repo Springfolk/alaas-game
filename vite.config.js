@@ -1,6 +1,6 @@
 // Vite: defaults, plus the source keys of the baked geometry (tools/geo-keys.mjs, docs/loading.md) as
 // `window.__GEO_KEYS__` in every page (re-hashed per page load in dev). Dev and build warn when
-// public/assets/geo/ is stale: rerun `npm run bake-geometry`. And `__ASSET_V__`: a content hash per asset
+// public/assets/geo/ is stale: rerun `npm run bake-geometry`. And `window.__ASSET_V__`: a content hash per asset
 // folder for `?v=` (src/load/assetv.js; index.html's assets/ui URLs get theirs here).
 import { defineConfig } from 'vite';
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -36,7 +36,7 @@ function geoKeysPlugin() {
     name: 'geo-keys',
     transformIndexHtml: (html) => ({
       html: uiVersioned(html),
-      tags: [{ tag: 'script', children: `window.__GEO_KEYS__=${JSON.stringify(geoKeys().keys)}`, injectTo: 'head-prepend' }],
+      tags: [{ tag: 'script', children: `window.__GEO_KEYS__=${JSON.stringify(geoKeys().keys)};window.__ASSET_V__=${JSON.stringify(ASSET_V)}`, injectTo: 'head-prepend' }],
     }),
     // a build re-serialises srcset after every html hook, dropping the query: version the written page again
     writeBundle(o) { const f = `${o.dir}/index.html`; if (existsSync(f)) writeFileSync(f, uiVersioned(readFileSync(f, 'utf8'))); },
@@ -46,4 +46,4 @@ function geoKeysPlugin() {
 }
 
 // BASE: the public path for a sub-path host, e.g. GitHub Pages (`BASE=/alaas-game/ npm run build`)
-export default defineConfig({ base: process.env.BASE || '/', plugins: [geoKeysPlugin()], define: { __ASSET_V__: JSON.stringify(ASSET_V) } });
+export default defineConfig({ base: process.env.BASE || '/', plugins: [geoKeysPlugin()] });

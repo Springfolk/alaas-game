@@ -29,7 +29,8 @@ const JOBS = {
   simplify: (args) => simplifyShadow(args), // a shadow proxy (src/load/simplify.js)
 };
 
-self.onmessage = async ({ data: { id, type, ...args } }) => {
+self.onmessage = async ({ data: { id, type, assetV, ...args } }) => {
+  if (assetV !== undefined) { self.__ASSET_V__ = assetV; return; } // workers.js, before any job
   try {
     const result = await JOBS[type](args);
     self.postMessage({ id, result }, [...new Set(buffers(result))]);
