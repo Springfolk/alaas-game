@@ -24,7 +24,7 @@ const L = {
   close: { sah: 'сап', en: 'close', ru: 'закрыть' },
   related: { sah: 'Сибээстээх', en: 'Related', ru: 'См. также' }, sources: { sah: 'Сигэлэр', en: 'Sources', ru: 'Источники' },
   newEntry: { sah: 'Бэлиэтээһиҥҥэ киирдэ', en: 'Added to the journal', ru: 'Добавлено в дневник' },
-  guideHow: { sah: '«?» тал — бэлиэ онно сирдиэ.', en: 'Pick a ? and a marker will lead you there.', ru: 'Выберите «?», и метка приведёт вас туда.' },
+  guideHow: { sah: '«?» тал — бэлиэ онно сирдиэ.', en: 'Pick a “?” and a marker will lead you there.', ru: 'Выберите «?», и метка приведёт вас туда.' },
   guiding: { sah: 'Сирдэтэ', en: 'Guiding', ru: 'Ведёт' },
 };
 
