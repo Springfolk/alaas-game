@@ -58,6 +58,7 @@ class Game {
     window.game = this; // early, for debugging the load
     this.input = new Input(canvas);
     this.ui = new UI(this.state);
+    if (params.has('fps')) document.getElementById('fps').classList.add('on'); // the F3 meter on a phone (no keyboard)
     this.world = new World(this.engine);
     this.player = new Player(this.engine.camera, this.world, this.input);
     if (params.has('cam')) this.player.view = params.get('cam').split(',').map(Number); // free camera: x,y,z,yaw°,pitch°,fov° (tools/key-art.mjs)
@@ -522,7 +523,7 @@ Game.prototype.fpsMeter = function (dt) {
   if (el.classList.contains('on')) {
     const info = this.engine.renderer.info.render, e = this.engine;
     el.textContent = `${Math.round(m.n / m.t)} fps · ${(m.t / m.n * 1000).toFixed(1)} ms (worst ${(m.worst * 1000).toFixed(0)})\n` +
-      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap · res ${Math.round(e.renderer.getPixelRatio() / devicePixelRatio * 100)}% of native · ${e.backend}`;
+      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap · res ${Math.round(e.renderer.getPixelRatio() / devicePixelRatio * 100)}% of native · ${e.backend}${e.fallback ? ` (${e.fallback})` : ''}`;
   }
   m.t = 0; m.n = 0; m.worst = 0;
 };

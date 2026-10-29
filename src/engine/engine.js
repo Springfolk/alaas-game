@@ -47,7 +47,11 @@ export class Engine {
     // WebGPU wherever the browser gives an adapter, phones too (an iPhone 14 Pro: 17 ms a frame at the urasa where
     // WebGL2 took 45, its per-draw cost far lower); WebGL2 only without one (or ?webgl)
     // (a device that broke 3× within 2 min in this tab: WebGL2 for the tab's session, tier.js restoreLost)
-    if (!this.requested.webgl && (gpuBroken() || !(await webgpuAdapter()))) this.requested = { ...this.requested, webgl: true };
+    // why WebGL2 (the F3 / ?fps meter shows it): ?webgl, the tab's GPU losses, or no adapter
+    if (this.requested.webgl) this.fallback = '?webgl';
+    else if (gpuBroken()) this.fallback = '3 GPU losses in this tab';
+    else if (!(await webgpuAdapter())) this.fallback = 'no WebGPU adapter';
+    if (this.fallback) { this.requested = { ...this.requested, webgl: true }; console.warn(`[alaas] WebGL2: ${this.fallback}`); }
     if (auto) { // 'auto' (default): pick by device
       const d = await detectTier({ webgl: !!this.requested.webgl });
       this.tier = d.name;
