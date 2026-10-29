@@ -541,6 +541,8 @@ Game.prototype.fpsMeter = function (dt) {
 
 const fail = (e) => {
   if (window.game?.engine?.restoring) return; // a lost GPU device is being restored by a reload: not a failed start
+  const engine = window.game?.engine;
+  if (engine?.deviceBroken()) { engine.renderer.onDeviceLost({ api: 'WebGPU', message: String(e), reason: 'broken' }); return; } // restored like a loss
   console.error(e, e?.stack);
   bootFailed(); // the next load steps down (src/engine/tier.js)
   const go = document.getElementById('go');

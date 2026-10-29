@@ -40,6 +40,18 @@ export class Engine {
     return { post: true, ...setTier(tier, KEYART ? { shadows: 4096, shadowFar: 900, reflection: 1, texMax: 4096 } : this.tierExtra), ...rest };
   }
 
+  // A broken WebGPU device (Safari): a new buffer maps no bytes, or mapping throws. Load errors check this first.
+  deviceBroken() {
+    const dev = this.renderer?.backend?.device;
+    if (!dev) return false;
+    try {
+      const b = dev.createBuffer({ size: 4, usage: GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC, mappedAtCreation: true });
+      const n = b.getMappedRange().byteLength;
+      b.destroy();
+      return n === 0;
+    } catch { return true; }
+  }
+
   async init() {
     const auto = !PRESETS[this.requested.quality];
     // boot guard (tier.js): after a load the OS killed, step down: mobile → LITE, medium → low
@@ -90,6 +102,9 @@ export class Engine {
     if (dev) {
       const make = dev.createCommandEncoder.bind(dev);
       dev.createCommandEncoder = (d) => { try { return make(d); } catch (err) { r.onDeviceLost({ api: 'WebGPU', message: String(err), reason: 'broken' }); throw err; } };
+      // iOS: a reload's new device came up broken (every buffer mapped 0 bytes) while this page still held the
+      // GPU's memory, so free it as the page goes (a page kept in the back-forward cache keeps its device)
+      addEventListener('pagehide', (e) => { if (!e.persisted) dev.destroy(); });
     }
 
     const scene = this.scene = new THREE.Scene();
