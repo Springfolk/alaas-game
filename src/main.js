@@ -121,6 +121,7 @@ class Game {
       for (const t of document.querySelectorAll('.tab')) t.classList.toggle('on', t.id === 'tab-' + b.dataset.tab);
     };
     document.getElementById('reload').onclick = () => { this.persist(); location.reload(); };
+    document.getElementById('exit').onclick = (e) => { e.stopPropagation(); this.exit(); }; // (a click on #pause resumes)
     this.input.onLockChange = (locked) => {
       // the pause menu goes once the lock is really back (a too-early request fails and leaves it up)
       if (locked) { this.unpause(); return; }
@@ -291,6 +292,16 @@ class Game {
     document.getElementById('pause').classList.remove('show');
     this.ui.setMenu(false);
     this.input.mdx = this.input.mdy = 0; // the cursor's moves are not a look
+  }
+  // Exit (pause menu): a page may close only a tab a script opened, so otherwise back to the title screen
+  exit() {
+    this.persist();
+    window.close();
+    this.title = true; // first: losing the pointer lock then shows no pause menu
+    this.unpause(); this.reading = null; this.ui.close();
+    document.exitPointerLock();
+    this.showHints();
+    document.getElementById('title').classList.add('show');
   }
   resume() {
     this.persist();
