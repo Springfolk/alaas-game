@@ -1,8 +1,9 @@
-# Builds the game for https://springfolk.github.io/alaas-game/ and publishes it on GitHub Pages.
+# Builds the game on GitHub Pages: main at https://springfolk.github.io/alaas-game/, canary at …/alaas-game/canary/.
+# A push to either branch rebuilds both (one Pages site per repo).
 name: Pages
 on:
   push:
-    branches: [main]
+    branches: [main, canary]
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,17 +17,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { ref: main, path: main }
+      - uses: actions/checkout@v4
+        with: { ref: canary, path: canary }
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run build
+          cache-dependency-path: '*/package-lock.json'
+      - run: npm ci && npm run build
+        working-directory: main
         env:
           BASE: /alaas-game/
+      - run: npm ci && npm run build
+        working-directory: canary
+        env:
+          BASE: /alaas-game/canary/
+      - run: mv canary/dist main/dist/canary
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: main/dist
   deploy:
     needs: build
     runs-on: ubuntu-latest
