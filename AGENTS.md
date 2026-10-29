@@ -4,6 +4,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 
 ## Commands
 - `npm install` · `npm run dev` → http://127.0.0.1:5190 · `npm run build` → `dist/` · `npm run lint` (ESLint: undefined/unused names only)
+- Branches: PRs merge into `canary` (testing); `main` holds only released code.
 - Hosting: GitHub Pages at https://springfolk.github.io/alaas-game/, built by `.github/workflows/pages.yml` on every push to `main` (`BASE=/alaas-game/ npm run build`)
 - `npm run shot -- "<path?query>" out.png [w h waitMs]` — headless screenshot (system Chrome, WebGPU); `PORT`, `EVAL`, `CHROME` env
 - Checks against a dev server (`PORT`): `npm run walkcheck|hitch|loadprof|loadtrace|bench -- chrome|webkit|phone` (`docs/testing.md`)
@@ -12,7 +13,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 - `npm run fetch-assets` (Poly Haven textures, then `tools/tex-sizes.mjs`: masters re-encoded + 1024/512/256 sizes) · `npm run fetch-audio` (sound sources)
 - Bakes (dev server running; `docs/loading.md`), rerun after changing a model, tree or the look, in this order: `npm run bake-geometry` → `npm run bake-impostors` → `npm run key-art` (then `readme-art`, `og-image`)
 - URL flags: `?auto` skip title · `?at=x,z,yaw` start spot · `?q=auto|high|medium|low|mobile` · `?sun=elev,az` · `?nopost` · `?webgl` force WebGL2 (else WebGPU wherever the browser has it) · `?low` · `?nogeo` generate instead of baked geometry · `?sharp` full-size textures from the start (no 256 first pass) · `?taa` / `?notaa` force TRAA on/off (phones: off, FXAA instead; `?noaa` none) · `?fullshadow` exact shadow proxies (A/B) · `?keepgeo` keep JS copies of vertex data (A/B) · `?fullenv` PMREM sky light on low/mobile (A/B) · `?hardshadow` one-tap shadow filter · `?nolocal` no fire lights (A/B) · `?perftest` per-layer frame cost on a device (logs via `?remotelog`) · `?remotelog` console + heartbeat to `/__log` (`node tools/phonelog.mjs`, docs/testing.md) · `?cam=x,y,z,yaw°,pitch°,fov°` pinned camera · `?keyart` full-quality still (key-art tool only)
-- In game: F3 frame-rate meter (fps, draw calls, triangles, quality, resolution scale) · H on-screen controls · `viewer.html?m=<model>` — one model in isolation
+- In game: F3 frame-rate meter (fps, draw calls, triangles, quality, resolution scale, backend and why WebGL2; `?fps` opens it, for phones) · H on-screen controls · `viewer.html?m=<model>` — one model in isolation
 
 ## Docs
 - `docs/architecture.md` — module map, coordinates, render pipeline, performance rules, UI API.
