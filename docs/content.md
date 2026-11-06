@@ -14,7 +14,7 @@
 | `facts` | `{en: [], sah: []}` — same count and order in both languages |
 | `sources[]`, `confidence`, `notes` | research trail; `notes` are English-only design guidance, not shown |
 
-**The `sah` and `ru` texts are approved by the maintainer (2026-10-25).** Written by hand (no machine translation), terms checked in sakhatyla.ru and sah.wikipedia.org. Gloss words like «восток», «святцы», «строганина», «чернь» are kept in Russian on purpose.
+**The `sah` and `ru` texts are approved by the maintainer (2026-10-25).** Not yet approved: the 2026-10-29 additions from Олесова et al., «Якутские слова в русской речи» (2025): `choron` матаарчах, `dairy-cream` чабычах, `kymys` симиир, `khamyiakh-ladle` hollows, `oron` сандалы. Written by hand (no machine translation), terms checked in sakhatyla.ru and sah.wikipedia.org. Gloss words like «восток», «святцы», «строганина», «чернь» are kept in Russian on purpose.
 
 ## EN fixes made (factual)
 - `kuruo` body, `khoton` fact: хаһаа and дал were swapped. sakhatyla: хаһаа = horse stall, дал = cattle pen by the khoton.
@@ -57,6 +57,7 @@
 | blacksmith | «уус уонна ойуун биир уйаттан» | wording of the saying is not verified |
 | knife | хатыҥ ура (burl), кээнчэ (stocking) | ур = 'growth' (sakhatyla, Russian 'наплыв'); кээнчэ = fur stocking |
 | saddle | халлаан токура (свод), хоҥсуоччу | first is my phrasing; хоҥсуоччу from sakhatyla «ыҥыыр хоҥ-суоччута» |
+| khamyiakh-ladle | ибиир хамыйах | Олесова et al. 2025 (p. 71) write эбир хамыйага / ытык хамыйага, 3 or 5 hollows |
 | silver-ornaments | кыабака (chains), көмүс киэргэл | the traditional word for women's ornaments is симэх; maybe use «көмүс симэх» |
 | clothing | иис-куус, буобура (beaver), бууктаах | иис-куус not in sakhatyla; sah.wiki also gives бууттаах сон |
 | uot-ichchite | салаа бытыктаах | my words for 'forked beard' |

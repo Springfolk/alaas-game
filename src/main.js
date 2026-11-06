@@ -58,6 +58,7 @@ class Game {
     window.game = this; // early, for debugging the load
     this.input = new Input(canvas);
     this.ui = new UI(this.state);
+    if (params.has('fps')) document.getElementById('fps').classList.add('on'); // the F3 meter on a phone (no keyboard)
     this.world = new World(this.engine);
     this.player = new Player(this.engine.camera, this.world, this.input);
     if (params.has('cam')) this.player.view = params.get('cam').split(',').map(Number); // free camera: x,y,z,yaw°,pitch°,fov° (tools/key-art.mjs)
@@ -120,6 +121,7 @@ class Game {
       for (const t of document.querySelectorAll('.tab')) t.classList.toggle('on', t.id === 'tab-' + b.dataset.tab);
     };
     document.getElementById('reload').onclick = () => { this.persist(); location.reload(); };
+    document.getElementById('exit').onclick = (e) => { e.stopPropagation(); this.exit(); }; // (a click on #pause resumes)
     this.input.onLockChange = (locked) => {
       // the pause menu goes once the lock is really back (a too-early request fails and leaves it up)
       if (locked) { this.unpause(); return; }
@@ -290,6 +292,20 @@ class Game {
     document.getElementById('pause').classList.remove('show');
     this.ui.setMenu(false);
     this.input.mdx = this.input.mdy = 0; // the cursor's moves are not a look
+  }
+  // Exit (pause menu): closes the tab, which browsers refuse only for a tab holding an earlier page (a link
+  // followed in the same tab); then back to that page, or to the title screen when it is the game again or none
+  exit() {
+    this.persist();
+    window.close();
+    if (window.closed) return;
+    this.title = true; // first: losing the pointer lock then shows no pause menu
+    this.unpause(); this.reading = null; this.ui.close();
+    document.exitPointerLock();
+    this.showHints();
+    document.getElementById('title').classList.add('show');
+    const prev = window.navigation?.entries()[navigation.currentEntry?.index - 1]; // same-origin entries only
+    if (!prev || new URL(prev.url).pathname !== location.pathname) history.back();
   }
   resume() {
     this.persist();
@@ -522,13 +538,15 @@ Game.prototype.fpsMeter = function (dt) {
   if (el.classList.contains('on')) {
     const info = this.engine.renderer.info.render, e = this.engine;
     el.textContent = `${Math.round(m.n / m.t)} fps · ${(m.t / m.n * 1000).toFixed(1)} ms (worst ${(m.worst * 1000).toFixed(0)})\n` +
-      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap · res ${Math.round(e.renderer.getPixelRatio() / devicePixelRatio * 100)}% of native · ${e.backend}`;
+      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap · res ${Math.round(e.renderer.getPixelRatio() / devicePixelRatio * 100)}% of native · ${e.backend}${e.fallback ? ` (${e.fallback})` : ''}`;
   }
   m.t = 0; m.n = 0; m.worst = 0;
 };
 
 const fail = (e) => {
   if (window.game?.engine?.restoring) return; // a lost GPU device is being restored by a reload: not a failed start
+  const engine = window.game?.engine;
+  if (engine?.deviceBroken()) { engine.renderer.onDeviceLost({ api: 'WebGPU', message: String(e), reason: 'broken' }); return; } // restored like a loss
   console.error(e, e?.stack);
   bootFailed(); // the next load steps down (src/engine/tier.js)
   const go = document.getElementById('go');

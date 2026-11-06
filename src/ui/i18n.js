@@ -26,6 +26,7 @@ export const T = {
   invertY: { sah: 'Үөһэ-аллара тиэрт', en: 'Invert Y', ru: 'Инверсия по вертикали' },
   showHints: { sah: 'Салайыыны көрдөр', en: 'Show controls on screen', ru: 'Подсказки на экране' },
   resume: { sah: 'Салгыы', en: 'Continue', ru: 'Продолжить' },
+  exit: { sah: 'Таҕыс', en: 'Exit', ru: 'Выйти' },
   gView: { sah: 'Көрүү', en: 'View', ru: 'Обзор' },
   gSound: { sah: 'Дорҕоон', en: 'Sound', ru: 'Звук' },
   gGraphics: { sah: 'Хартыына', en: 'Graphics', ru: 'Графика' },

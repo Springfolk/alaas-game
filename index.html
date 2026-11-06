@@ -323,7 +323,8 @@
   .qnote { color: #8a5a10; font-size: 12.5px; background: #fff6e2; border: 1px solid #f0d49a; margin-top: 4px; }
   .qnote[hidden] { display: none; }
   .menu .keys { color: var(--c-ink); padding: 4px 6px; gap: 8px 12px; }
-  #resume { font-size: 15px; padding: 9px 30px; min-height: 40px; }
+  .pause-actions { display: flex; gap: 12px; }
+  #resume, #exit { font-size: 15px; padding: 9px 30px; min-height: 40px; }
 
   /* ---- on-screen controls, F3 meter ---- */
   #hints { position: fixed; z-index: 5; left: calc(14px + env(safe-area-inset-left)); bottom: calc(14px + env(safe-area-inset-bottom)); margin: 0; font-size: 12px; padding: 10px 13px; border-radius: 8px; transition: opacity .6s, transform .6s var(--ease); pointer-events: none; gap: 5px 10px; color: var(--ink); text-shadow: 0 1px 3px rgba(0,10,30,.8); }
@@ -431,7 +432,7 @@
       </div>
     </div>
   </div>
-  <button class="btn primary" id="resume" data-t="resume"></button>
+  <div class="pause-actions"><button class="btn primary" id="resume" data-t="resume"></button><button class="btn" id="exit" data-t="exit"></button></div>
 </div>
 <div id="fade"></div>
 <div id="keyart" aria-hidden="true"><picture>

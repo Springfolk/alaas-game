@@ -172,13 +172,16 @@ export function buildInterior({ B, M, rng, winter, root }) {
     targets.calendar = proxy(root, 0.2, 0.68, 0.08, [px + inDir.x * 0.2, 1.47, pz + inDir.z * 0.2], [0, Math.atan2(inDir.x, inDir.z), 0]);
   }
 
-  // ---------- low table (сандалы) before the best bench, with a bowl of salamaat ----------
-  const T = { x: -1.95, z: 1.05, w: 0.62, d: 0.9, h: 0.42 };
+  // ---------- low round table (сандалы) before the best bench, with a bowl of salamaat ----------
+  // old сандалы were round, of boards or birch bark, on three bowed legs (Olesova et al. 2025, p. 68)
+  const T = { x: -1.95, z: 1.05, r: 0.38, h: 0.42 };
   if (!winter) {
-    for (let i = 0; i < 3; i++) B.add(M.oiled, box(T.w / 3 - 0.006, 0.04, T.d, { p: [T.x - T.w / 2 + (i + 0.5) * T.w / 3, T.h, T.z] }), { color: [0.75, 0.62, 0.5] });
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.add(M.oiled, box(0.06, T.h - 0.02, 0.06, { p: [T.x + sx * (T.w / 2 - 0.06), (T.h - 0.02) / 2, T.z + sz * (T.d / 2 - 0.06)] }), { color: [0.55, 0.45, 0.36] });
-    B.add(M.oiled, box(T.w - 0.1, 0.05, 0.04, { p: [T.x, 0.12, T.z] }), { color: [0.5, 0.42, 0.34] });
-    colliders.push({ x: T.x, z: T.z, hw: T.w / 2, hd: T.d / 2, y0: -1, y1: T.h + 0.05 });
+    B.add(M.oiled, lathe([[0, T.h - 0.02], [T.r - 0.01, T.h - 0.02], [T.r, T.h], [T.r - 0.01, T.h + 0.02], [0, T.h + 0.02]], 24).translate(T.x, 0, T.z), { color: [0.75, 0.62, 0.5] });
+    const legs = [0, 1, 2].map((k) => { const a = k * Math.PI * 2 / 3 + 0.4; return [Math.cos(a), Math.sin(a)]; });
+    const at = ([cx, sz], rr, y) => [T.x + cx * rr, y, T.z + sz * rr];
+    for (const d of legs) B.add(M.oiled, tube([at(d, 0.24, T.h - 0.02), at(d, 0.27, T.h * 0.6), at(d, 0.27, T.h * 0.3), at(d, 0.31, 0.02)], 0.026, 6), { color: [0.55, 0.45, 0.36] });
+    for (let k = 0; k < 3; k++) B.add(M.oiled, tube([at(legs[k], 0.27, 0.2), at(legs[(k + 1) % 3], 0.27, 0.2)], 0.014, 5), { color: [0.5, 0.42, 0.34] }); // stretchers
+    colliders.push({ x: T.x, z: T.z, hw: T.r, hd: T.r, y0: -1, y1: T.h + 0.05 });
   }
 
   // ---------- кытыйа bowls: three sizes (A low, B standard with a copper band, C tall) ----------

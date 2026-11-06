@@ -40,6 +40,18 @@ export class Engine {
     return { post: true, ...setTier(tier, KEYART ? { shadows: 4096, shadowFar: 900, reflection: 1, texMax: 4096 } : this.tierExtra), ...rest };
   }
 
+  // A broken WebGPU device (Safari): a new buffer maps no bytes, or mapping throws. Load errors check this first.
+  deviceBroken() {
+    const dev = this.renderer?.backend?.device;
+    if (!dev) return false;
+    try {
+      const b = dev.createBuffer({ size: 4, usage: GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC, mappedAtCreation: true });
+      const n = b.getMappedRange().byteLength;
+      b.destroy();
+      return n === 0;
+    } catch { return true; }
+  }
+
   async init() {
     const auto = !PRESETS[this.requested.quality];
     // boot guard (tier.js): after a load the OS killed, step down: mobile → LITE, medium → low
@@ -47,7 +59,11 @@ export class Engine {
     // WebGPU wherever the browser gives an adapter, phones too (an iPhone 14 Pro: 17 ms a frame at the urasa where
     // WebGL2 took 45, its per-draw cost far lower); WebGL2 only without one (or ?webgl)
     // (a device that broke 3× within 2 min in this tab: WebGL2 for the tab's session, tier.js restoreLost)
-    if (!this.requested.webgl && (gpuBroken() || !(await webgpuAdapter()))) this.requested = { ...this.requested, webgl: true };
+    // why WebGL2 (the F3 / ?fps meter shows it): ?webgl, the tab's GPU losses, or no adapter
+    if (this.requested.webgl) this.fallback = '?webgl';
+    else if (gpuBroken()) this.fallback = '3 GPU losses in this tab';
+    else if (!(await webgpuAdapter())) this.fallback = 'no WebGPU adapter';
+    if (this.fallback) { this.requested = { ...this.requested, webgl: true }; console.warn(`[alaas] WebGL2: ${this.fallback}`); }
     if (auto) { // 'auto' (default): pick by device
       const d = await detectTier({ webgl: !!this.requested.webgl });
       this.tier = d.name;
@@ -86,6 +102,9 @@ export class Engine {
     if (dev) {
       const make = dev.createCommandEncoder.bind(dev);
       dev.createCommandEncoder = (d) => { try { return make(d); } catch (err) { r.onDeviceLost({ api: 'WebGPU', message: String(err), reason: 'broken' }); throw err; } };
+      // iOS: a reload's new device came up broken (every buffer mapped 0 bytes) while this page still held the
+      // GPU's memory, so free it as the page goes (a page kept in the back-forward cache keeps its device)
+      addEventListener('pagehide', (e) => { if (!e.persisted) dev.destroy(); });
     }
 
     const scene = this.scene = new THREE.Scene();
