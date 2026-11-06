@@ -293,15 +293,19 @@ class Game {
     this.ui.setMenu(false);
     this.input.mdx = this.input.mdy = 0; // the cursor's moves are not a look
   }
-  // Exit (pause menu): a page may close only a tab a script opened, so otherwise back to the title screen
+  // Exit (pause menu): closes the tab, which browsers refuse only for a tab holding an earlier page (a link
+  // followed in the same tab); then back to that page, or to the title screen when it is the game again or none
   exit() {
     this.persist();
     window.close();
+    if (window.closed) return;
     this.title = true; // first: losing the pointer lock then shows no pause menu
     this.unpause(); this.reading = null; this.ui.close();
     document.exitPointerLock();
     this.showHints();
     document.getElementById('title').classList.add('show');
+    const prev = window.navigation?.entries()[navigation.currentEntry?.index - 1]; // same-origin entries only
+    if (!prev || new URL(prev.url).pathname !== location.pathname) history.back();
   }
   resume() {
     this.persist();
