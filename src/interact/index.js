@@ -55,6 +55,8 @@ export class Interactions {
         if (i % 4 === 0) game.audio?.step?.('grass', 0.8);
         await new Promise((r) => setTimeout(r, 70));
       }
+      // into the тордуйа if one is carried (src/interact/work/tuos.js), else eaten on the spot
+      if (this.work.jobs.some((j) => j.picked?.(n))) return;
       game.ui.toast?.(`<b>${game.ui.t({ sah: 'Минньигэс!', en: 'Sweet, and warm from the sun.', ru: 'Сладкая, тёплая от солнца.' })}</b>`, 2600);
     },
   };

@@ -46,7 +46,8 @@ first, then English and Russian, picked from your browser's language. You walk, 
   firewood, sit on the орон, pick дьэдьэн. Sacred rites are only explained: the museum never has you perform them.
 - **Work with your hands**: take the axe from the block and split larch rounds along their cracks, then
   carry the billets by the armful to the woodpile or a fire; set the wicker туу in the lake weir and come
-  back for the мунду; mow the meadow with the old Sakha scythe; keep the beat at the kymys sack; blow the bellows and forge a knife blank at the smithy.
+  back for the мунду; mow the meadow with the old Sakha scythe; keep the beat at the kymys sack; blow the bellows and forge a knife blank at the smithy; warm, fold and peg a birch-bark тордуйа and
+  fill it with дьэдьэн; bring dry wood from the forest.
 - **A living alaas**: procedural larch, birch and pine taiga, wind in the grass, birds, insects, a lake
   with reflections, a physical sky with drifting cloud shadows, and real field recordings.
 - **Runs in the browser**: three.js WebGPURenderer with TSL shaders, steady 60 fps, no backend, no
