@@ -39,6 +39,8 @@ Code: E flow in `src/main.js` (`use`, `read`, `actOf`, `closeUI`, prompt in `fra
 |---|---|---|
 | Мас хайытыы (`split.js`) | chopping block by the woodpile | take the axe from the block → E on the rounds: one stands on the block → hold E (gauge up and down), release: the blow lands where you look. In line with the dark crack (≤4.5 cm off, ≤26° turned) and above the gauge's mark it splits: round → 2 halves (tumble off, stand each again) → 2 billets each. Right line but weak: the axe sticks, E lifts the round on it and brings it down. Across the grain: stuck, E pulls it free. Over the top mark: a wild blow (scatter). Two rounds (8 quarters) exist: stack or burn the billets to free them. |
 | Туу (`fish.js`) | weir in the lake shallows, east of the net rack (`src/models/fishery.js`) | take the trap → E on the weir's gap sets it → мунду come in over minutes (fast at first, ~110 s to two thirds) → hold E on the trap lifts it → E on the тымтай on the shore opens the tail clamp and tips the catch in (count: `save.work.mundu`) |
+| Кымыһы хамнатыы (`src/models/urasa.js` `churn`) | the симиир in the uraha | one stroke per E; the gauge is the pause since the last stroke (even: 0.12–0.85 s); 12 even strokes in a row: the kymys foams, its card opens (`save.work.churn`, `kymys`) |
+- Journal: the Work section lists every job (`src/interact/work/list.js` `WORKS`): its counts once done, else where it waits.
 
 ## Left out on purpose (research "do not gamify")
 - Skimming stones on the lake (Эбэ, the lake's иччи, is "grandmother": no throwing things in), striking the smith's anvil (the smith's craft is close to the shaman's), pushing the salama or ribbons (offerings, not toys), anything thrown into a fire except a laid billet.

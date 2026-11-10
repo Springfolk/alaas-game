@@ -6,6 +6,7 @@ import HINTS from '../data/hints.json';
 import { versioned } from '../load/assetv.js';
 import { T } from './i18n.js';
 import { VirtualCursor } from './cursor.js';
+import { WORKS } from '../interact/work/list.js';
 
 export const BY_ID = Object.fromEntries(ENTRIES.map((e) => [e.id, e]));
 // { entryId: [{ src, w, h, caption: {sah,en,ru}, credit, license, url }] } — optional (src/data/images.json)
@@ -27,6 +28,7 @@ const L = {
   newEntry: { sah: 'Бэлиэтээһиҥҥэ киирдэ', en: 'Added to the journal', ru: 'Добавлено в дневник' },
   guideHow: { sah: '«?» тал — бэлиэ онно сирдиэ.', en: 'Pick a “?” and a marker will lead you there.', ru: 'Выберите «?», и метка приведёт вас туда.' },
   guiding: { sah: 'Сирдэтэ', en: 'Guiding', ru: 'Ведёт' },
+  work: { sah: 'Үлэ', en: 'Work', ru: 'Работа' },
 };
 
 const $ = (s) => document.querySelector(s);
@@ -216,6 +218,14 @@ export class UI {
       }
       html += '</div>';
     }
+    // the work log: what the hands have done (counts from the save), or where a job waits
+    const w = this.state.work || {};
+    html += `<h4>${esc(this.t(L.work))}</h4><div class="grid">`;
+    for (const job of WORKS) {
+      const done = job.done(w);
+      html += `<div class="tile work${done ? '' : ' unknown'}"><b>${esc(this.t(job.name))}</b><small>${esc(this.t(done ? job.stat(w) : job.where))}</small></div>`;
+    }
+    html += '</div>';
     html += `<div class="foot"><span><kbd>J</kbd> ${esc(this.t(L.close))}</span></div></div></div>`;
     this.journal.innerHTML = html;
     this.card.classList.remove('show');
