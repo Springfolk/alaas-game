@@ -60,50 +60,91 @@ function choronB() {
   return g;
 }
 
-// kymys levels in the guest's choron (cup space, m): left after drinking / ladled full
+// kymys levels in the guest's choron (cup space, upright, m): left after drinking / ladled full
 export const KYMYS = { left: 0.12, full: 0.185 };
 
-// ---- kymys in a choron: a flat surface kept level in the world and fitted to the bowl's inner wall.
-// `inner` = the bowl's inside profile [[r, y], …] in cup space. fit(level) re-shapes it for the cup's tilt;
-// what would rise over the lip has been spilled, so the level drops to stay inside.
+// ---- kymys in a choron: a surface kept level in the world inside the bowl, holding its volume as the cup tilts.
+// `inner` = the bowl's inside profile [[r, y], …] in cup space. K.vol (m³) is what it holds (`volAt(level)`: the
+// upright volume up to a level). fit(up) (`up` = world up in cup space) finds the plane that holds K.vol and draws
+// it as a fan inside the bowl; what would rise over the lip spills: K.vol drops to the tilted bowl's `capacity`.
 function kymysSurface(inner, mat, cup, level) {
   const prof = [...inner].sort((a, b) => a[1] - b[1]);
-  const top = prof[prof.length - 1][1] - 0.006;
+  const y0 = prof[0][1], top = prof[prof.length - 1][1] - 0.006;
   const rIn = (y) => {
     if (y <= prof[0][1]) return prof[0][0];
-    for (let i = 1; i < prof.length; i++) if (y <= prof[i][1]) { const [r0, y0] = prof[i - 1], [r1, y1] = prof[i]; return r0 + (r1 - r0) * (y - y0) / (y1 - y0); }
+    for (let i = 1; i < prof.length; i++) if (y <= prof[i][1]) { const [ra, ya] = prof[i - 1], [rb, yb] = prof[i]; return ra + (rb - ra) * (y - ya) / (yb - ya); }
     return prof[prof.length - 1][0];
   };
+  const rTop = rIn(top);
+  // volume under the plane p·u = H: the bowl as NS stacked discs, each cut by a chord in closed form
+  // (G = ∫ over the chord's distance c from the middle of the disc's area on its side)
+  const NS = 32, dy = (top - y0) / NS, sr = new Float64Array(NS);
+  for (let i = 0; i < NS; i++) sr[i] = rIn(y0 + (i + 0.5) * dy);
+  const G = (R, c) => c <= -R ? 0 : c >= R ? Math.PI * R * R * c
+    : Math.PI * R * R * c - R * R * (c * Math.acos(c / R) - Math.sqrt(R * R - c * c)) - (R * R - c * c) ** 1.5 / 3;
+  const volume = (u, s, H) => {
+    let v = 0;
+    for (let i = 0; i < NS; i++) {
+      const ya = y0 + i * dy, R = sr[i];
+      v += s < 1e-7 ? Math.PI * R * R * Math.min(dy, Math.max(0, H / u.y - ya)) : (s / u.y) * (G(R, (H - u.y * ya) / s) - G(R, (H - u.y * (ya + dy)) / s));
+    }
+    return v;
+  };
+  const brim = (u, s) => top * u.y - rTop * s; // the lip's lowest point along up
   const N = 28, pos = new Float32Array((N + 2) * 3), nor = new Float32Array((N + 2) * 3), idx = [];
   for (let i = 1; i <= N; i++) idx.push(0, i + 1, i);
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); // the level, refitted (src/load/release.js keeps it)
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); // refitted (src/load/release.js keeps it)
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3).setUsage(THREE.DynamicDrawUsage));
   g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array((N + 2) * 2), 2));
   g.setIndex(idx);
   const mesh = new THREE.Mesh(g, mat);
   mesh.castShadow = false; mesh.userData.noShadow = true; mesh.userData.dynamic = true;
   cup.add(mesh);
-  const up = new THREE.Vector3(0, 1, 0), slopes = new Float32Array(N + 1), radii = new Float32Array(N + 1);
-  const K = { mesh, level, fit(lvl = K.level, u = up) {
-    const ny = Math.max(u.y, 0.25);
-    let peak = -1e9;
-    for (let i = 0; i <= N; i++) {
-      const a = (i / N) * TAU, c = Math.cos(a), s = Math.sin(a), sl = -(u.x * c + u.z * s) / ny;
-      // where the level plane meets the wall along this direction: rIn(lvl + sl·r) = r (bisection)
-      let lo = 0, hi = 0.2;
-      for (let k = 0; k < 14; k++) { const r = (lo + hi) / 2; if (rIn(lvl + sl * r) > r) lo = r; else hi = r; }
-      const r = lo + 0.0015;   // tucked into the wall
-      slopes[i] = sl; radii[i] = r;
-      peak = Math.max(peak, lvl + sl * r);
-    }
-    K.level = lvl - Math.max(0, peak - top);
-    pos.set([0, K.level, 0], 0);
-    for (let i = 0; i <= N; i++) { const a = (i / N) * TAU; pos.set([Math.cos(a) * radii[i], K.level + slopes[i] * radii[i], Math.sin(a) * radii[i]], (i + 1) * 3); }
-    for (let i = 0; i < N + 2; i++) nor.set([u.x, u.y, u.z], i * 3);
-    g.attributes.position.needsUpdate = g.attributes.normal.needsUpdate = true;
-    g.computeBoundingSphere();
-  } };
+  const UP = new THREE.Vector3(0, 1, 0), c0 = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), d = new THREE.Vector3(), p = new THREE.Vector3();
+  const inside = (q) => q.y >= y0 && q.y <= top && Math.hypot(q.x, q.z) <= rIn(q.y);
+  const K = {
+    mesh, top, rTop,
+    volAt: (lvl) => volume(UP, 0, lvl),
+    capacity: (u) => { const s = Math.hypot(u.x, u.z); return volume(u, s, brim(u, s)); },
+    // the tilt (rad) at which the bowl holds exactly v
+    tiltFor(v) {
+      let a = 0, b = 1.3;
+      for (let k = 0; k < 24; k++) { const m = (a + b) / 2; if (K.capacity(d.set(Math.sin(m), Math.cos(m), 0)) > v) a = m; else b = m; }
+      return (a + b) / 2;
+    },
+    fit(u = UP) {
+      if (u.y < 0.05) { K.vol = 0; mesh.visible = false; return; } // on its side or upside down: all out
+      const s = Math.hypot(u.x, u.z), hi = brim(u, s);
+      K.vol = Math.min(K.vol, volume(u, s, hi)); // over the lip: spilled (or drunk)
+      // the bowl's deepest point along up, then the plane's offset that holds K.vol (bisection)
+      let lo = 1e9, dr = 0, dyy = y0;
+      for (const [r, y] of prof) if (y * u.y - r * s < lo) { lo = y * u.y - r * s; dr = r; dyy = y; }
+      let a = lo, b = hi;
+      for (let k = 0; k < 22; k++) { const m = (a + b) / 2; if (volume(u, s, m) < K.vol) a = m; else b = m; }
+      const H = (a + b) / 2;
+      // the fan's middle: above the deepest point (inside the pool however far the cup tilts)
+      c0.set(s > 1e-7 ? -dr * u.x / s : 0, dyy, s > 1e-7 ? -dr * u.z / s : 0);
+      c0.addScaledVector(u, H - c0.dot(u));
+      mesh.visible = H - lo > 1e-4;
+      e1.set(u.y, -u.x, 0).normalize(); e2.crossVectors(e1, u);
+      pos.set([c0.x, c0.y, c0.z], 0);
+      for (let i = 0; i <= N; i++) {
+        const an = (i / N) * TAU;
+        d.copy(e1).multiplyScalar(Math.cos(an)).addScaledVector(e2, Math.sin(an));
+        // where the plane meets the wall along this direction: step out to the first miss, then bisect
+        let t0 = 0, t1 = 0.006;
+        while (t1 < 0.2 && inside(p.copy(c0).addScaledVector(d, t1))) { t0 = t1; t1 += 0.006; }
+        for (let k = 0; k < 9; k++) { const m = (t0 + t1) / 2; if (inside(p.copy(c0).addScaledVector(d, m))) t0 = m; else t1 = m; }
+        p.copy(c0).addScaledVector(d, t0 + 0.0015); // tucked into the wall
+        pos.set([p.x, p.y, p.z], (i + 1) * 3);
+      }
+      for (let i = 0; i < N + 2; i++) nor.set([u.x, u.y, u.z], i * 3);
+      g.attributes.position.needsUpdate = g.attributes.normal.needsUpdate = true;
+      g.computeBoundingSphere();
+    },
+  };
+  K.vol = K.volAt(level);
   K.fit();
   return K;
 }

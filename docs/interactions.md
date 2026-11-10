@@ -27,6 +27,7 @@ Code: E flow in `src/main.js` (`use`, `read`, `actOf`, `closeUI`, prompt in `fra
 | Sit / stand | every орон bench | view turns to the room and lowers; E, a step or a jump stands up |
 | Pick дьэдьэн | 8 wild-strawberry patches round the yard | tiny conical red berries; a handful, regrows after 4 min |
 | Feed the fire, churn, bellows, tie a ribbon, khomus, lake milk | model acts (`act` in each model) | |
+| Sprinkle, then drink (`urasa.js` `sprinkle`) | the guest's choron on the board in the kymys corner | the ladle fills it from the симиир; the view turns side-on to the fire (facing it the choron is a silhouette); drops to the fire, earth, sky (tilts ≤0.5 rad: drops only); drink: it tips about the near rim at the lips, the kymys running out over it, until what it held at the start is left; set back, view restored |
 
 ## Work (`src/interact/work/`)
 - A placed model names its job in `object.userData.work.job` (`JOBS` in `index.js`).
