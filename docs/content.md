@@ -1,6 +1,6 @@
 # Content: explainer entries
 
-`src/data/entries.json` — 51 entries, one per object/idea the player can look at.
+`src/data/entries.json` — 52 entries, one per object/idea the player can look at.
 
 `src/data/hints.json` — per entry `{sah,en,ru}`: where to look, for the journal finder (`docs/interactions.md`).
 
@@ -14,7 +14,7 @@
 | `facts` | `{en: [], sah: []}` — same count and order in both languages |
 | `sources[]`, `confidence`, `notes` | research trail; `notes` are English-only design guidance, not shown |
 
-**The `sah` and `ru` texts are approved by the maintainer (2026-10-25).** Not yet approved: the 2026-10-29 additions from Олесова et al., «Якутские слова в русской речи» (2025): `choron` матаарчах, `dairy-cream` чабычах, `kymys` симиир, `khamyiakh-ladle` hollows, `oron` сандалы. Written by hand (no machine translation), terms checked in sakhatyla.ru and sah.wikipedia.org. Gloss words like «восток», «святцы», «строганина», «чернь» are kept in Russian on purpose.
+**The `sah` and `ru` texts are approved by the maintainer (2026-10-25).** Not yet approved: the 2026-10-29 additions from Олесова et al., «Якутские слова в русской речи» (2025): `choron` матаарчах, `dairy-cream` чабычах, `kymys` симиир, `khamyiakh-ladle` hollows, `oron` сандалы; the 2026-11-10 entry `tuu` and the work prompts and hints in `src/interact/work/*.js` (`TXT`). Written by hand (no machine translation), terms checked in sakhatyla.ru and sah.wikipedia.org. Gloss words like «восток», «святцы», «строганина», «чернь» are kept in Russian on purpose.
 
 ## EN fixes made (factual)
 - `kuruo` body, `khoton` fact: хаһаа and дал were swapped. sakhatyla: хаһаа = horse stall, дал = cattle pen by the khoton.

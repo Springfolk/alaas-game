@@ -1525,7 +1525,8 @@
   },
   "related": [
    "horsehair",
-   "dairy-suorat-tar"
+   "dairy-suorat-tar",
+   "tuu"
   ],
   "sources": [
    "https://sakhatyla.ru/translate?q=муҥха",
@@ -1534,6 +1535,63 @@
   ],
   "confidence": "medium",
   "notes": "The procedure and rite come from modern reportage of living practice (YSIA), not old ethnography; sources differ on which spirit is fed (Baai Baianai vs a water-spirit; the name Күөх Боллох Тойон appears in one report). Net materials before industrial twine are not sourced here; horsehair and plant fibre are plausible but unverified, so keep them generic. The feeding of the spirit is real practice: the player may watch or read, not perform it as a mini-game. The game is set in summer, so present the mungkha mainly as a stored object plus the journal."
+ },
+ {
+  "id": "tuu",
+  "category": "food",
+  "sah": "туу",
+  "translit": "tuu",
+  "ru": "верша",
+  "title": {
+   "en": "Туу — the wicker fish trap",
+   "sah": "Туу — балыгы бултуур тэрил",
+   "ru": "Туу — плетёная верша"
+  },
+  "short": {
+   "en": "A funnel of larch laths set in the gap of a weir: the lake's small fish swim in and do not find the way out.",
+   "sah": "Тиит маһы синньигэс гына тыыран өрүллүбүт, быһыт ааныгар угуллар тэрил: күөл бытархай балыга киирэр да, төннөр суолун булбат.",
+   "ru": "Воронка из лиственничных лучин, поставленная в проход запруды: мелкая озёрная рыба заходит в неё и не находит дороги назад."
+  },
+  "body": {
+   "en": "The туу is woven from long thin laths split from larch, or from willow rods: they are gathered into a funnel-shaped basket, bound with cord of larch or willow root and lashed onto hoops. A second, inner funnel at the mouth lets the fish in and keeps them from leaving. The narrow tail is shut with a clamp of two sticks, the тылбыы, which is opened to tip the catch out. A shallow channel or a stretch of shore is closed with a weir, the быһыт, made of stakes and mats of laths (сибиэ), and the trap is set in the gap left in it. On the alaas lakes traps stand from the beginning of June to the end of October. A close-woven trap takes мунду, the lake minnow; a big one with wide gaps, the ардьа, takes собо, the crucian carp. The catch goes home on the back in a тымтай, an oval carrier of birch bark.",
+   "sah": "Тууну тиит маһы уһун синньигэс гына тыыран эбэтэр талаҕы өрөн оҥороллор: тырыыҥкалары төгүрүччү түмэн, тиит эбэтэр талах силиһинэн баайан, мас иилэргэ кэлгийэллэр. Айаҕар иһирдьэ диэки кыараан киирэр иккис өрүү баар: балык онон киирэр, төттөрү тахсыбат. Синньигэс кутуругун икки маһынан — тылбыынан — хам туттараллар; балыгы сүөкүүргэ ону аһаллар. Чычаас хорууну эбэтэр кытыыны быһытынан — тоһоҕолортон уонна сибиэттэн — бүөлээн, тууну хаалларыллыбыт ааныгар угаллар. Алаас күөллэригэр туу бэс ыйын саҥатыттан алтынньы бүтүөр диэри турар. Мунду туута хойуутук өрүллэр; собону бултуур улахан, сэдэх харахтаах тууну ардьа диэн ааттыыллар. Бултаммыт балыгы туос тымтайга сүөкээн, сүгэн дьиэҕэ илдьэллэр.",
+   "ru": "Туу плетут из длинных тонких лучин, наколотых из лиственницы, или из тальниковых прутьев: их собирают воронкообразной корзиной, перевязывают корнем лиственницы или тальника и крепят на обручи. В устье вплетена вторая, внутренняя воронка: рыба заходит, а обратной дороги не находит. Узкий хвост зажат двумя палочками (тылбыы); чтобы высыпать улов, зажим открывают. Мелкую протоку или участок берега перегораживают запрудой (быһыт) из кольев и матов из лучины (сибиэ), а туу ставят в оставленный проход. На аласных озёрах верши стоят с начала июня до конца октября. Частая верша берёт мунду, озёрного гольяна; большая, с редкими ячеями, ардьа — собо, карася. Улов несут домой на спине в тымтае, овальном берестяном коробе."
+  },
+  "facts": {
+   "en": [
+    "A skilled trap maker, a тууһут, could bind up to ten traps in a day.",
+    "In summer мунду are spread raw on a lath mat and dried in the sun: this is хохту. Boiled and then dried until it crumbles, the fish becomes барча, kept in bark tubs for the winter.",
+    "In 1917 more than 12,000 traps were counted in the Yakutsk district and about 90,000 in the Vilyuy district.",
+    "A saying keeps the trap in the language: «Оннооҕор туу сүрэхтээх», 'even a fish trap has a heart'."
+   ],
+   "sah": [
+    "Сатабыллаах тууһут күҥҥэ уоҥҥа тиийэ тууну өрөрө.",
+    "Сайын мундуну сибиэҕэ тэлгэтэн күҥҥэ сиикэйдии хатараллар — бу хохту. Буһаран баран үлтү хатарыллыбыт балык барча диэн ааттанар, кыһыҥҥыга туос иһиккэ харайыллар.",
+    "1917 сыллаахха Дьокуускай уокуругар 12 тыһыынчаттан тахса, Бүлүү уокуругар 90 тыһыынча кэриҥэ туу ааҕыллыбыта.",
+    "Туу өс хоһоонугар киирбит: «Оннооҕор туу сүрэхтээх»."
+   ],
+   "ru": [
+    "Умелый мастер, тууһут, мог связать до десяти вершей в день.",
+    "Летом мунду раскладывают сырой на мате из лучины и вялят на солнце — это хохту. Сваренная и высушенная до рассыпчатости рыба зовётся барча, её держат на зиму в берестяных кадках.",
+    "В 1917 году в Якутском округе насчитали больше 12 тысяч вершей, в Вилюйском — около 90 тысяч.",
+    "Верша вошла в пословицу: «Оннооҕор туу сүрэхтээх» — «даже у верши есть сердце»."
+   ]
+  },
+  "related": [
+   "munkha",
+   "birch-bark",
+   "alaas"
+  ],
+  "sources": [
+   "https://sah.wikipedia.org/wiki/Туу",
+   "https://sakhatyla.ru/translate?q=туу",
+   "https://sakhatyla.ru/translate?q=тылбыы",
+   "https://sakhatyla.ru/translate?q=тымтай",
+   "https://sakhatyla.ru/translate?q=хохту",
+   "https://edersaas.ru/b-gelerbit/"
+  ],
+  "confidence": "medium",
+  "notes": "Construction, kinds, season and the 1917 counts follow sah.wikipedia «Туу» (which cites Savvin 2005); terms from sakhatyla.ru (туу, ардьа, тылбыы, тымтай, быһыт, сибиэ, хохту, барча). The dictionary lists the saying without a gloss, so the card gives only its literal sense. How often a trap was checked was not found. The in-game weir, gap and carrier follow these descriptions; no measured drawing of a туу was found."
  },
  {
   "id": "khomus",

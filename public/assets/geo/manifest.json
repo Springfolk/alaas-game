@@ -1,18 +1,19 @@
 {
  "version": 1,
  "keys": {
-  "jobs": "fa5288cbd087",
-  "model:ampaar": "a164efe0b435",
-  "model:balagan": "ad1ebb2b7ec8",
-  "model:chores": "6008f9584ffb",
-  "model:kuruo": "68f1a7ef66ac",
-  "model:lakeside": "fbe98a38e9a0",
-  "model:sacred-birch": "72ab8f9a01cb",
-  "model:sele": "38cf9248e4cf",
-  "model:serge": "37947e775cfd",
-  "model:urasa": "7dc1ff513a7a",
-  "model:work": "d776f894b515",
-  "model:yardlife": "581ec3edfd3c"
+  "jobs": "6fa3ff27f113",
+  "model:ampaar": "ad9605195f87",
+  "model:balagan": "afa4005b2552",
+  "model:chores": "9f1c48c2b200",
+  "model:fishery": "0ee26ecbe09b",
+  "model:kuruo": "445e065507a6",
+  "model:lakeside": "031ccec7a715",
+  "model:sacred-birch": "82a83e4e86a9",
+  "model:sele": "8403ff0a2238",
+  "model:serge": "2c3ef5c978e5",
+  "model:urasa": "34db2eb7c85d",
+  "model:work": "16ec7de4e5aa",
+  "model:yardlife": "66fbfb5afea2"
  },
  "packs": {
   "forest#c904aa13": {
@@ -27,7 +28,7 @@
   },
   "job:ground#228afa7a": {
    "group": "jobs",
-   "key": "fa5288cbd087",
+   "key": "6fa3ff27f113",
    "file": "job-ground-228afa7a.bin",
    "bytes": 310992,
    "raw": 1709068,
@@ -35,7 +36,7 @@
   },
   "job:ground#b8ec8743": {
    "group": "jobs",
-   "key": "fa5288cbd087",
+   "key": "6fa3ff27f113",
    "file": "job-ground-b8ec8743.bin",
    "bytes": 815382,
    "raw": 5395468,
@@ -43,100 +44,107 @@
   },
   "job:ground#cc676295": {
    "group": "jobs",
-   "key": "fa5288cbd087",
+   "key": "6fa3ff27f113",
    "file": "job-ground-cc676295.bin",
    "bytes": 585952,
    "raw": 3625996,
    "lazy": true
   },
-  "job:mask#15072312": {
+  "job:mask#ca9fa3c6": {
    "group": "jobs",
    "key": "*",
    "empty": true
   },
-  "job:scatter#5e0c1e63": {
+  "job:scatter#9a908873": {
    "group": "jobs",
    "key": "*",
    "empty": true
   },
   "model:ampaar#890beb7e": {
    "group": "model:ampaar",
-   "key": "a164efe0b435",
+   "key": "ad9605195f87",
    "file": "ampaar-890beb7e.bin",
    "bytes": 141237,
    "raw": 738480
   },
   "model:balagan#782a55bb": {
    "group": "model:balagan",
-   "key": "ad1ebb2b7ec8",
+   "key": "afa4005b2552",
    "file": "balagan-782a55bb.bin",
    "bytes": 576938,
    "raw": 2896492
   },
   "model:balagan#c00f8976": {
    "group": "model:balagan",
-   "key": "ad1ebb2b7ec8",
+   "key": "afa4005b2552",
    "file": "balagan-c00f8976.bin",
    "bytes": 530789,
    "raw": 2492540
   },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "6008f9584ffb",
+   "key": "9f1c48c2b200",
    "file": "chores-753cb87c.bin",
    "bytes": 11650,
    "raw": 47444
   },
+  "model:fishery#cf8d7711": {
+   "group": "model:fishery",
+   "key": "0ee26ecbe09b",
+   "file": "fishery-cf8d7711.bin",
+   "bytes": 55786,
+   "raw": 217312
+  },
   "model:kuruo#9296aa7a": {
    "group": "model:kuruo",
-   "key": "68f1a7ef66ac",
+   "key": "445e065507a6",
    "file": "kuruo-9296aa7a.bin",
    "bytes": 226956,
    "raw": 1236416
   },
   "model:lakeside#6c7e420d": {
    "group": "model:lakeside",
-   "key": "fbe98a38e9a0",
+   "key": "031ccec7a715",
    "file": "lakeside-6c7e420d.bin",
    "bytes": 173727,
    "raw": 463036
   },
   "model:sacred-birch#f02b57e6": {
    "group": "model:sacred-birch",
-   "key": "72ab8f9a01cb",
+   "key": "82a83e4e86a9",
    "file": "sacred-birch-f02b57e6.bin",
    "bytes": 460348,
    "raw": 1668444
   },
   "model:sele#6f8bdbc0": {
    "group": "model:sele",
-   "key": "38cf9248e4cf",
+   "key": "8403ff0a2238",
    "empty": true
   },
   "model:serge#08963bf0": {
    "group": "model:serge",
-   "key": "37947e775cfd",
+   "key": "2c3ef5c978e5",
    "file": "serge-08963bf0.bin",
    "bytes": 152480,
    "raw": 1236544
   },
   "model:urasa#c45c7fb1": {
    "group": "model:urasa",
-   "key": "7dc1ff513a7a",
+   "key": "34db2eb7c85d",
    "file": "urasa-c45c7fb1.bin",
    "bytes": 222641,
    "raw": 1140096
   },
   "model:work#9d148979": {
    "group": "model:work",
-   "key": "d776f894b515",
+   "key": "16ec7de4e5aa",
    "file": "work-9d148979.bin",
    "bytes": 24063,
    "raw": 83736
   },
   "model:yardlife#8f2bbc3c": {
    "group": "model:yardlife",
-   "key": "581ec3edfd3c",
+   "key": "66fbfb5afea2",
    "file": "yardlife-8f2bbc3c.bin",
    "bytes": 873084,
    "raw": 2861464

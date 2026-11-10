@@ -139,7 +139,7 @@ export default async function build(ctx, placement) {
   top.name = 'chopping-block';
   interactables.push({ target: top, block: true, entry: 'ottuk-mas', label: { sah: 'төҥүргэс', en: 'chopping block (төҥүргэс)', ru: 'колода (төҥүргэс)' } });
 
-  object.userData.work = { object, axe, axeDims: AXE, pieces, rounds: ROUND.n, block: new T.Vector3(bx, by, bz), blockR: CHOP.r };
+  object.userData.work = { job: 'split', object, axe, axeDims: AXE, pieces, rounds: ROUND.n, block: new T.Vector3(bx, by, bz), blockR: CHOP.r };
   return { object, colliders: [], floors: [], interactables };
 }
 
