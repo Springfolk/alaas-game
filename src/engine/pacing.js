@@ -18,9 +18,15 @@ function refresh(e, d) {
     for (const x of r) { const k = Math.round(x / med); if (k >= 1 && k <= 3) { sum += x; n += k; } }
     const v = n ? sum / n : med;
     if (!e.vsync || Math.abs(v - e.vsync) > e.vsync * 0.02) { e.vsync = v; e.gov = null; }
+    // the shortest interval seen twice running is the display's own (callbacks only come slower than it)
+    if (Math.abs(v - e.vsyncSeen) < v * 0.02 && !(v > e.vsyncBase * 0.98)) e.vsyncBase = v;
+    e.vsyncSeen = v;
     r.length = 0;
   }
-  return Math.min(e.vsync || 1000 / 60, 1000 / 58);
+  // a slow device's callbacks come every 2nd or 3rd refresh: that many refreshes of the display as it was last seen
+  // (else of a 60 Hz one), not a 30 Hz display
+  const v = e.vsync || 1000 / 60, base = e.vsyncBase || 1000 / 60;
+  return Math.min(v > base * 1.3 ? v / Math.round(v / base) : v, 1000 / 58);
 }
 
 // True when a frame is due on this animation frame (`now` = its timestamp, ms) for `fps` (0 = none). Draws every
@@ -43,11 +49,11 @@ export function pace(e, now, fps) {
   const hold = e.jsMs > e.paceIv * 0.8 || e.gov?.settle ? 9 : e.gpuHold || 3;
   if (e.gpuPending >= hold && now - (e.beat ?? now) < 250) { e.gpuHeld = (e.gpuHeld || 0) + 1; return false; }
   if (e.gpuPending >= hold) { e.gpuPending = 0; e.gpuSilent = (e.gpuSilent || 0) + 1; } // frames whose end was never reported: carry on (twice: without the timing)
-  // the beat moves on by whole refreshes, on the display's grid (pulled a tenth of the way to each timestamp, so
-  // neither their jitter nor an inexact refresh estimate shifts it); after a long gap it starts again from now
+  // the beat moves on by whole refreshes, on the display's grid (pulled halfway to each timestamp: their jitter is
+  // halved, an inexact refresh estimate cannot build up); after a long gap it starts again from now
   const late = e.beat == null ? 0 : Math.round((now - e.beat) / v);
   e.beat = e.beat == null || late > 4 * n ? now : e.beat + late * v;
-  e.beat += (now - e.beat) * 0.1;
+  e.beat += (now - e.beat) * 0.5;
   e.gpuAtStart = e.gpuPending;
   return true;
 }
@@ -65,7 +71,7 @@ export function frameDone(e, jsMs, whenDone, clock = performance) {
 const q = (v, f) => v[Math.min(v.length - 1, Math.floor(v.length * f))];
 
 // Once per frame, before it draws (`dt` s since the last one). Every ~0.5 s of frames:
-//   over  two frames came late (or the average interval is 10% over), or the GPU is two frames behind in a tenth
+//   over  two frames came a refresh late (or the average interval is 10% over), or the GPU is two frames behind in a tenth
 //         of the frames, or takes > 1.6 intervals. The second window running (a hitch looks the same for one, and
 //         a change is not free; far over: at once): fewer pixels, by how far over (5–20% a step), down to the
 //         tier's floor. At the floor, or when the frame's JS alone is the limit (over 0.8 of the interval:
@@ -76,13 +82,14 @@ const q = (v, f) => v[Math.min(v.length - 1, Math.floor(v.length * f))];
 //         knob comes back, last first, after `knobWait` (4 s; doubled, ≤ 2 min, when a restored one fails within
 //         20 s); a slower beat comes back first, and only when the faster one is measured to fit.
 //   else  nothing changes: a frame rate held with little to spare is left alone, not probed.
-// Without GPU timing: over = average interval > 12% over, room = under 2% over.
+// Without GPU timing (no fence, or Safari's WebGL2 where it costs 5 ms a frame): over by late frames alone, room =
+// none late and the average under 2% over; so resolution is probed there, each failed step waiting longer.
 export function govern(e, dt, now = performance.now()) {
   const iv = e.paceIv || 1000 / 60, ms = dt * 1000;
   if (dt <= 0) return;
   const g = e.gov ||= { n: 0, t: 0, late: 0, deep: 0, js: 0, room: 0, over: 0 };
   g.n++; g.t += Math.min(ms, iv * 3); g.js += e.jsMs || 0;
-  if (ms > iv * 1.5) g.late++;
+  if (ms > iv + 0.5 * iv / (e.paceN || 1)) g.late++; // a refresh or more over (at 30 on a 60 Hz display that is 50 ms, 1.5×: no margin for a ratio)
   if (e.gpuAtStart >= 2) g.deep++;
   g.deep += e.gpuHeld || 0; e.gpuHeld = 0;
   if (g.t < 500 || g.n < 8) return;
@@ -91,13 +98,18 @@ export function govern(e, dt, now = performance.now()) {
   if (e.gpuTimes) e.gpuTimes.length = 0;
   g.n = g.t = g.late = g.deep = g.js = 0;
   if (g.settle) { g.settle = false; return; } // the window after a change still holds frames queued before it
-  const over = timed ? late >= 2 || avg > iv * 1.1 || deep > 0.1 || gpu > iv * 1.6 : avg > iv * 1.12;
+  const over = late >= 2 || avg > iv * 1.1 || (timed && (deep > 0.1 || gpu > iv * 1.6));
   // the JS is the limit: fewer pixels can't help, and the GPU's reports reach a busy main thread late (they then
   // read as a queue)
   const cpu = over && js > iv * 0.8;
-  const room = !over && (timed ? late === 0 && quick < iv * 0.8 && js < iv * 0.6 : avg < iv * 1.02);
+  const room = !over && late === 0 && (timed ? quick < iv * 0.8 && js < iv * 0.6 : avg < iv * 1.02);
   g.over = over ? g.over + 1 : 0; g.room = room ? g.room + 1 : 0;
   e.gpuMs = gpu; // (the F3 meter)
+  if (timed && !over) { // the GPU's time at the last two scales (KNOBS: how much of it the pixels are)
+    const at = e.gpuAt ||= [], last = at[at.length - 1];
+    if (last && Math.abs(last.s - e.resScale) < 0.03) last.g += (gpu - last.g) * 0.5;
+    else { at.push({ s: e.resScale, g: gpu }); if (at.length > 2) at.shift(); }
+  }
   e.gpuHold = over && !cpu && timed ? 2 : 3;
   if (e.resCeil && now - e.resCeilAt > e.ceilWait) e.resCeil = 0;
   const prev = e.resScale, floor = e.resFloor();
@@ -152,16 +164,21 @@ export function knob(e, dir, now, cpu = false, gentle = false) {
 // Dynamic quality steps after resolution, cheapest loss first; none needs a new shader or pipeline. A slower
 // cadence = one more display refresh per frame (60 Hz: 60 → 30; 120 Hz: 60 → 40 → 30), never under 30 fps (from a
 // 30 cap, phones: one step to a steady 20 instead of 33/50 ms frames in turn); it comes
-// back when the frame is measured to fit the faster beat at the resolution floor: the GPU's time scaled by pixels
+// back when the frame is measured to fit the faster beat at the resolution floor: the GPU's time scaled to it
 // under 0.55 of that interval, the JS under 0.7 of it. Resolution then restarts from the scale that fits.
 const slower = (name) => ({
   name, cpu: true,
   ok: (e) => (e.paceN + 1) * Math.min(e.vsync || 1000 / 60, 1000 / 58) < (e.paceFps > 30 ? 34.5 : 51),
   set: (e, d) => { e.paceSkip = (e.paceSkip || 0) + (d ? 1 : -1); },
   fits(e, { gpu, js, iv, floor }) {
-    const to = iv * (e.paceN - 1) / e.paceN, px = (floor / e.resScale) ** 2;
-    if (!(js < to * 0.7 && gpu * px < to * 0.55)) return false;
-    this.scale = e.resScale * Math.min(1, Math.sqrt(to * 0.55 / Math.max(gpu, 1e-3))); // as many pixels as still fit
+    // The GPU's time at another scale: part of it does not depend on the pixel count (geometry, shadows). That
+    // part is taken from the last two scales measured (govern keeps them), else as half; all of it by pixels
+    // promised 60 where it then failed, back and forth.
+    const [p, q] = e.gpuAt || [], k = p && q && (q.g - p.g) / (q.s * q.s - p.s * p.s);
+    const fix = k > 0 ? Math.min(0.85, Math.max(0.15, 1 - k * e.resScale ** 2 / Math.max(gpu, 1e-3))) : 0.5;
+    const to = iv * (e.paceN - 1) / e.paceN;
+    if (!(js < to * 0.7 && gpu * (fix + (1 - fix) * (floor / e.resScale) ** 2) < to * 0.55)) return false;
+    this.scale = e.resScale * Math.sqrt(Math.min(1, Math.max(0, (to * 0.55 / Math.max(gpu, 1e-3) - fix) / (1 - fix)))); // as many pixels as still fit
     return true;
   },
 });

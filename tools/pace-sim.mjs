@@ -2,7 +2,7 @@
 //   node tools/pace-sim.mjs [only]     (`only` = part of a scenario's name)
 // Model: a display at `hz`; rAF once per refresh while the main thread is free and fewer than 4 frames are queued
 // (Chrome); a frame's JS takes `js` ms, then the GPU, one frame at a time, `gpu + px × scale²` ms (× `load(t)`).
-// Prints: frames per second, dips (interval > 1.5× the paced one) in all and in the last third, the resolution's
+// Prints: frames per second, dips (a frame a refresh late or more) in all and in the last third, the resolution's
 // range, its changes, the knobs at the end, and input→display p50/p95 (ms from a frame's start to the refresh after
 // its GPU work ends).
 import { pace, govern, frameDone, KNOBS } from '../src/engine/pacing.js';
@@ -36,7 +36,7 @@ function run({ hz = 60, fps = 60, js = 5, gpu = 3, px = 8, floor = 0.55, start =
     lat.push(Math.ceil(end / v) * v - T);
     res.push(e.resScale);
   }
-  const dips = iv.filter(([d, p]) => d > p * 1.5), tail = dips.filter((d) => d[2] > secs * 667).length;
+  const dips = iv.filter(([d, p]) => d > p + 0.5 * v), tail = dips.filter((d) => d[2] > secs * 667).length;
   lat.sort((a, b) => a - b);
   const q = (f) => lat[Math.floor(lat.length * f)];
   return `${(iv.length / (secs - 3)).toFixed(1).padStart(5)} fps · dips ${String(dips.length).padStart(3)} (last third ${tail}) · res ${Math.min(...res).toFixed(2)}–${Math.max(...res).toFixed(2)} → ${e.resScale.toFixed(2)}, ${changes} changes · ${(e.knobs || []).map((k) => k.name).join(', ') || 'no knobs'} · input→display ${q(0.5).toFixed(0)}/${q(0.95).toFixed(0)} ms`;

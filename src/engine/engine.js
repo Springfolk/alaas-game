@@ -268,10 +268,14 @@ export class Engine {
   frameDone(jsMs) {
     const b = this.renderer.backend, dev = b.device, gl = b.gl;
     frameDone(this, jsMs, dev ? (cb) => dev.queue.onSubmittedWorkDone().then(cb, cb) : gl?.fenceSync ? (cb) => {
-      const s = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      const t = performance.now(), s = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
       gl.flush();
       const poll = () => { if (gl.isContextLost() || gl.getSyncParameter(s, gl.SYNC_STATUS) === gl.SIGNALED) { gl.deleteSync(s); cb(); } else setTimeout(poll, 3); };
       setTimeout(poll, 3);
+      // Safari's WebGL2 waits on its GPU process in these calls (the iOS Simulator: 5 ms a frame): where the first 30
+      // fences cost over 1 ms each, the governor goes without GPU timing (pacing.js: its interval-only rule)
+      this.fenceMs = (this.fenceMs || 0) + performance.now() - t;
+      if ((this.fences = (this.fences || 0) + 1) === 30 && this.fenceMs > 30) this.gpuSilent = 2;
     } : null);
   }
 
