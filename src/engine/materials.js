@@ -22,6 +22,10 @@ export const aniso = (n) => Math.min(n, TIER.aniso || n);
 // ImageBitmaps (pre-flipped, alpha not premultiplied).
 export function setTextureMax(n) { texMax = n; }
 export const textureMax = () => texMax;
+// The cap of one image: the occlusion/roughness/metal maps load at half the tier's edge (they hold no fine detail:
+// a third of the material memory for a quarter of its pixels), on `low` the normal maps too. `high`: all full.
+const capFor = (path, max = texMax) => (TIER.name === 'high' || KEYART || max <= FIRST ? max
+  : /\/arm\.webp$/.test(path) || (TIER.name === 'low' && /\/nor\.webp$/.test(path)) ? Math.max(FIRST, max / 2) : max);
 // Every load starts at 256 (~1.5 MB for the whole world), sharpenTextures() brings the tier's size in play.
 // ?sharp (A/B), ?keyart and the impostor bake load the tier's size at once.
 const SHARP = KEYART || urlFlag('sharp') || urlFlag('bakeimpostors');
@@ -78,7 +82,7 @@ export function tex(path, { srgb = false, repeat = [1, 1] } = {}) {
     base.userData.users = []; // every texture on it
     bases.set(path, base);
     // decoded in a load worker (src/load/bitmap.js), the main thread as the fallback
-    fill(base, path, firstTextureMax());
+    fill(base, path, capFor(path, firstTextureMax()));
   }
   const u = base.userData;
   // a fresh texture sharing the image (clone() would mark it for upload before the image exists)
@@ -107,7 +111,8 @@ export async function sharpenTextures() {
   const jobs = [...sharpeners.splice(0).map((fn) => () => fn(texMax))];
   for (const [path, base] of bases) {
     const url = new URL(path, location.href).href;
-    if (edgeFor(url, texMax) > edgeFor(url, base.userData.want)) jobs.push(() => fill(base, path, texMax));
+    const max = capFor(path);
+    if (edgeFor(url, max) > edgeFor(url, base.userData.want)) jobs.push(() => fill(base, path, max));
   }
   // WebGL2 (phones) uploads and builds mips synchronously on the main thread: one swap at a time, two frames apart
   const gl = !!renderer?.backend?.isWebGLBackend, frame = () => new Promise((r) => requestAnimationFrame(r));
