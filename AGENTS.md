@@ -26,6 +26,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 - `docs/patterns.md` — every drawn ornament: motif, where it is used, source.
 - `docs/credits.md` — third-party assets and licences.
 - `docs/testing.md` — headless checks.
+- `docs/smoothness.md` — frame pacing targets, how to measure, causes found, before/after table.
 - `docs/roadmap.md` — planned features (forest and lake life) and open items.
 
 ## Constraints
