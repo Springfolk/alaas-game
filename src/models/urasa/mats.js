@@ -72,8 +72,9 @@ export function makeMats() {
     // per-sheet tone: cream, warm grey or brownish — the sheets came from different trees and years
     const sheet = floor(t.x.mul(2)).add(ring.x.mul(17.3));
     const h1 = hash(sheet), h2 = hash(sheet.add(71.3)), h3 = hash(sheet.add(33.1));
-    const tint = select(h2.lessThan(0.4), vec3(1.0, 0.94, 0.82), select(h2.lessThan(0.75), vec3(0.78, 0.74, 0.66), vec3(0.7, 0.57, 0.43)));
-    let c = d.mul(h1.mul(0.25).add(0.75)).mul(tint);
+    // (the reference urahas — Suntar, the Druzhba museum — stand almost white in the sun: most sheets pale, few brown)
+    const tint = select(h2.lessThan(0.6), vec3(1.0, 0.97, 0.9), select(h2.lessThan(0.9), vec3(0.9, 0.87, 0.8), vec3(0.8, 0.7, 0.58)));
+    let c = d.mul(h1.mul(0.14).add(0.86)).mul(tint).mul(1.34).min(0.86);
     // weathering: cream → grey-brown, patchy, more on the upper rings that get the sun
     // the six slow position-only noises (≤ 18/m): phones evaluate them per vertex (~12 cm apart), two varyings —
     // the cover filling the screen cost a warm iPhone ~44 ms a frame in these alone
@@ -84,8 +85,8 @@ export function makeMats() {
       return { w: va.x, edgeK: va.y, lich: va.z, soot: vb.x, dirt: vb.y, splash: vb.z };
     })();
     const w = N.w;
-    const age = w.mul(1.1).add(y.div(APEX_Y).mul(0.2)).add(ring.y.mul(0.25)).sub(0.38).clamp(0, 0.9);
-    const grey = vec3(lum(c)).mul(vec3(0.7, 0.6, 0.48));
+    const age = w.mul(1.1).add(y.div(APEX_Y).mul(0.2)).add(ring.y.mul(0.25)).sub(0.38).clamp(0, 0.45);
+    const grey = vec3(lum(c)).mul(vec3(0.84, 0.8, 0.72)); // silvered, not browned
     c = mix(c, grey, age);
     // darker weathered sheet edges (end seams and the free lower edge)
     const lu = fract(t.x.mul(2));
@@ -113,8 +114,8 @@ export function makeMats() {
     const streak = smoothstep(0.5, 0.85, st).mul(smoothstep(0.3, 0.8, t.y)).mul(st2.mul(0.6).add(0.4));
     c = mix(c, c.mul(vec3(0.62, 0.56, 0.48)), streak.mul(0.6));
     // soot round the smoke hole, ground splash at the foot
-    const soot = smoothstep(APEX_Y - 3.6, APEX_Y - 1.1, y).mul(N.soot.mul(0.6).add(0.55)).clamp(0, 1);
-    c = mix(c, vec3(0.09, 0.075, 0.065), soot.mul(0.9));
+    const soot = smoothstep(APEX_Y - 2.2, APEX_Y - 0.5, y).mul(N.soot.mul(0.6).add(0.55)).clamp(0, 1);
+    c = mix(c, vec3(0.09, 0.075, 0.065), soot.mul(0.7));
     const dirt = smoothstep(0.75, 0.0, y.add(N.dirt.mul(0.3))).clamp(0, 1);
     c = mix(c, vec3(0.22, 0.18, 0.13), dirt.mul(0.85));
     const splash = smoothstep(0.3, 0.0, y).mul(smoothstep(0.55, 0.75, N.splash));
