@@ -24,6 +24,18 @@ export const WORKS = [
     stat: (w) => L(`${Math.round(w.mown || 0)} м² от охсулунна · ${w.blows || 0} охсуу`, `${Math.round(w.mown || 0)} m² mown · ${w.blows || 0} blows`, `скошено ${Math.round(w.mown || 0)} м² · ударов: ${w.blows || 0}`),
   },
   {
+    id: 'tuos', name: L('Туос үлэтэ: тордуйа', 'Birch-bark work: a тордуйа', 'Работа с берестой: тордуйа'), entry: 'birch-bark',
+    where: L('Ураһа күлүгэр туос үлэтин сирэ; туоһу уокка сылыталлар.', 'The bark-working spot in the uraha’s shade; the bark is warmed at a fire.', 'Место работы с берестой в тени урасы; бересту греют у огня.'),
+    done: (w) => w.torduya > 0,
+    stat: (w) => L(`${w.torduya || 0} тордуйа · ${w.berries || 0} дьэдьэн хомулунна`, `${w.torduya || 0} тордуйа made · ${w.berries || 0} дьэдьэн gathered`, `тордуй: ${w.torduya || 0} · собрано дьэдьэн: ${w.berries || 0}`),
+  },
+  {
+    id: 'gather', name: L('Хаппыт мас хомуйуу', 'Gathering dry wood', 'Сбор сушняка'), entry: 'ottuk-mas',
+    where: L('Хоту, тыа саҕатыгар: мас анныгар хаппыт лабаалар.', 'To the north, at the forest’s edge: dry branches under the trees.', 'К северу, на опушке: сухие ветки под деревьями.'),
+    done: (w) => w.drywood > 0,
+    stat: (w) => L(`${w.drywood || 0} хаппыт мас`, `${w.drywood || 0} dry branches carried`, `сухих веток: ${w.drywood || 0}`),
+  },
+  {
     id: 'forge', name: L('Уус кыһата', 'At the forge', 'У горна'), entry: 'blacksmith',
     where: L('Кыһаҕа: күөрт, кытарбыт тимир, кыстык, өтүйэ.', 'In the smithy: the bellows, the glowing iron, the anvil, the hammer.', 'В кузне: мехи, раскалённое железо, наковальня, молот.'),
     done: (w) => w.hammer > 0,

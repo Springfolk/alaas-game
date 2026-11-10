@@ -108,6 +108,7 @@ export class Hands {
       this.takeAct.thenCard = !!it.entry && !game.state.found.has(it.entry); // the card once, the first time
       if (t.kind === 'log') t.state = 'held';
       if (this.held) { this.more.push(t); this.grab(t); } else this.hold(t);
+      t.onTake?.();
       game.audio?.play('wood-take', t.obj.position); // the pail is wood too: a handle knock
     },
   };

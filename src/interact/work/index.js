@@ -6,8 +6,10 @@
 import { Split } from './split.js';
 import { Fish } from './fish.js';
 import { Hay } from './hay.js';
+import { Gather } from './gather.js';
+import { Tuos } from './tuos.js';
 
-const JOBS = { split: Split, fish: Fish, hay: Hay }; // by the `job` of a placed model's `userData.work`
+const JOBS = { split: Split, fish: Fish, hay: Hay, gather: Gather, tuos: Tuos }; // by the `job` of a placed model's `userData.work`
 
 export class Work {
   constructor(game, hands, find) {

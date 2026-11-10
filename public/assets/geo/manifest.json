@@ -1,20 +1,22 @@
 {
  "version": 1,
  "keys": {
-  "jobs": "a3c742b158a2",
-  "model:ampaar": "2387b843462e",
-  "model:balagan": "9256fad85736",
-  "model:chores": "114ed3ecd215",
-  "model:fishery": "86fbb65ad4ce",
-  "model:hayfield": "472414e44ff6",
-  "model:kuruo": "f09de9296414",
-  "model:lakeside": "c36d70cd4657",
-  "model:sacred-birch": "a1e338304a09",
-  "model:sele": "316989cd726c",
-  "model:serge": "24116c1aa879",
-  "model:urasa": "1d8354229352",
-  "model:work": "fcf6e065fdb9",
-  "model:yardlife": "103e6c01387c"
+  "jobs": "ec383225c5a8",
+  "model:ampaar": "ec92b118f347",
+  "model:balagan": "1958da2fb3af",
+  "model:barkwork": "17f228ee4709",
+  "model:chores": "57dd9afc150f",
+  "model:drywood": "92f37a583694",
+  "model:fishery": "62a1dd857c92",
+  "model:hayfield": "a6b880a68563",
+  "model:kuruo": "c2d5e9a1c97e",
+  "model:lakeside": "9dde33115441",
+  "model:sacred-birch": "c58bee2993b0",
+  "model:sele": "21d45692949b",
+  "model:serge": "6dbdd067d516",
+  "model:urasa": "e6e7ee91de17",
+  "model:work": "da6cb6d2de5e",
+  "model:yardlife": "eab43f0c2067"
  },
  "packs": {
   "forest#c904aa13": {
@@ -29,7 +31,7 @@
   },
   "job:ground#228afa7a": {
    "group": "jobs",
-   "key": "a3c742b158a2",
+   "key": "ec383225c5a8",
    "file": "job-ground-228afa7a.bin",
    "bytes": 310992,
    "raw": 1709068,
@@ -37,7 +39,7 @@
   },
   "job:ground#b8ec8743": {
    "group": "jobs",
-   "key": "a3c742b158a2",
+   "key": "ec383225c5a8",
    "file": "job-ground-b8ec8743.bin",
    "bytes": 815382,
    "raw": 5395468,
@@ -45,7 +47,7 @@
   },
   "job:ground#cc676295": {
    "group": "jobs",
-   "key": "a3c742b158a2",
+   "key": "ec383225c5a8",
    "file": "job-ground-cc676295.bin",
    "bytes": 585952,
    "raw": 3625996,
@@ -56,103 +58,115 @@
    "key": "*",
    "empty": true
   },
-  "job:scatter#8a480c17": {
+  "job:scatter#df88924b": {
    "group": "jobs",
    "key": "*",
    "empty": true
   },
   "model:ampaar#890beb7e": {
    "group": "model:ampaar",
-   "key": "2387b843462e",
+   "key": "ec92b118f347",
    "file": "ampaar-890beb7e.bin",
    "bytes": 141237,
    "raw": 738480
   },
   "model:balagan#782a55bb": {
    "group": "model:balagan",
-   "key": "9256fad85736",
+   "key": "1958da2fb3af",
    "file": "balagan-782a55bb.bin",
    "bytes": 576938,
    "raw": 2896492
   },
   "model:balagan#c00f8976": {
    "group": "model:balagan",
-   "key": "9256fad85736",
+   "key": "1958da2fb3af",
    "file": "balagan-c00f8976.bin",
    "bytes": 530789,
    "raw": 2492540
   },
+  "model:barkwork#12dda7fb": {
+   "group": "model:barkwork",
+   "key": "17f228ee4709",
+   "empty": true
+  },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "114ed3ecd215",
+   "key": "57dd9afc150f",
    "file": "chores-753cb87c.bin",
    "bytes": 11650,
    "raw": 47444
   },
+  "model:drywood#080c0846": {
+   "group": "model:drywood",
+   "key": "92f37a583694",
+   "file": "drywood-080c0846.bin",
+   "bytes": 18825,
+   "raw": 57596
+  },
   "model:fishery#cf8d7711": {
    "group": "model:fishery",
-   "key": "86fbb65ad4ce",
+   "key": "62a1dd857c92",
    "file": "fishery-cf8d7711.bin",
    "bytes": 55786,
    "raw": 217312
   },
   "model:hayfield#feed2c58": {
    "group": "model:hayfield",
-   "key": "472414e44ff6",
+   "key": "a6b880a68563",
    "file": "hayfield-feed2c58.bin",
    "bytes": 6194,
    "raw": 21156
   },
   "model:kuruo#9296aa7a": {
    "group": "model:kuruo",
-   "key": "f09de9296414",
+   "key": "c2d5e9a1c97e",
    "file": "kuruo-9296aa7a.bin",
    "bytes": 226956,
    "raw": 1236416
   },
   "model:lakeside#6c7e420d": {
    "group": "model:lakeside",
-   "key": "c36d70cd4657",
+   "key": "9dde33115441",
    "file": "lakeside-6c7e420d.bin",
    "bytes": 173727,
    "raw": 463036
   },
   "model:sacred-birch#f02b57e6": {
    "group": "model:sacred-birch",
-   "key": "a1e338304a09",
+   "key": "c58bee2993b0",
    "file": "sacred-birch-f02b57e6.bin",
    "bytes": 460348,
    "raw": 1668444
   },
   "model:sele#6f8bdbc0": {
    "group": "model:sele",
-   "key": "316989cd726c",
+   "key": "21d45692949b",
    "empty": true
   },
   "model:serge#08963bf0": {
    "group": "model:serge",
-   "key": "24116c1aa879",
+   "key": "6dbdd067d516",
    "file": "serge-08963bf0.bin",
    "bytes": 152480,
    "raw": 1236544
   },
   "model:urasa#c45c7fb1": {
    "group": "model:urasa",
-   "key": "1d8354229352",
+   "key": "e6e7ee91de17",
    "file": "urasa-c45c7fb1.bin",
    "bytes": 222641,
    "raw": 1140096
   },
   "model:work#9d148979": {
    "group": "model:work",
-   "key": "fcf6e065fdb9",
+   "key": "da6cb6d2de5e",
    "file": "work-9d148979.bin",
    "bytes": 24063,
    "raw": 83736
   },
   "model:yardlife#8f2bbc3c": {
    "group": "model:yardlife",
-   "key": "103e6c01387c",
+   "key": "eab43f0c2067",
    "file": "yardlife-8f2bbc3c.bin",
    "bytes": 872161,
    "raw": 2856740
