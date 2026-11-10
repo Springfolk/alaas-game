@@ -1,6 +1,6 @@
 // Shipped texture sizes (tools/tex-sizes.mjs): each image under assets/tex/ also exists at 1024/512/256 on its
 // long edge as `<name>@<size>.webp`; src/data/tex-sizes.json holds each image's full edge.
-import SIZES from '../data/tex-sizes.json';
+import SIZES from '../data/tex-sizes.json' with { type: 'json' }; // (the attribute: node runs this file too, tools/bake-canvas-tex.mjs)
 import { versioned } from './assetv.js';
 
 export const FIRST = 256; // every load starts here; sharpenTextures() (src/engine/materials.js) brings the tier's size

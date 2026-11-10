@@ -15,6 +15,7 @@ export const PLACEMENTS = [
   { model: 'sele', ...H(46, 2), yaw: 0 },                      // mare-milking line
   { model: 'yardlife', ...H(0, 0), yaw: 0 },                   // smudge fire, craft spot, woodpile, hay stacks
   { model: 'chores', ...H(0, 0), yaw: 0 },                     // water pail, firewood billets, дьэдьэн patches (src/interact)
+  { model: 'work', ...H(0, 0), yaw: 0 },                       // tools and materials of the hands-on work (src/interact/work)
   { model: 'lakeside', x: 6, z: -58, yaw: 0 },                 // mungkha net on poles, the lake's offering spot
   { model: 'sacred-birch', x: -248, z: -128, yaw: 0 },          // lone revered birch at the alaas edge
   { model: 'balagan', x: 268, z: -96, yaw: -0.35, pad: 8, variant: 'winter' }, // the empty winter place (кыстык)

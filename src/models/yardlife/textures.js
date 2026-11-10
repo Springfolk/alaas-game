@@ -114,6 +114,29 @@ const SETS = {
       return [R, G, B, -late * 0.35 - check, 0.8];
     }, 2);
   },
+  // A freshly split radial face of larch: u runs from the pith (0) to the bark (1), v along the grain (0.6 m a tile).
+  // Red-brown heartwood with the growth rings as fine dark lines, a pale band of sapwood, the dark bark's edge;
+  // long torn fibres and lifted splinters.
+  splitwood() {
+    const W = 256, H = 512;
+    return bake(W, H, (x, y) => {
+      const u = x / W;
+      const wav = (tfbm(3, y / 64, 8, 41) - 0.5) * 0.012 + (tfbm(x / 40, y / 180, 3, 43) - 0.5) * 0.006;
+      const ring = Math.pow(0.5 + 0.5 * Math.cos((u + wav) * 46 * 2 * Math.PI), 6); // latewood lines
+      const fib = tfbm(x / 2.2, y / 150, 4, 11, 3) - 0.5; // long streaks
+      const fine = tfbm(x / 1.1, y / 40, 13, 17, 2) - 0.5;
+      const tear = Math.max(0, tfbm(x / 9, y / 110, 5, 23, 3) - 0.56) * 5; // splinters standing off the face
+      const sap = Math.min(1, Math.max(0, (u - 0.8) / 0.05)) * (1 - Math.min(1, Math.max(0, (u - 0.955) / 0.012)));
+      const bark = Math.min(1, Math.max(0, (u - 0.955) / 0.012));
+      const heart = 1 - Math.min(1, Math.max(0, (u - 0.1) / 0.5)); // darker towards the pith
+      let R = 0.8 - heart * 0.07, G = 0.53 - heart * 0.08, B = 0.33 - heart * 0.07;
+      R += (0.93 - R) * sap; G += (0.82 - G) * sap; B += (0.6 - B) * sap;
+      const k = 1 - ring * 0.2 * (1 - sap * 0.5) + fib * 0.22 + fine * 0.1 + tear * 0.12;
+      R *= k; G *= k; B *= k * (1 - tear * 0.1);
+      R += (0.3 - R) * bark; G += (0.18 - G) * bark; B += (0.13 - B) * bark;
+      return [R, G, B, fib * 0.6 + fine * 0.25 + tear * 0.9 - ring * 0.15 - bark * 0.4, 0.78 - tear * 0.1];
+    }, 2.4);
+  },
   // Plain silver sheet (rear bow, plaques). The lyre engraving drawn here before had no traced source; the front bow's
   // engraving is the traced canvas_bowplate (tools/make-carving.mjs, docs/patterns.md).
   silver() {

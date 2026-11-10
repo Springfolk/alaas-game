@@ -44,6 +44,8 @@ first, then English and Russian, picked from your browser's language. You walk, 
   thing, press E for a short note, E again for the full read; the journal collects what you have found and hints at where the rest are.
 - **Hands-on acts** done with respect: feed the fire, tie a ribbon on the serge, carry water, lay
   firewood, sit on the орон, pick дьэдьэн. Sacred rites are only explained: the museum never has you perform them.
+- **Work with your hands**: take the axe from the block and split larch rounds along their cracks, then
+  carry the billets by the armful to the woodpile or a fire. More jobs are on the way.
 - **A living alaas**: procedural larch, birch and pine taiga, wind in the grass, birds, insects, a lake
   with reflections, a physical sky with drifting cloud shadows, and real field recordings.
 - **Runs in the browser**: three.js WebGPURenderer with TSL shaders, steady 60 fps, no backend, no

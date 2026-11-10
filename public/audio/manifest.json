@@ -45,7 +45,10 @@
   "crane",
   "crane-2",
   "bench-2",
-  "wood-take-2"
+  "wood-take-2",
+  "chop",
+  "chop-2",
+  "chop-stuck"
  ],
  "steps": {
   "grass": {

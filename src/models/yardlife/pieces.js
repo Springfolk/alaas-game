@@ -2,7 +2,7 @@
 // and the birch-bark craft spot outside the uraha.
 import * as THREE from 'three/webgpu';
 import {
-  addLog, blob, boxUV, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, rollGeo, sheetGeo, splitGeo, tube, TAU,
+  addLog, blob, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, rollGeo, sheetGeo, splitGeo, tube, TAU,
 } from './kit.js';
 import { makeSmoke } from './smoke.js';
 import { geoMats } from '../../load/geocache.js';
@@ -117,7 +117,7 @@ export function woodpile(K, x, z, yaw = 0) {
     }
     K.colliders.push(F.col({ x: 0, z: 0, hw: L / 2 + 0.15, hd: 0.4 }));
 
-    // chopping block with the axe in it, chips and rounds waiting to be split
+    // chopping block (its axe: src/models/work.js), chips and rounds waiting to be split
     const [bx, bz] = F.tw(1.5, 1.6);
     const by = K.b.ground(bx, bz);
     const blk = logGeo(0.55, 0.25, 0.24, rng, { seg: 12, caps: true, wob: 0.05 });
@@ -125,18 +125,6 @@ export function woodpile(K, x, z, yaw = 0) {
     rng(); // (was the caps' own turn, which opened slits at the rim)
     K.b.add(blk.side, M.darkwood, bm);
     K.b.add(blk.caps, M.end, bm, [0.8, 0.75, 0.7]);
-    // axe: larch haft, forged head biting into the block
-    {
-      const head = new THREE.BoxGeometry(0.16, 0.05, 0.03, 2, 1, 1);
-      const hp = head.attributes.position;
-      for (let i = 0; i < hp.count; i++) { const hx = hp.getX(i); if (hx > 0) hp.setY(i, hp.getY(i) * (1 + hx * 9)); }
-      head.computeVertexNormals(); boxUV(head);
-      const m = mtx([bx + 0.03, by + 0.52, bz], [0, 0.6, -0.55]);
-      K.b.add(head, M.iron, m.clone().multiply(mtx([0.04, 0, 0])));
-      const haft = logGeo(0.72, 0.018, 0.016, rng, { seg: 6, step: 0.2, bend: 0.03, caps: true });
-      const hm = m.clone().multiply(mtx([-0.03, 0, 0], [0, 0, 1.2]));
-      K.b.add(haft.side, M.fresh, hm, [0.75, 0.65, 0.55]); K.b.add(haft.caps, M.end, hm);
-    }
     K.b.add(patchGeo(K.b.ground, bx, bz, 1.6, 1.3, rng(), 16), decalMat('wood_chips', { scale: 0.8, tint: 0xc8b8a0 }));
     for (let i = 0; i < 3; i++) {
       const a = 2.2 + i * 0.7, rx = bx + Math.cos(a) * 1.0, rz = bz + Math.sin(a) * 1.0;
