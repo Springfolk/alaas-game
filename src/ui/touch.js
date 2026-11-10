@@ -210,14 +210,14 @@ export class TouchControls {
   // choice row while an act runs, otherwise the play set.
   sync() {
     const g = this.game;
-    const mode = !g.ready || g.title || (!this.input.touchLive && !g.ui?.open) ? 'off'
+    const mode = this.show ? this.show : !g.ready || g.title || (!this.input.touchLive && !g.ui?.open) ? 'off' // (show: src/ui/prewarm.js)
       : g.ui?.modal || (g.ui?.open && !this.input.touchLive) ? 'ui' : g.choosing ? 'choice' : 'play'; // a peek is a side panel: play on
     if (mode !== this.root.dataset.mode) {
       this.root.dataset.mode = mode;
       if (mode !== 'play') { this.moveId = this.lookId = null; this.input.stickX = this.input.stickY = 0; this.stickHome(); }
     }
     if (mode === 'off') return;
-    this.act.classList.toggle('ready', !!(g.useReady ?? g.focus));
+    this.act.classList.toggle('ready', !!(this.show || (g.useReady ?? g.focus)));
     this.crouchBtn.classList.toggle('on', !!g.player?.crouch);
     const l = LANG_SHORT[g.state?.lang] || 'EN';
     for (const b of this.langBtns) if (b.textContent !== l) b.textContent = l;

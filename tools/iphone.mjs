@@ -1,11 +1,13 @@
 // Real iPhone over USB (Settings › Safari › Advanced › Remote Automation; `safaridriver -p 4723` running on the Mac).
 // node tools/iphone.mjs spots "<query>" [start,yard,urasa,inside,lake,edge]   uncapped ms/frame, JS ms, GPU-fence ms per spot
+// node tools/iphone.mjs smooth "<query>" [areas] [moves]                   the game's pacing per area and movement (as tools/smooth.mjs; SECS)
 // node tools/iphone.mjs load "<query>"                                    boot marks (ms) and bytes transferred
 // node tools/iphone.mjs play "<query>" [x,z,yaw]                        the game's pacing, slow turn: rendered fps per 5 s (CYCLES minutes)
 // node tools/iphone.mjs ab "<query>" [x,z,yaw] [toggle|toggle…]           interleaved runtime A/B (CYCLES, default 4; SEQ=a|base|b… one exact order)
 // BASE = the page (default: the tailnet test link); COOL=s first idles the phone on about:blank (heat throttles ~3×).
 // SIM=1: a booted iOS Simulator instead (`xcrun simctl boot <id>`; real Mobile Safari, the Mac's GPU). The session id is kept in .cache/iphone.sid. A phone that has run hot shows ~3× frame times: compare within one run.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { probe, stats, line, AREAS } from './smooth.mjs';
 const WD = process.env.WD || 'http://127.0.0.1:4723', SIDF = '.cache/iphone.sid';
 const BASE = process.env.BASE || 'https://georgiis-macbook.taila4c0b.ts.net:8443/';
 const [mode = 'spots', query = '', where, only] = process.argv.slice(2);
@@ -23,6 +25,32 @@ if (process.env.COOL) { await go('about:blank'); await new Promise((r) => setTim
 const SPOTS = { start: [62, -211, 1.69], yard: [9, -214, 1.2], urasa: [8, -204, 2.6], homestead: [8, -204, 4.2], ...Object.fromEntries([0, 1, 2, 3, 4, 5, 6, 7].map((k) => [`y${k}`, [8, -204, k * Math.PI / 4]])), inside: [0.4, -205.6, -1.4], lake: [6, -66, Math.PI], edge: [-60, -330, 0.3] };
 const t0 = Date.now();
 await go(`${BASE}?auto&${query}`);
+if (mode === 'smooth') { // the game's own pacing per area and movement: tools/smooth.mjs's probe and numbers
+  const ready = await run(async () => { const t = performance.now(); while (!(window.game?.complete && window.game.sharp)) { if (performance.now() - t > 240000) return { error: 'not complete in 4 min' }; await new Promise((r) => setTimeout(r, 200)); } const e = window.game.engine; return { tier: e.tier + (e.opts.lite ? ' lite' : ''), backend: e.backend, cap: e.fpsCap }; });
+  if (ready.error) throw new Error(ready.error);
+  await run(`async () => { (${probe})(); await new Promise((r) => setTimeout(r, 2500)); return 1; }`);
+  console.log(`${process.env.SIM ? 'simulator' : 'iphone'} ${query || '(default)'} · ${JSON.stringify(ready)}`);
+  const secs = +process.env.SECS || 3, all = [];
+  for (const area of (where || Object.keys(AREAS).join(',')).split(',')) for (const move of (only || 'stand,walk,run,turn').split(',')) {
+    const rec = await run(async (x, z, yaw, move, secs) => {
+      const g = window.game, inp = g.input;
+      inp.keys.clear(); g.player.place(x, z, yaw);
+      if (inp.touchMode) inp.lock(); else inp.locked = true;
+      await new Promise((ok) => setTimeout(ok, 900));
+      if (move === 'walk' || move === 'run') inp.keys.add('KeyW');
+      if (move === 'run') inp.keys.add('ShiftLeft');
+      let t = 0;
+      window.smooth.start((now, dt) => { t += dt; if (move === 'turn') inp.mdx += (Math.floor(t / 1.1) % 2 ? -1 : 1) * 2300 * Math.min(dt, 0.05); else if (move !== 'stand') inp.mdx += Math.sin(t * 1.3) * 180 * Math.min(dt, 0.05); });
+      await new Promise((ok) => setTimeout(ok, secs * 1000));
+      inp.keys.clear();
+      return window.smooth.stop();
+    }, ...AREAS[area], move, secs);
+    const st = stats(rec); all.push(st);
+    console.log(`  ${area.padEnd(9)} ${move.padEnd(5)} ${line(st)} · res ${Math.round(rec.res * 100)}%${rec.knobs.length ? ' · ' + rec.knobs.join(', ') : ''}${st.dips.length ? '\n      dips ' + st.dips.slice(0, 6).map((d) => `${d[0]} (${d[2]})`).join(', ') : ''}`);
+  }
+  console.log(`  ALL: worst p99 ${Math.max(...all.map((x) => x.p99))} · worst max ${Math.max(...all.map((x) => x.max))} · dips ${all.reduce((n, x) => n + x.dips.length, 0)} in ${all.reduce((n, x) => n + x.n, 0)} frames`);
+  process.exit(0);
+}
 // in the page: wait for the sharp world, uncap, then the mode's measurements
 const out = await run(async (mode, spots, at, only, cycles, seq) => {
   const t = performance.now();
