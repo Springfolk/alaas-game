@@ -48,7 +48,9 @@
   "wood-take-2",
   "chop",
   "chop-2",
-  "chop-stuck"
+  "chop-stuck",
+  "swish",
+  "scythe"
  ],
  "steps": {
   "grass": {

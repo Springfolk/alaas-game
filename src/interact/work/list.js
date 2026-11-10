@@ -18,6 +18,12 @@ export const WORKS = [
     stat: (w) => L(`${w.mundu || 0} мунду`, `${w.mundu || 0} мунду caught`, `поймано мунду: ${w.mundu || 0}`),
   },
   {
+    id: 'hay', name: L('От охсуу', 'Mowing', 'Покос'), entry: 'hay-making',
+    where: L('Ходуһа күрүөтүн аттыгар: баҕанаҕа ыйаммыт саха хотуура.', 'By the meadow fence: the Sakha scythe hung on its post.', 'У изгороди покоса: якутская коса на столбе.'),
+    done: (w) => w.mown > 0,
+    stat: (w) => L(`${Math.round(w.mown || 0)} м² от охсулунна · ${w.blows || 0} охсуу`, `${Math.round(w.mown || 0)} m² mown · ${w.blows || 0} blows`, `скошено ${Math.round(w.mown || 0)} м² · ударов: ${w.blows || 0}`),
+  },
+  {
     id: 'kymys', name: L('Кымыһы хамнатыы', 'Churning kymys', 'Взбивание кумыса'), entry: 'kymys',
     where: L('Ураһаҕа: симиир, хамнатар.', 'In the uraha: the leather sack and its dasher.', 'В урасе: кожаный симиир и мутовка.'),
     done: (w) => w.churn > 0,
