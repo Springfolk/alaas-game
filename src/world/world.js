@@ -87,6 +87,13 @@ export class World {
     // One light set for the whole homestead: the sun and two local lights that each material takes from its
     // own model (a house its fire; src/engine/master.js), so builds don't split by light set. A model may set
     // its materials first (the urasa: no sun indoors, no fire outside).
+    // Cut-out materials (alphaTest: the balagans' plaster, nets, the birch curtain) draw after the plain opaque ones:
+    // a GPU can skip a hidden pixel of theirs only when what hides it is already drawn, and inside a balagan its
+    // plaster, mostly behind the log wall, took half the frame (medium at 2592×1675: 11.0 → 5.9 ms).
+    for (const { object } of this.placed) object.traverse((o) => {
+      const m = o.isMesh && !Array.isArray(o.material) && o.material;
+      if (m && m.alphaTest > 0 && !m.transparent && !o.renderOrder) o.renderOrder = 1;
+    });
     const homeLights = homesteadLights(this.engine);
     for (const { object } of this.placed) {
       const own = [];
