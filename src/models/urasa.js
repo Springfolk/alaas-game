@@ -14,6 +14,7 @@ import { makeMats, smoothstep, uDoorOpen } from './urasa/mats.js';
 import { merge, lathe } from './urasa/geom.js';
 import { section } from '../load/geocache.js';
 import { noSun, noLocalLights } from '../engine/master.js';
+import { angleDiff, yawTo } from '../util.js';
 
 const EXPO_IN = 1.5, EXPO_OUT = 0.62;
 
@@ -161,21 +162,21 @@ export default async function build(ctx) {
     }
   };
 
-  const camPose = (game, fwd, down) => {
-    const cam = game.engine.camera;
-    const f = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-    const u = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
-    return local(cam.position.clone().addScaledVector(f, fwd).addScaledVector(u, -down));
-  };
-  const flyTo = async (obj, to, dur, quatTo) => {
+  // the sprinkle-and-drink act (model space; the model only turns about +Y)
+  const Y = new THREE.Vector3(0, 1, 0);
+  const flyTo = async (obj, to, dur, quatTo, during) => {
     const from = obj.position.clone(), q0 = obj.quaternion.clone();
-    await tween(dur, (k) => { const e = ease(k); obj.position.lerpVectors(from, to, e); if (quatTo) obj.quaternion.slerpQuaternions(q0, quatTo, e); });
+    await tween(dur, (k) => { const e = ease(k); obj.position.lerpVectors(from, to, e); if (quatTo) obj.quaternion.slerpQuaternions(q0, quatTo, e); during?.(e); });
   };
-  const tiltQ = (dirLocal, amount) => {
-    const up = new THREE.Vector3(0, 1, 0), d = dirLocal.clone().normalize();
-    const target = up.clone().lerp(d, amount).normalize();
-    return new THREE.Quaternion().setFromUnitVectors(up, target);
+  // a tilt of `angle` rad towards the horizontal direction `dir`; the rim towards `dir` of a cup standing at `pos` so tilted
+  const tiltQ = (dir, angle) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3().crossVectors(Y, dir).normalize(), angle);
+  const lipAt = (pos, dir, T) => dir.clone().multiplyScalar(ky.heroKymys.rTop).addScaledVector(Y, ky.heroKymys.top).applyQuaternion(T).add(pos);
+  // a point held before the eye for a view (yaw, pitch): `fwd` along the view, `down` along its up
+  const held = (eye, yaw, pitch, fwd, down) => {
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+    return local(eye.clone().addScaledVector(new THREE.Vector3(0, 0, -1).applyQuaternion(q), fwd).addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(q), -down));
   };
+  const ACT_PITCH = -0.5; // the view while the choron is in hand: it sits low in the middle, its kymys in sight
 
   const interactables = [
     { entry: 'urasa', target: outerProxy },
@@ -229,57 +230,71 @@ export default async function build(ctx) {
       entry: 'choron', target: ky.chorons,
       act: {
         id: 'sprinkle', freeze: true, label: { sah: 'Ыс уонна ис', en: 'Sprinkle, then drink', ru: 'Окропить, потом выпить' },
+        // Ladle kymys from the sack into the guest's choron (it fills), raise it side-on to the fire, a few drops to
+        // the fire, the earth and the sky, then drink: the choron tips at the lips and its kymys runs out over the
+        // near rim (kymysSurface keeps the volume) until what it held at the start is left; set it back.
         run: async (game) => {
-          const hero = ky.hero, ladle = ky.ladle;
-          const homeH = { p: hero.position.clone(), q: hero.quaternion.clone(), parent: hero.parent };
-          const homeL = { p: ladle.position.clone(), q: ladle.quaternion.clone(), parent: ladle.parent };
+          const hero = ky.hero, ladle = ky.ladle, kl = ky.heroKymys, pl = game.player;
+          root.updateMatrixWorld();
+          const rootQi = root.getWorldQuaternion(new THREE.Quaternion()).invert();
+          // each one's home: in its parent, and in the model's space it flies in
+          const home = (o) => ({ parent: o.parent, p: o.position.clone(), q: o.quaternion.clone(),
+            rp: local(o.getWorldPosition(new THREE.Vector3())), rq: rootQi.clone().multiply(o.getWorldQuaternion(new THREE.Quaternion())) });
+          const homeH = home(hero), homeL = home(ladle);
+          const backHome = (o, h) => { h.parent.attach(o); o.position.copy(h.p); o.quaternion.copy(h.q); };
           // ladle kymys from the sack into the choron
           root.attach(ladle); root.attach(hero);
-          const over = hero.position.clone().add(new THREE.Vector3(0, 0.32, 0));
-          const up = ladle.position.clone().add(new THREE.Vector3(0, 0.35, 0));
-          await flyTo(ladle, up, 0.6);
-          const pourQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2 - 0.2));
-          await flyTo(ladle, over.clone().add(new THREE.Vector3(-0.08, 0.05, 0)), 0.8, ladle.quaternion.clone());
+          await flyTo(ladle, ladle.position.clone().add(new THREE.Vector3(0, 0.35, 0)), 0.6);
+          await flyTo(ladle, hero.position.clone().add(new THREE.Vector3(-0.08, 0.37, 0)), 0.8);
           sound(game, 'pour', hero);
           const q1 = ladle.quaternion.clone(), q2 = q1.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.9));
           await tween(0.5, (k) => ladle.quaternion.slerpQuaternions(q1, q2, ease(k)));
-          const kl = ky.heroKymys, l0 = kl.level;
-          await tween(0.6, (k) => { kl.level = l0 + (KYMYS.full - l0) * ease(k); });   // the choron fills
+          const v0 = kl.vol, v1 = Math.max(v0, kl.volAt(KYMYS.full));
+          await tween(0.6, (k) => { kl.vol = v0 + (v1 - v0) * ease(k); });   // the choron fills
           await tween(0.4, (k) => ladle.quaternion.slerpQuaternions(q2, q1, ease(k)));
-          await flyTo(ladle, homeL.p.clone().applyMatrix4(homeL.parent.matrixWorld).applyMatrix4(root.matrixWorld.clone().invert()), 0.7);
-          homeL.parent.attach(ladle); ladle.position.copy(homeL.p); ladle.quaternion.copy(homeL.q);
-          void pourQ;
-          // raise the choron in both hands
-          await flyTo(hero, camPose(game, 0.45, 0.2), 0.9, new THREE.Quaternion());
-          const lip = () => hero.position.clone().add(new THREE.Vector3(0, 0.22, 0));
-          const hearth = new THREE.Vector3(0, 0.3, 0);
+          await flyTo(ladle, homeL.rp, 0.7, homeL.rq);
+          backHome(ladle, homeL);
+          // raise the choron in both hands, turning side-on to the fire (facing it, the choron is a black silhouette:
+          // the uraha's inside takes the fire's light alone)
+          const eye = game.engine.camera.position.clone(), view0 = { yaw: pl.yaw, pitch: pl.pitch };
+          const look = (yaw, pitch) => { pl.yaw = pl.aimYaw = yaw; pl.pitch = pl.aimPitch = pitch; };
+          const hearthW = fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), hearth = local(hearthW);
+          const yawF = yawTo(hearthW.x - eye.x, hearthW.z - eye.z);
+          const turns = [angleDiff(view0.yaw, yawF + Math.PI / 2), angleDiff(view0.yaw, yawF - Math.PI / 2)];
+          const yawA = view0.yaw + (Math.abs(turns[0]) < Math.abs(turns[1]) ? turns[0] : turns[1]);
+          const hold = held(eye, yawA, ACT_PITCH, 0.42, 0.16);
+          await flyTo(hero, hold, 1.0, homeH.rq, (e) => look(view0.yaw + (yawA - view0.yaw) * e, view0.pitch + (ACT_PITCH - view0.pitch) * e));
+          const fwd = new THREE.Vector3(-Math.sin(yawA), 0, -Math.cos(yawA)).applyQuaternion(rootQi);
+          const toFire = hearth.clone().sub(hold).setY(0).normalize();
           const dirs = [
-            { d: hearth.clone().sub(hero.position).normalize(), sah: 'Уокка', en: 'a few drops to the fire', ru: 'несколько капель огню' },
-            { d: new THREE.Vector3(0, -1, 0).add(hearth.clone().sub(hero.position).setY(0).normalize().multiplyScalar(0.4)).normalize(), sah: 'Сиргэ', en: 'to the earth', ru: 'земле' },
-            { d: new THREE.Vector3(0, 1, 0), sah: 'Халлааҥҥа', en: 'to the sky', ru: 'небу' },
+            { d: toFire, tilt: 0.5, lift: 0, fly: hearth.clone().sub(hold).normalize().addScaledVector(Y, 0.5).normalize(), sah: 'Уокка', en: 'a few drops to the fire', ru: 'несколько капель огню' },
+            { d: fwd, tilt: 0.5, lift: -0.12, fly: fwd.clone().multiplyScalar(0.35).addScaledVector(Y, -1).normalize(), sah: 'Сиргэ', en: 'to the earth', ru: 'земле' },
+            { d: fwd, tilt: 0.22, lift: 0.14, fly: Y, sah: 'Халлааҥҥа', en: 'to the sky', ru: 'небу' },
           ];
           for (const s of dirs) {
-            const q = tiltQ(s.d, s.d.y > 0.9 ? 0.25 : 0.75);
+            const T = tiltQ(s.d, s.tilt), at = hold.clone().addScaledVector(Y, s.lift);
             toast(game, s.sah, s.en, s.ru);
-            await tween(0.45, (k) => hero.quaternion.slerpQuaternions(new THREE.Quaternion(), q, ease(k)));
-            sprinkle(lip(), s.d.y > 0.9 ? new THREE.Vector3(0, 1, 0) : s.d);
+            await flyTo(hero, at, 0.45, T.clone().multiply(homeH.rq));
+            sprinkle(lipAt(at, s.d, T), s.fly);
+            kl.vol *= 0.995; // the drops
             sound(game, 'pour', hero);
             await wait(0.35);
-            await tween(0.45, (k) => hero.quaternion.slerpQuaternions(q, new THREE.Quaternion(), ease(k)));
+            await flyTo(hero, hold, 0.45, homeH.rq);
             await wait(0.25);
           }
-          // drink as a guest
+          // drink as a guest: the near rim at the lips, the choron tipping about it towards the face
           toast(game, 'Кымыс', 'drink as a guest — the first kymys of Ysyakh is sprinkled by the algyschyt', 'пейте как гость — первый кумыс ысыаха окропляет алгысчыт');
-          const cam = game.engine.camera;
-          const toCam = local(cam.position).sub(hero.position).normalize();
-          await flyTo(hero, camPose(game, 0.2, 0.1), 0.7, tiltQ(toCam, 0.8));
-          const l1 = kl.level;
-          await tween(1.3, (k) => { kl.level = l1 + (KYMYS.left - l1) * k; });   // drunk down
-          await flyTo(hero, camPose(game, 0.45, 0.2), 0.6, new THREE.Quaternion());
-          // set it back on the board
-          const back = homeH.p.clone().applyMatrix4(homeH.parent.matrixWorld).applyMatrix4(root.matrixWorld.clone().invert());
-          await flyTo(hero, back, 0.9, new THREE.Quaternion().copy(homeH.q));
-          homeH.parent.attach(hero); hero.position.copy(homeH.p); hero.quaternion.copy(homeH.q);
+          const face = fwd.clone().negate(), mouth = local(eye).addScaledVector(fwd, 0.11).addScaledVector(Y, -0.1);
+          const drinkAt = (th) => { const T = tiltQ(face, th); return { p: mouth.clone().sub(lipAt(new THREE.Vector3(), face, T)), q: T.multiply(homeH.rq) }; };
+          const th0 = 0.25, th1 = kl.tiltFor(kl.volAt(KYMYS.left)); // tipped until what it held at the start is left
+          const D0 = drinkAt(th0);
+          await flyTo(hero, D0.p, 0.7, D0.q);
+          await tween(1.6, (k) => { const e = ease(k), D = drinkAt(th0 + (th1 - th0) * e); hero.position.copy(D.p); hero.quaternion.copy(D.q); look(yawA, ACT_PITCH + 0.12 * e); });
+          await wait(0.3);
+          await flyTo(hero, hold, 0.7, homeH.rq, (e) => look(yawA, ACT_PITCH + 0.12 * (1 - e)));
+          // set it back on the board, looking back at it
+          await flyTo(hero, homeH.rp, 1.0, homeH.rq, (e) => look(yawA + (view0.yaw - yawA) * e, ACT_PITCH + (view0.pitch - ACT_PITCH) * e));
+          backHome(hero, homeH);
         },
       },
     },
@@ -288,7 +303,7 @@ export default async function build(ctx) {
 
   // ---- per-frame: curtain, exposure inside, fire, smoke, drops, tweens
   let open = 0, wasOpen = false, inside_ = false;
-  const _kQ = new THREE.Quaternion(), _kUp = new THREE.Vector3(), kLast = { level: -1, up: new THREE.Vector3() };
+  const _kQ = new THREE.Quaternion(), _kUp = new THREE.Vector3(), kLast = { vol: -1, up: new THREE.Vector3() };
   const _p = new THREE.Vector3(), _lp = new THREE.Vector3(), _iq = new THREE.Quaternion(), _sun = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
   const update = (dt, c) => {
     if (churn.live && churn.since >= 0) { // between strokes: the pause, on the gauge
@@ -306,7 +321,7 @@ export default async function build(ctx) {
     // the guest's choron keeps its kymys level in the world while it is lifted and tilted (re-fit on change only)
     const kl = ky.heroKymys;
     _kUp.set(0, 1, 0).applyQuaternion(ky.hero.getWorldQuaternion(_kQ).invert());
-    if (kl.level !== kLast.level || _kUp.distanceToSquared(kLast.up) > 1e-8) { kl.fit(kl.level, _kUp); kLast.level = kl.level; kLast.up.copy(_kUp); }
+    if (kl.vol !== kLast.vol || _kUp.distanceToSquared(kLast.up) > 1e-8) { kl.fit(_kUp); kLast.vol = kl.vol; kLast.up.copy(_kUp); }
     root.updateMatrixWorld();
     root.getWorldQuaternion(_iq).invert();
     // who is where: the player's feet in the game, the camera in the viewer
