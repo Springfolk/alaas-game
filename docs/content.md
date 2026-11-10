@@ -28,50 +28,43 @@
 ## Terms with thin sources (kept; approved with the text)
 | Entry | Word / phrase | Why unsure · alternatives · source |
 |---|---|---|
-| alaas | халдьаайы | sakhatyla: the sunny slope on the north side, facing south; sah.wiki: «алаас хоту өттө». Written as «хоту өттө, күн көрөр сыыра» |
-| alaas | Бороҕон | Sakha name for Borogontsy (sah.wiki Алаас) |
 | sayylyk-kystyk | кыштак | the Central Asian form, Kyrgyz spelling; EN has 'kyshtak' |
-| balagan | сис мас (матица) | sakhatyla gives өһүө = матица too; the entry uses өһүө for the top crossbeams (sah.wiki agrees) |
 | oron | кэтэҕириин | sah.wiki spelling; sakhatyla has кэтэҕэриин |
 | toyon-baghana | тойон баҕана | not found in the dictionary or sah.wiki; kept from the research |
 | muus-tunnuk | кэнэҕиски (caul) | taken from sah.wiki Балаҕан; not in sakhatyla |
 | khoton | сиэнилээх (with a porch) | loan from сени; my choice |
 | urasa | туос лиистэрэ; «балык хатырыгын курдук» | my words for bark strips and the 'like roof tiles' simile |
 | ampaar | үүт хоспоҕо | from Folkways; хоспох is in sah.wiki's list of yard buildings |
-| kuruo | быар бүтэй, сиэлии бүтэй | from Nikolaev 2026; not checked in the dictionary |
 | homestead-layout | арҕаа = 'back' | sakhatyla: only dialectal ('диал. задняя сторона'); the Sakha text says so |
 | choron, ornament | ornament names | described in plain words (сурааһын, кэрдиис, «уйа» харахтара), not as invented motif names |
 | choron | хунну дойдутун алтан улахан иһиттэрэ | my phrasing for 'Xiongnu bronze cauldrons' |
 | kytyya | кытыйа кырыымпа | not confirmed that this is the instrument's name |
-| birch-bark | ымыйа | sakhatyla: a large **wooden** bowl for kymys, not birch bark; the entry lists it as birch-bark ware |
-| birch-bark | оноойук, кункур, лэппэйэ | not found in sakhatyla |
-| ygas-bucket | «ыаҕастан кутар курдук» | the rain idiom was not found |
 | horsehair | кыл ситии | not found; sakhatyla: кыл = tail hair, сиэл = mane |
-| kymys | хамнатар | only the verb хамнат= is attested; starter written without a noun (бүрүө?) |
 | kymys | өҥүрдэн | it is a verb ('to grow a slimy coat'), so the Sakha text has «өҥүрдэммит» |
 | dairy-suorat-tar | «Тар — сыл аһа» | wording of the saying is mine |
-| dairy-cream | күөрчэх ойуун | the toy name was not found |
 | munkha | строганина, эбэҥки | Russian food word kept; Evenki = эбэҥки |
-| khomus | ойоҕос (cheeks), кулуһун (reed khomus), табыгыр | cheek word is mine, no standard part name found; табыгыр not in sakhatyla |
 | blacksmith | Кудай Бахсы | sah.wiki spelling; EN has 'Kydai' — maybe change to 'Kudai' |
 | blacksmith | «уус уонна ойуун биир уйаттан» | wording of the saying is not verified |
-| knife | хатыҥ ура (burl), кээнчэ (stocking) | ур = 'growth' (sakhatyla, Russian 'наплыв'); кээнчэ = fur stocking |
-| saddle | халлаан токура (свод), хоҥсуоччу | first is my phrasing; хоҥсуоччу from sakhatyla «ыҥыыр хоҥ-суоччута» |
-| khamyiakh-ladle | ибиир хамыйах | Олесова et al. 2025 (p. 71) write эбир хамыйага / ытык хамыйага, 3 or 5 hollows |
 | silver-ornaments | кыабака (chains), көмүс киэргэл | the traditional word for women's ornaments is симэх; maybe use «көмүс симэх» |
 | clothing | иис-куус, буобура (beaver), бууктаах | иис-куус not in sakhatyla; sah.wiki also gives бууттаах сон |
 | uot-ichchite | салаа бытыктаах | my words for 'forked beard' |
-| baay-bayanay | Баай Барыылаах = 'rich in everything' | sakhatyla: барыылаах = 'swift'; the epithet names the chief of the nine Байанай spirits. Not translated in the Sakha text |
 | baay-bayanay | мэкчиргэ (owl), чорбохтоох (odd) | Russian–Sakha dictionary |
-| salama | саппай = 'short mane hair' | sakhatyla: long hair at the end of the tail (or short hair at its base); the EN claim is doubtful |
 | salama | муоста (bridge) | my choice |
-| sacred-birch | кэрэх | sakhatyla: a sacrifice (to evil spirits), a sacrificial hide; doubtful for a gift at a sacred tree |
 | olonkho | «илэ көстүбэт баай» | my wording for 'intangible heritage' |
-| sakha-calendar | бииринньи, иккинньи, үһүнньү | only төрдүнньү and бэһинньи are attested (sah.wiki Архаизм, Балаҕан ыйа). атырдьах = pitchfork confirmed; эбэскэ not found |
-| horse-and-cow | Дьыл оҕуһа | horn story confirmed in sah.wiki Олунньу |
 | hospitality | «Кэпсээ!» / «Сонун суох» | sakhatyla confirms кэпсээ= as the usual greeting; the reply is mine |
+| khomus | табыгыр | sah.wiki lists it as a newer technique; сыҥаах (the two arms) now replaces ойоҕос |
+| saddle | халлаан токура (свод) | my phrasing; хоҥсуоччу is confirmed (sakhatyla) |
+| sakha-calendar | эбэскэ | not found anywhere; бииринньик (not бииринньи) per sah.wiki's dialect list |
+| oron | сандалы | Олесова et al. 2025: round on three legs (the card and the model); sakhatyla: eight-cornered or square |
+| blacksmith | anvil 'treated with sour milk' | not used: the Jochelson passage may describe the Pamirs, not the Sakha |
 
 Confirmed, no change needed: Аал Луук Мас, Аан Алахчын Хотун, Хатан Тэмиэрийэ, айыы аймаҕа, Эллэй Боотур (sah.wiki); хаппахчы, биллэрик, хабаҕал, холумтан, үөлэс, булгунньах, удьаа, көҕүөр, кырыыс, уруй, айхал, чэчир, түһүлгэ, аар баҕах, эбэ (lake euphemism) (sakhatyla). The `sah` term fields needed no fixes.
+
+## Source pass 2026-11-10 (not yet approved)
+Sources read: sah.wikipedia (API), sakhatyla.ru, Jochelson 1933, Bravina & Ivanova-Unarova 2020, Danilova 2014, Nikolaev 2023 / 2026; not reached: Seroshevsky 1896, Pekarsky.
+- Fixed: `alaas` Мүрү 41 km round (was 80) · `muus-tunnuk` cow's afterbirth, кэнэҕэски (was calf's caul) · `kuruo` быар бүтэй gloss is one explanation · `birch-bark` оҥоойук, күҥкүр, туос ымыйа, лэппэйэ dropped, season June–July · `mas-yagas` 'many households' · `munkha`, `saddle` EN slips ('owner') · `clothing` дьабака fur band (sable, beaver, lynx) · `serge`, `ysyakh` аар баҕах (түһүлгэ is the festival ground) · `salama` саппай = short hair at the root of the tail · `sacred-birch` кэрэх removed (a blood sacrifice to evil spirits) · `baay-bayanay`, `algys` барыылаах = swift, eldest of nine spirits · `sakha-calendar` two halves counted 1–15 and 15–1, бииринньик · `khomus` сыҥаах · `knife` удьурҕай · `horse-and-cow` арыы.
+- New facts (one or two each): `ohokh`, `sayylyk-kystyk`, `khoton`, `kytyya`, `khamyiakh-ladle`, `ygas-bucket`, `hay-making`, `tupte`, `horse-and-cow`, `blacksmith`, `serge`, `choron`, `dyedyen`, `munkha`, `hospitality`.
+- Confidence raised to high where two independent sources agree (14 entries); `hay-making` to medium.
 
 ## UI label alternatives (current labels approved)
 | Where | Now | Proposal |
