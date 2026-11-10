@@ -11,6 +11,7 @@ import { Player } from './player.js';
 import { TouchControls } from './ui/touch.js';
 import { UI, BY_ID } from './ui/ui.js';
 import { Interactions } from './interact/index.js';
+import { quickRaycast } from './interact/raycast.js';
 import { ShaderStream } from './load/stream.js';
 import { shareShadowShaders } from './load/shadows.js';
 import { closeWorkers } from './load/workers.js';
@@ -485,7 +486,7 @@ class Game {
     if (!this.title && !this.ui.modal && !paused) this.stepPlayer(dt);
     else if (this.title) { this.player.update(0); }
     // tag interactable roots once
-    for (const it of this.world.interactables) if (it.target && !it.target.userData.interactable) it.target.userData.interactable = it;
+    for (const it of this.world.interactables) if (it.target && !it.target.userData.interactable) { it.target.userData.interactable = it; quickRaycast(it.target); }
     this.pickTick = (this.pickTick || 0) + 1;
     const live = !this.title && !this.ui.modal && !this.player.frozen && !paused;
     const pick = !(this.pickTick % 3);

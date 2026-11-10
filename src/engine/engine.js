@@ -96,6 +96,16 @@ export class Engine {
     r.toneMappingExposure = 1;
     await r.init();
     this.backend = r.backend.isWebGPUBackend ? 'webgpu' : 'webgl2';
+    // Instance matrices go in instanced vertex buffers, uploaded when they change: three's other path (up to ~1000
+    // instances: a uniform buffer) writes every one whole on every frame, per pass, and its copy for the velocity
+    // pass again (the yard: 0.5 MB a frame of unchanged matrices). Read while the shaders build: before any does.
+    if (!urlFlag('reupload')) r.backend.capabilities.getUniformBufferLimit = () => 0;
+    // three uploads every DynamicDrawUsage attribute again on each frame it is drawn, changed or not, and whole (the
+    // first upload clears its update ranges): the forest's instance lists alone were 2.1 MB a frame, the urasa's cover
+    // 1 MB. Only what was marked since (`needsUpdate`: a newer version) goes up. three r186 internals
+    // (Attributes.update): recheck on upgrade.
+    const attributes = r._attributes, upload = r.backend.updateAttribute.bind(r.backend);
+    if (attributes && !urlFlag('reupload')) r.backend.updateAttribute = (a) => { if (attributes.get(a).version < (a.isInterleavedBufferAttribute ? a.data : a).version) upload(a); }; // ?reupload: A/B
     // Safari can break a WebGPU device without losing it (mid-load, or after the page was hidden): every
     // createCommandEncoder then throws and the canvas freezes. Treated as a loss at the first throw.
     const dev = r.backend.device;
@@ -272,8 +282,14 @@ export class Engine {
   }
 
   render() {
-    if (this.pipeline) { this.pipeline.render(); this.meter?.tick(this.meterDt || 0); }
-    else this.renderer.render(this.scene, this.camera);
+    // world matrices once a frame, not once per pass (shadows, mirror, AO pre-pass: each render walked the whole graph)
+    const s = this.scene;
+    s.updateMatrixWorld();
+    s.matrixWorldAutoUpdate = false;
+    try {
+      if (this.pipeline) { this.pipeline.render(); this.meter?.tick(this.meterDt || 0); }
+      else this.renderer.render(s, this.camera);
+    } finally { s.matrixWorldAutoUpdate = true; }
   }
 }
 
