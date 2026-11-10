@@ -138,6 +138,12 @@ export default async function build(ctx) {
   const local = (v) => root.worldToLocal(v.clone());
   // main line in the reader's language, the Sakha word (or English for Sakha readers) underneath
   const toast = (game, sah, en, ru) => { const l = game?.state?.lang; const main = l === 'en' ? en : l === 'ru' ? (ru || en) : sah; game?.ui?.toast(`<b>${main}</b><small>${l === 'sah' ? en : sah}</small>`, 2600); };
+  const churn = { live: false, since: 0, streak: 0 }, BEAT = [0.12, 0.85]; // s between strokes that keep the beat
+  const CHURN = {
+    beat: { sah: 'Биир тэҥник хамнат: хамнатар өрө тахсарын кэтэс, ол эрээри уһатыма.', en: 'Keep an even beat: let the dasher come up, but do not linger.', ru: 'Держите ровный ритм: дайте мутовке подняться, но не медлите.' },
+    foam: { sah: 'Кымыс күүгэннирдэ.', en: 'The kymys is foaming.', ru: 'Кумыс запенился.' },
+    quiet: { sah: 'Саҥа көөнньөр кымыс аттыгар айдаарбаттар.', en: 'Nobody makes a noise beside young kymys.', ru: 'Возле молодого кумыса не шумят.' },
+  };
   const sound = (game, name, obj) => { const p = new THREE.Vector3(); obj.getWorldPosition(p); game?.audio?.play(name, p); };
 
   // milk-white drops for the sprinkling
@@ -194,16 +200,27 @@ export default async function build(ctx) {
     {
       entry: 'kymys', target: ky.sackRoot,
       act: {
-        id: 'churn', label: { sah: 'Хамнат', en: 'Churn the kymys', ru: 'Покачать мутовку в кумысе' },
-        run: async (game) => {
-          const base = ky.stirrer.position.y;
-          for (let i = 0; i < 6; i++) {
-            await tween(0.42, (k) => { ky.stirrer.position.y = base + 0.26 * ease(k); ky.sack.scale.set(1, 1, 1); });
-            sound(game, 'churn', ky.sack);
-            await tween(0.38, (k) => { ky.stirrer.position.y = base + 0.26 * (1 - k * k); const s = Math.sin(k * Math.PI) * 0.025; ky.sack.scale.set(1 + s, 1 - s * 0.6, 1 + s); });
-          }
+        // One stroke of the хамнатар for each E. The gauge by the crosshair is the pause since the last stroke:
+        // inside its band the beat is even, and a run of even strokes sets the kymys foaming (churn in update).
+        id: 'churn', label: { sah: 'Хамнат', en: 'Churn the kymys', ru: 'Покачать мутовку в кумысе' }, thenCard: false,
+        run: async (game, it) => {
+          const base = churn.base ??= ky.stirrer.position.y;
+          const even = churn.since > BEAT[0] && churn.since < BEAT[1];
+          churn.streak = churn.live && even ? churn.streak + 1 : churn.live ? 0 : 1;
+          if (churn.live && !even) game.work?.hint('churn-beat', CHURN.beat);
+          churn.live = true; churn.since = -1; // (a stroke is running)
+          await tween(0.34, (k) => { ky.stirrer.position.y = base + 0.26 * ease(k); ky.sack.scale.set(1, 1, 1); });
+          sound(game, 'churn', ky.sack);
+          await tween(0.3, (k) => { ky.stirrer.position.y = base + 0.26 * (1 - k * k); const s = Math.sin(k * Math.PI) * (0.02 + 0.012 * Math.min(1, churn.streak / 8)); ky.sack.scale.set(1 + s, 1 - s * 0.6, 1 + s); });
           ky.stirrer.position.y = base; ky.sack.scale.set(1, 1, 1);
-          await wait(0.3);
+          churn.since = 0;
+          game.work?.count('churn');
+          if (churn.streak === 12) {
+            game.work?.count('kymys');
+            game.work?.say(CHURN.foam, CHURN.quiet);
+            churn.live = false; churn.streak = 0; game.work?.meter(null);
+            game.read(it.entry, it); // the card, as the work's close (E again turns its page)
+          }
         },
       },
     },
@@ -274,6 +291,11 @@ export default async function build(ctx) {
   const _kQ = new THREE.Quaternion(), _kUp = new THREE.Vector3(), kLast = { level: -1, up: new THREE.Vector3() };
   const _p = new THREE.Vector3(), _lp = new THREE.Vector3(), _iq = new THREE.Quaternion(), _sun = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
   const update = (dt, c) => {
+    if (churn.live && churn.since >= 0) { // between strokes: the pause, on the gauge
+      churn.since += dt;
+      const w = c.game?.work;
+      if (churn.since > 2.6) { churn.live = false; churn.streak = 0; w?.meter(null); } else w?.meter(Math.min(1, churn.since / 1.3), BEAT[0] / 1.3, BEAT[1] / 1.3);
+    }
     for (let i = tweens.length - 1; i >= 0; i--) {
       const tw = tweens[i];
       tw.t += dt;

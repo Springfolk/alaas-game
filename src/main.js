@@ -45,7 +45,7 @@ function loadSave() {
 class Game {
   async boot() {
     this.save = loadSave();
-    this.state = { lang: this.save.lang, found: new Set(this.save.found) };
+    this.state = { lang: this.save.lang, found: new Set(this.save.found), work: this.save.work ||= {} }; // work: counts of the hands-on jobs (src/interact/work)
     this.done = new Set(this.save.done); // actions already performed (ribbon tied…)
     const canvas = document.getElementById('game');
     const quality = this.bootQuality = params.get('q') || (params.has('low') ? 'low' : this.save.settings.quality);
