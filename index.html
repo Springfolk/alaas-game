@@ -153,7 +153,7 @@
     background: linear-gradient(to top, rgba(8,24,44,.55) calc(var(--lo, 0) * 100%), rgba(150,215,255,.5) calc(var(--lo, 0) * 100%), rgba(150,215,255,.5) calc(var(--hi, 1) * 100%), rgba(255,170,120,.55) calc(var(--hi, 1) * 100%));
     box-shadow: 0 0 0 1px rgba(255,255,255,.45), 0 0 8px rgba(0,20,50,.6); overflow: hidden; }
   #gauge.on { opacity: 1; }
-  #gauge i { position: absolute; inset: 0; transform-origin: bottom; transform: scaleY(0); background: rgba(255,255,255,.82); will-change: transform; }
+  #gauge i { position: absolute; inset: 0; transform-origin: bottom; transform: scaleY(0); background: rgba(255,255,255,.82); } /* (no layer of its own: the compositor's shader for one in a rounded clip stalled the first swing 136 ms) */
   #gauge.good i { background: #eaf8ff; box-shadow: 0 0 10px rgba(var(--glow),1); }
   #prompt { position: fixed; z-index: 4; left: 50%; top: calc(50% + 30px); display: flex; gap: 9px; align-items: center; font-size: 14px; pointer-events: none; white-space: nowrap;
     padding: 6px 15px 6px 7px; border-radius: 999px; opacity: 0; transform: translate(-50%, 6px) scale(.96); transition: opacity .22s, transform .3s var(--ease); max-width: calc(100vw - 32px); }
@@ -351,8 +351,11 @@
   .auto #keyart { display: none; }
   @keyframes kenburns { from { transform: scale(1.02); } to { transform: scale(1.09) translate3d(-1%, -.8%, 0); } }
 
-  /* src/ui/prewarm.js: every surface painted once while loading, all but unseen */
-  .prewarm :is(#dot, #prompt, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #gauge, #guide, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; pointer-events: none !important; }
+  /* src/ui/prewarm.js: every surface drawn once while loading, under the key art (which must not count as opaque:
+     what an opaque layer hides is not drawn); with no key art (?auto), all but unseen instead */
+  .prewarm :is(#dot, #prompt, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #gauge, #guide, #gshimmer, #vcursor, .tc-root) { pointer-events: none !important; z-index: 1 !important; }
+  .prewarm #keyart { opacity: .999; transition: none; }
+  .prewarm.bare :is(#dot, #prompt, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #gauge, #guide, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; }
   #fade { position: fixed; inset: 0; background: #000; opacity: 1; transition: opacity 2.4s ease; pointer-events: none; }
   #fade.clear { opacity: 0; }
 
