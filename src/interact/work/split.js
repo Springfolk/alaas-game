@@ -26,6 +26,7 @@ const TXT = {
   hintWeak: L('Сүгэни үрдүктүк көтөх — мөлтөх охсуу хайыппат.', 'Raise the axe higher: a weak blow does not split.', 'Замахнитесь выше: слабый удар не колет.'),
   hintMiss: L('Чурбаан ортотун көрөн оҕус.', 'Look at the middle of the round as you strike.', 'Бейте, глядя в середину чурбака.'),
   hintHow: L('E-ни тутан сүгэни көтөх, ыһыктан оҕус.', 'Hold E to raise the axe, let go to strike.', 'Удерживайте E — замах, отпустите — удар.'),
+  hintTap: L('E-ни баттаа — сүгэ өрө тахсар; өссө баттаа — түһэр.', 'Tap E: the axe goes up. Tap again: it falls.', 'Нажмите E — топор поднимется; ещё раз — ударит.'),
   proverb: L('Сүгэ түһүөр диэри дүлүҥ сынньанар.', '“Until the axe falls, the log rests.”', '«Пока топор опускается, бревно отдыхает».'),
   proverbBy: L('өс хоһооно', 'a Sakha saying', 'якутская пословица'),
 };
@@ -121,7 +122,7 @@ export class Split {
       this.chunks.push(c);
       this.toBlock(c);
       game.audio?.play('wood-take', from);
-      this.work.hint('how', TXT.hintHow, 2);
+      this.work.hint('how', game.input.touchMode ? TXT.hintTap : TXT.hintHow, 2);
     },
   };
   // a half from the ground onto the block
