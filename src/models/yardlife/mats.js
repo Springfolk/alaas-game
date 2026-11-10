@@ -20,6 +20,7 @@ export function yardMats() {
     end: pmat('canvas:endgrain', { scale: 0.6, dirt: 0.4, vary: 0.2, tint: 0x948a80, lichen: 0.3 }),     // old, weathered cuts
     endFresh: pmat('canvas:endgrain', { scale: 0.6, dirt: 0.2, vary: 0.25, tint: 0xe8c0a0 }), // fresh golden-red larch
     split: pmat('raw_plank_wall', { scale: 1.1, tint: 0xd8bf9c, lichen: 0.1 }),
+    splitFace: pmat('canvas:splitwood', { scale: 1, dirt: 0, vary: 0.1 }), // a fresh radial split: uv = (pith…bark, metres / 0.6)
     lash: pmat('bark_willow_02', { scale: 0.35, tint: 0xa79479, dirt: 0.3 }),
     willow: pmat('raw_plank_wall', { scale: 0.6, tint: 0xf4e3c4, dirt: 0.3, rough: 0.8 }),
     hay: pmat('acg_hay', { scale: 0.9, tint: 0xd4c08c, vary: 0.3, dirt: 0.5, normalScale: 2.2 }),

@@ -1,6 +1,6 @@
 # Interactions
 
-Code: E flow in `src/main.js` (`use`, `read`, `actOf`, `closeUI`, prompt in `frame`); windows in `src/ui/ui.js`, drawn cursor in `src/ui/cursor.js`, journal finder in `src/ui/guide.js`; hands-on logic in `src/interact/` (`index.js` wiring + berries, `hands.js` carrying, `seat.js` sitting); props in `src/models/chores.js` (built before the warm-up, so no runtime shader compiles).
+Code: E flow in `src/main.js` (`use`, `read`, `actOf`, `closeUI`, prompt in `frame`); windows in `src/ui/ui.js`, drawn cursor in `src/ui/cursor.js`, journal finder in `src/ui/guide.js`; hands-on logic in `src/interact/` (`index.js` wiring + berries, `hands.js` carrying, `seat.js` sitting, `work/` jobs); props in `src/models/chores.js` and `src/models/work.js` (built before the warm-up, so no runtime shader compiles).
 
 ## Flow
 - E on a thing: its act if it has one, else its card as a **peek** (side panel, title + lead; you walk on, 3 m away closes it); E again on it (or with nothing in view) → **full** text, a centred window (you stand still); E again → closed.
@@ -23,10 +23,20 @@ Code: E flow in `src/main.js` (`use`, `read`, `actOf`, `closeUI`, prompt in `fra
 | Doors, gate rails | ampaar, balagan, күрүө | non-blocking |
 | Carry the мас ыаҕас | wooden water pail by the uraha door | take, carry, set down anywhere (not into the lake) |
 | Scoop water / pour it back | any shore, looking down at the water | pail shows water; pouring back only into the lake |
-| Firewood | woodpile → billet in arms | set down, or lay it on the balagan or uraha fire: it burns down over 60 s, fire brighter |
+| Firewood | woodpile → billet in arms | set down, or lay it on the balagan or uraha fire: it burns down over 60 s, fire brighter; loose billets gather into an armful (≤4), E on the woodpile stacks it |
 | Sit / stand | every орон bench | view turns to the room and lowers; E, a step or a jump stands up |
 | Pick дьэдьэн | 8 wild-strawberry patches round the yard | tiny conical red berries; a handful, regrows after 4 min |
 | Feed the fire, churn, bellows, tie a ribbon, khomus, lake milk | model acts (`act` in each model) | |
+
+## Work (`src/interact/work/`)
+- `Work` (`index.js`, `game.work`): jobs are asked for an act before the carrying code (`actFor(it)` → act, `null` = nothing, `undefined` = not mine; `idleAct()`); `meter(v, lo, hi)` = the gauge by the crosshair (`#gauge`), `hint(key, text)` = advice toast (once a visit, 3 in all), `count(key)` → `save.work`.
+- Tools are carried things: `hands.addKind(kind, hold, lie)`, `hands.addThing({ kind, obj, it, name })`, `it.thing`; `hands.pose(dt, cam)` → `{ p, q, world? }` drives the held tool during a job.
+- A job's movable parts are scene children marked `userData.dynamic`; after moving one, clear its `userData.sphere` (the look-at cache).
+- Keys: every job plays with E alone (hold and release, or two taps on touch) and the look direction.
+
+| Job | Where | How |
+|---|---|---|
+| Мас хайытыы (`split.js`) | chopping block by the woodpile | take the axe from the block → E on the rounds: one stands on the block → hold E (gauge up and down), release: the blow lands where you look. In line with the dark crack (≤4.5 cm off, ≤26° turned) and above the gauge's mark it splits: round → 2 halves (tumble off, stand each again) → 2 billets each. Right line but weak: the axe sticks, E lifts the round on it and brings it down. Across the grain: stuck, E pulls it free. Over the top mark: a wild blow (scatter). Two rounds (8 quarters) exist: stack or burn the billets to free them. |
 
 ## Left out on purpose (research "do not gamify")
 - Skimming stones on the lake (Эбэ, the lake's иччи, is "grandmother": no throwing things in), striking the smith's anvil (the smith's craft is close to the shaman's), pushing the salama or ribbons (offerings, not toys), anything thrown into a fire except a laid billet.

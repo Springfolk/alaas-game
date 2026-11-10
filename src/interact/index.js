@@ -1,10 +1,11 @@
 // Hands-on interactions besides reading (see docs/interactions.md): carrying the water pail and
-// firewood (hands.js), sitting on benches (seat.js), picking wild strawberries. Created by main.js
+// firewood (hands.js), sitting on benches (seat.js), picking wild strawberries, work with tools (work/). Created by main.js
 // after the world is built; the props come from src/models/chores.js (built before the warm-up),
 // hearths expose `it.fireplace`, benches are the 'oron' interactables.
 import { Hands } from './hands.js';
 import { Seat } from './seat.js';
 import { Glint } from './glint.js';
+import { Work } from './work/index.js';
 
 const REGROW = 240; // s until a picked дьэдьэн patch has berries again
 
@@ -17,6 +18,7 @@ export class Interactions {
     const parts = placed?.object.userData.chores;
     this.hands = parts ? new Hands(game, parts, find) : null;
     this.parts = parts;
+    this.work = new Work(game, this.hands, find); // jobs with a tool in the hands (src/interact/work)
     this.seat = new Seat(game);
     this.glint = new Glint(game); // the winter place's sun glint
     for (const it of w.interactables) if (it.entry === 'oron' && it.target && !it.act) it.sit = true;
@@ -28,12 +30,14 @@ export class Interactions {
   actFor(it) {
     if (it.berries !== undefined) return this.picked.has(it.berries) ? null : this.pickAct;
     if (it.sit) return this.seat.on || this.hands?.held ? null : this.seat.act;
+    const w = this.work.actFor(it);
+    if (w !== undefined) return w;
     return this.hands?.actFor(it);
   }
   // E with nothing in focus: stand up, or do something with what you carry.
   idleAct() {
     if (this.seat.on) return this.seat.standAct;
-    return this.hands?.idleAct() || null;
+    return this.work.idleAct() || this.hands?.idleAct() || null;
   }
   // what the prompt names when nothing is in focus
   idleLabel() { return this.seat.on ? this.game.ui.t(this.seat.label) : this.hands?.name; }
@@ -57,6 +61,7 @@ export class Interactions {
   update(dt) {
     this.seat.update(dt);
     this.glint.update(dt);
+    this.work.update(dt);
     this.hands?.update(dt);
     for (const [k, t] of this.picked) {
       if (t + dt > REGROW) { this.picked.delete(k); this.parts.setPatch(k, this.parts.perPatch); } else this.picked.set(k, t + dt);

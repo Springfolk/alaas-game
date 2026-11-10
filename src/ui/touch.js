@@ -123,7 +123,7 @@ export class TouchControls {
     requestAnimationFrame(tick);
   }
 
-  key(code) { this.game.key?.({ code, preventDefault() {} }); }
+  key(code) { this.input.press(code); this.game.key?.({ code, preventDefault() {} }); } // (work reads E from the input too)
   button(b) {
     const g = this.game, inp = this.input;
     if (b === 'act') { if (g.useReady ?? g.focus) this.key('KeyE'); }
