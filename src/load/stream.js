@@ -10,6 +10,7 @@
 // Uses three r186 renderer internals (`_renderObjectDirect`, `_objects`, `_nodes`, `_pipelines`, state fields).
 import { Sphere, Vector3 } from 'three/webgpu';
 import { enter, exit, span } from './prof.js';
+import { urlFlag } from '../util.js';
 import { TIER } from '../engine/tier.js';
 
 // Safari has no `scheduler.yield`: three's fallback waits a whole animation frame per build stage.
@@ -36,9 +37,28 @@ function sameShaderIndexed(ro) {
   if (key) proto.getGeometryCacheKey = function () { const k = key.call(this); return k.endsWith('index,') ? k.slice(0, -6) : k; };
 }
 
+// three keeps every finished NodeBuilder alive: uniform update callbacks made inside its shader functions close
+// over the builder, and the built state keeps those callbacks. A builder holds its whole working set (per-node
+// caches, generated code: ~1 MB each, ~110 after a load = about half of the JS heap), none of it read again once
+// `_createNodeBuilderState` has taken the shaders, bindings and update lists: drop it there.
+const WORK = ['nodes', 'sequentialNodes', 'hashNodes', 'flowNodes', 'flowCode', 'uniforms', 'structs', 'types', 'bindings', 'bindingsIndexes', 'bindGroups',
+  'attributes', 'bufferAttributes', 'varyings', 'codes', 'vars', 'declarations', 'flow', 'chaining', 'stack', 'stacks', 'cache', 'globalCache', 'flowsData',
+  'vertexShader', 'fragmentShader', 'computeShader', 'lightsNode', 'environmentNode', 'fogNode', 'subBuildLayers', 'activeStacks', 'geometry'];
+function dropBuilders(renderer) {
+  const nodes = renderer._nodes, make = nodes?._createNodeBuilderState;
+  if (!make || urlFlag('keepbuilders')) return; // ?keepbuilders: A/B
+  nodes._createNodeBuilderState = function (nb) {
+    const state = make.call(this, nb);
+    for (const k of WORK) if (k in nb) nb[k] = null;
+    nb.context = {};
+    return state;
+  };
+}
+
 export class ShaderStream {
   constructor(renderer) {
     this.r = renderer;
+    dropBuilders(renderer);
     this.queue = [];                  // { ro, group, drawRange, state, bias, view, x, y, z, r, done }
     this.seen = new Map();            // render object → its queue item, until its build starts
     this.drawn = new WeakSet();       // objects drawn at least once
