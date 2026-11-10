@@ -4,6 +4,9 @@
 // tool's pose (Hands.pose), and reports to the player through `meter` (the swing gauge by the crosshair),
 // `hint` (a toast, once) and `count` (totals kept in the save: `save.work`).
 import { Split } from './split.js';
+import { Fish } from './fish.js';
+
+const JOBS = { split: Split, fish: Fish }; // by the `job` of a placed model's `userData.work`
 
 export class Work {
   constructor(game, hands, find) {
@@ -13,8 +16,10 @@ export class Work {
     game.save.work ||= {};
     this.said = new Set();
     this.jobs = [];
-    const parts = game.world.placed.find((p) => p.object?.userData.work)?.object.userData.work;
-    if (parts && hands) this.jobs.push(new Split(this, parts, find));
+    for (const p of game.world.placed) {
+      const parts = p.object?.userData.work;
+      if (parts && hands && JOBS[parts.job]) this.jobs.push(new JOBS[parts.job](this, parts, find));
+    }
     const m = this.gauge = document.createElement('div');
     m.id = 'gauge';
     m.innerHTML = '<i></i><b></b>';

@@ -29,6 +29,7 @@ Code: E flow in `src/main.js` (`use`, `read`, `actOf`, `closeUI`, prompt in `fra
 | Feed the fire, churn, bellows, tie a ribbon, khomus, lake milk | model acts (`act` in each model) | |
 
 ## Work (`src/interact/work/`)
+- A placed model names its job in `object.userData.work.job` (`JOBS` in `index.js`).
 - `Work` (`index.js`, `game.work`): jobs are asked for an act before the carrying code (`actFor(it)` → act, `null` = nothing, `undefined` = not mine; `idleAct()`); `meter(v, lo, hi)` = the gauge by the crosshair (`#gauge`), `hint(key, text)` = advice toast (once a visit, 3 in all), `count(key)` → `save.work`.
 - Tools are carried things: `hands.addKind(kind, hold, lie)`, `hands.addThing({ kind, obj, it, name })`, `it.thing`; `hands.pose(dt, cam)` → `{ p, q, world? }` drives the held tool during a job.
 - A job's movable parts are scene children marked `userData.dynamic`; after moving one, clear its `userData.sphere` (the look-at cache).
@@ -37,6 +38,7 @@ Code: E flow in `src/main.js` (`use`, `read`, `actOf`, `closeUI`, prompt in `fra
 | Job | Where | How |
 |---|---|---|
 | Мас хайытыы (`split.js`) | chopping block by the woodpile | take the axe from the block → E on the rounds: one stands on the block → hold E (gauge up and down), release: the blow lands where you look. In line with the dark crack (≤4.5 cm off, ≤26° turned) and above the gauge's mark it splits: round → 2 halves (tumble off, stand each again) → 2 billets each. Right line but weak: the axe sticks, E lifts the round on it and brings it down. Across the grain: stuck, E pulls it free. Over the top mark: a wild blow (scatter). Two rounds (8 quarters) exist: stack or burn the billets to free them. |
+| Туу (`fish.js`) | weir in the lake shallows, east of the net rack (`src/models/fishery.js`) | take the trap → E on the weir's gap sets it → мунду come in over minutes (fast at first, ~110 s to two thirds) → hold E on the trap lifts it → E on the тымтай on the shore opens the tail clamp and tips the catch in (count: `save.work.mundu`) |
 
 ## Left out on purpose (research "do not gamify")
 - Skimming stones on the lake (Эбэ, the lake's иччи, is "grandmother": no throwing things in), striking the smith's anvil (the smith's craft is close to the shaman's), pushing the salama or ribbons (offerings, not toys), anything thrown into a fire except a laid billet.
