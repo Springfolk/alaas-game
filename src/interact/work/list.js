@@ -24,6 +24,12 @@ export const WORKS = [
     stat: (w) => L(`${Math.round(w.mown || 0)} м² от охсулунна · ${w.blows || 0} охсуу`, `${Math.round(w.mown || 0)} m² mown · ${w.blows || 0} blows`, `скошено ${Math.round(w.mown || 0)} м² · ударов: ${w.blows || 0}`),
   },
   {
+    id: 'forge', name: L('Уус кыһата', 'At the forge', 'У горна'), entry: 'blacksmith',
+    where: L('Кыһаҕа: күөрт, кытарбыт тимир, кыстык, өтүйэ.', 'In the smithy: the bellows, the glowing iron, the anvil, the hammer.', 'В кузне: мехи, раскалённое железо, наковальня, молот.'),
+    done: (w) => w.hammer > 0,
+    stat: (w) => L(`${w.hammer || 0} охсуу · ${w.blades || 0} быһах тимирэ`, `${w.hammer || 0} hammer blows · ${w.blades || 0} blades forged`, `ударов молота: ${w.hammer || 0} · клинков: ${w.blades || 0}`),
+  },
+  {
     id: 'kymys', name: L('Кымыһы хамнатыы', 'Churning kymys', 'Взбивание кумыса'), entry: 'kymys',
     where: L('Ураһаҕа: симиир, хамнатар.', 'In the uraha: the leather sack and its dasher.', 'В урасе: кожаный симиир и мутовка.'),
     done: (w) => w.churn > 0,
