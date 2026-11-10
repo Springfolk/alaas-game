@@ -54,6 +54,8 @@ export const SOURCES = {
   firewood: { url: FS('489/489885_7581660'), page: 'https://freesound.org/s/489885/', title: 'STACKING - MOVING - SPLIT FIREWOOD' },
   logdrop: { url: FS('681/681416_14819331'), page: 'https://freesound.org/s/681416/', title: 'wooden log drop' },
   axechop: { url: FS('452/452554_612689'), page: 'https://freesound.org/s/452554/', title: 'axe chop into wood little debris.wav' },
+  swoosh: { url: FS('60/60026_71257'), page: 'https://freesound.org/s/60026/', title: 'Swosh swoosh whoosh air sound' },
+  bushcut: { url: FS('327/327894_4336114'), page: 'https://freesound.org/s/327894/', title: 'Bush Cut.wav' },
   woodcut: { url: FS('614/614449_3397935'), page: 'https://freesound.org/s/614449/', title: 'woodcutfx-001.WAV' },
   khomus2: { url: 'https://upload.wikimedia.org/wikipedia/commons/b/be/Klangdemonstration_einer_jakutischen_Maultrommel.wav', ext: 'wav', licence: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Klangdemonstration_einer_jakutischen_Maultrommel.wav' },
 };
@@ -116,6 +118,9 @@ export const OUT = {
   chop: { src: 'axechop', kind: 'shot', ss: 0, t: 0.6, db: -22, mono: true, hp: 70, fade: [0.002, 0.25] },
   'chop-2': { src: 'woodcut', kind: 'shot', ss: 0.66, t: 0.8, db: -22, mono: true, hp: 70, fade: [0.002, 0.4] },
   'chop-stuck': { src: 'woodcut', kind: 'shot', ss: 0.66, t: 0.45, db: -26, mono: true, hp: 60, lp: 1700, fade: [0.002, 0.25] },
+  // the scythe (work: src/interact/work/hay.js): the blade through the air, then through the grass
+  swish: { src: 'swoosh', kind: 'shot', ss: 0, t: 0.5, db: -28, mono: true, hp: 120, fade: [0.005, 0.2] },
+  scythe: { src: 'bushcut', kind: 'shot', ss: 0, t: 0.9, db: -25, mono: true, hp: 120, fade: [0.003, 0.3] },
   khomus: { src: 'khomus2', kind: 'shot', ss: 0, t: 18, db: -20, mono: true, fade: [0.05, 2.5], hp: 60 },
 };
 

@@ -5,8 +5,9 @@
 // `hint` (a toast, once) and `count` (totals kept in the save: `save.work`).
 import { Split } from './split.js';
 import { Fish } from './fish.js';
+import { Hay } from './hay.js';
 
-const JOBS = { split: Split, fish: Fish }; // by the `job` of a placed model's `userData.work`
+const JOBS = { split: Split, fish: Fish, hay: Hay }; // by the `job` of a placed model's `userData.work`
 
 export class Work {
   constructor(game, hands, find) {

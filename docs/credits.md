@@ -51,6 +51,8 @@
   - wooden log drop — https://freesound.org/s/681416/
   - axe chop into wood little debris.wav — https://freesound.org/s/452554/
   - woodcutfx-001.WAV — https://freesound.org/s/614449/
+  - Swosh swoosh whoosh air sound — https://freesound.org/s/60026/
+  - Bush Cut.wav — https://freesound.org/s/327894/
 
 ## Textures from Poly Haven (CC0, credit not required)
 - Every set in `tools/fetch-assets.mjs` `TEXTURES` — https://polyhaven.com/textures. Own baked sets (`canvas_*`, `tuos_sheet`, `carving`, `foliage`, `birch_bark`) are original (CC BY-SA 4.0, `LICENSE`); `carving` and `canvas_bowplate` hold ornament traced from the sources listed in `docs/patterns.md` (museum photos: motif shapes only).
