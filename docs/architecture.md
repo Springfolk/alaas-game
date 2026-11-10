@@ -28,7 +28,7 @@
 | `src/ui/touch.js` | Phone controls (auto on coarse pointers; `?touch` / `?notouch`): stick fixed bottom left (safe-area insets; its place in the CSS), driven only by a touch starting ≤100 px from its middle (rim = run); a touch starting anywhere else on the view (the canvas: not windows, toasts or buttons) looks, short tap = E when something is in focus; one walk + one look touch at once; "Look around" tip until the first look drag (hidden under a card); glass buttons E/jump/crouch/journal/language/pause, 1·2·3 while an act runs; `tc-` scoped CSS |
 
 - North is −Z, east +X; models face east (+X) locally — Sakha doors face east.
-- Player settings (`player.settings`, saved in `alaas-v1` settings): `sens`, `invertY`, `fov` (base; run adds ≤7.5°), `motion` 0–1 (camera motion comfort: bob, sway, roll, FOV kick; 0 = steady), `smooth` 0–1 (mouse-look smoothing). `main.js` binds `#s-motion` / `#s-smooth` sliders if present.
+- Player settings (`player.settings`, saved in `alaas-v1` settings): `sens`, `invertY`, `fov` (base; run adds ≤7.5°), `motion` 0–1 (camera motion comfort: bob, sway, roll, FOV kick; 0 = steady), `smooth` 0–1 (mouse-look smoothing; touch always has 0.3 for the finger's one-pixel steps, let go as the view falls behind: a drag of some speed is followed at once, it trailed ~10 ms). `main.js` binds `#s-motion` / `#s-smooth` sliders if present.
 - Player yaw 0 looks −Z; `util.js` has `fwd*/right*/yawTo`.
 - Ground height: `world.groundAt()` (knows floors), not `terrain.height()`.
 - Camera layer 1 = near grass, grass ring, flowers, near trees: the lake reflection and the shadow cascades skip it. Layer 2 = shadow proxies, 30 = culled (merge.js); the loader's collect pass (camera on all layers) builds both.
