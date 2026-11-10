@@ -17,6 +17,7 @@ import { closeWorkers } from './load/workers.js';
 import { isShadowProxy } from './engine/merge.js';
 import { T, CONTROLS, LANGS, LANG_NAMES, tr, detectLang } from './ui/i18n.js';
 import { Guide } from './ui/guide.js';
+import { prewarmUI } from './ui/prewarm.js';
 import { version } from '../package.json';
 import { instrument, event } from './load/prof.js';
 
@@ -66,6 +67,7 @@ class Game {
     this.ray = new THREE.Raycaster();
     this.ray.far = 3.4;
     this.applySettings();
+    const painted = prewarmUI(this); // the interface's own paint shaders, while the world is built
 
     // Loading (docs/loading.md): the world is drawn behind the title from the first frames (sky, ground,
     // homestead, then nature) while its shaders build in time slices (src/load/stream.js) and pure-CPU
@@ -99,6 +101,7 @@ class Game {
     this.ui.placed = new Set(this.world.interactables.map((i) => i.entry).filter(Boolean));
     if (params.has('sun')) { const [e, a] = params.get('sun').split(',').map(Number); this.engine.setSun(e, a ?? this.engine.sunAz); }
     await this.warmUp();
+    await painted;
     mark('warm');
 
     this.audio = await this.loadAudio();
