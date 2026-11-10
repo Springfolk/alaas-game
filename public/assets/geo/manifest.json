@@ -10,13 +10,13 @@
   "model:fishery": "62a1dd857c92",
   "model:hayfield": "a6b880a68563",
   "model:kuruo": "c2d5e9a1c97e",
-  "model:lakeside": "9dde33115441",
+  "model:lakeside": "cfc8b7405a31",
   "model:sacred-birch": "c58bee2993b0",
   "model:sele": "21d45692949b",
   "model:serge": "6dbdd067d516",
   "model:urasa": "7231b8515105",
   "model:work": "da6cb6d2de5e",
-  "model:yardlife": "eab43f0c2067"
+  "model:yardlife": "3608ba935009"
  },
  "packs": {
   "forest#c904aa13": {
@@ -126,7 +126,7 @@
   },
   "model:lakeside#6c7e420d": {
    "group": "model:lakeside",
-   "key": "9dde33115441",
+   "key": "cfc8b7405a31",
    "file": "lakeside-6c7e420d.bin",
    "bytes": 173727,
    "raw": 463036
@@ -166,10 +166,10 @@
   },
   "model:yardlife#8f2bbc3c": {
    "group": "model:yardlife",
-   "key": "eab43f0c2067",
+   "key": "3608ba935009",
    "file": "yardlife-8f2bbc3c.bin",
-   "bytes": 872161,
-   "raw": 2856740
+   "bytes": 872162,
+   "raw": 2856896
   }
  }
 }
