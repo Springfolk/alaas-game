@@ -14,6 +14,7 @@ import { sunMask } from './master.js';
 import { SunLight } from 'three/addons/lights/SunLight.js';
 import { SunLightNode } from 'three/addons/lights/SunLightNode.js';
 import { urlFlag, KEYART } from '../util.js';
+import { pace, govern, knob, frameDone } from './pacing.js';
 
 // exposure for a sunlit scene; METER_REF = its metered mean log2 luminance (post.js meter)
 const EXPOSURE = 0.75, METER_REF = -1.75;
@@ -29,7 +30,6 @@ export class Engine {
     this.opts = this.presetOpts(this.tier);
     this.fpsCap = 60; // frame pacing (pace())
     this.resScale = 1; // dynamic resolution: drops when frames run long, recovers when there is room
-    this.frameTimes = [];
     this.sunElev = 40; this.sunAz = 215; // degrees; azimuth 0 = north (−Z), 90 = east (+X)
     this.exposure = EXPOSURE; this.exposureTarget = 0.62; // houses raise the target (a hint: the meter decides)
   }
@@ -233,61 +233,20 @@ export class Engine {
     }
   }
 
-  // Frame pacing: true when a frame is due on this animation frame (`now` = its timestamp, ms) for `fps`
-  // (0 = none). Draws every n-th display refresh, n = refreshes per capped frame (120 Hz → every 2nd for 60),
-  // so frame intervals stay even; a refresh rate the cap doesn't divide (75, 90, 144 Hz) runs every refresh
-  // (or every 2nd at 144) — never below the cap. The refresh interval is the low quartile of recent rAF deltas,
-  // at most 1/58 s: a device too slow to draw every refresh must not read as a slow display (its frames would
-  // then always "keep pace" and dynamic quality never step down).
-  pace(now, fps) {
-    const d = now - (this.lastTick ?? now);
-    this.lastTick = now;
-    const r = this.rafDeltas ||= [];
-    if (d > 2 && d < 60) r.push(d);
-    if (r.length >= 31) { r.sort((a, b) => a - b); this.vsync = r[7]; r.length = 0; }
-    const v = Math.min(this.vsync || 1000 / 60, 1000 / 58);
-    this.vsyncs = (this.vsyncs || 0) + Math.max(1, Math.round(d / v));
-    if (!fps) return false;
-    const n = Math.max(1, Math.floor(1000 / fps / v + 0.2)); // +0.2: tolerates a noisy refresh estimate
-    if (this.vsyncs < n) return false;
-    this.vsyncs = 0;
-    this.paceIv = n * v;
-    if (n !== this.paceN || fps !== this.paceFps) { this.paceN = n; this.paceFps = fps; this.frameTimes.length = 0; }
-    return true;
-  }
+  // Frame pacing and dynamic quality: src/engine/pacing.js (tools override `pace` and `dynamicResolution`).
+  pace(now, fps) { return pace(this, now, fps); }
+  dynamicResolution(dt) { if (!KEYART) govern(this, dt); } // ?keyart: full resolution however long a frame takes
+  knob(dir, now) { knob(this, dir, now); }
 
-  // Every ~1.5 s: if frames miss the paced interval (a few missed refreshes: ≥12% over on average) render
-  // fewer pixels; when they all keep it, give pixels back — but not straight back to a scale that just
-  // failed (ceiling, retried after 8 s). Holds the frame rate by resolution instead of dropping frames.
-  // Still slow at the resolution floor: one cheaper knob per window (KNOBS: none builds a shader). A knob
-  // comes back, last first, once resolution is full again and frames kept pace for `knobWait` (4 s;
-  // doubled, ≤2 min, when a restored knob fails again within 20 s).
-  dynamicResolution(dt) {
-    if (dt <= 0 || KEYART) return; // ?keyart: full resolution however long a frame takes
-    const f = this.frameTimes, iv = this.paceIv || 1000 / 60;
-    f.push(Math.min(dt * 1000, iv * 3));
-    if (f.length * iv < 1500) return;
-    let sum = 0;
-    for (const x of f) sum += x;
-    const avg = sum / f.length;
-    f.length = 0;
-    const prev = this.resScale, now = performance.now();
-    if (this.resCeil && now - this.resCeilAt > 8000) this.resCeil = 0;
-    if (avg > iv * 1.12) {
-      this.resCeil = this.resScale; this.resCeilAt = now;
-      // floor: the tier's resMin pixel ratio (high: CSS pixels, never upscaled), else 55% of the start ratio — and
-      // never under MIN_RES of the screen's own ratio (a base already there: no dropping, the knobs go instead)
-      const base = Math.min(devicePixelRatio, this.opts.dpr), resMin = this.opts.resMin;
-      const floor = Math.min(1, Math.max(resMin ? resMin / base : 0.55, devicePixelRatio * MIN_RES / base));
-      if (this.resScale > floor) this.resScale = Math.max(floor, this.resScale - (avg > iv * 1.6 ? 0.15 : 0.08));
-      else this.knob(-1, now);
-    } else if (avg < iv * 1.02 && this.resScale < 1 && (!this.resCeil || this.resScale + 0.1 < this.resCeil)) {
-      this.resScale = Math.min(1, this.resScale + 0.1);
-    } else if (avg < iv * 1.02 && this.resScale >= 1 && this.knobs?.length && now - this.knobAt > this.knobWait) this.knob(1, now);
-    if (this.resScale !== prev) {
-      this.renderer.setPixelRatio(this.pixelRatio());
-      this.renderer.setSize(innerWidth, innerHeight, false);
-    }
+  // Lowest dynamic scale: the tier's resMin pixel ratio (high: CSS pixels, never upscaled), else 55% of the start
+  // ratio — and never under MIN_RES of the screen's own ratio (a base already there: only the knobs go)
+  resFloor() {
+    const base = Math.min(devicePixelRatio, this.opts.dpr), resMin = this.opts.resMin;
+    return Math.min(1, Math.max(resMin ? resMin / base : 0.55, devicePixelRatio * MIN_RES / base));
+  }
+  applyResolution() {
+    this.renderer.setPixelRatio(this.pixelRatio());
+    this.renderer.setSize(innerWidth, innerHeight, false);
   }
 
   // The render pixel ratio: the tier's cap × the dynamic scale, never under MIN_RES of the screen's own ratio.
@@ -295,20 +254,15 @@ export class Engine {
     return Math.max(devicePixelRatio * MIN_RES, Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
   }
 
-  // One knob down (dir −1) or the last one back up (+1). Each changes only sizes, counts or the frame cap.
-  knob(dir, now) {
-    const on = this.knobs ||= [];
-    this.knobWait ||= 4000;
-    if (dir < 0) {
-      const k = KNOBS.find((k) => !on.includes(k) && k.ok(this));
-      if (!k) return;
-      if (now - this.knobAt < 20000 && this.knobUp === k) this.knobWait = Math.min(120000, this.knobWait * 2);
-      on.push(k); k.set(this, true);
-    } else {
-      const k = this.knobUp = on.pop();
-      k.set(this, false);
-    }
-    this.knobAt = now;
+  // After a frame's draw (main.js): its JS time, and a watch on when the GPU has finished it.
+  frameDone(jsMs) {
+    const b = this.renderer.backend, dev = b.device, gl = b.gl;
+    frameDone(this, jsMs, dev ? (cb) => dev.queue.onSubmittedWorkDone().then(cb, cb) : gl?.fenceSync ? (cb) => {
+      const s = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      gl.flush();
+      const poll = () => { if (gl.isContextLost() || gl.getSyncParameter(s, gl.SYNC_STATUS) === gl.SIGNALED) { gl.deleteSync(s); cb(); } else setTimeout(poll, 3); };
+      setTimeout(poll, 3);
+    } : null);
   }
 
   resize() {
@@ -323,15 +277,8 @@ export class Engine {
   }
 }
 
-// Dynamic quality steps after resolution (Engine.knob), cheapest loss first; none needs a new shader or pipeline.
 // No tier or dynamic resolution renders under half the screen's own resolution (per axis).
 const MIN_RES = 0.5;
-
-const KNOBS = [
-  { name: 'shadow range ×0.7', ok: () => true, set: (e, d) => { e.sun.shadow.camera.far = e.opts.shadowFar * (d ? 0.7 : 1); } }, // fewer casters per cascade
-  { name: 'lake mirror ×0.6', ok: (e) => !!e.reflector, set: (e, d) => { e.reflector.resolutionScale = e.opts.reflection * (d ? 0.6 : 1); } },
-  { name: '30 fps', ok: (e) => e.fpsCap > 30, set: (e, d) => { e.capDown = d; } }, // main.js tick
-];
 
 // The coarse cloud field (sky.js cloudField, what cloud shadows use) over CLOUD_SPAN m of the cloud plane
 // around where the view's ground looks up to through the sun, in a 512² half-float texture (16 m texels;

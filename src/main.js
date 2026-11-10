@@ -478,6 +478,7 @@ class Game {
   }
 
   frame(now) {
+    const t0 = performance.now();
     this.clock.update(now); // the rAF timestamp: frame steps stay as even as the display's refreshes
     const dt = Math.max(0, Math.min(this.clock.getDelta(), 0.25)); // (was 0.05: under 20 fps the world ran in slow motion)
     const paused = this.paused;
@@ -517,6 +518,7 @@ class Game {
     this.guide?.update(dt);
     this.fpsMeter(dt);
     this.input.endFrame();
+    this.engine.frameDone(performance.now() - t0);
   }
 }
 
@@ -541,7 +543,7 @@ Game.prototype.fpsMeter = function (dt) {
   if (el.classList.contains('on')) {
     const info = this.engine.renderer.info.render, e = this.engine;
     el.textContent = `${Math.round(m.n / m.t)} fps · ${(m.t / m.n * 1000).toFixed(1)} ms (worst ${(m.worst * 1000).toFixed(0)})\n` +
-      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap · res ${Math.round(e.renderer.getPixelRatio() / devicePixelRatio * 100)}% of native · ${e.backend}${e.fallback ? ` (${e.fallback})` : ''}`;
+      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap${e.knobs?.length ? ` (${e.knobs.map((k) => k.name).join(', ')})` : ''} · gpu ${Math.round(e.gpuMs || 0)} ms · res ${Math.round(e.renderer.getPixelRatio() / devicePixelRatio * 100)}% of native · ${e.backend}${e.fallback ? ` (${e.fallback})` : ''}`;
   }
   m.t = 0; m.n = 0; m.worst = 0;
 };
@@ -567,7 +569,7 @@ new Game().boot().catch(fail);
 // display refreshes, so a 120 Hz screen draws exactly every other one.
 Game.prototype.tick = function (now) {
   const e = this.engine, s = this.save.settings;
-  e.fpsCap = (s.batterySaver ?? (e.autoSaver || e.capDown)) ? 30 : e.opts.fps; // capDown: Engine.adapt
+  e.fpsCap = (s.batterySaver ?? e.autoSaver) ? 30 : e.opts.fps;
   const paused = document.getElementById('pause')?.classList.contains('show');
   this.pausedFrames = paused ? (this.pausedFrames || 0) + 1 : 0;
   if (e.pace(now, this.pausedFrames > 45 ? 0 : e.fpsCap)) this.frame(now);
