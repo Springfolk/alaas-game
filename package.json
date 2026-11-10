@@ -19,6 +19,7 @@
     "fetch-audio": "node tools/fetch-audio.mjs",
     "bench": "node tools/bench.mjs",
     "hitch": "node tools/hitch.mjs",
+    "smooth": "node tools/smooth.mjs",
     "loadprof": "node tools/loadprof.mjs",
     "loadtrace": "node tools/loadtrace.mjs",
     "walkcheck": "node tools/walkcheck.mjs",
