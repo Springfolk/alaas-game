@@ -7,7 +7,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 - Branches: PRs merge into `canary` (testing); `main` holds only released code.
 - Hosting: GitHub Pages, `.github/workflows/pages.yml` rebuilds both on a push to `main` or `canary`: `main` at https://springfolk.github.io/alaas-game/, `canary` at https://springfolk.github.io/alaas-game/canary/ (`BASE=/alaas-game/[canary/] npm run build`; one origin, so both share `localStorage`)
 - `npm run shot -- "<path?query>" out.png [w h waitMs]` — headless screenshot (system Chrome, WebGPU); `PORT`, `EVAL`, `CHROME` env
-- Checks against a dev server (`PORT`): `npm run walkcheck|hitch|loadprof|loadtrace|bench -- chrome|webkit|phone` (`docs/testing.md`)
+- Checks against a dev server (`PORT`): `npm run walkcheck|smooth|hitch|loadprof|loadtrace|bench -- chrome|webkit|phone` (`docs/testing.md`)
 - Icon and README art: `node tools/make-icon.mjs` (→ `docs/img/icon.svg`) → `node tools/readme-art.mjs` (icon PNGs, `public/icon.svg`, `docs/img/banner.webp`; no dev server) · `node tools/og-image.mjs` (link-preview `public/og.jpg`; meta tags in `index.html`)
 - Traced ornament textures (`docs/patterns.md`): `node tools/make-carving.mjs` (chorons, front saddle bow; no dev server)
 - `npm run fetch-assets` (Poly Haven textures, then `tools/tex-sizes.mjs`: masters re-encoded + 1024/512/256 sizes) · `npm run fetch-audio` (sound sources)
