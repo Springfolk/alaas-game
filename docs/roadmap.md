@@ -18,7 +18,6 @@ Planned, not built. No people, no hunting, sacred acts explained never played (`
 - Cones / nuts to gather (check fit).
 - Larch resin (сымала) to scrape, chewed as gum; card.
 - Birch sap: tapped birch, birch-bark cup; card.
-- ★ Dry wood to gather and carry home (extends the firewood chore).
 - ★ Spirit-of-place larch with ribbons (Аан Дархан); explained only.
 - Hunter's lean-to / unused trap as objects; card on Баай Байанай customs.
 - Clearing with a fallen giant, moss, light shafts; a place to sit.
@@ -45,7 +44,6 @@ Planned, not built. No people, no hunting, sacred acts explained never played (`
 - Look into the water: fish shadows; card on lake fish (мунду, собо) and мунха, explained only.
 - ★ Dugout / birch-bark boat (тыы) on the shore; card; sit-in later.
 - Wash hands / splash at the edge.
-- Willow fish trap in the shallows; card.
 
 ## Lake — atmosphere
 - ★ Morning mist burning off.
@@ -56,6 +54,14 @@ Planned, not built. No people, no hunting, sacred acts explained never played (`
 ## Both
 - Day–night cycle or a chosen time of day: dawn mist and cuckoo, midday buzz, evening frogs and owl, white night.
 - ★ Animal sightings logged as journal "seen" entries, found through the finder.
+
+## Work (`docs/interactions.md`): next
+- Rake the mown grass into бугул and build a stack (the scythe job stops at the swath).
+- Dry the мунду on a сибиэ (хохту); carry the тымтай home.
+- Milk the mares at the сэлэ (foals tethered) before the kymys is churned.
+- Sew a тууйас or ыаҕас with the awl and horsehair (the тордуйа needs no sewing).
+- Кии (dry dung) gathered for the түптэ.
+- Sounds still shared with other acts: quench (water pour), bark folding (cloth).
 
 ## Open from earlier waves
 - Loading: shader builds ≈1.9 s WebKit / 1.2 s Chrome are the floor; next levers in `docs/loading.md` (hidden things after the fade, smaller graphs, node-builder patches).
