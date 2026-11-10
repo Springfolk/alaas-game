@@ -53,6 +53,7 @@
   - woodcutfx-001.WAV — https://freesound.org/s/614449/
   - Swosh swoosh whoosh air sound — https://freesound.org/s/60026/
   - Bush Cut.wav — https://freesound.org/s/327894/
+  - Blacksmith Hammer — https://freesound.org/s/521972/
 
 ## Textures from Poly Haven (CC0, credit not required)
 - Every set in `tools/fetch-assets.mjs` `TEXTURES` — https://polyhaven.com/textures. Own baked sets (`canvas_*`, `tuos_sheet`, `carving`, `foliage`, `birch_bark`) are original (CC BY-SA 4.0, `LICENSE`); `carving` and `canvas_bowplate` hold ornament traced from the sources listed in `docs/patterns.md` (museum photos: motif shapes only).

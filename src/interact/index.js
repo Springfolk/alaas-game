@@ -30,6 +30,7 @@ export class Interactions {
   actFor(it) {
     if (it.berries !== undefined) return this.picked.has(it.berries) ? null : this.pickAct;
     if (it.sit) return this.seat.on || this.hands?.held ? null : this.seat.act;
+    if (it.live) return it.live(); // a model's thing whose act follows its own state (the forge's knife blank)
     const w = this.work.actFor(it);
     if (w !== undefined) return w;
     return this.hands?.actFor(it);

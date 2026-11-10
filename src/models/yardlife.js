@@ -82,6 +82,7 @@ export default async function build(ctx, placement) {
   interactables.push({ entry: 'saddle', target: sd.target });
   const sy = smithy(K, ...PLACES.smithy, -0.45);
   interactables.push({ entry: 'blacksmith', target: sy.target, act: sy.act });
+  interactables.push(...sy.extra); // the knife blank of the forge work
   const hay = hayMeadow(K);
   for (const t of hay.targets) interactables.push({ entry: 'hay-making', target: t });
   interactables.push({ entry: 'homestead-layout', zone: { x: PLACES.yard[0], z: PLACES.yard[1], r: 3.2 } });

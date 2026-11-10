@@ -50,7 +50,8 @@
   "chop-2",
   "chop-stuck",
   "swish",
-  "scythe"
+  "scythe",
+  "anvil"
  ],
  "steps": {
   "grass": {

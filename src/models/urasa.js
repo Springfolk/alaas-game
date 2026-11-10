@@ -138,7 +138,7 @@ export default async function build(ctx) {
   const local = (v) => root.worldToLocal(v.clone());
   // main line in the reader's language, the Sakha word (or English for Sakha readers) underneath
   const toast = (game, sah, en, ru) => { const l = game?.state?.lang; const main = l === 'en' ? en : l === 'ru' ? (ru || en) : sah; game?.ui?.toast(`<b>${main}</b><small>${l === 'sah' ? en : sah}</small>`, 2600); };
-  const churn = { live: false, since: 0, streak: 0 }, BEAT = [0.12, 0.85]; // s between strokes that keep the beat
+  const churn = { live: false, since: 0, streak: 0 }, BEAT = [0.12, 1.1]; // s between strokes that keep the beat
   const CHURN = {
     beat: { sah: 'Биир тэҥник хамнат: хамнатар өрө тахсарын кэтэс, ол эрээри уһатыма.', en: 'Keep an even beat: let the dasher come up, but do not linger.', ru: 'Держите ровный ритм: дайте мутовке подняться, но не медлите.' },
     foam: { sah: 'Кымыс күүгэннирдэ.', en: 'The kymys is foaming.', ru: 'Кумыс запенился.' },

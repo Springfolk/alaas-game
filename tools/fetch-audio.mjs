@@ -56,6 +56,7 @@ export const SOURCES = {
   axechop: { url: FS('452/452554_612689'), page: 'https://freesound.org/s/452554/', title: 'axe chop into wood little debris.wav' },
   swoosh: { url: FS('60/60026_71257'), page: 'https://freesound.org/s/60026/', title: 'Swosh swoosh whoosh air sound' },
   bushcut: { url: FS('327/327894_4336114'), page: 'https://freesound.org/s/327894/', title: 'Bush Cut.wav' },
+  smithhammer: { url: FS('521/521972_311243'), page: 'https://freesound.org/s/521972/', title: 'Blacksmith Hammer' },
   woodcut: { url: FS('614/614449_3397935'), page: 'https://freesound.org/s/614449/', title: 'woodcutfx-001.WAV' },
   khomus2: { url: 'https://upload.wikimedia.org/wikipedia/commons/b/be/Klangdemonstration_einer_jakutischen_Maultrommel.wav', ext: 'wav', licence: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Klangdemonstration_einer_jakutischen_Maultrommel.wav' },
 };
@@ -121,6 +122,8 @@ export const OUT = {
   // the scythe (work: src/interact/work/hay.js): the blade through the air, then through the grass
   swish: { src: 'swoosh', kind: 'shot', ss: 0, t: 0.5, db: -28, mono: true, hp: 120, fade: [0.005, 0.2] },
   scythe: { src: 'bushcut', kind: 'shot', ss: 0, t: 0.9, db: -25, mono: true, hp: 120, fade: [0.003, 0.3] },
+  // the hammer on the glowing blank (src/models/yardlife/smithy.js): the blow and its rebounds on the anvil
+  anvil: { src: 'smithhammer', kind: 'shot', ss: 0, t: 0.7, db: -24, mono: true, hp: 150, fade: [0.002, 0.25] },
   khomus: { src: 'khomus2', kind: 'shot', ss: 0, t: 18, db: -20, mono: true, fade: [0.05, 2.5], hp: 60 },
 };
 

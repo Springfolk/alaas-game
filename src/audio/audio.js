@@ -26,7 +26,7 @@ const FIRE_ENTRIES = ['ohokh', 'uot-ichchite'];
 const SHOTS = {
   discover: { gain: 0.5, tune: true }, khomus: { gain: 0.8, tune: true },
   bench: { gain: 0.55 }, 'wood-take': { gain: 0.6 }, 'wood-lay': { gain: 0.65 }, ribbon: { gain: 0.65 },
-  chop: { gain: 0.9 }, 'chop-stuck': { gain: 0.8 },
+  chop: { gain: 0.9 }, 'chop-stuck': { gain: 0.8 }, anvil: { gain: 0.85 }, bellows: { gain: 0.6 },
 };
 
 export class AudioScape {
