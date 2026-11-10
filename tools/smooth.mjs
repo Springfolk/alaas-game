@@ -8,7 +8,7 @@
 // in a frame when its JS ends, and how far the view trails the aim (look smoothing), in ms of turning ·
 // COST=1: uncapped ms per frame (CPU + GPU throughput) at every area in 12 directions, the hot spots (RES=1: full
 // resolution; WHY=n: at the n worst, the ms saved with each material or top-level object hidden).
-// A dip = a drawn-frame interval over 1.5× the paced one. `gpu` = ms from the end of a frame's JS until the GPU
+// A dip = a drawn frame that came a display refresh late or more (interval > paced + half a refresh). `gpu` = ms from the end of a frame's JS until the GPU
 // finished it: latency, not load (≈7 ms at any load in Chrome; near the paced interval = frames queueing).
 // Chrome only: `gc` (frames in which the JS heap shrank), kB of garbage per frame, long tasks.
 import { launch, pageOptions, PORT as port } from './browser.mjs';
@@ -23,7 +23,7 @@ export const AREAS = {
 
 // In the page: records every animation frame and every drawn frame from `start()` to `stop()`.
 // Row: [rAF time, interval since the last drawn frame, JS ms, paced interval, heap bytes, flags, age of the oldest look event, GPU ms,
-// age of the newest look event, aim yaw, view yaw]
+// age of the newest look event, aim yaw, view yaw, display refreshes per paced frame]
 export function probe() {
   const g = window.game, e = g.engine;
   if (window.smooth) return;
@@ -60,7 +60,7 @@ export function probe() {
     const b = performance.now();
     if (e.resScale !== res) { res = e.resScale; flags |= 4; }
     if (S.rows && lastFrame) {
-      const row = [now, now - lastFrame, b - a, e.paceIv || 1000 / 60, performance.memory?.usedJSHeapSize || 0, flags | (lazy ? 1 : 0), first ? b - first : -1, -1, first ? b - newest : -1, g.player.aimYaw, g.player.yaw];
+      const row = [now, now - lastFrame, b - a, e.paceIv || 1000 / 60, performance.memory?.usedJSHeapSize || 0, flags | (lazy ? 1 : 0), first ? b - first : -1, -1, first ? b - newest : -1, g.player.aimYaw, g.player.yaw, e.paceN || 1];
       S.rows.push(row);
       gpuDone((ms) => { row[7] = ms; }, b);
     }
@@ -80,7 +80,7 @@ export function stats({ rows, raf, long }) {
     const dh = i ? r[4] - rows[i - 1][4] : 0, shrank = dh < -262144;
     if (dh > 0) alloc += dh;
     if (shrank) gc++;
-    if (r[1] > r[3] * 1.5) {
+    if (r[1] > r[3] * (1 + 0.5 / (r[11] || 1))) { // half a refresh over: the frame came a refresh late or more
       const why = [];
       if (shrank) why.push('gc');
       if (r[5] & 1) why.push('shadows'); if (r[5] & 2) why.push('cloudmap'); if (r[5] & 4) why.push('res'); if (r[5] & 8) why.push('knob');

@@ -28,7 +28,7 @@ await go(`${BASE}?auto&${query}`);
 if (mode === 'smooth') { // the game's own pacing per area and movement: tools/smooth.mjs's probe and numbers
   const ready = await run(async () => { const t = performance.now(); while (!(window.game?.complete && window.game.sharp)) { if (performance.now() - t > 240000) return { error: 'not complete in 4 min' }; await new Promise((r) => setTimeout(r, 200)); } const e = window.game.engine; return { tier: e.tier + (e.opts.lite ? ' lite' : ''), backend: e.backend, cap: e.fpsCap }; });
   if (ready.error) throw new Error(ready.error);
-  await run(`async () => { (${probe})(); await new Promise((r) => setTimeout(r, 2500)); return 1; }`);
+  await run(`async () => { ${process.env.PRE || ''}; (${probe})(); await new Promise((r) => setTimeout(r, 2500)); return 1; }`); // PRE: code to run first (A/B)
   console.log(`${process.env.SIM ? 'simulator' : 'iphone'} ${query || '(default)'} · ${JSON.stringify(ready)}`);
   const secs = +process.env.SECS || 3, all = [];
   for (const area of (where || Object.keys(AREAS).join(',')).split(',')) for (const move of (only || 'stand,walk,run,turn').split(',')) {
