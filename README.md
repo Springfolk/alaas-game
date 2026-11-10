@@ -14,7 +14,6 @@
   <img src="https://img.shields.io/badge/renderer-WebGPU-5f8f37?labelColor=21160f" alt="Renderer: WebGPU">
   <img src="https://img.shields.io/badge/languages-%D0%A1%D0%B0%D1%85%D0%B0%D0%BB%D1%8B%D1%8B%20%C2%B7%20English%20%C2%B7%20%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-b08a4a?labelColor=21160f" alt="Languages: Sakha, English, Russian">
   <img src="https://img.shields.io/badge/backend-none-b08a4a?labelColor=21160f" alt="No backend">
-  <img src="https://img.shields.io/badge/AI--assisted-Claude%20Opus%205.5-8a5a3a?labelColor=21160f" alt="AI-assisted with Claude Opus 5.5">
 </p>
 
 <p align="center">
@@ -101,7 +100,7 @@ to hello@springfolk.co; corrections are credited. For pull requests, read [`CONT
 first: it lists the checks to run and the content rules.
 
 ## Credits and licences
-- **AI-assisted**: the code, models, shaders, texts and research were made with the help of Claude Opus 5.5 (Anthropic), directed and reviewed by Georgii Antipin (Springfolk), who also checked every Sakha text.
+- **AI-assisted**, directed and reviewed by Georgii Antipin (Springfolk), who also checked every Sakha text.
 - **Code**: MIT, © Springfolk ([`LICENSE`](LICENSE)).
 - **Original content** (explainer and interface texts, the project's own baked textures): CC BY-SA 4.0.
 - **Third-party assets** keep their own licences: CC0 textures from Poly Haven and ambientCG, CC0 and
