@@ -170,7 +170,7 @@
   #prompt { position: fixed; z-index: 4; left: 50%; top: calc(50% + 30px); display: flex; gap: 9px; align-items: center; font-size: 14px; pointer-events: none; white-space: nowrap;
     padding: 6px 13px; border-radius: 999px; opacity: 0; transform: translate(-50%, 6px) scale(.96); transition: opacity .22s, transform .3s var(--ease); max-width: calc(100vw - 32px); }
   #prompt.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  #prompt .key { font-size: 11.5px; padding: 0 7px; border-radius: 999px; background: #e9eef4; box-shadow: none; } /* flat: its gradient and shadows cost a compositor shader at the first prompt (117 ms late, ?auto) */
+  #prompt .key { font-size: 11.5px; padding: 0 7px; border-radius: 999px; background: #e9eef4; box-shadow: none; border: 0; padding: 1px 8px; } /* flat and borderless: its gradient, shadows and rounded border each cost a compositor shader at the pill's first fade (a frame 83–170 ms late, ?auto) */
   .mouse { width: 11px; height: 16px; flex: none; color: #fff; vertical-align: -3px; } /* (no filter, no opacity: each is one more kind of surface for the compositor to build a shader for at its first paint) */
   kbd .mouse { color: inherit; }
   #prompt .what { font-weight: 600; font-size: 15px; text-shadow: 0 0 10px rgba(0,20,50,.9); overflow: hidden; text-overflow: ellipsis; }

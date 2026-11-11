@@ -1,6 +1,8 @@
 // Туу: the wicker fish trap in the lake's shallows. Carry the trap out to the weir (быһыт), set it in the gap,
-// leave it: мунду (lake minnow) find their way in over a few minutes. Lift it out (hold E), carry it to the
-// carrier (тымтай) on the shore, open the tail clamp and tip the catch in. Then it can be set again.
+// leave it: мунду (lake minnow) find their way in over a few minutes, and show through the wicker. Lift it out
+// (the do input held: it comes up heavy, and settles back if let go), carry it to the carrier (тымтай) on the shore
+// and tip it for as long as it is held over it: the catch slides out, what is not yet out stays in the trap.
+// Then it can be set again. Nothing is told in words: the fish in the trap and in the carrier are the count.
 // Props: src/models/fishery.js.
 import * as THREE from 'three/webgpu';
 import { ease } from '../../util.js';
@@ -12,11 +14,6 @@ const TXT = {
   set: L('быһыт ааныгар ук', 'set it in the gap of the weir', 'поставить в проход запруды'),
   lift: L('тууну таһаар', 'lift the trap out', 'вынуть вершу'),
   pour: L('тылбыытын ас, тымтайга сүөкээ', 'open the tail and tip the catch in', 'открыть хвост и высыпать улов'),
-  needTrap: L('туу наада', 'you need the trap', 'нужна верша'),
-  isSet: L('Туу угулунна. Мунду киириэр диэри атын үлэҕин гын.', 'The trap is set. Do your other work while the мунду come.', 'Верша поставлена. Займитесь другим делом, пока заходит мунду.'),
-  empty: L('Туу кураанах. Мунду киирэ илик — кэтэс.', 'The trap is empty. The мунду have not come yet: give it time.', 'Верша пуста. Мунду ещё не зашла — подождите.'),
-  few: L('Аҕыйах мунду. Өр турбута буоллар элбэх буолуо этэ.', 'A few мунду. Left longer, it would hold more.', 'Немного мунду. Постояла бы дольше — было бы больше.'),
-  catch: L('мунду тымтайга', 'мунду in the carrier', 'мунду в коробе'),
   proverb: L('Оннооҕор туу сүрэхтээх.', '“Even a fish trap has a heart.”', '«Даже у верши есть сердце».'),
   proverbBy: L('өс хоһооно', 'a Sakha saying', 'якутская пословица'),
 };
@@ -59,16 +56,15 @@ export class Fish {
       if (this.state === 'lifting' || this.busy) return null;
       return h ? null : this.hands.takeAct;
     }
-    if (it.gap) return this.held && !this.busy ? this.setAct : this.state === 'set' ? null : h ? null : this.needAct;
+    if (it.gap) return this.held && !this.busy ? this.setAct : null;
     if (it.tymtay) return this.held && !this.busy ? this.pourAct : undefined;
     return undefined;
   }
   idleAct() { return this.busy && this.held ? this.noAct : null; }
-  noAct = { id: 'none', label: L('', '', ''), thenCard: false, run: async () => {} };
-  needAct = { id: 'need-tuu', label: TXT.needTrap, thenCard: false, run: async () => {} };
+  noAct = { id: 'none', label: L('', '', ''), run: async () => {} };
 
   setAct = {
-    id: 'set-tuu', label: TXT.set, thenCard: false,
+    id: 'set-tuu', label: TXT.set,
     run: async (game) => {
       if (!this.held) return;
       const t = this.hands.letGo();
@@ -79,64 +75,63 @@ export class Fish {
       game.audio?.play('water-pour-2', p);
       this.state = 'set'; this.t = 0; this.n = 0; this.luck = 0.75 + Math.random() * 0.4;
       t.it.off = false; t.obj.userData.sphere = undefined;
-      this.work.hint('tuu-set', TXT.isSet, 2);
       game.promptKey = null;
     },
   };
 
-  liftAct = { id: 'lift-tuu', label: TXT.lift, thenCard: false, run: () => this.lift() };
-  // hold E: the trap comes up heavy with water; let go early and it settles back
+  liftAct = { id: 'lift-tuu', label: TXT.lift, run: () => this.lift() };
+  // held: the trap comes up heavy with water; let go early and it settles back
   async lift() {
     if (this.state !== 'set' || this.hands.held) return;
     const g = this.game, inp = g.input, o = this.trap.obj, y0 = o.position.y;
     this.state = 'lifting';
-    const hold = inp.doing;
-    let k = 0;
+    let k = 0, t = 0;
     g.audio?.play('water-pour', o.position);
     await new Promise((res) => {
       this.step = (dt) => {
-        const pull = hold ? inp.doing : true; // a tap (touch): it comes up by itself
-        k = Math.max(0, Math.min(1, k + (pull ? dt / 1.5 : -dt / 0.6)));
+        t += dt;
+        const pull = inp.doing || t < 0.25;
+        k = Math.max(0, Math.min(1, k + (pull ? dt / (1.1 + 0.5 * Math.min(1, this.n / this.parts.max.trap)) : -dt / 0.6))); // a full trap is slower to come
         o.position.y = y0 + ease(k) * 0.55;
         o.rotation.z = Math.sin(k * 9) * 0.03 * (1 - k);
-        this.work.meter(k, 0.97, 1);
         if (k >= 1 || (k <= 0 && !pull)) res();
       };
     });
     this.step = null;
-    this.work.meter(null);
     if (k < 1) { o.position.y = y0; this.state = 'set'; return; }
-    this.parts.inTrap.userData.show(Math.min(this.n, this.parts.max.trap));
     this.state = 'shore';
     this.hands.hold(this.trap);
-    if (this.n === 0) this.work.hint('tuu-empty', TXT.empty, 4);
+    this.hands.weigh(0.3 + 0.6 * Math.min(1, this.n / this.parts.max.trap));
     g.promptKey = null;
   }
 
+  // tipped tail-down over the carrier for as long as it is held there: the catch slides out fish by fish
   pourAct = {
-    id: 'pour-tuu', label: TXT.pour, thenCard: false,
+    id: 'pour-tuu', label: TXT.pour,
     run: async (game, it) => {
       if (!this.held || this.busy) return;
       this.busy = true;
-      const n = this.n, from = { p: new THREE.Vector3(...CARRY.p), q: CARRY.q.clone() };
+      const inp = game.input, from = { p: new THREE.Vector3(...CARRY.p), q: CARRY.q.clone() };
       const P = this.pose = { p: from.p.clone(), q: from.q.clone() };
-      await this.tween(0.6, (k) => { P.p.lerpVectors(from.p, TIP.p, ease(k)); P.q.slerpQuaternions(from.q, TIP.q, ease(k)); });
-      if (n) game.audio?.play('water-pour-2', it.target.getWorldPosition(_v));
-      const had = this.total;
-      await this.tween(0.25 + Math.min(1.4, n * 0.06), (k) => {
-        const out = Math.round(n * k);
-        this.parts.inTrap.userData.show(Math.max(0, Math.min(n, this.parts.max.trap) - out));
-        this.parts.inBasket.userData.show(Math.min(this.parts.max.basket, had + out));
+      let k = 0, t = 0, out = 0, flow = 0, sounded = false;
+      await new Promise((res) => {
+        this.step = (dt) => {
+          t += dt;
+          const tip = inp.doing || t < 0.3;
+          k = Math.max(0, Math.min(1, k + (tip ? dt / 0.55 : -dt / 0.45)));
+          P.p.lerpVectors(from.p, TIP.p, ease(k)); P.q.slerpQuaternions(from.q, TIP.q, ease(k));
+          if (k > 0.85 && this.n > 0) {
+            if (!sounded) { sounded = true; game.audio?.play('water-pour-2', it.target.getWorldPosition(_v)); }
+            flow += dt * 7;
+            while (flow >= 1 && this.n > 0) { flow--; this.n--; out++; this.total++; }
+            this.parts.inTrap.userData.show(Math.min(this.n, this.parts.max.trap));
+            this.parts.inBasket.userData.show(Math.min(this.parts.max.basket, this.total));
+          }
+          if (k <= 0 && !tip) res();
+        };
       });
-      this.total = had + n; this.n = 0;
-      await this.tween(0.5, (k) => { P.p.lerpVectors(TIP.p, from.p, ease(k)); P.q.slerpQuaternions(TIP.q, from.q, ease(k)); });
-      this.pose = null; this.busy = false;
-      if (n) {
-        const all = this.work.count('mundu', n);
-        game.ui.toast(`<small>${game.ui.t(TXT.catch)}</small><b>${n}</b>`, 3600);
-        if (all === n) this.work.say(TXT.proverb, TXT.proverbBy);
-        else if (n < 6) this.work.hint('tuu-few', TXT.few, 2);
-      } else this.work.hint('tuu-empty', TXT.empty, 4);
+      this.step = null; this.pose = null; this.busy = false; this.shown = this.n;
+      if (out) { const all = this.work.count('mundu', out); if (all === out) this.work.say(TXT.proverb, TXT.proverbBy); }
       game.promptKey = null;
     },
   };
@@ -152,6 +147,7 @@ export class Fish {
       // they come in quickly at first, then ever more slowly as the trap fills
       this.t += dt;
       this.n = Math.floor(this.parts.max.trap * 1.6 * (1 - Math.exp(-this.t / FULL)) * this.luck);
+      if (this.n !== this.shown) { this.shown = this.n; this.parts.inTrap.userData.show(Math.min(this.n, this.parts.max.trap)); } // they show through the wicker
     }
     const off = !(this.held || this.state === 'shore' && !this.hands.held);
     if (this.gapIt.off !== off) { this.gapIt.off = off; this.game.promptKey = null; }
