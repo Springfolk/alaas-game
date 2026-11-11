@@ -26,7 +26,8 @@
     "lint": "eslint src tools",
     "bake-impostors": "node tools/bake-impostors.mjs",
     "bake-geometry": "node tools/bake-geometry.mjs",
-    "key-art": "node tools/key-art.mjs"
+    "key-art": "node tools/key-art.mjs",
+    "bake-journal": "node tools/bake-journal.mjs"
   },
   "dependencies": {
     "meshoptimizer": "1.3.0",

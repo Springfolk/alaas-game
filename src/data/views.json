@@ -1,0 +1,370 @@
+{
+ "alaas": {
+  "cam": [
+   20,
+   135,
+   -330,
+   180,
+   -14,
+   50
+  ]
+ },
+ "sayylyk-kystyk": {
+  "cam": [
+   284,
+   100,
+   -86,
+   60,
+   -8,
+   45
+  ]
+ },
+ "balagan": {
+  "dir": [
+   330,
+   13
+  ]
+ },
+ "ohokh": {
+  "dir": [
+   310,
+   20
+  ],
+  "fix": true,
+  "dist": 0.45
+ },
+ "ottuk-mas": {
+  "say": {
+   "sah": "Тыаҕа наадалааҕыҥ эрэ ыл, айдаарыма.",
+   "en": "In the forest take only what you need, and make no noise.",
+   "ru": "В лесу бери только нужное и не шуми."
+  },
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "oron": {
+  "it": "Billerik",
+  "dir": [
+   139,
+   24
+  ],
+  "fix": true,
+  "dist": 0.55
+ },
+ "khappakhchy": {
+  "dir": [
+   40,
+   16
+  ],
+  "fix": true,
+  "dist": 0.5
+ },
+ "toyon-baghana": {
+  "dir": [
+   128,
+   10
+  ],
+  "fix": true,
+  "dist": 0.6
+ },
+ "muus-tunnuk": {
+  "dir": [
+   330,
+   13
+  ]
+ },
+ "khoton": {
+  "dir": [
+   195,
+   13
+  ]
+ },
+ "urasa": {
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ },
+ "mogol-urasa": {
+  "as": "urasa",
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ },
+ "ampaar": {
+  "it": 1,
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ },
+ "kuruo": {
+  "it": 1,
+  "dir": [
+   330,
+   20
+  ],
+  "dist": 0.7
+ },
+ "hay-making": {
+  "dir": [
+   300,
+   13
+  ],
+  "free": true
+ },
+ "homestead-layout": {
+  "cam": [
+   4,
+   152,
+   -158,
+   0,
+   -55,
+   40
+  ]
+ },
+ "choron": {
+  "say": {
+   "sah": "Уокка · Сиргэ · Халлааҥҥа",
+   "en": "To the fire · to the earth · to the sky",
+   "ru": "Огню · земле · небу"
+  },
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "kytyya": {
+  "dir": [
+   0,
+   22
+  ]
+ },
+ "khamyiakh-ladle": {
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "birch-bark": {
+  "it": 1,
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "ygas-bucket": {
+  "dir": [
+   255,
+   34
+  ]
+ },
+ "mas-yagas": {
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "horsehair": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "kymys": {
+  "say": {
+   "sah": "Саҥа көөнньөр кымыс аттыгар айдаарбаттар.",
+   "en": "Nobody makes a noise beside young kymys.",
+   "ru": "Возле молодого кумыса не шумят."
+  },
+  "dir": [
+   270,
+   34
+  ]
+ },
+ "dairy-suorat-tar": {
+  "dir": [
+   135,
+   34
+  ]
+ },
+ "dairy-cream": {
+  "dir": [
+   210,
+   34
+  ]
+ },
+ "dyedyen": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true,
+  "dist": 0.6
+ },
+ "munkha": {
+  "dir": [
+   0,
+   9
+  ],
+  "fix": true,
+  "dist": 0.6
+ },
+ "tuu": {
+  "it": "fish trap",
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "khomus": {
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "blacksmith": {
+  "say": {
+   "sah": "Уус суох. Көмөлөһөөччүтүн курдук, кини хаалларбыт быһах тимирин таптай.",
+   "en": "The smith is away. Finish the knife blank he left, as his helper would.",
+   "ru": "Кузнеца нет. Докуйте оставленную им заготовку ножа, как сделал бы его подручный."
+  },
+  "dir": [
+   240,
+   22
+  ]
+ },
+ "knife": {
+  "dir": [
+   135,
+   34
+  ]
+ },
+ "saddle": {
+  "dir": [
+   270,
+   34
+  ]
+ },
+ "silver-ornaments": {
+  "dir": [
+   345,
+   34
+  ]
+ },
+ "clothing": {
+  "dir": [
+   30,
+   34
+  ]
+ },
+ "ornament": {
+  "photo": true
+ },
+ "aal-luuk-mas": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "urung-aar-toyon-aiyy": {
+  "photo": true
+ },
+ "ichchi": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "uot-ichchite": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "baay-bayanay": {
+  "cam": [
+   0,
+   100,
+   -305,
+   0,
+   3,
+   55
+  ]
+ },
+ "serge": {
+  "it": 0,
+  "dir": [
+   80,
+   7
+  ],
+  "fix": true,
+  "dist": 0.6
+ },
+ "salama": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "sacred-birch": {
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ },
+ "algys": {
+  "photo": true
+ },
+ "ysyakh": {
+  "photo": true
+ },
+ "osuokhai": {
+  "photo": true
+ },
+ "olonkho": {
+  "photo": true
+ },
+ "sakha-calendar": {
+  "dir": [
+   128,
+   12
+  ],
+  "fix": true
+ },
+ "horse-and-cow": {
+  "dir": [
+   75,
+   7
+  ],
+  "fix": true,
+  "dist": 0.4
+ },
+ "hospitality": {
+  "dir": [
+   60,
+   34
+  ]
+ },
+ "tupte": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ }
+}

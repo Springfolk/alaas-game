@@ -88,6 +88,9 @@ Checked and correct: Дойду, Дьиэ-уот, Аһылык, Таҥас, Ит
 - `dyedyen` = small hand-picked wild strawberry (Fragaria vesca / F. viridis) gathered into birch-bark тууйас; оноойук and дьэдьэнньит (not in sakhatyla) replaced by тууйас and the verb дьэдьэннээ= (2026-10-24).
 - Added `dyedyen` (food), `ottuk-mas` (household), `mas-yagas` (household; the carried water pail points here, `ygas-bucket` stays the birch-bark milk bucket). Rain idiom fixed to «ыаҕастаах уунан кутар» (sakhatyla).
 
+## UI rethink 2026-11-11
+- No new strings. Lines dropped as toasts are back as the entry's saying on the stage and in its text (`say` in `src/data/views.json`, wording unchanged): `ottuk-mas` «Тыаҕа наадалааҕыҥ эрэ ыл, айдаарыма.», `blacksmith` «Уус суох. Көмөлөһөөччүтүн курдук…», `kymys` «Саҥа көөнньөр кымыс аттыгар айдаарбаттар.», `choron` «Уокка · Сиргэ · Халлааҥҥа» (the three words of the old sprinkle steps, as one line).
+
 ## Actions rework 2026-11-11 (not yet approved)
 - Controls list: the E row «Чугастык көр / оҥор» split into «Оҥор» (the do input), «Уур» (put down), «Чугастык көр» (E); same words as before, now three rows.
 - Dropped with the E-only input: the "(E-ни тутан тур)" / "(hold E)" / «(удерживайте E)» variants of хайыт, тууну таһаар, оту оҕус, туоһу уокка сылыт, and the two E hints of the splitting job.

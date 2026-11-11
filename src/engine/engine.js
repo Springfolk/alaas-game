@@ -222,9 +222,10 @@ export class Engine {
     this.meterDt = dt;
     const m = this.meter?.log2;
     const target = m != null
-      ? EXPOSURE * Math.min(6, Math.max(0.45, 2 ** ((METER_REF - m) * 0.75)))
+      ? EXPOSURE * Math.min(this.closeLook ? 24 : 6, Math.max(0.45, 2 ** ((METER_REF - m) * (this.closeLook ? 1 : 0.75)))) // closeLook: a thing held up to the eye is seen in full, however dark its corner (src/ui/stage.js)
       : EXPOSURE * this.exposureTarget / 0.62;
-    const rate = target < this.exposure ? 2.2 : 0.9;
+    const rate = this.adaptFast > 0 ? 14 : target < this.exposure ? 2.2 : 0.9; // adaptFast (s): after a cut of the view (src/ui/stage.js)
+    if (this.adaptFast > 0) this.adaptFast -= dt;
     this.exposure += (target - this.exposure) * (1 - Math.exp(-rate * dt));
     if (this.grade) this.grade.exposure.value = this.exposure;
     this.renderer.toneMappingExposure = this.exposure;

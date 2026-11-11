@@ -18,6 +18,7 @@ import { closeWorkers } from './load/workers.js';
 import { isShadowProxy } from './engine/merge.js';
 import { T, CONTROLS, LANGS, LANG_NAMES, tr, detectLang } from './ui/i18n.js';
 import { Guide } from './ui/guide.js';
+import { Stage } from './ui/stage.js';
 import { prewarmUI } from './ui/prewarm.js';
 import { version } from '../package.json';
 import { instrument, event } from './load/prof.js';
@@ -99,6 +100,7 @@ class Game {
     releaseGeometry(this); // vertex arrays the GPU holds leave the JS heap before the warm-up (src/load/release.js)
     this.interact = new Interactions(this); // carrying, sitting, berries (src/interact)
     this.guide = new Guide(this); // the journal's finder (DOM only)
+    this.stage = this.ui.stage = new Stage(this); // the inspect stage: the view goes to the thing (src/ui/stage.js)
     this.ui.placed = new Set(this.world.interactables.map((i) => i.entry).filter(Boolean));
     if (params.has('sun')) { const [e, a] = params.get('sun').split(',').map(Number); this.engine.setSun(e, a ?? this.engine.sunAz); }
     await this.warmUp();
@@ -130,16 +132,18 @@ class Game {
       // the pause menu goes once the lock is really back (a too-early request fails and leaves it up)
       if (locked) { this.unpause(); return; }
       if (this.title) return;
-      this.reading = null; this.ui.close(); // Esc closes the card or journal (and, as pointer lock goes, pauses)
+      this.closeCard(); this.ui.close(); // Esc closes the card or journal (and, as pointer lock goes, pauses)
       document.getElementById('pause').classList.add('show');
     };
     addEventListener('keydown', (e) => this.key(e));
     this.input.onDo = (down) => { if (down && this.playing) this.act(this.focus); }; // the hands: left button, F, the touch hand button
     this.input.onPut = () => this.put();
-    this.ui.onAction = (a, id) => { // window buttons, journal tiles, card links
+    this.ui.onAction = (a, id, it, back) => { // window buttons, journal tiles, card links, the names on the stage
       if (a === 'lang') this.key({ code: 'KeyL' });
-      else if (a === 'learn') this.discover(id);
+      else if (a === 'learn') this.discover(id, true);
       else if (a === 'guide') this.setGuide(id);
+      else if (a === 'more') this.inspect(null);
+      else if (a === 'open') { if (back) this.ui.close(); this.read(id, it, back); }
       else this.closeUI();
     };
     if (params.has('auto')) this.start(true);
@@ -269,7 +273,7 @@ class Game {
   setLang(lang) {
     this.state.lang = lang;
     this.save.langSet = true;
-    if (this.cardOpen()) this.ui.showEntry(this.ui.current, { mode: this.reading?.mode || 'full' }); else if (this.ui.open === 'journal') this.ui.showJournal();
+    if (this.cardOpen()) this.ui.showEntry(this.ui.current, { mode: this.reading?.mode || 'peek' }); else if (this.ui.open === 'journal') this.ui.showJournal();
     this.focus = undefined;
     this.applyStatic();
     this.persist();
@@ -290,7 +294,7 @@ class Game {
   // needs no new lock (and no browser banner). Esc: the browser drops the lock; Continue re-locks once.
   get paused() { return document.getElementById('pause').classList.contains('show'); }
   pause() {
-    this.reading = null; this.ui.close();
+    this.closeCard(); this.ui.close();
     document.getElementById('pause').classList.add('show');
     this.ui.setMenu(true);
   }
@@ -306,7 +310,7 @@ class Game {
     window.close();
     if (window.closed) return;
     this.title = true; // first: losing the pointer lock then shows no pause menu
-    this.unpause(); this.reading = null; this.ui.close();
+    this.unpause(); this.closeCard(); this.ui.close();
     document.exitPointerLock();
     this.showHints();
     document.getElementById('title').classList.add('show');
@@ -370,47 +374,63 @@ class Game {
     if (e.code === 'KeyP' && this.input.locked) { if (this.paused) this.resume(); else this.pause(); return; }
     if (this.paused) return;
     if (e.code === 'KeyH' && ui.open !== 'journal') { this.save.settings.hints = !this.save.settings.hints; document.getElementById('s-hints').checked = this.save.settings.hints; this.showHints(); this.persist(); return; }
-    // a centred window (journal, full card): E / Esc / J close it; the pointer lock is kept throughout
-    if (ui.modal || (this.cardOpen() && !this.input.active)) {
-      if (e.code === 'Escape' || e.code === 'KeyE' || (e.code === 'KeyJ' && ui.open === 'journal')) this.closeUI();
+    // a card or the journal is up: E goes on (the thing → its text → closed), Esc / J / a step away close; the
+    // pointer lock is kept throughout
+    if (ui.modal) {
+      if (e.code === 'KeyE' && ui.open === 'card') this.inspect(null);
+      else if (e.code === 'Escape' || e.code === 'KeyE' || e.code === 'KeyJ' || e.code === 'Tab' || (ui.open === 'card' && /^Key[WASD]$/.test(e.code))) this.closeUI();
       return;
     }
     if (!this.input.active) return;
-    if (e.code === 'Escape' && this.cardOpen()) { this.closeCard(); return; } // touch: no pointer lock to eat Esc
-    if (e.code === 'KeyJ' || e.code === 'Tab') { this.closeCard(); ui.showJournal(); }
+    if (e.code === 'KeyJ' || e.code === 'Tab') ui.showJournal();
     if (e.code === 'KeyE') this.inspect(this.focus);
   }
 
-  discover(id) {
+  // `quiet`: the card that is opening shows it as new itself
+  discover(id, quiet = false) {
     if (!BY_ID[id] || this.state.found.has(id)) return false;
     this.state.found.add(id);
-    this.ui.discovered(id);
+    if (!quiet) this.ui.discovered(id);
     if (this.guide?.id === id) this.ui.guided = this.guide.set(null);
     this.audio?.play('discover');
     this.persist();
     return true;
   }
 
-  // Is the explainer card up (peek side panel or full centred window)?
-  cardOpen() { const o = this.ui.open ?? (this.ui.isOpen ? 'card' : null); return !!o && o !== 'journal'; }
-  closeCard() { if (this.cardOpen()) this.ui.close(); this.reading = null; }
+  // Is a card up (the inspect stage, with or without its reading sheet)?
+  cardOpen() { return this.ui.open === 'card'; }
+  // the card away and the view back in the body; a card opened from the journal goes back to it
+  closeCard() {
+    const r = this.reading;
+    this.reading = null;
+    if (!this.cardOpen() && !this.stage?.on) return;
+    if (this.cardOpen()) this.ui.close();
+    this.stage.close();
+    if (r?.back === 'journal' && !this.paused && !this.title) this.ui.showJournal();
+  }
   // close any window and play on (lock() is a no-op while the pointer is still locked)
-  closeUI() { this.reading = null; this.ui.close(); this.input.lock(); }
-  // Inspecting (E, the touch eye button): the card of the thing in view as a peek (title + lead, you walk on)
-  // → its full text (centred, you stand) → closed. The one entry point for looking closer; it never acts.
+  closeUI() { const card = this.cardOpen(); this.closeCard(); if (!card) this.ui.close(); if (!this.ui.open) this.input.lock(); }
+  // Inspecting (E, the touch eye button): the thing in view comes up (the view goes to it: src/ui/stage.js)
+  // with its name and one line → its full text beside it → closed. The one entry point for looking closer; it never acts.
   inspect(it) {
     const r = this.cardOpen() ? this.reading : null;
     if (r && (!it || !it.entry || r.it === it || it.entry === r.id)) { this.read(r.id, r.it); return; }
     if (it?.entry) this.read(it.entry, it);
   }
-  read(id, it = null) {
+  // `it`: the thing looked at (none: the entry's own view, as from the journal or a link); `back`: where closing returns
+  read(id, it = null, back = null) {
     if (!BY_ID[id]) return;
     const r = this.cardOpen() ? this.reading : null;
-    if (r?.id === id && r.mode === 'full') { this.closeCard(); return; }
-    const mode = r?.id === id ? 'full' : 'peek';
-    this.discover(id);
-    this.ui.showEntry(id, { mode });
-    this.reading = { id, it, mode, x: this.player.pos.x, z: this.player.pos.z };
+    if (r?.id === id && (!it || r.it === it)) { // the same thing again: its text, then closed
+      if (r.mode === 'full') { this.closeCard(); return; }
+      r.mode = 'full';
+      this.ui.showEntry(id, { mode: 'full' });
+      return;
+    }
+    const fresh = this.discover(id, true);
+    const kind = this.stage.open(id, it);
+    this.ui.showEntry(id, { mode: 'peek', kind, fresh });
+    this.reading = { id, it, mode: 'peek', back: back || r?.back };
   }
   // The act the hands do on `it` now (what you carry can change it), or null.
   actOf(it) {
@@ -493,12 +513,14 @@ class Game {
     this.clock.update(now); // the rAF timestamp: frame steps stay as even as the display's refreshes
     const dt = Math.max(0, Math.min(this.clock.getDelta(), 0.25)); // (was 0.05: under 20 fps the world ran in slow motion)
     const paused = this.paused;
-    if (!this.title && !this.ui.modal && !paused) this.stepPlayer(dt);
+    const staged = this.stage?.on; // the view is away from the body (the inspect stage)
+    if (!this.title && !this.ui.modal && !paused && !staged) this.stepPlayer(dt);
     else if (this.title) { this.player.update(0); }
+    if (staged) this.stage.update(dt);
     // tag interactable roots once
     for (const it of this.world.interactables) if (it.target && !it.target.userData.interactable) { it.target.userData.interactable = it; quickRaycast(it.target); }
     this.pickTick = (this.pickTick || 0) + 1;
-    const live = !this.title && !this.ui.modal && !this.player.frozen && !paused;
+    const live = !this.title && !this.ui.modal && !this.player.frozen && !paused && !staged;
     const pick = !(this.pickTick % 3);
     const f = live ? (pick ? this.pickFocus() : this.focus) : null;
     if (f !== this.focus) { this.focus = f; this.promptKey = null; }
@@ -510,7 +532,7 @@ class Game {
       const what = f ? (f.label ? this.ui.t(f.label) : e ? e.sah.split(/[;(]/)[0].trim() : f.entry) : null;
       const actText = f && act ? this.ui.t(act.label) : null;
       this.doReady = !!act && act.id !== 'none';
-      this.readReady = !!e || (live && !!this.reading);
+      this.readReady = !!e;
       this.putReady = live && !this.acting && !!this.interact?.putAct();
       const key = `${what}|${actText}|${this.doReady}|${!!e}`;
       if (key !== this.promptKey) {
@@ -521,17 +543,13 @@ class Game {
         this.ui.setPrompt(what, actText, { act: this.doReady, read: !!e });
       }
     }
-    // reading: walking away closes the card (the UI scrolls it: wheel, keys, drawn cursor)
-    const rd = this.reading;
-    if (rd && this.input.active && this.cardOpen()) {
-      if (Math.hypot(this.player.pos.x - rd.x, this.player.pos.z - rd.z) > 3) this.closeCard();
-    } else if (rd && !this.cardOpen()) this.reading = null;
     const ctx = { dt, time: this.clock.getElapsed(), camera: this.engine.camera, player: this.player, game: this };
     this.world.update(dt, ctx);
     this.audio?.update(dt, ctx);
     this.engine.update(dt);
     this.engine.render();
     this.guide?.update(dt);
+    this.ui.frame();
     this.fpsMeter(dt);
     this.input.endFrame();
     this.engine.frameDone(performance.now() - t0);

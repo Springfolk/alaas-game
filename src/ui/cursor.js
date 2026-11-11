@@ -4,7 +4,7 @@
 // moves this cursor instead of the view, and presses, clicks, scrollbar drags and the wheel are
 // delivered to the DOM element under it (elementFromPoint). Without pointer lock (touch, a free
 // pointer) it stays hidden and the real pointer works as usual.
-const CLICKABLE = 'button, a, summary, label, select, input, [data-entry], [data-img], [data-act]';
+const CLICKABLE = 'button, a, summary, label, select, input, [data-entry], [data-img], [data-act], .st-hero';
 const ARROW = '<svg width="20" height="24" viewBox="0 0 20 24"><path d="M1.5 1.5v18l4.6-4.3 3 7 3.2-1.4-3-6.8h6.4z" fill="#fff" stroke="#0b1520" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 const HAND = '<svg width="22" height="24" viewBox="0 0 22 24"><path d="M7 11V3.2a1.6 1.6 0 0 1 3.2 0V10l.1-1.6a1.6 1.6 0 0 1 3.1.2v1.3a1.6 1.6 0 0 1 3.1.1v1.2a1.6 1.6 0 0 1 3 .6v4.7c0 3.7-2.4 6.3-6 6.3h-1.6c-2.2 0-3.6-.9-4.9-2.6L2.4 14.4a1.6 1.6 0 0 1 2.5-2z" fill="#fff" stroke="#0b1520" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 
@@ -45,6 +45,7 @@ export class VirtualCursor {
     this.x = Math.min(innerWidth - 1, Math.max(0, this.x + dx));
     this.y = Math.min(innerHeight - 1, Math.max(0, this.y + dy));
     this.el.style.transform = `translate(${this.x}px,${this.y}px)`;
+    if (this.drag?.orbit) { this.x -= dx; this.y -= dy; this.el.style.transform = `translate(${this.x}px,${this.y}px)`; this.onOrbit?.(dx, dy); return; } // turning the thing: the cursor stays
     if (this.drag) { this.dragTo(); return; }
     this.setHover(this.at());
   }
@@ -67,6 +68,7 @@ export class VirtualCursor {
     const sc = scroller(t);
     if (sc && this.onScrollbar(sc)) { this.startDrag(sc); return; }
     if (t.matches('input[type=range]')) { this.drag = { range: t }; this.dragTo(); return; }
+    if (t.closest('[data-orbit]') && !t.closest(CLICKABLE)) { this.drag = { orbit: true }; return; } // the open view of the inspect stage
     this.down = t;
     this.hover?.classList.add('vdown');
   }
@@ -106,6 +108,7 @@ export class VirtualCursor {
   scrollAt(dy) {
     const t = this.at(), sc = t && scroller(t);
     if (sc) sc.scrollBy({ top: dy });
+    else if (t?.closest('[data-orbit]')) this.onZoom?.(dy);
   }
 }
 
