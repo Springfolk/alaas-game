@@ -64,6 +64,7 @@ export default async function build(ctx, placement) {
   // hung in the fork, the blade over it, the handle down along the post
   scythe.position.set(0.1, g0 + 1.4 - SCYTHE.handle, 0.07);
   scythe.rotation.set(0, -0.3, 0.06);
+  scythe.userData.grips = [{ hand: 'R', p: [0, 0.34, 0], axis: [0, 1, 0], r: 0.017 }, { hand: 'L', p: [0, 0.1, 0], axis: [0, 1, 0], r: 0.017 }];
   scythe.userData.dynamic = true;
   object.add(scythe);
   interactables.push({ target: scythe, khotuur: true, entry: 'hay-making', label: { sah: 'саха хотуура', en: 'Sakha scythe (саха хотуура)', ru: 'якутская коса (саха хотуура)' } });
