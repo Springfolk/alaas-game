@@ -102,6 +102,7 @@ class Game {
     this.guide = new Guide(this); // the journal's finder (DOM only)
     this.stage = this.ui.stage = new Stage(this); // the inspect stage: the view goes to the thing (src/ui/stage.js)
     this.ui.placed = new Set(this.world.interactables.map((i) => i.entry).filter(Boolean));
+    this.ui.placeOf = (id) => this.guide.places(id)[0] || null; // where on the journal's picture of the homestead
     if (params.has('sun')) { const [e, a] = params.get('sun').split(',').map(Number); this.engine.setSun(e, a ?? this.engine.sunAz); }
     await this.warmUp();
     await painted;
@@ -323,9 +324,8 @@ class Game {
   }
   // the journal's finder: choose (or drop) the entry to be led to
   setGuide(id) {
-    const c = this.ui.client(), top = c?.scrollTop;
     this.ui.guided = this.guide.set(id);
-    if (this.ui.open === 'journal') { this.ui.showJournal(); const n = this.ui.client(); if (n) n.scrollTop = top; }
+    if (this.ui.open === 'journal') this.ui.keepScroll(() => this.ui.showJournal());
   }
 
   applySettings() {

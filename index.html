@@ -239,7 +239,6 @@
     .st-read .client { max-height: 50vh; }
     .st-fig .hero img { max-height: 38vh; }
   }
-  #journal .win-head { padding-right: 62px; }
   /* the Vista caption close button */
   .win-close { position: absolute; top: 0; right: 6px; width: 43px; height: 19px; padding: 0; z-index: 2; cursor: pointer; border: 1px solid rgba(60,0,0,.75); border-top: 0; border-radius: 0 0 5px 5px;
     background: linear-gradient(180deg, #e9a99a 0%, #d0533b 45%, #b5280f 52%, #d24c2c 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 0 0 1px rgba(255,255,255,.18), 0 1px 3px rgba(0,0,0,.35); transition: box-shadow .2s, background .2s; }
@@ -278,35 +277,60 @@
   #lightbox img { display: block; max-width: 100%; max-height: calc(100% - 76px); object-fit: contain; }
   #lightbox .cap { max-width: 760px; font-size: 13.5px; line-height: 1.45; color: #fff; text-align: center; }
 
-  /* ---- journal ---- */
-  #journal { z-index: 10; align-items: center; justify-content: center; padding: 16px; background: rgba(4,12,22,.35); animation: fadein .3s both; }
-  #journal .win { width: min(920px, 100%); max-height: 100%; animation: pop .4s var(--ease) both; }
-  #journal .win-head { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
-  #journal h2 { font-family: var(--serif); font-weight: 400; font-size: 28px; margin: 0; }
-  #journal .count { font-size: 13px; color: var(--dim); display: flex; gap: 10px; align-items: center; margin-left: auto; }
-  #journal .count .bar { width: 140px; height: 11px; }
-  #journal .count .bar i::after { display: none; }
-  .client h4 { font-size: 13px; font-weight: 600; color: var(--c-head); margin: 16px 0 6px; display: flex; align-items: center; gap: 10px; }
-  .client h4:first-child { margin-top: 2px; }
-  .client h4::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #a9c4e0, rgba(169,196,224,0)); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 4px; }
-  .tile { text-align: left; padding: 7px 10px; display: flex; flex-direction: column; justify-content: center; gap: 1px; cursor: pointer; font: inherit; color: var(--c-ink);
-    border: 1px solid transparent; border-radius: 3px; background: transparent; transition: background .15s, border-color .15s; min-height: 44px; }
-  .tile b { font-family: var(--serif); font-weight: 400; font-size: 16px; line-height: 1.3; }
-  .tile small { color: var(--c-dim); font-size: 11.5px; line-height: 1.35; }
-  .tile:hover, .tile.vh:not(.unknown) { border-color: #b8d6fb; background: linear-gradient(180deg, #f5faff, #e3f0fd); }
-  .tile:active { border-color: #7da2ce; background: linear-gradient(180deg, #dcebfc, #c1dcfc); }
-  .tile.unknown { color: #a2afbc; cursor: default; background: none; border-color: transparent; }
-  /* not found yet: a hint of where (src/data/hints.json); choosing one starts the finder (src/ui/guide.js) */
-  .tile.hint { cursor: pointer; border: 1px dashed #d3dde8; }
-  .tile.work { cursor: default; } .tile.work.unknown { border: 1px dashed #d3dde8; } .tile.work.unknown small { color: #7b8c9d; font-style: italic; }
-  .tile.hint b { color: #a2afbc; }
-  .tile.hint small { color: #7b8c9d; font-style: italic; }
-  .tile.hint:hover, .tile.hint.vh { border-color: #b8d6fb; background: #f5faff; }
-  .tile.hint.on { border: 1px solid #7db6ec; background: linear-gradient(180deg, #f2f8ff, #e1eefc); }
-  .tile.hint.on b { color: var(--c-head); font-size: 14px; display: flex; align-items: center; gap: 6px; }
-  .gmark { width: 9px; height: 9px; transform: rotate(45deg); background: #ffd77a; border: 1px solid #a8741c; box-shadow: 0 0 6px rgba(255,200,90,.9); }
-  #journal .jhow { margin: 0 0 10px; color: var(--c-dim); font-size: 13px; font-style: italic; }
+  /* ---- journal (docs/ui.md): pictures of the things on the homestead from above and in rows by kind ---- */
+  #journal { z-index: 10; background: rgba(5,11,18,.9); }
+  .jr { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 18px max(22px, 2.4vw) 12px; color: var(--ink); }
+  .jr-head { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; padding-right: 56px; }
+  .jr-head h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(26px, 2.4vw, 44px); line-height: 1.1; margin: 0; }
+  .jr-head .count { display: flex; gap: 10px; align-items: center; font-size: clamp(14px, 1vw, 20px); color: var(--dim); }
+  .jr-head .count b { color: #fff; font-weight: 600; font-size: 1.2em; }
+  .jr-head .count .bar { width: clamp(90px, 12vw, 200px); height: 7px; border-radius: 4px; border: 0; background: rgba(255,255,255,.16); box-shadow: none; }
+  .jr-head .count .bar i { background: #7fd04e; box-shadow: none; transition: none; }
+  .jr-head .count .bar i::after { display: none; }
+  .jr-head .win-lang { margin-left: auto; }
+  .jr-main { flex: 1; min-height: 0; display: flex; gap: 22px; align-items: flex-start; }
+  .jr-map { position: relative; flex: 0 0 46%; align-self: center; line-height: 0; border: 1px solid rgba(255,255,255,.3); background: #2a3a2a; }
+  .jr-map img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  .jp { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; padding: 0; border-radius: 50%; cursor: pointer; display: grid; place-items: center; border: 2px solid #fff; background: #2a8ae0; color: #3a2400; font: 700 11px/1 var(--sans); }
+  .jp.q { width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; background: rgba(12,20,30,.6); border: 1.5px solid #ffd77a; font-size: 0; } /* a ring: something waits there */
+  .jp.on { width: 26px; height: 26px; margin: -13px 0 0 -13px; background: rgba(12,20,30,.8); border: 2px solid #ffd77a; z-index: 1; }
+  .jp.vh, .jp:hover { box-shadow: 0 0 0 3px rgba(255,255,255,.55); z-index: 2; }
+  .jr-scroll { flex: 1; min-width: 0; align-self: stretch; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 8px; }
+  .jr-scroll::-webkit-scrollbar { width: 12px; }
+  .jr-scroll::-webkit-scrollbar-thumb { border-radius: 6px; border: 3px solid transparent; background-clip: padding-box; background-color: rgba(255,255,255,.35); }
+  .jr-scroll h4 { margin: 16px 0 7px; font-size: clamp(11.5px, .8vw, 15px); font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--live-l); }
+  .jr-scroll h4:first-child { margin-top: 0; }
+  .jg { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(104px, 7.6vw, 200px), 1fr)); gap: 8px; }
+  .jg.work { grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 11vw, 290px), 1fr)); }
+  .jt { position: relative; aspect-ratio: 1; padding: 0; overflow: hidden; cursor: pointer; border: 1px solid rgba(255,255,255,.3); background: #16222e; color: #fff; text-align: left; font: inherit; }
+  .jt.job { aspect-ratio: 4 / 3; }
+  .jt img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .jt b { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 7px 6px; font: 400 clamp(13.5px, 1vw, 21px)/1.2 var(--serif); overflow-wrap: anywhere;
+    background: linear-gradient(180deg, rgba(5,11,18,0), rgba(5,11,18,.82) 55%); }
+  .jt b small { display: block; margin-top: 2px; font: 400 clamp(11.5px, .82vw, 16px)/1.3 var(--sans); color: var(--dim); }
+  .jt.q { border-style: dashed; border-color: rgba(255,255,255,.28); }
+  .jt.q img { opacity: .5; }
+  .jt.q i { position: absolute; inset: 0; display: grid; place-items: center; font: 400 26px var(--serif); color: rgba(255,255,255,.75); }
+  .jt.job.q b { color: var(--dim); }
+  .jt.on { border: 2px solid #ffd77a; }
+  .jt.vh, .jt:hover { border-color: #fff; border-style: solid; }
+  .gmark { display: inline-block; width: 10px; height: 10px; flex: none; transform: rotate(45deg); background: #ffd77a; border: 1px solid #a8741c; }
+  .jr-say { min-height: 1.5em; display: flex; align-items: center; gap: 10px; font-size: clamp(14px, 1.05vw, 20px); line-height: 1.4; color: #ffe9c2; }
+  .jr-say:empty { display: none; }
+  @media (orientation: portrait) {
+    .jr { padding: calc(64px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom)); gap: 10px; }
+    .jr-head { padding-right: 0; }
+    .jr-main { flex-direction: column; gap: 10px; align-items: stretch; }
+    .jr-map { flex: none; align-self: stretch; }
+    .jg { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .jg.work { grid-template-columns: repeat(2, 1fr); }
+    .jr-scroll { padding-right: 0; }
+  }
+  @media (orientation: landscape) and (max-height: 520px) {
+    .jr { padding: 8px calc(120px + env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left)); gap: 6px; }
+    .jr-head h2 { font-size: 22px; }
+    .jr-map { flex-basis: 40%; }
+  }
   /* the finder's marker: a small gold diamond over the place, or at the screen edge with an arrow */
   #guide { position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none; display: none; will-change: transform; }
   #guide.on { display: block; }
@@ -407,17 +431,14 @@
   /* touch: thumb-sized targets, no keyboard hints */
   @media (pointer: coarse) {
     .btn, .chip, .seg button, .tabs button, .qnote button, .settings select { min-height: 44px; }
-    .settings label, .tile { min-height: 46px; }
+    .settings label { min-height: 46px; }
     input[type=range] { height: 44px; }
     input[type=checkbox] { width: 24px; height: 24px; }
     input[type=checkbox]:checked::after { left: 8px; top: 3px; width: 6px; height: 12px; }
     .kb, #hints, .win-close, .win-lang, .st-x { display: none !important; } /* touch has its own close + language buttons */
   }
   @media (max-width: 640px) {
-    #journal, #pause { padding: calc(10px + env(safe-area-inset-top)) 8px calc(10px + env(safe-area-inset-bottom)); }
-    #journal { padding-top: calc(66px + env(safe-area-inset-top)); }
-    #journal .count { margin-left: 0; }
-    .grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); }
+    #pause { padding: calc(10px + env(safe-area-inset-top)) 8px calc(10px + env(safe-area-inset-bottom)); }
     #toasts { left: 8px; right: 8px; align-items: center; bottom: auto; top: calc(66px + env(safe-area-inset-top)); }
     .toast { width: min(300px, 100%); animation-name: toastdown; }
     .toast.out { transform: translateY(-24px); }

@@ -15,7 +15,7 @@ import { launch, PORT as port } from './browser.mjs';
 const only = process.argv.slice(2);
 const ROOT = new URL('..', import.meta.url).pathname;
 const VIEWS = join(ROOT, 'src/data/views.json'), OUT = join(ROOT, 'public/assets/ui/journal');
-const MAP = { cam: [10, 150, -130, 0, -42, 38], w: 1600, h: 900 }; // the homestead from above the south
+const MAP = { cam: [10, 150, -130, 0, -42, 32], w: 1600, h: 900 }; // the homestead from above the south
 const WORK = { split: 'block', hay: 'khotuur', tuos: 'bark', gather: 'drywood' }; // a job's own thing (flag on its interactable); the others share their entry's picture
 const S = 512;
 mkdirSync(OUT, { recursive: true });

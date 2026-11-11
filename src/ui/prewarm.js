@@ -58,9 +58,12 @@ export async function prewarmUI(game) {
     ui.enlarge();
     pictures(ui.lightbox);
     await frames(3);
+    ui.guided = ids[1]; // the journal with a chosen "?", its pictures and the pins on the homestead
     ui.showJournal();
+    pictures(ui.journal);
     if (touch) touch.show = 'choice';
-    await frames();
+    await frames(3);
+    ui.guided = null;
     ui.close();
     on('#pause', 'show');
     for (const tab of document.querySelectorAll('#pause .tab')) { on(`#${tab.id}`, 'on'); await frames(); }
