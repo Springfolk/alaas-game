@@ -9,7 +9,7 @@ import {
 } from 'three/tsl';
 import { tex, maps } from '../../engine/materials.js';
 import { octaves, TIER } from '../../engine/tier.js';
-import { APEX_Y, DOOR, makeProfile } from './frame.js';
+import { APEX_Y, DOOR, makeProfile, POST_WAIST, POST_BANDS, POST_TEETH } from './frame.js';
 
 const R0 = makeProfile().rAtY(0); // the cone's radius at the ground
 
@@ -223,8 +223,9 @@ export function makeMats() {
     M.poleOut = m;
   }
 
-  // ---- posts and hoops: stained red-brown with alder bark, uncarved. uv.x around (0.5 faces the hearth),
-  // uv.y height in metres; uv.x ≥ 5 marks hoops and lintel
+  // ---- posts and hoops: stained red-brown with alder bark; the posts' bands of cut teeth and their darker waist
+  // (frame.js POST_BANDS, POST_WAIST; docs/patterns.md). uv.x around (0.5 faces the hearth), uv.y height in metres;
+  // uv.x ≥ 5 marks hoops and lintel (plain)
   {
     const pine = maps('rough_pine_door');
     const m = std({ name: 'post-stained' });
@@ -232,30 +233,43 @@ export function makeMats() {
     const u = fract(t0.x), y = t0.y;
     const t = vec2(u.mul(0.06).add(0.62), y.div(1.6));
     const d = texture(pine.diff, t).rgb;
-    // plain: no traced source for carving on urasa posts (docs/patterns.md)
+    const isPost = step(t0.x, 5);
+    // teeth: a row of triangles standing on the band's lower line, cut between them
+    const tri = abs(fract(u.mul(POST_TEETH)).sub(0.5)).mul(2);
+    let cut = float(0), line = float(0);
+    for (const [y0, y1] of POST_BANDS) {
+      const v = y.sub(y0).div(y1 - y0);
+      const inBand = step(0.08, v).mul(step(v, 0.92));
+      cut = cut.add(inBand.mul(smoothstep(0.0, 0.08, v.sub(float(1).sub(tri)).mul(0.9).add(0.04))));
+      line = line.add(smoothstep(0.0035, 0.001, abs(y.sub(y0))).add(smoothstep(0.0035, 0.001, abs(y.sub(y1)))));
+    }
+    cut = cut.add(line).clamp(0, 1).mul(isPost);
+    const waist = smoothstep(POST_WAIST[0] - 0.004, POST_WAIST[0] + 0.004, y).mul(smoothstep(POST_WAIST[1] + 0.004, POST_WAIST[1] - 0.004, y)).mul(isPost);
     let c = d.mul(vec3(0.95, 0.62, 0.5));
     c = mix(c, vec3(0.3, 0.12, 0.07), 0.45);
+    c = mix(c, c.mul(vec3(0.5, 0.36, 0.3)), waist);
+    c = mix(c, vec3(0.05, 0.028, 0.02), cut.mul(0.82));
     // smoke darkens the upper posts
     c = mix(c, vec3(0.07, 0.04, 0.03), smoothstep(1.4, 2.4, p.y).mul(0.55));
     m.colorNode = c;
-    m.roughnessNode = float(0.74);
-    m.aoNode = occ(p);
-    m.normalNode = normalMap(texture(pine.nor, t), vec2(0.8));
+    m.roughnessNode = mix(float(0.74), float(0.5), waist).add(cut.mul(0.2));
+    m.aoNode = occ(p).mul(float(1).sub(cut.mul(0.35)));
+    m.normalNode = bump(cut.mul(-0.003), normalMap(texture(pine.nor, t), vec2(0.8)));
     M.post = m;
   }
 
-  // ---- planks (benches, board, sleepers): uv.y along the grain in metres, uv.x across.
-  // old_planks_02 has vertical planks; sample inside one plank, smoke-browned honey tone
+  // ---- planks (benches, board, sleepers): uv.y along the grain in metres, uv.x = the plank's number + 0..1 across it.
+  // old_planks_02 has seven vertical planks 0.143 wide from 0.02: each plank here is cut from inside one of them
   {
     const op = maps('old_planks_02');
     const m = std({ name: 'plank' });
     const t0 = uv();
-    const v = hash(floor(p.x.mul(3.1)).add(floor(p.z.mul(2.7)).mul(13.1)).add(floor(p.y.mul(9.0)).mul(7.3)));
-    const t = vec2(fract(t0.x.mul(0.5)).mul(0.1).add(0.31).add(v.mul(0.25)), t0.y.div(2.0).add(v));
+    const id = floor(t0.x), h = hash(id.mul(7.3).add(1.7)), h2 = hash(id.mul(3.1).add(9.2));
+    const t = vec2(floor(h.mul(7)).add(fract(t0.x).mul(0.76).add(0.12)).mul(0.143).add(0.02), t0.y.div(1.6).add(h2.mul(3.7)));
     const d = texture(op.diff, t).rgb;
-    let c = d.mul(vec3(1.1, 0.8, 0.55)).mul(v.mul(0.3).add(0.75));
-    c = c.mul(fbm3(p.mul(5), 3).mul(0.3).add(0.75));
-    // tops worn smooth and darker-honey where people sit
+    // smoke-browned honey, each plank its own tone; the long patches are years of sitting and sweeping
+    let c = d.mul(vec3(1.1, 0.8, 0.55)).mul(h2.mul(0.3).add(0.78));
+    c = c.mul(fbm3(p.mul(vec3(3, 3, 3)), 3).mul(0.3).add(0.78));
     m.colorNode = c;
     m.roughnessNode = texture(op.arm, t).g.mul(0.85);
     m.aoNode = occ(p).mul(texture(op.arm, t).r);
@@ -401,14 +415,19 @@ export function makeMats() {
     M.hair = m;
   }
 
-  // ---- kymys in the chorons: off-white with a faint blue cast, matte with a soft sheen of butterfat
+  // ---- kymys in the chorons: milk-white with a faint cool cast, froth gathered in patches and round the rim
   {
     const m = std({ name: 'kymys' });
-    const c = mix(vec3(0.74, 0.76, 0.78), vec3(0.8, 0.81, 0.82), n3(positionLocal.mul(70)));
+    const q = positionLocal;
+    const cell = mx_worley_noise_float(q.mul(260));                         // bubbles
+    const patch = smoothstep(0.42, 0.68, n3(q.mul(46)).mul(0.6).add(n3(q.mul(110)).mul(0.4)));
+    const froth = patch.mul(smoothstep(0.05, 0.4, cell).mul(0.55).add(0.45));
+    const c = mix(vec3(0.8, 0.8, 0.77), vec3(0.97, 0.96, 0.92), froth);
     m.colorNode = c;
-    m.emissiveNode = c.mul(0.05);   // firelight scattered inside the milk: it reads pale even facing away from the fire
-    m.roughnessNode = float(0.32);
-    m.aoNode = occ(positionLocal);
+    m.emissiveNode = c.mul(0.07);   // firelight scattered inside the milk: it reads pale even facing away from the fire
+    m.roughnessNode = mix(float(0.22), float(0.7), patch);
+    m.aoNode = occ(positionLocal).mul(mix(float(1), cell.mul(0.5).add(0.6), patch));
+    m.normalNode = bump(froth.mul(0.0012));
     M.kymys = m;
   }
 

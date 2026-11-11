@@ -17,6 +17,7 @@ three builds one shader per distinct node graph, keyed by **node identity**: mat
 
 ## Light set
 - One set for the homestead: the sun and two **local lights** (`LocalLightNode`) whose colour × intensity, position, range and decay come from the material (`_l<i>c|p|d|k`, getters on the model's own point lights; `useLights`, ≤2 per model). Every model shares the builds; a house is lit only by its own fire.
+- A house's second light travels with the eye: the urasa's is the fire thrown back by the bark (decay 1); the balagan's is its door light, beside the eye during a close look.
 - The sun is scaled by `_sun` (sun colour × `sunMask`). Opt-outs: `noSun(m)` (urasa interior: shadow-map leaks), `noLocalLights(m)` (urasa cover: no fire through the bark).
 - Nature keeps a sun-only set.
 

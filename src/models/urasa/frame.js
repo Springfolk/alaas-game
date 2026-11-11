@@ -6,6 +6,8 @@ import { TAU, tube, lathe, merge, beam, xf } from './geom.js';
 import { valueNoise } from '../../util.js';
 
 export const N_POST = 12, POST_H = 2.03, POLE_R = 0.048;
+// carved posts (m up the post): the stained waist, and the bands of cut teeth [y0, y1] below it, above it and under the hoop
+export const POST_WAIST = [1.425, 1.575], POST_BANDS = [[1.375, 1.42], [1.58, 1.625], [1.905, 1.955]], POST_TEETH = 28;
 const HOOP_RT = 0.06; // lower hoop thickness
 
 // Pole centreline profile (r, y) by arc length: leaning a little to the lower hoop, then a ~61° cone.
@@ -66,26 +68,29 @@ export function buildFrame(rng, P) {
   const doorA = Math.asin((DOOR.hw + 0.13) / R_HOOP);         // poles inside this angle stand on the lintel
   const sLintel = P.sAtY(DOOR.h + 0.115);
 
-  // ---- posts: hewn larch, 20–24 cm, carved bands on the inner face, a saddle for the hoop on top
+  // ---- posts: turned larch after the carved posts of the Suntar urasa (docs/patterns.md): a shaft, a band of cut
+  // teeth, a stained waist (a round bead under a hollow neck), a second band, the shaft again and a band under the
+  // hoop's saddle. The teeth are drawn by the material (urasa/mats.js `post-stained`) at POST_BANDS.
   const postAngles = [];
   for (let k = 0; k < N_POST; k++) {
     const a = ((k + 0.5) / N_POST) * TAU + (rng() - 0.5) * 0.02;
     postAngles.push(a);
     const r0 = 0.1 + rng() * 0.012, top = POST_H + (rng() - 0.5) * 0.03, seed = k * 13.7;
-    // rows: 12 even steps plus three across each turned ring (even rows only hit or missed the 1.2 cm rings)
-    const RINGS = [0.84, 1.06, 1.5, 1.88], ys = [];
-    for (let i = 0; i <= 12; i++) ys.push(-0.15 + (top + 0.15) * (i / 12));
-    for (const yb of RINGS) ys.push(yb - 0.02, yb, yb + 0.02);
-    ys.sort((a, b) => a - b);
+    const ys = [];
+    for (let i = 0; i <= 8; i++) ys.push(-0.15 + (POST_WAIST[0] - 0.08 + 0.15) * (i / 8));
+    for (let y = POST_WAIST[0] - 0.07; y < POST_WAIST[1] + 0.075; y += 0.0125) ys.push(y);
+    for (const y of [1.74, 1.86, 1.895, 1.905, 1.955, 1.965, top]) ys.push(y);
+    ys.sort((p, q) => p - q);
+    const groove = (y, at) => 0.004 * Math.exp(-(((y - at) / 0.005) ** 2));
     const prof = [];
     for (const y of ys) {
-      if (prof.length && y - prof[prof.length - 1][1] < 0.012) continue;
       let r = r0 * (1.06 - 0.12 * (y / top));
-      // turned rings framing the carved bands
-      for (const yb of RINGS) r -= 0.006 * Math.exp(-(((y - yb) / 0.012) ** 2));
+      const w = (y - POST_WAIST[0]) / (POST_WAIST[1] - POST_WAIST[0]);            // 0..1 through the waist
+      if (w > 0 && w < 1) r += w < 0.55 ? 0.011 * Math.sin((w / 0.55) * Math.PI) ** 0.7 : -0.02 * Math.sin(((w - 0.55) / 0.45) * Math.PI) ** 0.8;
+      for (const [y0, y1] of POST_BANDS) r -= groove(y, y0) + groove(y, y1);    // incised lines framing each band
       prof.push([r, y]);
     }
-    const g = lathe(prof, 14, (r, y, ang) => r * (1 + valueNoise(ang * 1.3 + seed, y * 2.2, 5) * 0.06 + valueNoise(ang * 4 + seed, y * 9, 6) * 0.015));
+    const g = lathe(prof, 16, (r, y, ang) => r * (1 + valueNoise(ang * 1.3 + seed, y * 2.2, 5) * 0.05 + valueNoise(ang * 4 + seed, y * 9, 6) * 0.012));
     // uv: x so that 0.5 faces the centre, y in metres
     const uv = g.attributes.uv, pos = g.attributes.position;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), pos.getY(i));
@@ -93,6 +98,22 @@ export function buildFrame(rng, P) {
     xf(g, { ry: -a, p: [Math.cos(a) * R_POST, 0, Math.sin(a) * R_POST] });
     G.post.push(g);
     colliders.push({ x: Math.cos(a) * R_POST, z: Math.sin(a) * R_POST, r: r0 + 0.02 });
+  }
+  // ---- салама: a cord of twisted black and white horsehair hung from post to post under the hoop, white hair
+  // tassels on it (not across the door)
+  for (let k = 0; k < N_POST - 1; k++) {
+    const a0 = postAngles[k], a1 = postAngles[k + 1], rr = R_POST - 0.118, pts = [];
+    for (let i = 0; i <= 14; i++) { const t = i / 14, a = a0 + (a1 - a0) * t; pts.push(new THREE.Vector3(Math.cos(a) * rr, 1.8 - 0.13 * Math.sin(t * Math.PI) ** 0.9, Math.sin(a) * rr)); }
+    const cord = tube(pts, () => 0.0065, 5);
+    const cu = cord.attributes.uv; for (let i = 0; i < cu.count; i++) cu.setX(i, cu.getX(i) + 6);       // braid
+    G.hair.push(cord);
+    for (const i of [3, 7, 11]) {
+      const p = pts[i], sw = valueNoise(k * 3.1, i, 9) * 0.02;
+      const tas = lathe([[0.006, 0], [0.009, -0.02], [0.0135, -0.09], [0.012, -0.15], [0.006, -0.195 - sw], [0.001, -0.215 - sw]], 6, (r, y, ang) => r * (1 + 0.35 * valueNoise(ang * 3 + i, y * 30 + k, 4)));
+      const tu = tas.attributes.uv; for (let j = 0; j < tu.count; j++) tu.setXY(j, tu.getX(j) + 21, tu.getY(j) * 0.2);   // white hair
+      G.hair.push(xf(tas, { p: [p.x + sw * 0.3, p.y - 0.004, p.z] }));
+      G.hair.push(xf(lathe([[0.0115, -0.012], [0.013, 0], [0.0115, 0.012]], 6), { p: [p.x, p.y - 0.012, p.z] }));               // its binding
+    }
   }
 
   // ---- hoops: the lower one of bent poles lashed on the post tops; middle and top ones tied inside the poles

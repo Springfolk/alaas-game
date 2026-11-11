@@ -81,6 +81,8 @@ export default async function build(ctx) {
   const fire = buildFire(rng, { holeY, holeR: hole.r, coneR });
   root.add(fire.group);
   root.traverse((o) => { if (o.isMesh) o.castShadow = !o.userData.noShadow && !o.material.transparent; });
+  const BOUNCE = 0.13, bounce = new THREE.PointLight(0xffc9a0, 0, 7.5, 1);
+  root.add(bounce);
   // Explicit light sets. Interior-only materials take the fire's light alone: the sun gets in only through the
   // door and the smoke hole, and shadow-map leaks would light thin lines along every pole and seam. The outside
   // takes the sun alone (the fire must not glow through the bark); the floor, door frame and curtain take both.
@@ -296,6 +298,10 @@ export default async function build(ctx) {
     const r = Math.hypot(lp.x, lp.z);
     const isIn = inside_ ? r < R0 - 0.05 : r < R0 - 0.3;
     if (isIn !== inside_ && engine) { engine.exposureTarget = isIn ? EXPO_IN : EXPO_OUT; inside_ = isIn; }
+    // the fire's light thrown back by the pale bark: it travels with the eye, so a thing held up against the fire
+    // (a choron in the hands) or looked at closely is not a black shape
+    if (c.camera) root.worldToLocal(bounce.position.set(0.12, 0.3, 0.15).applyQuaternion(c.camera.quaternion).add(c.camera.position));
+    bounce.intensity += ((inside_ ? BOUNCE : 0) - bounce.intensity) * (1 - Math.exp(-dt * 4));
     // fire, smoke facing the camera, the sun shaft
     if (engine) _sun.copy(engine.sun.position).normalize().applyQuaternion(_iq);
     else _sun.set(0.4, 0.8, 0.2).normalize();
