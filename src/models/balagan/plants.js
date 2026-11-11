@@ -107,8 +107,8 @@ export function sodRoof(P, rng, { hx, hz, cz = 0, top, count, fireweed = 0, avoi
     const y = top(x, z);
     if (e < 0.3) {
       const out = ex < ez ? [Math.sign(x), 0] : [0, Math.sign(z)];
-      P.tuft(x, y - 0.02, cz + z, rng, { n: 6, h: 0.42, out, droop: 1 - e / 0.3, dry: 0.3 });
-    } else P.tuft(x, y, cz + z, rng, { n: 5 + Math.floor(rng() * 4), h: 0.22 + rng() * 0.35, dry: 0.15 });
+      P.tuft(x, y - 0.02, cz + z, rng, { n: 6, h: 0.42, out, droop: 1 - e / 0.3, dry: 0.3, w: 2.2 });
+    } else P.tuft(x, y, cz + z, rng, { n: 5 + Math.floor(rng() * 4), h: 0.22 + rng() * 0.35, dry: 0.15, w: 2.2 });
   }
   // grass hanging over the roof edge all round
   const per = 2 * (2 * hx + 2 * hz), gap = 0.1;
@@ -116,7 +116,7 @@ export function sodRoof(P, rng, { hx, hz, cz = 0, top, count, fireweed = 0, avoi
     const u = (k + rng() * 0.7) / (per / gap);
     const [x, z, nx, nz] = rrect(hx - 0.06, hz - 0.06, 0.45, u);
     if (avoid && avoid(x, cz + z)) continue;
-    P.tuft(x + nx * 0.04, top(x, z) - 0.05, cz + z + nz * 0.04, rng, { n: 5, h: 0.4 + rng() * 0.4, out: [nx, nz], droop: 0.9 + rng() * 0.7, dry: 0.45, w: 1.7 });
+    P.tuft(x + nx * 0.04, top(x, z) - 0.05, cz + z + nz * 0.04, rng, { n: 5, h: 0.4 + rng() * 0.4, out: [nx, nz], droop: 0.9 + rng() * 0.7, dry: 0.45, w: 2.6 });
   }
   for (let k = 0; k < fireweed; k++) {
     const x = (rng() * 2 - 1) * (hx - 0.5), z = (rng() * 2 - 1) * (hz - 0.5);

@@ -374,14 +374,14 @@ export function buildShell({ M, rng, winter, root }) {
   // retaining logs along each straight side of the house berm, on stakes; the earth slumps off past their ends.
   section(() => {
     // weathered larch like the canopy posts (M.logs is the house's wall timber: its sky light is cut for indoors)
-    const rl = (a, b, r = 0.09) => B.add(M.outWood, log(a, b, r, r * 0.9, rng, { caps: true, seg: 8, bow: 0.004, knob: 0.06, rowLen: 1.0 }), { color: [0.72, 0.69, 0.64] });
+    const rl = (a, b, r = 0.09, hew = 2.4) => B.add(M.outWood, log(a, b, r, r * 0.9, rng, { caps: true, seg: 8, bow: 0.004, knob: 0.06, rowLen: 1.0, hew }), { color: [0.72, 0.69, 0.64] });
     for (const y of [0.075, 0.235]) {
       rl([-logEnd.x, y, bz], [logEnd.x, y, bz]);
       rl([-bx, y, -logEnd.z], [-bx, y, logEnd.z]);
       rl([bx, y, -logEnd.z], [bx, y, ZD - logGap]);
       rl([bx, y, ZD + logGap], [bx, y, logEnd.z]);
     }
-    const stake = (x, z) => rl([x, -0.2, z], [x + (rng() - 0.5) * 0.03, 0.42, z + (rng() - 0.5) * 0.03], 0.065);
+    const stake = (x, z) => rl([x, -0.2, z], [x + (rng() - 0.5) * 0.03, 0.42, z + (rng() - 0.5) * 0.03], 0.065, 0);
     const run = (a, b, put) => { const n = Math.max(1, Math.round((b - a) / 1.6)); for (let i = 0; i <= n; i++) put(a + 0.12 + (b - a - 0.24) * i / n + (i > 0 && i < n ? (rng() - 0.5) * 0.3 : 0)); };
     run(-logEnd.x, logEnd.x, (x) => stake(x, bz + 0.15));
     run(-logEnd.z, logEnd.z, (z) => stake(-bx - 0.15, z));
