@@ -300,7 +300,9 @@ function lashing(rng, n, y) {
     const t = k / N, a = t * TAU;
     // a stadium around the two stakes: long axis across the fence
     const ex = Math.cos(a) * (sp + 0.065), ez = Math.sin(a) * 0.075;
-    pts.push(new THREE.Vector3(n.x + px * ex + n.dir[0] * ez, y + t * 0.025 + (rng() - 0.5) * 0.004, n.z + pz * ex + n.dir[1] * ez));
+    const j = (rng() - 0.5) * 0.004;
+    if (k % 2) continue; // every other point: a band this thin shows no more
+    pts.push(new THREE.Vector3(n.x + px * ex + n.dir[0] * ez, y + t * 0.025 + j, n.z + pz * ex + n.dir[1] * ez));
   }
   return tube(pts, 0.007, { radial: 4 });
 }
@@ -314,6 +316,7 @@ function postLashing(rng, n, yc, rr) {
     const t = k / N, a = Math.PI + t * TAU, s = t < 1 ? 1 : -1; // turns start and swap behind the post
     const u = cu + Math.cos(a) * eu, v = Math.sin(a) * ev;
     const y = yc + s * Math.sqrt(Math.max(0, R * R - (u - SIDE) ** 2)) + (rng() - 0.5) * 0.004;
+    if (k % 2) continue;
     pts.push(new THREE.Vector3(n.x + u, y, n.z + v));
   }
   return tube(pts, 0.007, { radial: 4 });
