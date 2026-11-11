@@ -58,7 +58,7 @@ export default async function build(ctx, placement) {
         const holeY = RAILS.map((h) => 0.35 + h), extra = holeY.flatMap((y) => [-0.075, -0.05, -0.03, -0.012, 0, 0.012, 0.03, 0.05, 0.075].map((d) => y + d));
         const hole = (y, a, r) => Math.min(...holeY.map((yh) => Math.hypot(Math.cos(a) * r / HOLE_R, (y - yh) / HOLE_R)));
         const g = turned(logProfile(H + 0.3, 0.095, 0.08, { step: 0.12, extra }), {
-          radial: 28, rng, noise: 0.03, oval: 0.03, bend: bow(rng, H, 0.006), capTop: true,
+          radial: 28, rng, noise: 0.03, oval: 0.03, bend: bow(rng, H, 0.006), capTop: true, endGrain: true,
           carve: (y, a, r) => -0.035 * smooth(1, 0.7, hole(y, a, r)),
           color: (y, a, c) => { tone(y, a, c); const k = smooth(1.25, 0.9, hole(y, a, 0.09)); for (let i = 0; i < 3; i++) c[i] += (0.09 - c[i]) * k; },
         });
@@ -71,7 +71,7 @@ export default async function build(ctx, placement) {
       const sp = n.corner ? 0.14 : 0.11;
       for (const sgn of [-1, 1]) {
         const H = 1.42 + rng() * 0.18, r0 = 0.05 + rng() * 0.014;
-        const g = turned(logProfile(H + 0.25, r0, r0 * 0.78, { step: 0.3 }), { radial: 9, rng, noise: 0.07, oval: 0.07, bend: bow(rng, H, 0.03), color: stakeTone(0.85 + rng() * 0.2), capTop: true });
+        const g = turned(logProfile(H + 0.25, r0, r0 * 0.78, { step: 0.3 }), { radial: 9, rng, noise: 0.07, oval: 0.07, bend: bow(rng, H, 0.03), color: stakeTone(0.85 + rng() * 0.2), capTop: true, endGrain: true });
         g.translate(0, -0.25, 0);
         // lean towards the partner stake (~3°) plus a random wobble, about the fence direction
         const sx = n.x + px * sp * sgn, sz = n.z + pz * sp * sgn;
@@ -103,7 +103,7 @@ export default async function build(ctx, placement) {
         const sag = 0.03 + L * 0.008;
         const fresh = rng() < 0.08;
         const g = turned(logProfile(len, r, r * 0.8, { step: 0.4 }), {
-          radial: 9, rng, noise: 0.06, oval: 0.08, capTop: true, capBottom: true,
+          radial: 9, rng, noise: 0.06, oval: 0.08, capTop: true, capBottom: true, endGrain: true,
           bend: (y) => { const t = y / len; return [Math.sin(Math.PI * t) * sag * 0.3, 0]; },
           color: (y, ang, c) => { const k = fresh ? 1.1 : 0.85 + rng() * 0.002; c[0] = fresh ? 0.95 : 0.9 * k; c[1] = fresh ? 0.86 : 0.86 * k; c[2] = fresh ? 0.66 : 0.8 * k; },
         });
@@ -134,7 +134,7 @@ export default async function build(ctx, placement) {
     const gateRails = [];
     for (let h = 0; h < 3; h++) {
       const r = 0.045;
-      const g = turned(logProfile(gLen, r * 1.05, r * 0.85, { step: 0.35 }), { radial: 10, rng, noise: 0.05, oval: 0.06, capTop: true, capBottom: true, color: (y, a, c) => { c[0] = 0.93; c[1] = 0.86; c[2] = 0.76; } });
+      const g = turned(logProfile(gLen, r * 1.05, r * 0.85, { step: 0.35 }), { radial: 10, rng, noise: 0.05, oval: 0.06, capTop: true, capBottom: true, endGrain: true, color: (y, a, c) => { c[0] = 0.93; c[1] = 0.86; c[2] = 0.76; } });
       const y0 = gN.gy + RAILS[h] + 0.05, y1 = gS.gy + RAILS[h] + 0.05;
       orientRail(g, [0, y0, 0.35], [0, y1, 0.35 - gLen], 0.01);
       gateRails.push(g);

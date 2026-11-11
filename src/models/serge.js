@@ -75,6 +75,8 @@ const motif = (kind, u, v) => { // u −0.5..0.5 across one repeat, v 0 (bottom)
   return (u / 0.5) ** 2 + v * v < 1 ? 0 : 1;
 };
 
+const BAND_H = (1062 - 1025) * 0.00068; // the main post's teeth band, repeated once on each smaller post
+
 function mainPost(rng, gy) {
   const ys = new Set();
   for (let y = -0.3; y < 1.9; y += 0.06) ys.add(+y.toFixed(3));
@@ -106,7 +108,7 @@ function mainPost(rng, gy) {
   const g = turned(prof, {
     radial: 160, rng, noise: 0.012, oval: 0.02, carve, tileU: 0.42, tileV: 0.8,
     bend: bow(rng, 2.2, 0.012),
-    color: (y, a, c) => groundTone(y, c, 1, (y > 1.35 && y < 1.41 ? 1.22 : 1) * (1 - 0.55 * cutAt(y, a))), // weathered dirt in the cuts
+    color: (y, a, c) => groundTone(y, c, 1, (y > 1.35 && y < 1.41 ? 1.22 : 1) * (1 - 0.62 * cutAt(y, a))), // weathered dirt in the cuts
   });
   g.translate(0, gy, 0);
   return g;
@@ -116,18 +118,31 @@ function smallPost(rng, gy, H) {
   const ys = new Set();
   for (let y = -0.3; y < H - 0.12; y += 0.07) ys.add(+y.toFixed(3));
   for (let y = H - 0.27; y <= H - 0.13; y += 0.006) ys.add(+y.toFixed(4));
+  const b0 = H - 0.345, b1 = b0 + BAND_H; // the band under the neck grooves
+  for (let y = b0 - 0.012; y <= b1 + 0.012; y += 0.002) ys.add(+y.toFixed(4));
   const prof = [...ys].sort((a, b) => a - b).map((y) => [y, 0.088 - 0.016 * Math.max(0, y) / H]);
   // rounded top
   for (let k = 0; k <= 8; k++) { const t = k / 8, a = t * Math.PI / 2; prof.push([H - 0.12 + Math.sin(a) * 0.07, 0.074 * Math.pow(Math.cos(a), 0.8) + 0.0005]); }
   const crk = cracks(rng, 2, 0.006);
   const nk = H - 0.2;
+  const RAD = 112, N = 16;
+  const cutAt = (y, a) => {
+    if (y < b0 - 0.002 || y > b1 + 0.002) return 0;
+    let s = 0;
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+      const yy = y + (i - 1.5) * 0.0005, aa = a + (j - 1.5) * TAU / RAD / 4;
+      if (yy >= b0 && yy <= b1) s += motif('teeth', (((aa / TAU) * N + 0.5) % 1 + 1) % 1 - 0.5, (yy - b0) / BAND_H);
+    }
+    return s / 16;
+  };
   const carve = (y, a) => {
-    let o = 0;
+    let o = -0.005 * cutAt(y, a);
+    for (const yl of [b0 - 0.005, b1 + 0.005]) o += groove(y, yl + 0.0025, 0.004, 0.002) + groove(y, yl - 0.0025, 0.004, 0.002);
     o += groove(y, nk, 0.045, 0.02) + groove(y, nk - 0.05, 0.012, 0.006);
     if (y < 1.1) o += crk(y, a) + Math.abs(Math.sin(a * 6 + y)) * -0.002;
     return o;
   };
-  const g = turned(prof, { radial: 40, rng, noise: 0.03, oval: 0.04, carve, tileU: 0.42, tileV: 0.8, bend: bow(rng, H, 0.015), color: (y, a, c) => groundTone(y, c, 0.95, Math.abs(y - nk) < 0.04 ? 1.15 : 1) });
+  const g = turned(prof, { radial: RAD, rng, noise: 0.03, oval: 0.04, carve, tileU: 0.42, tileV: 0.8, bend: bow(rng, H, 0.015), color: (y, a, c) => groundTone(y, c, 0.95, (Math.abs(y - nk) < 0.04 ? 1.15 : 1) * (1 - 0.62 * cutAt(y, a))) });
   g.translate(0, gy, 0);
   return g;
 }
@@ -196,14 +211,14 @@ export default async function build(ctx, placement) {
     }
     // hangings along the tails: tufts white/black, two faded ribbons, a birch-bark horse
     const at = (pts, t) => pts[Math.round(t * (pts.length - 1))].toArray();
-    hairs.push(...tuft(rng, at(tails[0], 0.25), { len: 0.15, color: [0.86, 0.83, 0.74] }));
-    hairs.push(...tuft(rng, at(tails[0], 0.62), { len: 0.13, color: [0.84, 0.82, 0.76] }));
-    hairs.push(...tuft(rng, at(tails[1], 0.45), { len: 0.12, color: [0.03, 0.028, 0.025] }));
-    hairs.push(...tuft(rng, at(tails[0], 1), { len: 0.11, color: [0.8, 0.77, 0.7], locks: 8 }));
-    hairs.push(...tuft(rng, at(tails[1], 1), { len: 0.1, color: [0.05, 0.045, 0.04], locks: 8 }));
-    cloths.push(ribbon(rng, at(tails[1], 0.18), { len: 0.19, color: [0.62, 0.63, 0.6] }));        // old white, greyed
-    cloths.push(ribbon(rng, at(tails[0], 0.45), { len: 0.2, color: [0.36, 0.48, 0.6] }));        // faded light blue
-    cloths.push(ribbon(rng, at(tails[1], 0.75), { len: 0.16, color: [0.6, 0.62, 0.48], width: 0.022 })); // sun-bleached green
+    hairs.push(...tuft(rng, at(tails[0], 0.25), { len: 0.24, locks: 30, spread: 0.02, width: 0.0045, color: [0.9, 0.87, 0.78] }));
+    hairs.push(...tuft(rng, at(tails[0], 0.62), { len: 0.2, locks: 24, spread: 0.02, width: 0.0045, color: [0.86, 0.84, 0.78] }));
+    hairs.push(...tuft(rng, at(tails[1], 0.45), { len: 0.2, locks: 24, spread: 0.02, width: 0.0045, color: [0.035, 0.03, 0.027] }));
+    hairs.push(...tuft(rng, at(tails[0], 1), { len: 0.16, color: [0.84, 0.81, 0.73], locks: 18, width: 0.0045 }));
+    hairs.push(...tuft(rng, at(tails[1], 1), { len: 0.15, color: [0.05, 0.045, 0.04], locks: 18, width: 0.0045 }));
+    cloths.push(ribbon(rng, at(tails[1], 0.18), { len: 0.27, width: 0.032, color: [0.74, 0.74, 0.7] }));        // old white, greyed
+    cloths.push(ribbon(rng, at(tails[0], 0.45), { len: 0.3, width: 0.032, color: [0.33, 0.5, 0.68] }));        // faded light blue
+    cloths.push(ribbon(rng, at(tails[1], 0.75), { len: 0.24, width: 0.03, color: [0.42, 0.56, 0.33] })); // sun-bleached green
     // birch-bark horse silhouette (~6 cm), tied on a short thread
     bark.push(horseCutout(at(tails[0], 0.82)));
     return { rope: merge(sal.map(noSway)), hair: merge(hairs), cloth: merge(cloths), bark: merge(bark), knot: knot.toArray() };
@@ -235,7 +250,7 @@ export default async function build(ctx, placement) {
   const N = posts[1];
   const coilY = N.gy + N.H - 0.2;
   const cg = section(() => {
-    const coil = [], RR = 0.006;
+    const coil = [], RR = 0.007;
     const surf = surfaceOf(postsGeo, N.x, N.z);
     // push a point out of the post's real surface, so no turn cuts into the wood
     const clear = (v) => {
@@ -245,7 +260,7 @@ export default async function build(ctx, placement) {
       return v;
     };
     // each turn rings the neck: it rests in the groove on the east face and hangs down past the west face
-    for (let l = 0; l < 4; l++) {
+    for (let l = 0; l < 5; l++) {
       const pts = [], drop = 0.3 + l * 0.035 + rng() * 0.02, W = 0.1 + l * 0.012;
       const aT = (l - 1.5) * 0.14, yT = coilY + (l - 1.5) * 0.011, c = surf(yT, aT), rE = c.r + RR;
       const ex = Math.cos(aT), ez = -Math.sin(aT); // east (top) direction and its perpendicular
@@ -262,7 +277,7 @@ export default async function build(ctx, placement) {
     coil.push(tube(endPts, RR, { radial: 7 }));
     return { coil: merge(coil.map(noSway)), tip: merge(tuft(rng, endPts[endPts.length - 1].toArray(), { len: 0.06, color: [0.07, 0.055, 0.04], locks: 6, spread: 0.005 })) };
   });
-  const coilMesh = new THREE.Mesh(cg.coil, rope({ key: 'tether', colors: [0x231c15, 0x3a2e22, 0x15110d], plies: 3, pitch: 0.035, radius: 0.006 }));
+  const coilMesh = new THREE.Mesh(cg.coil, rope({ key: 'tether', colors: [0x1c1612, 0xcfc7b4, 0x2e241b], plies: 3, pitch: 0.035, radius: 0.007 }));
   const coilTip = new THREE.Mesh(cg.tip, hair('serge-hair'));
   const coilGroup = new THREE.Group();
   coilGroup.name = 'horsehair';

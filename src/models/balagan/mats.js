@@ -75,7 +75,8 @@ export function makeMats(maps, { winter = false } = {}) {
     const damp = smoothstep(0.45, 0.62, y).mul(smoothstep(dampEdge, dampEdge.sub(0.25), y));
     col = col.mul(mix(1.0, 0.72, damp));
     // flaking: a few large irregular patches (more low and near the corners) exposing the logs
-    const fl = fz(p.mul(vec3(0.8, 1.5, 0.8)).add(1.7), 4).add(fz(p.mul(vec3(4.0, 2.5, 4.0)).add(5.5), 2).mul(0.2)).sub(0.08);
+    const flAt = (q) => fz(q.mul(vec3(0.8, 1.5, 0.8)).add(1.7), 4).add(fz(q.mul(vec3(4.0, 2.5, 4.0)).add(5.5), 2).mul(0.2)).sub(0.08);
+    const fl = flAt(p);
     const thr = float(flake).add(smoothstep(1.3, 1.9, y).mul(0.6)).sub(smoothstep(0.9, 0.3, y).mul(0.05));
     const flaked = smoothstep(thr, thr.add(0.015), fl);
     const rim = smoothstep(thr.sub(0.05), thr, fl).mul(float(1).sub(flaked));     // thinned plaster round a patch
@@ -98,6 +99,9 @@ export function makeMats(maps, { winter = false } = {}) {
       const barkLeft = smoothstep(0.62, 0.7, fz(vec3(u.x.mul(4), u.y.mul(1.2), 8.0), 2));
       c = mix(c, look(T.bark.diff, [1.4, 0.9]).rgb.mul(0.7), barkLeft.mul(0.6));
       c = mix(c, vec3(0.05, 0.045, 0.04), smoothstep(0.12, 0.0, fu).add(smoothstep(0.88, 1.0, fu)).min(1));
+      // the plaster is a hand thick: its broken edge shades the logs just under it
+      const over = float(1).sub(smoothstep(thr, thr.add(0.015), flAt(p.add(vec3(0, 0.045, 0)))));
+      c = c.mul(mix(1.0, 0.38, over));
       return vec4(c, smoothstep(0.75, 0.95, nz(p.mul(7.0))).mul(0.5));   // + clay crumbs left in the joints (mixed in below)
     };
     const lc = !lean ? logs(null) : Fn(() => {
@@ -115,7 +119,9 @@ export function makeMats(maps, { winter = false } = {}) {
     m.colorNode = vec4(col.mul(vertexColor().rgb).mul(faceDirection.greaterThan(0).select(float(1), float(0.12))), m.opacityNode);
     const n1 = smp(T.plaster.nor, u.mul(0.42)).xyz, n2 = smp(T.crack.nor, u.mul(1.5).add(vec2(0.31, 0.17))).xyz;
     const nW = smp(T.wood.nor, vec2(u.x.mul(1.3), u.y.mul(0.35))).xyz;
-    m.normalNode = normalMap(mix(mix(n1, n2, 0.45), nW, flaked), vec2(1.3, 1.3));
+    // the logs' roundness, also showing through the thinned plaster round a patch (not on phones)
+    const ribs = lean ? vec3(0) : vec3(fract(u.x.div(0.16).add(nz(vec3(u.y.mul(0.8), 0.0, 4.4)).mul(0.25))).sub(0.5).mul(flaked.mul(0.75).add(rim.mul(0.3))), 0, 0);
+    m.normalNode = normalMap(mix(mix(n1, n2, 0.45), nW, flaked).add(ribs), vec2(1.3, 1.3));
     m.roughnessNode = float(0.93);
     m.aoNode = smp(T.plaster.arm, u.mul(0.42)).r.mul(mix(1.0, 0.55, crack.mul(float(1).sub(flaked)))).mul(faceDirection.greaterThan(0).select(float(1), float(0.06)));
     return m;
