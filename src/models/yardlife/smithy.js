@@ -221,9 +221,11 @@ export function smithy(K, x, z, yaw) {
     // a second pair and a file hung on pegs on the back wall
     for (const s of [-1, 1]) addLog(scrap, Wy(1.5, fy + 0.7, -0.75 + s * 0.015), Wy(1.52, fy + 1.25, -0.72 - s * 0.015), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2 });
     for (const t of tongsGeo(0.56)) F.add(t, M.iron, mtx([1.4, fy + 1.39, -0.75], [0, Math.PI / 2, Math.PI]), [0.75, 0.75, 0.79]); // astride the peg, jaws up
-    addLog(K.b, Wy(1.48, fy + 1.27, -0.75), Wy(1.3, fy + 1.27, -0.75), 0.012, 0.012, rng, M.wood, M.end, { seg: 5 });
-    F.add(fileGeo(0.28), M.iron, mtx([1.5, fy + 0.86, -0.45], [0, Math.PI / 2, 0.08]), [0.75, 0.75, 0.8]); // игии, point up, in a birch handle
-    F.add(haftGeo(0.1, 0.013, 0.012), M.fresh, mtx([1.5, fy + 0.86 + 0.045, -0.45], [0, 0, 0.08 + Math.PI]), [0.7, 0.6, 0.48]);
+    addLog(K.b, Wy(1.6, fy + 1.27, -0.75), Wy(1.3, fy + 1.27, -0.75), 0.012, 0.012, rng, M.wood, M.end, { seg: 5 }); // driven into a wall pole
+    // the file stood on a peg in a wall pole, leaning on the pole
+    F.add(fileGeo(0.28), M.iron, mtx([1.548, fy + 0.86, -0.3625], [0, Math.PI / 2, 0.08]), [0.75, 0.75, 0.8]); // игии, point up, in a birch handle
+    F.add(haftGeo(0.1, 0.013, 0.012), M.fresh, mtx([1.548, fy + 0.86 + 0.045, -0.3625], [0, 0, 0.08 + Math.PI]), [0.7, 0.6, 0.48]);
+    F.add(new THREE.CylinderGeometry(0.011, 0.011, 0.16, 7).rotateZ(Math.PI / 2), M.wood, mtx([1.53, fy + 0.86 + 0.045 - 0.1 - 0.013, -0.3625]), [0.8, 0.75, 0.7]);
     // quench tub (birch bark) with water
     {
       const tub = lathe([[0.19, 0], [0.2, 0.15], [0.205, 0.28], [0.19, 0.28], [0.185, 0.03]], 22, rng, 0.02);

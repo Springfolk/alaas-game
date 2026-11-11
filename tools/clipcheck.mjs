@@ -6,14 +6,14 @@
 // things in the scene itself: carried, set down, work props, hands), NEAR=m (also load every other placement whose bounds come
 // within m of a checked one and report contacts with it), STATE=js (run in the page before the check, awaited: a door opened, an
 // action run to its end), VIEW=1 (what is near the eye: depth, cut by the near plane, share of the screen covered),
-// REGION=x0,z0,x1,z1 (only parts within it, world metres), SIZE=WxH (viewport), CAMERA=0 (skip the eye sweep), QUERY=extra url flags.
+// REGION=x0,z0,x1,z1 (only parts within it, world metres), SKIP=regex (meshes or materials left out; default ground cover), SIZE=WxH (viewport), CAMERA=0 (skip the eye sweep), QUERY=extra url flags.
 import { writeFileSync } from 'node:fs';
 import { launch, PORT } from './browser.mjs';
 
 // the check itself, run in a page loaded with ?nogeo&keepgeo&nomerge: { only: regex, camera, nearM, view } → report
-export const analyse = ({ only = '', camera = false, nearM = null, view = false, region = null } = {}) => {
+export const analyse = ({ only = '', camera = false, nearM = null, view = false, region = null, skip = null } = {}) => {
   const TOL = { float: 0.015, touch: 0.03, sunk: 0.05, gap: 0.04, pen: 0.01, z: 0.0003, eye: 0.12, R: 0.25 };
-  const SKIP = /grass|dyedyen|smoke|steam|^decal|trodden|^earth$/i; // ground cover, decals and particles: not solids
+  const SKIP = new RegExp(skip || 'grass|dyedyen|smoke|steam|^decal|trodden|^earth$', 'i'); // ground cover, decals and particles: not solids
   const w = window.game.world, C = 0.25, cell = (v) => Math.floor(v / C), key = (ix, iz) => (ix + 4000) * 8000 + (iz + 4000);
   const tris = [], triComp = [], comps = [];
   const grid = new Map(), col = new Map(), cols = new Set(); // 3D cells of every triangle; columns of closed parts' triangles (parity)
@@ -97,7 +97,7 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
           c.vs = [...c.verts.values()].map((k) => [c.P[k], c.P[k + 1], c.P[k + 2]]);
           const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
           for (const v of c.vs) for (let j = 0; j < 3; j++) { lo[j] = Math.min(lo[j], v[j]); hi[j] = Math.max(hi[j], v[j]); }
-          if (region) { const m = Math.max(nearM ?? 0, 0.3), hit = (e) => lo[0] <= region[2] + e && hi[0] >= region[0] - e && lo[2] <= region[3] + e && hi[2] >= region[1] - e; if (!hit(m)) continue; if (!hit(0)) c.focus = false; }
+          if (region) { const m = Math.max(nearM ?? 0, 1.5), hit = (e) => lo[0] <= region[2] + e && hi[0] >= region[0] - e && lo[2] <= region[3] + e && hi[2] >= region[1] - e; if (!hit(m)) continue; if (!hit(0)) c.focus = false; }
           c.lo = lo; c.hi = hi; c.id = comps.length; c.t0 = tris.length;
           delete c.edges; delete c.verts; delete c.P;
           for (const t of c.tris) { tris.push(t); triComp.push(c.id); }
@@ -409,7 +409,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   await page.waitForFunction(() => window.game?.complete, null, { timeout: 400000 });
   if (process.env.STATE) await page.evaluate(process.env.STATE);
   await page.waitForTimeout(500);
-  const report = await page.evaluate(analyse, { only: process.env.MODEL || '', camera: process.env.CAMERA !== '0', nearM: process.env.NEAR ? +process.env.NEAR : null, view: !!process.env.VIEW, region: process.env.REGION ? process.env.REGION.split(',').map(Number) : null });
+  const report = await page.evaluate(analyse, { only: process.env.MODEL || '', camera: process.env.CAMERA !== '0', nearM: process.env.NEAR ? +process.env.NEAR : null, view: !!process.env.VIEW, region: process.env.REGION ? process.env.REGION.split(',').map(Number) : null, skip: process.env.SKIP ?? null });
   writeFileSync(out, JSON.stringify(report, null, 1));
   print(report, +(process.env.TOP || 25));
   await browser.close();
