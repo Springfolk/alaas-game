@@ -155,28 +155,53 @@ export function buildInterior({ B, M, rng, winter, root }) {
         B.add(M.leather, new THREE.CylinderGeometry(0.014, 0.014, 0.025, 8).translate(fx + side.x, fy - 0.1, fz + side.z), { color: [0.3, 0.2, 0.14] });
       }
     }
-    targets.toyon = proxy(root, 0.38, 2.1, 0.38, [px, 1.05, pz]);
+    targets.toyon = proxy(root, 0.38, 1.2, 0.38, [px, 1.5, pz]);   // the upper post: the stage view frames the head, the tufts and the calendar
 
-    // calendar board (ый ааттара): a larch plank, 12 months of notches, a peg on a string
-    const CB = [];
-    CB.push([box(0.12, 0.6, 0.02), [0.62, 0.48, 0.34]]);
-    for (let m = 0; m <= 12; m++) CB.push([box(0.12, 0.004, 0.006, { p: [0, -0.3 + m * 0.05, 0.009] }), [0.12, 0.09, 0.07]]);
-    for (let m = 0; m < 12; m++) for (let k = 0; k < 30; k++) {
-      const grp = Math.floor(k / 10), y = -0.3 + m * 0.05 + 0.004 + (k % 10) * 0.0042 + grp * 0.0001;
-      const x = -0.05 + grp * 0.035 + (k % 10 === 9 ? 0.002 : 0);
-      CB.push([new THREE.PlaneGeometry(0.012 + (k % 5 === 4 ? 0.006 : 0), 0.0016).translate(x, y, 0.0102), [0.15, 0.11, 0.08]]);
+    // calendar (эбэскэ): a round board on a cord, a row of day holes winding out between the turns of a cut
+    // spiral, pegs left in some, a small pierced head to hang it by (reference photo sakha-calendar-1)
+    const CB = [], CR = 0.14, CZ = 0.009, WOOD = [0.38, 0.3, 0.21], CUT = [0.1, 0.07, 0.05];
+    CB.push([new THREE.CylinderGeometry(CR, CR, CZ * 2, 40).rotateX(Math.PI / 2), WOOD]);
+    CB.push([new THREE.CylinderGeometry(0.027, 0.027, CZ * 2, 16).rotateX(Math.PI / 2).translate(0, CR + 0.03, 0), WOOD]);
+    CB.push([box(0.022, 0.03, CZ * 2, { p: [0, CR + 0.004, 0] }), WOOD]);
+    const TURNS = 7.5, R0 = 0.012, PITCH = (CR - 0.012 - R0) / TURNS, sp = (th) => R0 + PITCH * th / (Math.PI * 2);
+    const flat = (pts, col) => {   // a fan/strip of flat triangles on the face
+      for (let i = 0; i < pts.length; i += 9) {   // every triangle faces the room
+        if ((pts[i + 3] - pts[i]) * (pts[i + 7] - pts[i + 1]) - (pts[i + 4] - pts[i + 1]) * (pts[i + 6] - pts[i]) < 0) for (let k = 0; k < 3; k++) [pts[i + 3 + k], pts[i + 6 + k]] = [pts[i + 6 + k], pts[i + 3 + k]];
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3)); CB.push([g, col]);
+    };
+    { // the spiral cut: a dark ribbon, start at twelve o'clock like the photo's
+      const pts = [], N = Math.round(TURNS * 44), hw = 0.0013;
+      const at = (i, d) => { const th = i / N * TURNS * Math.PI * 2, r = sp(th) + d; return [Math.sin(th) * r, Math.cos(th) * r, CZ + 0.0003]; };
+      for (let i = 0; i < N; i++) pts.push(...at(i, -hw), ...at(i + 1, hw), ...at(i + 1, -hw), ...at(i, -hw), ...at(i, hw), ...at(i + 1, hw));
+      flat(pts, CUT);
     }
-    for (let m = 0; m < 12; m++) CB.push([new THREE.CylinderGeometry(0.004, 0.004, 0.022, 6).rotateX(Math.PI / 2).translate(0.045, -0.275 + m * 0.05, 0), [0.05, 0.04, 0.03]]);
-    CB.push([new THREE.CylinderGeometry(0.0035, 0.0035, 0.035, 6).rotateX(Math.PI / 2).translate(0.045, -0.275 + 6 * 0.05, 0.02), [0.85, 0.72, 0.55]]);   // the peg in От ыйа (July)
-    CB.push([tube([[0.045, -0.275 + 6 * 0.05, 0.03], [0.06, -0.0, 0.025], [0.05, 0.27, 0.015]], 0.0012, 3), [0.3, 0.25, 0.2]]);
-    CB.push([tube([[0, 0.3, 0.0], [0, 0.36, 0.01], [0, 0.41, -0.02]], 0.004, 4), [0.3, 0.2, 0.14]]);
+    { // 365 day holes at an even step between the turns, a short cut across the spiral at each month's end, pegs
+      const holes = [], cuts = [], STEP = 0.0098, HR = 0.0028;
+      let th = Math.PI * 0.9, n = 0;
+      const hex = (x, y, r, z) => { const v = []; for (let k = 0; k < 6; k++) v.push([x + Math.cos(k * Math.PI / 3) * r, y + Math.sin(k * Math.PI / 3) * r, z]); return [v[0], v[1], v[2], v[0], v[2], v[3], v[0], v[3], v[5], v[3], v[4], v[5]].flat(); };
+      while (n < 365) {
+        const r = sp(th) + PITCH / 2, x = Math.sin(th) * r, y = Math.cos(th) * r;
+        holes.push(...hex(x, y, HR, CZ + 0.0004));
+        const h = Math.sin(n * 127.1 + 3.3) * 43758.5453, f = h - Math.floor(h);
+        if (f < 0.12) CB.push([new THREE.CylinderGeometry(0.002, 0.0026, 0.016, 5).rotateX(Math.PI / 2 + (f - 0.06) * 4).translate(x, y, CZ + 0.003), [0.3, 0.21, 0.13]]);
+        if (n % 30 === 29 || n === 364) { const c = Math.sin(th + STEP / r / 2), d = Math.cos(th + STEP / r / 2), w = 0.0007, r1 = r - PITCH * 0.5, r2 = r + PITCH * 0.32;
+          cuts.push(c * r1 - d * w, d * r1 + c * w, CZ + 0.0003, c * r1 + d * w, d * r1 - c * w, CZ + 0.0003, c * r2 + d * w, d * r2 - c * w, CZ + 0.0003, c * r1 - d * w, d * r1 + c * w, CZ + 0.0003, c * r2 + d * w, d * r2 - c * w, CZ + 0.0003, c * r2 - d * w, d * r2 + c * w, CZ + 0.0003); }
+        th += STEP / r; n++;
+      }
+      for (let k = 0; k < 7; k++) holes.push(...hex(Math.sin(k * 0.8976) * 0.018, CR + 0.03 + Math.cos(k * 0.8976) * 0.018, 0.002, CZ + 0.0004));   // the head's seven
+      flat(holes, [0.05, 0.035, 0.025]); flat(cuts, CUT);
+      CB.push([new THREE.TorusGeometry(0.008, 0.0012, 4, 14).translate(0, CR + 0.03, CZ), CUT]);
+    }
+    CB.push([tube([[0, CR + 0.052, 0.0], [0.004, CR + 0.1, 0.006], [0, CR + 0.15, -0.012]], 0.0022, 4), [0.3, 0.2, 0.14]]);
+    const CY = 1.2;
     for (const [g, c] of CB) {
       xf(g, { r: [0, Math.atan2(inDir.x, inDir.z), 0] });
-      xf(g, { p: [px + inDir.x * 0.19, 1.45, pz + inDir.z * 0.19] });
+      xf(g, { p: [px + inDir.x * 0.19, CY, pz + inDir.z * 0.19] });
       B.add(M.oiled, g, { color: c.map((v) => v * 1.2) });
     }
-    B.add(M.beams, new THREE.CylinderGeometry(0.012, 0.012, 0.08, 6).rotateX(Math.PI / 2).rotateY(Math.atan2(inDir.x, inDir.z)).translate(px + inDir.x * 0.2, 1.86, pz + inDir.z * 0.2), { color: [0.5, 0.4, 0.3] });
-    targets.calendar = proxy(root, 0.2, 0.68, 0.08, [px + inDir.x * 0.2, 1.47, pz + inDir.z * 0.2], [0, Math.atan2(inDir.x, inDir.z), 0]);
+    B.add(M.beams, new THREE.CylinderGeometry(0.012, 0.012, 0.08, 6).rotateX(Math.PI / 2).rotateY(Math.atan2(inDir.x, inDir.z)).translate(px + inDir.x * 0.2, CY + CR + 0.15, pz + inDir.z * 0.2), { color: [0.5, 0.4, 0.3] });
+    targets.calendar = proxy(root, 0.32, 0.4, 0.08, [px + inDir.x * 0.2, CY + 0.03, pz + inDir.z * 0.2], [0, Math.atan2(inDir.x, inDir.z), 0]);
   }
 
   // ---------- low round table (сандалы) before the best bench, with a bowl of salamaat ----------
