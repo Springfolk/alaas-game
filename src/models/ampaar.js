@@ -611,7 +611,7 @@ function tools(rng, g0, P) {
   const sy2 = g0 + 1.6;
   P.wood.push(pole(rng, [-0.2, sy2, -HW + 0.16], [0.95, sy2 + 0.08, -HW + 0.16], 0.016));
   const bl = [];
-  for (let k = 0; k <= 12; k++) { const t = k / 12; bl.push(new THREE.Vector3(-0.2 - t * 0.02, sy2 - 0.02 - t * 0.04, -HW + 0.17 + Math.sin(t * 2.2) * 0.25)); }
+  for (let k = 0; k <= 12; k++) { const t = k / 12; bl.push(new THREE.Vector3(-0.2 + Math.sin(t * 2.2) * 0.25, sy2 - 0.03 - (1 - Math.cos(t * 1.4)) * 0.2, -HW + 0.17 + t * 0.015)); }
   const bladeG = tube(bl, (t) => 0.004 + 0.014 * (1 - t), { radial: 4 });
   bladeG.scale(1, 1, 1);
   bladeG.attributes.color.array.fill(0.1);

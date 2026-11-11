@@ -95,7 +95,7 @@ export default async function build(ctx, placement) {
       const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L;
       for (let h = 0; h < 3; h++) {
         if (rng() < 0.03) continue; // one or two rails missing — knocked down
-        const over0 = a.gate ? 0.14 : 0.25 + rng() * 0.3, over1 = b.gate ? 0.14 : 0.25 + rng() * 0.3;
+        const over0 = a.gate ? (a === gN ? -0.06 : 0.14) : 0.25 + rng() * 0.3, over1 = b.gate ? (b === gN ? -0.06 : 0.14) : 0.25 + rng() * 0.3;
         const r = 0.042 + rng() * 0.016;
         const stack = (h % 2 ? 1 : -1) * 0.02; // overlapping ends ride on each other
         const ya = a.gy + RAILS[h] + stack + (rng() - 0.5) * 0.06, yb = b.gy + RAILS[h] - stack + (rng() - 0.5) * 0.06;
@@ -108,14 +108,15 @@ export default async function build(ctx, placement) {
           color: (y, ang, c) => { const k = fresh ? 1.1 : 0.85 + rng() * 0.002; c[0] = fresh ? 0.95 : 0.9 * k; c[1] = fresh ? 0.86 : 0.86 * k; c[2] = fresh ? 0.66 : 0.8 * k; },
         });
         // sag: bow downward (bend x is in the rail's local frame → after orient points down if roll fits)
-        // rails meeting a gate post run past its inner face, lashed to it, clear of the sliding gate rails
-        const ia = a.gate ? SIDE : 0, ib = b.gate ? SIDE : 0;
+        // rails meeting a gate post run past its face, lashed to it, clear of the sliding gate rails: inside at the south post,
+        // outside at the north post (the drawn rails' tail swings inward about it), ending at the post
+        const fa = a === gN ? -1 : 1, fb = b === gN ? -1 : 1, ia = a.gate ? SIDE * fa : 0, ib = b.gate ? SIDE * fb : 0;
         const p0 = [a.x - ux * over0 + ia, ya, a.z - uz * over0], p1 = [b.x + ux * over1 + ib, yb, b.z + uz * over1];
         orientRail(g, p0, p1, sag);
         (fresh ? railsFresh : rails).push(g);
         // lashing loops at both ends (around both stakes of the pair), under the rail
         for (const [n, end] of [[a, 0], [b, 1]]) {
-          if (n.gate) { lashes.push(postLashing(rng, n, end ? yb : ya, end ? r * 0.8 : r)); continue; }
+          if (n.gate) { lashes.push(postLashing(rng, n, end ? yb : ya, end ? r * 0.8 : r, n === gN ? -1 : 1)); continue; }
           if (end === 1 && h % 2 === 0) continue; // one lashing per height per pair
           lashes.push(lashing(rng, n, (end ? yb : ya) - r - 0.01));
         }
@@ -309,7 +310,7 @@ function lashing(rng, n, y) {
 
 // Willow band binding a fence rail to a gate post's inner face: two turns around the post, one
 // over the rail and one under it, so the rail hangs in the band. yc / rr: the rail's axis height and radius.
-function postLashing(rng, n, yc, rr) {
+function postLashing(rng, n, yc, rr, side = 1) {
   const west = -0.118, cu = (SIDE + west) / 2, eu = (SIDE - west) / 2, ev = 0.125, R = rr * 1.22 + 0.009;
   const pts = [], N = 26;
   for (let k = 0; k <= N * 2; k++) {
@@ -317,7 +318,7 @@ function postLashing(rng, n, yc, rr) {
     const u = cu + Math.cos(a) * eu, v = Math.sin(a) * ev;
     const y = yc + s * Math.sqrt(Math.max(0, R * R - (u - SIDE) ** 2)) + (rng() - 0.5) * 0.004;
     if (k % 2) continue;
-    pts.push(new THREE.Vector3(n.x + u, y, n.z + v));
+    pts.push(new THREE.Vector3(n.x + u * side, y, n.z + v));
   }
   return tube(pts, 0.007, { radial: 4 });
 }

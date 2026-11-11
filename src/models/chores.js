@@ -79,7 +79,7 @@ export default async function build(ctx, placement) {
     B.add(pc.bark, M.bark, null, t); B.add(pc.split, M.split, null, t); B.add(pc.ends, M.endFresh, null, t);
     B.build(g);
     g.userData.grips = [{ hand: 'R', p: [0, 0.12, 0], axis: [0, 1, 0], r: 0.075 }, { hand: 'L', p: [0, 0.4, 0], axis: [0, 1, 0], r: 0.075 },
-      { hand: 'L', over: [0, 1, 0.1], p: [0, 0.3, 0], axis: [0, -1, 0], r: 0.075, elbow: [-0.44, -0.52, 0.02] }]; // the top billet of an armful: the left arm lies over it, the hand on its far side
+      { hand: 'L', over: [0, 1, 0.1], p: [0, 0.15, 0], axis: [0, -1, 0], r: 0.075, elbow: [-0.3, -0.27, -0.2] }]; // the top billet of an armful: the left forearm lies along it, the hand towards its right end
     g.visible = false;
     object.add(g);
     logs.push(g);

@@ -370,7 +370,16 @@ export class Split {
         const w1 = UP.clone(), w2 = axis.clone(), w3 = new THREE.Vector3().crossVectors(w1, w2);
         const toQ = new THREE.Quaternion().setFromRotationMatrix(_m.makeBasis(w1, w2, w3).multiply(_m2.makeBasis(e1, e2, e3).transpose()));
         const at = world.collide(c.c.x, c.c.z, 0.16, gy);
-        const mid = new THREE.Vector3(at.x, 0, at.z); mid.y = world.groundAt(at.x, at.z) + 0.006;
+        // not into the heap of rounds
+        const hb = (this.heapBox ||= new THREE.Box3().setFromObject(this.heapIt.target).expandByScalar(0.3));
+        if (at.x > hb.min.x && at.x < hb.max.x && at.z > hb.min.z && at.z < hb.max.z) {
+          const d = [at.x - hb.min.x, hb.max.x - at.x, at.z - hb.min.z, hb.max.z - at.z], m = Math.min(...d);
+          if (m === d[0]) at.x = hb.min.x; else if (m === d[1]) at.x = hb.max.x; else if (m === d[2]) at.z = hb.min.z; else at.z = hb.max.z;
+        }
+        // along the slope: both ends on the ground
+        const half = p.len / 2, g1 = world.groundAt(at.x - w2.x * half, at.z - w2.z * half), g2 = world.groundAt(at.x + w2.x * half, at.z + w2.z * half);
+        toQ.premultiply(_q.setFromAxisAngle(w3.clone().normalize(), -Math.atan2(g2 - g1, p.len)));
+        const mid = new THREE.Vector3(at.x, (g1 + g2) / 2 + 0.006, at.z);
         c.state = 'settle'; c.k = 0;
         c.from = { p: c.c.clone().sub(c.com.clone().applyQuaternion(c.quat)), q: c.quat.clone() };
         c.toQ = toQ; c.toP = mid.sub(_w.set(0, c.com.y, 0).applyQuaternion(toQ));

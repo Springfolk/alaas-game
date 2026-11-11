@@ -562,10 +562,13 @@ export function ribbonGeo(ground, pts, width, rng, { step = 0.5, lift = 0.03, ac
   return g;
 }
 
-/** Rail fence (сигиэһин күрүө) along a polyline: paired stakes every ~3 m, 2–3 rails, willow lashings. */
+/** Rail fence (сигиэһин күрүө) along a polyline: paired stakes every ~3 m, 2–3 rails resting on willow lashings, each
+ * rail's start laid over the end of the rail before it. */
 export function fence(bucket, ground, pts, rng, mats, { rails = [0.42, 0.82, 1.2], bay = 3, gaps = [], closed = false } = {}) {
   const colliders = [];
   const P = closed ? [...pts, pts[0]] : pts;
+  const LASH = 0.012 * 0.6, none = { add() {} }; // the lashing's half height; a bucket that keeps nothing (the random draws stay in step)
+  const ends = new Map(), starts = new Map(), at = (q) => q[0].toFixed(3) + ',' + q[1].toFixed(3); // rails' radii ending / starting at a post
   for (let s = 0; s < P.length - 1; s++) {
     const [ax, az] = P[s], [bx, bz] = P[s + 1];
     const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / bay));
@@ -580,20 +583,20 @@ export function fence(bucket, ground, pts, rng, mats, { rails = [0.42, 0.82, 1.2
       if (!posts[i]) continue;
       const [x, z] = posts[i];
       if (gaps.some((g) => Math.hypot(g[0] - x, g[1] - z) < g[2] * 0.3)) continue;
-      const y = ground(x, z);
-      // two stakes leaning slightly together across the line
+      const y = ground(x, z), B = closed && s === P.length - 2 && i === n ? none : bucket; // a closed line's last post is its first
+      // two stakes leaning slightly together across the line, the rails passing between them
       for (const side of [-1, 1]) {
         const h = 1.45 + rng() * 0.2, lean = 0.05 + rng() * 0.03;
-        const bx0 = x + nx * side * 0.11, bz0 = z + nz * side * 0.11;
-        addLog(bucket, [bx0, y - 0.15, bz0], [x - nx * side * lean + dx * (rng() - 0.5) * 0.05, y + h, z - nz * side * lean], 0.055 + rng() * 0.012, 0.042, rng, mats.wood, mats.end, { seg: 6, step: 0.8 });
+        const bx0 = x + nx * side * 0.15, bz0 = z + nz * side * 0.15, top = 0.15 - lean * 0.4;
+        addLog(B, [bx0, y - 0.15, bz0], [x + nx * side * top + dx * (rng() - 0.5) * 0.05, y + h, z + nz * side * top], 0.055 + rng() * 0.012, 0.042, rng, mats.wood, mats.end, { seg: 6, step: 0.8 });
       }
-      // willow-bark lashings binding the stakes under each rail
+      // willow-bark lashings binding the pair under each rail
       for (const ry of rails) {
         const ly = y + ry - 0.06;
-        bucket.add(new THREE.TorusGeometry(0.15, 0.012, 3, 8), mats.lash, mtx([x, ly, z], [Math.PI / 2, 0, Math.atan2(dz, dx)], [1, 1, 0.6]), jitterTint(rng, 0.15));
+        B.add(new THREE.TorusGeometry(0.15, 0.012, 3, 8), mats.lash, mtx([x, ly, z], [Math.PI / 2, 0, Math.atan2(dz, dx)], [0.72, 1.62, 0.6]), jitterTint(rng, 0.15));
       }
     }
-    // rails between successive posts, overlapping at the stakes; one bay is open where a gap lies
+    // rails between successive posts: the end on the lashing, the start over the end of the rail before; one bay is open where a gap lies
     for (let i = 0; i < posts.length - 1; i++) {
       const A = posts[i] || P[s], B = posts[i + 1];
       const mx = (A[0] + B[0]) / 2, mz = (A[1] + B[1]) / 2;
@@ -606,15 +609,19 @@ export function fence(bucket, ground, pts, rng, mats, { rails = [0.42, 0.82, 1.2
         }
         continue;
       }
-      const ya = ground(A[0], A[1]), yb = ground(B[0], B[1]);
-      for (const ry of rails) {
-        if (rng() < 0.04) continue; // a missing rail here and there
-        const sag = (rng() - 0.3) * 0.05;
-        const ex = dx * 0.3, ez = dz * 0.3;
-        const fresh = rng() < 0.08;
-        addLog(bucket, [A[0] - ex, ya + ry + sag, A[1] - ez], [B[0] + ex, yb + ry - sag, B[1] + ez], 0.05 + rng() * 0.012, 0.038, rng, fresh ? mats.fresh : mats.wood, mats.end, { seg: 6, step: 0.9, bend: 0.006 });
-      }
-      const L2 = Math.hypot(B[0] - A[0], B[1] - A[1]);
+      const ya = ground(A[0], A[1]), yb = ground(B[0], B[1]), L2 = Math.hypot(B[0] - A[0], B[1] - A[1]);
+      const inA = ends.get(at(A)) || [], outB = closed && s === P.length - 2 && i === n - 1 ? starts.get(at(B)) || [] : [];
+      const endB = [], startA = [];
+      rails.forEach((ry, k) => {
+        if (rng() < 0.04) return; // a missing rail here and there
+        rng(); // (keeps the random draws in step)
+        const fresh = rng() < 0.08, r = 0.05 + rng() * 0.012;
+        const hA = ya + ry - 0.06 + LASH + (inA[k] ? 2 * inA[k] : 0) + r, hB = yb + ry - 0.06 + LASH + (outB[k] ? 2 * outB[k] : 0) + r;
+        const e = 0.3 / L2, ex = dx * 0.3, ez = dz * 0.3;
+        addLog(bucket, [A[0] - ex, hA - (hB - hA) * e, A[1] - ez], [B[0] + ex, hB + (hB - hA) * e, B[1] + ez], r, 0.038, rng, fresh ? mats.fresh : mats.wood, mats.end, { seg: 6, step: 0.9, bend: 0.006 });
+        endB[k] = r; startA[k] = r;
+      });
+      ends.set(at(B), endB); if (!starts.has(at(A))) starts.set(at(A), startA);
       colliders.push({ x: mx, z: mz, hw: L2 / 2, hd: 0.15, rot: -Math.atan2(B[1] - A[1], B[0] - A[0]) });
     }
   }
