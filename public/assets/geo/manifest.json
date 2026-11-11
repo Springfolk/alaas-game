@@ -5,7 +5,7 @@
   "model:ampaar": "aab51461ba49",
   "model:balagan": "8afb2be0d672",
   "model:barkwork": "184c581057dd",
-  "model:chores": "235de72fbfb6",
+  "model:chores": "b0cacbeaa3c7",
   "model:drywood": "b9ac4d3d5d91",
   "model:fishery": "d91876819209",
   "model:hayfield": "1d0c0ab4e432",
@@ -16,7 +16,7 @@
   "model:serge": "ff4dc541171f",
   "model:urasa": "6158c4800398",
   "model:work": "7df6dd7d9096",
-  "model:yardlife": "cdd0cb459c8a"
+  "model:yardlife": "aa2c71c38de0"
  },
  "packs": {
   "forest#c904aa13": {
@@ -96,7 +96,7 @@
   },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "235de72fbfb6",
+   "key": "b0cacbeaa3c7",
    "file": "chores-753cb87c.bin",
    "bytes": 114404,
    "raw": 341036
@@ -171,7 +171,7 @@
   },
   "model:yardlife#8f2bbc3c": {
    "group": "model:yardlife",
-   "key": "cdd0cb459c8a",
+   "key": "aa2c71c38de0",
    "file": "yardlife-8f2bbc3c.bin",
    "bytes": 1350715,
    "raw": 4575636

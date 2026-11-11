@@ -1,7 +1,7 @@
 // The player's hands on what is carried or worked with. A thing says where it is held: `userData.grips` =
 // [{ hand: 'R' | 'L', p: [x, y, z], axis: [x, y, z], r, out?: [x, y, z], elbow?: [x, y, z] }] in its own frame:
 // `p` a point on the handle's axis, `axis` along the handle towards the thumb, `r` the handle's radius (from 5 cm
-// an open, cupping hand), `out` the side the wrist leaves on (else: towards the elbow), `elbow` the elbow in
+// an open, cupping hand), `out` the side the wrist leaves on (else: towards the elbow; `over`: that side in camera space, the hand lying on top), `elbow` the elbow in
 // camera space (else by the ribs). Hands follow the thing carried (src/interact/hands.js) and any other thing
 // with grips while its `userData.inHands` is set (a tool the work itself moves; the player is drawn to its
 // `userData.stand` = { of: Object3D, x, z, low? }, the worker's place in that object's frame, `low` kneeling). A hand comes up from below the
@@ -39,6 +39,9 @@ export class Arms {
   want(s) {
     const h = this.hands.held;
     if (h && h.blend > 0.35) {
+      // an armful: the left hand lies over its top billet, in view; the right arm carries from below
+      const top = this.hands.more[this.hands.more.length - 1], over = s === 'L' && top?.obj.userData.grips?.find((g) => g.over);
+      if (over) return { obj: top.obj, g: over };
       const g = h.obj.userData.grips?.find((g) => g.hand === s);
       if (g) return _w.fromArray(g.p).applyMatrix4(h.obj.matrixWorld).distanceTo(this.game.engine.camera.position) < NEAR ? null : { obj: h.obj, g }; // at the face: no hand before the eye
       // the far end of an armful rests on the other arm
@@ -101,7 +104,7 @@ export class Arms {
       obj.updateWorldMatrix(true, false);
       _p.fromArray(g.p).applyMatrix4(obj.matrixWorld);
       _y.fromArray(g.axis).transformDirection(obj.matrixWorld);
-      if (g.out) _z.fromArray(g.out).transformDirection(obj.matrixWorld); else _z.copy(_e).sub(_p);
+      if (g.out) _z.fromArray(g.out).transformDirection(obj.matrixWorld); else if (g.over) _z.fromArray(g.over).applyQuaternion(cam.quaternion); else _z.copy(_e).sub(_p);
       _z.addScaledVector(_y, -_z.dot(_y));
       if (_z.lengthSq() < 1e-4) _z.set(0, 1, 0).applyQuaternion(cam.quaternion).addScaledVector(_y, -_y.y);
       _z.normalize(); _x.crossVectors(_y, _z);
