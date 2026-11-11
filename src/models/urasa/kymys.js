@@ -11,15 +11,15 @@ const setUV = (g, fn) => { const uv = g.attributes.uv, p = g.attributes.position
 const plain = (g, k = 10) => setUV(g, (u, v) => [u + k, v]);
 
 // ---- chorons: lathe bodies; outer vertices get uv.y = height fraction (carving bands), inner ones plain
-function choronBody(prof, lipIndex, H, u0 = 0) {
-  const g = lathe(prof, 28, (r, y, a) => r * (1 + valueNoise(a * 2, y * 30, 17) * 0.006));
-  const segs = 28;
+// (uv.y 2..3 = the height fraction inside the bowl); `segs` round
+function choronBody(prof, lipIndex, H, u0 = 0, segs = 28) {
+  const g = lathe(prof, segs, (r, y, a) => r * (1 + valueNoise(a * 2, y * 30, 17) * 0.006));
   return setUV(g, (u, v, x, y, z, i) => {
     const row = Math.floor(i / (segs + 1));
-    return row <= lipIndex ? [u + u0, y / H] : [u + 10, 2];
+    return row <= lipIndex ? [u + u0, y / H] : [u + 10, 2 + y / H];
   });
 }
-function choronA(scale = 1) {
+function choronA(scale = 1, segs = 28) {
   // standard choron on a conical foot: 22 cm, bowl 14 cm, lip 12.5 cm, raised rings
   const P = [[0.001, 0], [0.055, 0], [0.056, 0.006], [0.054, 0.013], [0.044, 0.017], [0.034, 0.035], [0.026, 0.055], [0.022, 0.07],
     [0.026, 0.075], [0.04, 0.085], [0.052, 0.098], [0.058, 0.11], [0.063, 0.125], [0.0665, 0.128], [0.068, 0.14], [0.07, 0.152],
@@ -28,7 +28,7 @@ function choronA(scale = 1) {
     // inside
     [0.056, 0.221], [0.052, 0.21], [0.052, 0.19], [0.06, 0.15], [0.052, 0.115], [0.03, 0.093], [0.001, 0.088]];
   const S = P.map(([r, y]) => [r * scale, y * scale]);
-  const g = choronBody(S, 27, 0.22 * scale);
+  const g = choronBody(S, 27, 0.22 * scale, 0, segs);
   g.userData.inner = S.slice(28);
   return g;
 }
@@ -91,12 +91,14 @@ function kymysSurface(inner, mat, cup, level) {
     return v;
   };
   const brim = (u, s) => top * u.y - rTop * s; // the lip's lowest point along up
-  const N = 28, pos = new Float32Array((N + 2) * 3), nor = new Float32Array((N + 2) * 3), idx = [];
+  const N = 48, pos = new Float32Array((N + 2) * 3), nor = new Float32Array((N + 2) * 3), idx = [];
   for (let i = 1; i <= N; i++) idx.push(0, i + 1, i);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); // refitted (src/load/release.js keeps it)
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3).setUsage(THREE.DynamicDrawUsage));
-  g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array((N + 2) * 2), 2));
+  const fuv = new Float32Array((N + 2) * 2); // uv.x: 0 in the middle, 1 at the wall (the froth ring, the thin edge)
+  for (let i = 0; i <= N; i++) { fuv[(i + 1) * 2] = 1; fuv[(i + 1) * 2 + 1] = i / N; }
+  g.setAttribute('uv', new THREE.BufferAttribute(fuv, 2));
   g.setIndex(idx);
   const mesh = new THREE.Mesh(g, mat);
   mesh.castShadow = false; mesh.userData.noShadow = true; mesh.userData.dynamic = true;
@@ -259,7 +261,7 @@ export function buildKymys(rng, M) {
   add(merge(bd), M.plank, boardRoot);
   const chorons = new THREE.Group();
   boardRoot.add(chorons);
-  const hero = add(choronA(1), M.birch, chorons);
+  const hero = add(choronA(1, 56), M.birch, chorons); // held at the face: rounder
   hero.userData.grips = [{ hand: 'R', p: [0, 0.06, 0], axis: [0, 1, 0], r: 0.024 }]; // by the stem
   hero.position.set(0.02, 0.118, 0.01);
   const b = add(choronB(), M.birch, chorons);

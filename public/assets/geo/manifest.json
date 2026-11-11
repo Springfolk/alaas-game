@@ -14,7 +14,7 @@
   "model:sacred-birch": "94f3ab650875",
   "model:sele": "db97405a3dd8",
   "model:serge": "c3d952f835e0",
-  "model:urasa": "ab97aba6e3e1",
+  "model:urasa": "4e2c9c11706c",
   "model:work": "a761039fdb2d",
   "model:yardlife": "9f50b338586e"
  },
@@ -152,7 +152,7 @@
   },
   "model:urasa#c45c7fb1": {
    "group": "model:urasa",
-   "key": "ab97aba6e3e1",
+   "key": "4e2c9c11706c",
    "file": "urasa-c45c7fb1.bin",
    "bytes": 248073,
    "raw": 1293428

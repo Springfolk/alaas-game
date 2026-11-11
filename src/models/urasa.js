@@ -143,6 +143,7 @@ export default async function build(ctx) {
   // collar (12 whole ones: it foams over, `save.work.kymys`), a long rest lets it fall again.
   const churn = { up: 0, top: 0, fall: 0, lifting: false, t: 0, score: 0, idle: 9, bulge: 0, foamed: 0, base: ky.stirrer.position.y };
   const froth = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 8).scale(1, 0.42, 1), M.kymys);
+  { const uv = froth.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, 0.9); } // all froth (uv.x: `kymys` in urasa/mats.js)
   froth.position.set(0, ky.neckY + 0.05, 0); froth.visible = false; froth.castShadow = false; froth.userData.dynamic = true;
   ky.sackRoot.add(froth);
   const sound = (game, name, obj) => { const p = new THREE.Vector3(); obj.getWorldPosition(p); game?.audio?.play(name, p); };
