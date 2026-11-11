@@ -178,7 +178,25 @@ export function buildInterior({ B, M, rng, winter, root }) {
   // old сандалы were round, of boards or birch bark, on three bowed legs (Olesova et al. 2025, p. 68)
   const T = { x: -1.95, z: 1.05, r: 0.38, h: 0.42 };
   if (!winter) {
-    B.add(M.oiled, lathe([[0, T.h - 0.02], [T.r - 0.01, T.h - 0.02], [T.r, T.h], [T.r - 0.01, T.h + 0.02], [0, T.h + 0.02]], 24).translate(T.x, 0, T.z), { color: [0.75, 0.62, 0.5] });
+    // the top: five boards cut to the round, their edges eased, uneven by a hair; two cleats under them
+    {
+      const NB = 5, w = 2 * T.r / NB;
+      for (let i = 0; i < NB; i++) {
+        const z0 = -T.r + i * w + 0.0015, z1 = -T.r + (i + 1) * w - 0.0015, th = 0.036, y = T.h - 0.018 + (rng() - 0.5) * 0.004;
+        const xa = (z) => Math.sqrt(Math.max(0, T.r * T.r - z * z));
+        // outline: along the far edge, round the arc, back along the near edge, round the other arc
+        const pts = [], NA = 10;
+        for (let k = 0; k <= NA; k++) { const z = z0 + (z1 - z0) * k / NA; pts.push([xa(z), z]); }
+        for (let k = NA; k >= 0; k--) { const z = z0 + (z1 - z0) * k / NA; pts.push([-xa(z), z]); }
+        const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, z)));
+        const g = new THREE.ExtrudeGeometry(sh, { depth: th - 0.008, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.003, bevelSegments: 2, curveSegments: 1 });
+        g.rotateX(Math.PI / 2).translate(T.x, y + th / 2, T.z);
+        g.setIndex([...Array(g.attributes.position.count).keys()]); // buckets merge indexed geometry
+        const k = 0.9 + rng() * 0.2;
+        B.add(M.oiled, g, { color: [0.75 * k, 0.62 * k, 0.5 * k] });
+      }
+      for (const sx of [-1, 1]) B.add(M.oiled, box(0.05, 0.022, T.r * 1.5, { p: [T.x + sx * T.r * 0.45, T.h - 0.047, T.z] }), { color: [0.55, 0.45, 0.36] });
+    }
     const legs = [0, 1, 2].map((k) => { const a = k * Math.PI * 2 / 3 + 0.4; return [Math.cos(a), Math.sin(a)]; });
     const at = ([cx, sz], rr, y) => [T.x + cx * rr, y, T.z + sz * rr];
     for (const d of legs) B.add(M.oiled, tube([at(d, 0.24, T.h - 0.02), at(d, 0.27, T.h * 0.6), at(d, 0.27, T.h * 0.3), at(d, 0.31, 0.02)], 0.026, 6), { color: [0.55, 0.45, 0.36] });
@@ -189,8 +207,12 @@ export function buildInterior({ B, M, rng, winter, root }) {
   // ---------- кытыйа bowls: three sizes (A low, B standard with a copper band, C tall) ----------
   const bowl = (rim, ht, x, y, z, { band = false, food = false, tint = [1, 1, 1] } = {}) => {
     const r = rim / 2, base = r * 0.45;
-    const out = [[0, 0], [base, 0], [base + 0.004, 0.004], [r * 0.82, ht * 0.45], [r, ht * 0.95], [r - 0.004, ht], [r - 0.01, ht * 0.97], [r * 0.78, ht * 0.5], [base * 0.9, 0.012], [0, 0.012]];
-    const g = lathe(out, 26).translate(x, y, z);
+    // turned: a foot ring, a swelling wall, a bead under the lip, the inside following the outside
+    const fh = ht * 0.1;
+    const out = [[0, fh * 0.6], [base * 0.78, fh * 0.6], [base * 0.82, 0], [base, 0], [base + 0.003, fh * 0.5], [base * 0.96, fh], [base * 1.05, fh * 1.15],
+      [r * 0.6, ht * 0.2], [r * 0.84, ht * 0.45], [r * 0.955, ht * 0.72], [r * 0.985, ht * 0.86], [r * 0.975, ht * 0.89], [r * 0.99, ht * 0.915], [r + 0.0015, ht * 0.955], [r, ht * 0.99], [r - 0.004, ht],
+      [r - 0.009, ht * 0.975], [r * 0.9, ht * 0.72], [r * 0.76, ht * 0.46], [r * 0.5, ht * 0.24], [base * 0.7, fh + 0.01], [0, fh + 0.008]];
+    const g = lathe(out, 36).translate(x, y, z);
     B.add(M.oiled, g, { color: tint });
     if (band) B.add(M.silver, lathe([[r + 0.002, ht * 0.78], [r + 0.003, ht * 0.86], [r * 1.0 + 0.002, ht * 0.95]], 26).translate(x, y, z), { color: [0.85, 0.5, 0.32] });
     if (food) {

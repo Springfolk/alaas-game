@@ -17,6 +17,7 @@ import { trodden } from './yard/mat.js';
 import { FX, FZ, H, ZD, DW, DH, XD, ROOF, HEARTH, WIN, KH, inner } from './balagan/dims.js';
 
 const OUTSIDE_EXPOSURE = 0.62, INSIDE_EXPOSURE = 1.9;
+const NEAR_FILL = 2.4; // the light beside the eye during a close look
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default async function build(ctx, placement) {
@@ -287,7 +288,7 @@ export default async function build(ctx, placement) {
       else lookAt.copy(FILL_HOME);
       const k = 1 - Math.exp(-dt * 7);
       fire.fill.position.lerp(lookAt, k);
-      fire.fill.intensity += ((near ? 0.3 : door.open > 0.5 ? 1.4 : 0.2) - fire.fill.intensity) * k;
+      fire.fill.intensity += ((near ? NEAR_FILL : door.open > 0.5 ? 1.4 : 0.2) - fire.fill.intensity) * k;
       M.flare.value = Math.max(flare, fk * 0.45);
       if (morselT >= 0) {
         morselT += dt;

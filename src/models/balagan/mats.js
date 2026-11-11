@@ -3,7 +3,7 @@ import * as THREE from 'three/webgpu';
 import {
   texture, uv, vec2, vec3, vec4, float, mix, smoothstep, step, clamp, max, abs, sin, fract, floor, positionLocal,
   normalLocal, attribute, faceDirection, normalMap, mx_noise_float, mx_fractal_noise_float, mx_worley_noise_float, time,
-  uniform, luminance, vertexColor, dot, length, bumpMap, Fn, If,
+  uniform, luminance, cos, vertexColor, dot, length, bumpMap, Fn, If,
 } from 'three/tsl';
 
 import { FX, FZ, H, OUT, GAP, XD, ZD, KH } from './dims.js';
@@ -240,24 +240,35 @@ export function makeMats(maps, { winter = false } = {}) {
     return m;
   })();
 
-  // ---- clay of the hearth: buff, fire-reddened round the mouth, soot above it
+  // ---- clay of the hearth: pale sandy clay packed over a ring of slanted poles lashed with withes; the pole backs
+  // show where it has worn thin above the mouth; fire-reddened round the mouth, a tongue of soot over its crown
   M.clay = ({ mouth, dir, top = 3.6 }) => {
     const m = new S({ name: 'clay', roughness: 0.92 });
     const p = positionLocal;
     const u = uv();
-    const base = smp(T.plaster.diff, u.mul(0.9)).rgb.mul(vec3(1.18, 1.1, 0.95));
+    const base = smp(T.plaster.diff, u.mul(0.9)).rgb.mul(vec3(1.3, 1.2, 1.02));
     const cr = smoothstep(0.38, 0.18, luminance(smp(T.crack.diff, u.mul(1.6)).rgb));
     const d = length(vec3(p.x.sub(mouth[0]), p.y.sub(mouth[1]).mul(0.8), p.z.sub(mouth[2])));
     const fire = smoothstep(0.9, 0.35, d);
-    const front = smoothstep(0.1, 0.7, dot(vec2(p.x.sub(mouth[0] - dir[0] * 0.5), p.z.sub(mouth[2] - dir[1] * 0.5)).normalize(), vec2(...dir)));
-    const soot = smoothstep(mouth[1] + 0.55, mouth[1] + 1.0, p.y).mul(front).mul(smoothstep(2.45, 2.15, p.y)).mul(fz(p.mul(vec3(3, 0.7, 3)), 2).mul(0.6).add(0.55))
+    const front = smoothstep(0.55, 0.95, dot(vec2(p.x.sub(mouth[0] - dir[0] * 0.5), p.z.sub(mouth[2] - dir[1] * 0.5)).normalize(), vec2(...dir)));
+    const n2 = fz(p.mul(vec3(3, 0.7, 3)), 2);
+    const soot = smoothstep(mouth[1] + 0.5, mouth[1] + 0.8, p.y).mul(front).mul(smoothstep(2.6, 1.7, p.y)).mul(n2.mul(0.7).add(0.5))
       .add(smoothstep(top - 0.35, top, p.y).mul(fz(p.mul(vec3(4, 1.5, 4)), 2).mul(0.5).add(0.5)));
+    // poles (hearth.js POLES = 26 round, uv.x = 3.6 a turn) and their withe lashings
+    const rib = cos(u.x.mul(Math.PI * 2 * 26 / 3.6)).mul(0.5).add(0.5);
+    const up = smoothstep(1.05, 1.7, p.y);
+    const bare = smoothstep(0.5, 0.78, rib.mul(up).mul(fz(p.mul(vec3(5, 1.6, 5)), 2).mul(0.8).add(0.45)));
+    const withe = smoothstep(0.035, 0.02, abs(fract(p.y.mul(1.55).add(0.18)).sub(0.5))).mul(up).mul(smoothstep(0.25, 0.5, rib));
     let c = base.mul(nz(p.mul(2.0)).mul(0.18).add(0.9));
-    c = mix(c, vec3(0.62, 0.3, 0.16), fire.mul(0.75));
-    c = mix(c, vec3(0.05, 0.045, 0.04), clamp(soot, 0, 0.92));
-    c = mix(c, c.mul(0.5), cr.mul(0.35));
+    c = c.mul(mix(float(1), rib.mul(0.3).add(0.72), up));                 // clay lies thicker, and dustier, between the poles
+    c = mix(c, vec3(0.3, 0.2, 0.13).mul(nz(vec3(u.x.mul(40), p.y.mul(3), 1.0)).mul(0.5).add(0.7)), bare.mul(0.75));
+    c = mix(c, vec3(0.2, 0.13, 0.08), withe.mul(0.8));
+    c = mix(c, vec3(0.66, 0.34, 0.18), fire.mul(0.7));
+    c = mix(c, vec3(0.075, 0.062, 0.052), clamp(soot, 0, 0.9));
+    c = mix(c, c.mul(0.5), cr.mul(0.35).mul(float(1).sub(bare)));
     m.colorNode = c;
-    m.normalNode = normalMap(smp(T.plaster.nor, u.mul(0.9)).xyz, vec2(1.5, 1.5));
+    m.roughnessNode = mix(float(0.95), float(0.86), bare);
+    m.normalNode = normalMap(smp(T.plaster.nor, u.mul(0.9)).xyz, vec2(1.8, 1.8));
     m.envMapIntensity = 0.3;
     return m;
   };
@@ -434,13 +445,23 @@ export function makeMats(maps, { winter = false } = {}) {
     m.envMapIntensity = 0.5;
     return m;
   })();
+  // oiled, hand-worn wood (table, bowls, boards): the grain runs along x on what lies flat, round what is turned;
+  // year-ring figure, dark pores, a sheen where it is handled
   M.oiled = (() => {
     const m = new S({ name: 'oiled-wood', vertexColors: true, roughness: 0.48 });
     const p = positionLocal;
-    const grain = nz(vec3(p.x.mul(9), p.y.mul(90), p.z.mul(9)));
+    const flat = smoothstep(0.75, 0.95, abs(normalLocal.y));
+    const q = mix(vec3(p.x.mul(9), p.y.mul(90), p.z.mul(9)), vec3(p.x.mul(7), p.y.mul(9), p.z.mul(110)), flat);
+    const grain = nz(q);
+    const ringC = mix(p.y.mul(38), p.z.mul(46), flat).add(nz(vec3(p.x.mul(5), p.y.mul(4), p.z.mul(5))).mul(7));
+    const ring = abs(fract(ringC).sub(0.5)).mul(2).pow(1.5);
+    const pore = smoothstep(0.62, 0.9, nz(q.mul(vec3(1.3, 3.1, 3.1)).add(11.0)));
     const fig = fz(p.mul(25), 3);
-    m.colorNode = mix(vec3(0.42, 0.24, 0.1), vec3(0.66, 0.43, 0.2), grain.mul(0.5).add(fig.mul(0.5))).mul(vertexColor());
-    m.roughnessNode = mix(0.38, 0.6, fig);
+    let c = mix(vec3(0.4, 0.225, 0.095), vec3(0.66, 0.43, 0.2), grain.mul(0.45).add(fig.mul(0.4)).add(ring.mul(0.15)));
+    c = c.mul(float(1).sub(pore.mul(0.28)));
+    m.colorNode = c.mul(vertexColor());
+    m.roughnessNode = mix(0.34, 0.62, fig).add(pore.mul(0.2));
+    m.normalNode = bumpMap(grain.mul(0.5).add(ring.mul(0.35)).sub(pore.mul(0.6)), 0.6);
     m.envMapIntensity = 0.4;
     return m;
   })();
