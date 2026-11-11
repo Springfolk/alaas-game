@@ -10,8 +10,7 @@ const TXT = {
   tuu: L('туу', 'fish trap', 'верша'),
   take: L('ыл', 'pick it up', 'взять'),
   set: L('быһыт ааныгар ук', 'set it in the gap of the weir', 'поставить в проход запруды'),
-  lift: L('тууну таһаар (E-ни тутан тур)', 'lift the trap out (hold E)', 'вынуть вершу (удерживайте E)'),
-  liftTap: L('тууну таһаар', 'lift the trap out', 'вынуть вершу'),
+  lift: L('тууну таһаар', 'lift the trap out', 'вынуть вершу'),
   pour: L('тылбыытын ас, тымтайга сүөкээ', 'open the tail and tip the catch in', 'открыть хвост и высыпать улов'),
   needTrap: L('туу наада', 'you need the trap', 'нужна верша'),
   isSet: L('Туу угулунна. Мунду киириэр диэри атын үлэҕин гын.', 'The trap is set. Do your other work while the мунду come.', 'Верша поставлена. Займитесь другим делом, пока заходит мунду.'),
@@ -56,7 +55,7 @@ export class Fish {
   actFor(it) {
     const h = this.hands.held;
     if (it.tuu) {
-      if (this.state === 'set') return h ? null : this.game.input.touchMode ? this.liftTapAct : this.liftAct;
+      if (this.state === 'set') return h ? null : this.liftAct;
       if (this.state === 'lifting' || this.busy) return null;
       return h ? null : this.hands.takeAct;
     }
@@ -86,18 +85,17 @@ export class Fish {
   };
 
   liftAct = { id: 'lift-tuu', label: TXT.lift, thenCard: false, run: () => this.lift() };
-  liftTapAct = { id: 'lift-tuu', label: TXT.liftTap, thenCard: false, run: () => this.lift() };
   // hold E: the trap comes up heavy with water; let go early and it settles back
   async lift() {
     if (this.state !== 'set' || this.hands.held) return;
     const g = this.game, inp = g.input, o = this.trap.obj, y0 = o.position.y;
     this.state = 'lifting';
-    const hold = inp.down('KeyE');
+    const hold = inp.doing;
     let k = 0;
     g.audio?.play('water-pour', o.position);
     await new Promise((res) => {
       this.step = (dt) => {
-        const pull = hold ? inp.down('KeyE') : true; // a tap (touch): it comes up by itself
+        const pull = hold ? inp.doing : true; // a tap (touch): it comes up by itself
         k = Math.max(0, Math.min(1, k + (pull ? dt / 1.5 : -dt / 0.6)));
         o.position.y = y0 + ease(k) * 0.55;
         o.rotation.z = Math.sin(k * 9) * 0.03 * (1 - k);

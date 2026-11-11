@@ -26,7 +26,6 @@ const ACT = {
   take: L('ыл', 'pick it up', 'взять'),
   takeLog: L('мас ыл', 'take a billet', 'взять полено'),
   down: L('уур', 'set it down', 'поставить'),
-  downLog: L('сиргэ уур', 'put it down', 'положить'),
   stack: L('кыстаа', 'stack it on the pile', 'сложить в поленницу'),
   fill: L('уу ыл', 'scoop up water', 'зачерпнуть воды'),
   pourBack: L('ууну күөлгэ төттөрү кут', 'pour the water back', 'вылить воду обратно в озеро'),
@@ -77,14 +76,30 @@ export class Hands {
     if (h?.kind === 'log' && it.fireplace) return this.layAct;
     return undefined;
   }
-  // E with nothing in focus
+  // the hands with nothing in focus: the pail at the water
   idleAct() {
     const h = this.held;
+    if (!h || this.busy || h.kind !== 'pail') return null;
+    return this.waterAhead() ? (h.full ? this.pourAct : this.fillAct) : null;
+  }
+  // Putting down: the carried thing (of an armful: its last billet) goes back to its own place when the thing
+  // says so (`thing.put()` → an act, null = not now, undefined = no place near), else onto dry ground ahead.
+  putAct() {
+    const h = this.held;
     if (!h || this.busy) return null;
-    const w = this.waterAhead();
-    if (h.kind === 'pail' && w) return h.full ? this.pourAct : this.fillAct;
-    if (w) return null; // nothing goes into the lake
-    return h.kind === 'pail' ? this.downAct : this.downLogAct;
+    const home = (this.more[this.more.length - 1] || h).put?.();
+    if (home !== undefined) return home;
+    return this.dropSpot() ? this.downAct : null;
+  }
+  // dry ground to set a thing on: a step ahead, or at the feet when that is water (nothing goes into the lake)
+  dropSpot(r = 0.2) {
+    const g = this.game, pl = g.player, terrain = g.world.terrain;
+    for (const d of [0.75, 0.3]) {
+      const at = g.world.collide(pl.pos.x + fwdX(pl.yaw) * d, pl.pos.z + fwdZ(pl.yaw) * d, r, pl.pos.y);
+      const gy = terrain.height(at.x, at.z), wy = terrain.water(at.x, at.z, gy);
+      if (wy === null || wy - gy <= 0.03) return at;
+    }
+    return null;
   }
 
   // a spot of open water within reach in front of the player, when looking down at it
@@ -130,8 +145,7 @@ export class Hands {
       game.audio?.play('wood-take', o.position);
     },
   };
-  downAct = { id: 'down', label: ACT.down, thenCard: false, run: () => this.setDown() };
-  downLogAct = { id: 'down', label: ACT.downLog, thenCard: false, run: () => this.setDown() };
+  downAct = { id: 'down', label: ACT.down, run: () => this.setDown() };
   // the whole armful back onto the woodpile, billet by billet
   stackAct = {
     id: 'stack', label: ACT.stack, thenCard: false,
@@ -233,10 +247,9 @@ export class Hands {
   async setDown() {
     const g = this.game, pl = g.player;
     if (!this.held) return;
-    const t = this.letGo(), lie = LIE[t.kind];
-    const d = 0.75;
-    let x = pl.pos.x + fwdX(pl.yaw) * d, z = pl.pos.z + fwdZ(pl.yaw) * d;
-    ({ x, z } = g.world.collide(x, z, lie.r, pl.pos.y));
+    const lie = LIE[(this.more[this.more.length - 1] || this.held).kind], at = this.dropSpot(lie.r);
+    if (!at) return;
+    const t = this.letGo(), { x, z } = at;
     const y = g.world.groundAt(x, z);
     const q = lie.q(pl.yaw);
     const to = new THREE.Vector3(x, y + lie.lift, z);

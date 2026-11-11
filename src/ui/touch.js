@@ -1,7 +1,10 @@
 // Phone / tablet controls, no pointer lock: a stick fixed bottom left (a touch that starts on or near it
-// walks; push to the rim = run), a drag that starts anywhere else on the open view looks (a short tap = E;
-// a tip says so until the first look drag), glass buttons for E, jump, crouch, journal, language and
-// pause, and 1·2·3 buttons while an act asks for a choice. Windows, toasts and buttons keep their touches.
+// walks; push to the rim = run), a drag that starts anywhere else on the open view looks (a short tap on a
+// thing does its act, or shows its card when it has none; a tip says "look around" until the first look drag).
+// Glass buttons: the hand (the do input: held while the thumb stays down, and a drag that starts on it looks,
+// so a held tool can be aimed), the eye (inspect; shown when the thing in view has a card), put down (shown
+// while carrying), jump, crouch, journal, language, pause, and 1·2·3 while an act asks for a choice.
+// Windows, toasts and buttons keep their touches.
 // Auto-enabled on coarse-pointer devices; `?touch` forces it, `?notouch` disables it.
 // Self-contained: every class is `tc-` prefixed and the stylesheet is injected here.
 import { CONTROLS, tr } from './i18n.js';
@@ -32,6 +35,9 @@ const CSS = `
 .tc-act{right:calc(18px + env(safe-area-inset-right));bottom:calc(112px + env(safe-area-inset-bottom));width:76px;height:76px;font-size:24px;opacity:.6}
 .tc-act.ready{opacity:1;box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -6px 14px rgba(var(--tc-glow),.55),0 0 20px rgba(var(--tc-glow),.75);animation:tc-pulse 1.8s ease-in-out infinite}
 @keyframes tc-pulse{50%{box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -6px 14px rgba(var(--tc-glow),.4),0 0 30px rgba(var(--tc-glow),.95)}}
+.tc-eye{right:calc(104px + env(safe-area-inset-right));bottom:calc(126px + env(safe-area-inset-bottom));width:54px;height:54px}
+.tc-put{right:calc(29px + env(safe-area-inset-right));bottom:calc(202px + env(safe-area-inset-bottom));width:54px;height:54px}
+.tc-eye:not(.ready),.tc-put:not(.ready){opacity:0;pointer-events:none}
 .tc-jump{right:calc(104px + env(safe-area-inset-right));bottom:calc(34px + env(safe-area-inset-bottom));width:64px;height:64px}
 .tc-crouch{right:calc(24px + env(safe-area-inset-right));bottom:calc(30px + env(safe-area-inset-bottom));width:54px;height:54px}
 .tc-crouch.on{box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -5px 12px rgba(var(--tc-glow),.6),0 0 14px rgba(var(--tc-glow),.6)}
@@ -51,6 +57,9 @@ const CSS = `
 `;
 
 const ICON = {
+  hand: '<svg viewBox="0 0 24 24"><path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11m0-5.5V4a1.5 1.5 0 0 1 3 0v7m0-5.5a1.5 1.5 0 0 1 3 0V13m0-4a1.5 1.5 0 0 1 3 0v6a6 6 0 0 1-6 6h-1.6a6 6 0 0 1-4.7-2.3L4 14.5a1.6 1.6 0 0 1 2.4-2L8 14"/></svg>',
+  eye: '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/></svg>',
+  put: '<svg viewBox="0 0 24 24"><path d="M12 4v10M7.5 10l4.5 4.5 4.5-4.5M5 19.5h14"/></svg>',
   jump: '<svg viewBox="0 0 24 24"><path d="M12 19V6M6 11l6-6 6 6"/></svg>',
   crouch: '<svg viewBox="0 0 24 24"><path d="M12 5v13M6 13l6 6 6-6"/></svg>',
   journal: '<svg viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3zM21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></svg>',
@@ -85,7 +94,9 @@ export class TouchControls {
     root.innerHTML = `
       <div class="tc-stick"><div class="tc-knob"></div></div>
       <div class="tc-tip tc-play">${ICON.drag}<span></span></div>
-      <div class="tc-btn tc-play tc-act" data-b="act">E</div>
+      <div class="tc-btn tc-play tc-act" data-b="act">${ICON.hand}</div>
+      <div class="tc-btn tc-play tc-eye" data-b="eye">${ICON.eye}</div>
+      <div class="tc-btn tc-play tc-put" data-b="put">${ICON.put}</div>
       <div class="tc-btn tc-play tc-jump" data-b="jump">${ICON.jump}</div>
       <div class="tc-btn tc-play tc-crouch" data-b="crouch">${ICON.crouch}</div>
       <div class="tc-top tc-play">
@@ -96,12 +107,12 @@ export class TouchControls {
     document.body.appendChild(root);
     this.stick = root.querySelector('.tc-stick');
     this.knob = root.querySelector('.tc-knob');
-    this.act = root.querySelector('.tc-act');
+    this.act = root.querySelector('.tc-act'); this.eye = root.querySelector('.tc-eye'); this.putBtn = root.querySelector('.tc-put');
     this.crouchBtn = root.querySelector('.tc-crouch');
     this.langBtns = [...root.querySelectorAll('[data-b=lang]')];
     this.tip = root.querySelector('.tc-tip'); this.tipText = this.tip.querySelector('span');
     this.toasts = document.getElementById('toasts');
-    this.moveId = null; this.lookId = null;
+    this.moveId = null; this.lookId = null; this.actId = null; // the walk touch, the look touch, the thumb on the hand button
     this.stickHome();
 
     const opt = { passive: false };
@@ -111,20 +122,26 @@ export class TouchControls {
     addEventListener('touchend', (e) => this.touchEnd(e), opt);
     addEventListener('touchcancel', (e) => this.touchEnd(e), opt);
     for (const b of root.querySelectorAll('.tc-btn')) {
-      b.addEventListener('touchstart', (e) => { e.preventDefault(); b.classList.add('down'); navigator.vibrate?.(8); this.button(b.dataset.b); }, opt);
+      b.addEventListener('touchstart', (e) => {
+        e.preventDefault(); b.classList.add('down'); navigator.vibrate?.(8);
+        if (b === this.act && this.actId === null) { const t = e.changedTouches[0]; this.actId = t.identifier; this.ax = t.clientX; this.ay = t.clientY; }
+        this.button(b.dataset.b);
+      }, opt);
       const up = () => b.classList.remove('down');
       b.addEventListener('touchend', up); b.addEventListener('touchcancel', up);
-      b.addEventListener('click', () => { if (!this.recentTouch) this.button(b.dataset.b); }); // mouse, with ?touch
+      b.addEventListener('click', () => { if (!this.recentTouch) { this.button(b.dataset.b); if (b === this.act) this.input.setDo(false); } }); // mouse, with ?touch
     }
     addEventListener('touchstart', () => { this.recentTouch = true; clearTimeout(this.rt); this.rt = setTimeout(() => { this.recentTouch = false; }, 600); }, { passive: true, capture: true });
     const tick = () => { this.sync(); requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }
 
-  key(code) { this.input.press(code); this.game.key?.({ code, preventDefault() {} }); } // (work reads E from the input too)
+  key(code) { this.input.press(code); this.game.key?.({ code, preventDefault() {} }); }
   button(b) {
     const g = this.game, inp = this.input;
-    if (b === 'act') { if (g.useReady ?? g.focus) this.key('KeyE'); }
+    if (b === 'act') inp.setDo(true); // held until its touch ends (touchEnd); the mouse (?touch) clicks: down and up
+    else if (b === 'eye') g.inspect(g.focus);
+    else if (b === 'put') inp.put();
     else if (b === 'jump') inp.press('Jump');
     else if (b === 'crouch') inp.press('Crouch');
     else if (b === 'journal') this.key('KeyJ');
@@ -179,11 +196,16 @@ export class TouchControls {
     this.stick.classList.toggle('run', v > 0.92);
   }
   touchMove(e) {
-    if (this.moveId === null && this.lookId === null) return;
+    if (this.moveId === null && this.lookId === null && this.actId === null) return;
     for (const t of e.changedTouches) {
       if (t.identifier === this.moveId) {
         e.preventDefault();
         this.steer(t);
+      } else if (t.identifier === this.actId) { // the thumb holding the hand button aims
+        e.preventDefault();
+        this.input.lookX += (t.clientX - this.ax) * this.lookScale;
+        this.input.lookY += (t.clientY - this.ay) * this.lookScale;
+        this.ax = t.clientX; this.ay = t.clientY;
       } else if (t.identifier === this.lookId) {
         e.preventDefault();
         if (!this.looked && this.tap && Math.hypot(t.clientX - this.tap.x, t.clientY - this.tap.y) > 40) { this.looked = true; this.tip.classList.add('gone'); }
@@ -197,10 +219,14 @@ export class TouchControls {
     for (const t of e.changedTouches) {
       if (t.identifier === this.moveId) {
         this.moveId = null; this.input.stickX = this.input.stickY = 0; this.stickHome();
+      } else if (t.identifier === this.actId) {
+        this.actId = null; this.input.setDo(false);
       } else if (t.identifier === this.lookId) {
         this.lookId = null;
-        const p = this.tap;
-        if (p && performance.now() - p.t < 250 && Math.hypot(t.clientX - p.x, t.clientY - p.y) < 12 && this.game.focus) this.key('KeyE');
+        const p = this.tap, g = this.game;
+        if (p && performance.now() - p.t < 250 && Math.hypot(t.clientX - p.x, t.clientY - p.y) < 12 && g.focus) {
+          if (g.doReady) { this.input.setDo(true); this.input.setDo(false); } else g.inspect(g.focus);
+        }
         this.tap = null;
       }
     }
@@ -214,10 +240,12 @@ export class TouchControls {
       : g.ui?.modal || (g.ui?.open && !this.input.touchLive) ? 'ui' : g.choosing ? 'choice' : 'play'; // a peek is a side panel: play on
     if (mode !== this.root.dataset.mode) {
       this.root.dataset.mode = mode;
-      if (mode !== 'play') { this.moveId = this.lookId = null; this.input.stickX = this.input.stickY = 0; this.stickHome(); }
+      if (mode !== 'play') { this.moveId = this.lookId = this.actId = null; this.input.setDo(false); this.input.stickX = this.input.stickY = 0; this.stickHome(); }
     }
     if (mode === 'off') return;
-    this.act.classList.toggle('ready', !!(this.show || (g.useReady ?? g.focus)));
+    this.act.classList.toggle('ready', !!(this.show || g.doReady));
+    this.eye.classList.toggle('ready', !!(this.show || g.readReady));
+    this.putBtn.classList.toggle('ready', !!(this.show || g.putReady));
     this.crouchBtn.classList.toggle('on', !!g.player?.crouch);
     const l = LANG_SHORT[g.state?.lang] || 'EN';
     for (const b of this.langBtns) if (b.textContent !== l) b.textContent = l;

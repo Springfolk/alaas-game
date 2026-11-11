@@ -50,14 +50,20 @@ export const T = {
   },
 };
 
-// [keys, label]
+// the mouse with one button lit (the prompt, the controls list)
+const mouse = (d) => `<svg class="mouse kb" viewBox="0 0 14 20" aria-hidden="true"><rect x="1" y="1" width="12" height="18" rx="6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="${d}" fill="currentColor"/></svg>`;
+export const MOUSE = { left: mouse('M7 1.2A5.8 5.8 0 0 0 1.2 7v2.2H7z'), right: mouse('M7 1.2A5.8 5.8 0 0 1 12.8 7v2.2H7z') };
+
+// [keys (text, or the mouse glyph's html), label]
 export const CONTROLS = [
   ['W A S D', { sah: 'Хаамыы', en: 'Walk', ru: 'Ходьба' }],
   [{ sah: 'Мышь', en: 'Mouse', ru: 'Мышь' }, { sah: 'Эргиччи көрүү', en: 'Look around', ru: 'Осмотреться' }],
   ['Shift', { sah: 'Сүүрүү', en: 'Run', ru: 'Бег' }],
   ['Space', { sah: 'Ыстаныы', en: 'Jump / vault', ru: 'Прыжок / перелезть' }],
   ['C', { sah: 'Бөкчөйүү', en: 'Crouch', ru: 'Присесть' }],
-  ['E', { sah: 'Чугастык көр / оҥор', en: 'Look closer / do', ru: 'Рассмотреть / сделать' }],
+  [MOUSE.left, { sah: 'Оҥор', en: 'Do, use (hold where the work asks)', ru: 'Сделать, применить' }],
+  [MOUSE.right, { sah: 'Уур', en: 'Set down, put back', ru: 'Положить, убрать' }],
+  ['E', { sah: 'Чугастык көр', en: 'Look closer', ru: 'Рассмотреть' }],
   ['1 2 3', { sah: 'Талыы', en: 'Choose', ru: 'Выбор' }],
   ['J', { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' }],
   ['L', { sah: 'Тыл', en: 'Language', ru: 'Язык' }],

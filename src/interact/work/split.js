@@ -15,8 +15,7 @@ const TXT = {
   billet: L('оттук мас', 'firewood', 'дрова'),
   take: L('ыл', 'take it', 'взять'),
   stand: L('төҥүргэскэ туруор', 'stand it on the block', 'поставить на колоду'),
-  strike: L('хайыт (E-ни тутан тур)', 'split it (hold E)', 'расколоть (удерживайте E)'),
-  strikeTap: L('хайыт', 'split it', 'расколоть'),
+  strike: L('хайыт', 'split it', 'расколоть'),
   again: L('чурбааны кытта өрө көтөҕөн оҕус', 'lift it on the axe and bring it down', 'поднять на топоре и ударить о колоду'),
   free: L('сүгэни сулбу тарт', 'pull the axe free', 'выдернуть топор'),
   stick: L('сүгэни төҥүргэскэ батары оҕус', 'leave the axe in the block', 'всадить топор в колоду'),
@@ -25,8 +24,6 @@ const TXT = {
   hintLine: L('Хайаҕаһы батыһа оҕус: сүгэ биитэ хайаҕаһы кытта биир сиринэн түстүн.', 'Strike along the crack: stand so the edge falls in its line.', 'Бейте вдоль трещины: встаньте так, чтобы лезвие легло по ней.'),
   hintWeak: L('Сүгэни үрдүктүк көтөх — мөлтөх охсуу хайыппат.', 'Raise the axe higher: a weak blow does not split.', 'Замахнитесь выше: слабый удар не колет.'),
   hintMiss: L('Чурбаан ортотун көрөн оҕус.', 'Look at the middle of the round as you strike.', 'Бейте, глядя в середину чурбака.'),
-  hintHow: L('E-ни тутан сүгэни көтөх, ыһыктан оҕус.', 'Hold E to raise the axe, let go to strike.', 'Удерживайте E — замах, отпустите — удар.'),
-  hintTap: L('E-ни баттаа — сүгэ өрө тахсар; өссө баттаа — түһэр.', 'Tap E: the axe goes up. Tap again: it falls.', 'Нажмите E — топор поднимется; ещё раз — ударит.'),
   proverb: L('Сүгэ түһүөр диэри дүлүҥ сынньанар.', '“Until the axe falls, the log rests.”', '«Пока топор опускается, бревно отдыхает».'),
   proverbBy: L('өс хоһооно', 'a Sakha saying', 'якутская пословица'),
 };
@@ -57,6 +54,8 @@ export class Split {
     });
     this.axe = hands.addThing({ kind: 'axe', obj: parts.axe, it: find(parts.axe), name: TXT.axe });
     this.axe.it.thing = this.axe;
+    // put down by the free block: back into it
+    this.axe.put = () => (!this.onBlock && !this.sw && game.player.pos.distanceTo(this.block) < 2.6 ? this.stickAct : undefined);
     this.axeHome = { p: parts.axe.position.clone(), q: parts.axe.quaternion.clone() }; // in the block (world, after addThing)
     this.block = parts.object.localToWorld(parts.block.clone()); // the top's middle, world
     this.blockIt = game.world.interactables.find((i) => i.block);
@@ -90,7 +89,7 @@ export class Split {
     if (!c) return undefined; // a loose billet: the carrying code's
     if (this.sw?.phase === 'stuck') return this.sw.aligned ? this.againAct : this.freeAct;
     if (this.sw) return null;
-    if (c.state === 'block') return this.axeHeld ? (this.game.input.touchMode ? this.strikeTapAct : this.strikeAct) : h ? null : this.needAxeAct;
+    if (c.state === 'block') return this.axeHeld ? this.strikeAct : h ? null : this.needAxeAct;
     if (c.state === 'rest') return !this.onBlock && (!h || h === this.axe) ? this.standAct : null;
     return null;
   }
@@ -122,7 +121,6 @@ export class Split {
       this.chunks.push(c);
       this.toBlock(c);
       game.audio?.play('wood-take', from);
-      this.work.hint('how', game.input.touchMode ? TXT.hintTap : TXT.hintHow, 2);
     },
   };
   // a half from the ground onto the block
@@ -164,11 +162,10 @@ export class Split {
 
   // the blow. Keyboard: hold E, the gauge climbs and falls, let go to strike. Touch: the axe goes up, the next tap strikes.
   strikeAct = { id: 'strike', label: TXT.strike, thenCard: false, run: (game, it) => this.strike(it) };
-  strikeTapAct = { id: 'strike', label: TXT.strikeTap, thenCard: false, run: (game, it) => this.strike(it) };
   async strike(it) {
     const c = this.chunkOf(it), g = this.game, inp = g.input;
     if (!c || c.state !== 'block' || !this.axeHeld || this.sw) return;
-    const sw = this.sw = { phase: 'raise', t: 0, power: 0, chunk: c, hold: inp.down('KeyE'), first: true };
+    const sw = this.sw = { phase: 'raise', t: 0, power: 0, chunk: c, hold: inp.doing, first: true };
     await new Promise((res) => { sw.released = res; });
     // aim: where the look meets the round's top
     const cam = g.engine.camera, top = c.pos.y + c.pieces[0].len;
@@ -308,8 +305,8 @@ export class Split {
         const inp = g.input;
         const u = (sw.t / 0.85) % 2; // up in 0.85 s, down again
         sw.power = clamp(u < 1 ? u : 2 - u, 0, 1);
-        if (sw.hold && sw.t > 0.12 && sw.t < 0.2 && !inp.down('KeyE')) sw.hold = false; // a tap: the next press strikes
-        const go = sw.hold ? !inp.down('KeyE') && sw.t >= 0.2 : !sw.first && inp.hit('KeyE');
+        if (sw.hold && sw.t > 0.12 && sw.t < 0.2 && !inp.doing) sw.hold = false; // a tap: the next press strikes
+        const go = sw.hold ? !inp.doing && sw.t >= 0.2 : !sw.first && inp.hit('Do');
         sw.first = false;
         this.work.meter(sw.power, NEED[sw.chunk.n], OVER);
         if (go || sw.t > 6 || sw.chunk.state !== 'block') { this.work.meter(null); sw.released(); }

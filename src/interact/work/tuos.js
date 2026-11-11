@@ -11,8 +11,7 @@ const TXT = {
   sheet: L('туос', 'birch bark', 'береста'),
   vessel: L('тордуйа', 'тордуйа', 'тордуйа'),
   take: L('ыл', 'take it', 'взять'),
-  warm: L('туоһу уокка сылыт (E-ни тутан тур)', 'warm the bark at the fire (hold E)', 'согреть бересту у огня (удерживайте E)'),
-  warmTap: L('туоһу уокка сылыт', 'warm the bark at the fire', 'согреть бересту у огня'),
+  warm: L('туоһу уокка сылыт', 'warm the bark at the fire', 'согреть бересту у огня'),
   lay: L('тириигэ тэлгээ', 'lay it on the hide', 'расстелить на шкуре'),
   fold: L('кытыытын бүк', 'fold a side up', 'загнуть стенку'),
   pin: L('муннугун тоһоҕоһунан хатаа', 'fold the end and pin its corners', 'загнуть торец и сколоть углы'),
@@ -43,6 +42,7 @@ export class Tuos {
     hands.addKind('tuos', CARRY, { r: 0.2, lift: 0.045, sound: 'wood-lay-2', q: (yaw) => new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)) });
     this.thing = hands.addThing({ kind: 'tuos', obj: parts.vessel, it: find(parts.vessel), name: TXT.sheet });
     this.thing.it.thing = this.thing;
+    this.thing.put = () => (!this.made && !this.busy && this.game.player.pos.distanceTo(this.rest.p) < 2.6 ? this.layAct : undefined); // by the hide: laid on it
     this.rest = { p: parts.vessel.position.clone(), q: parts.vessel.quaternion.clone() };
     this.fold = [0, 0, 0, 0];
     this.step = 0;      // folds done (4: a vessel)
@@ -65,7 +65,7 @@ export class Tuos {
       if (this.warm <= 0) return this.hands.takeAct; // to the fire with it
       return this.step < 2 ? this.foldAct : this.pinAct;
     }
-    if (this.held && !this.made && it.fireplace && !this.busy) return this.game.input.touchMode ? this.warmTapAct : this.warmAct;
+    if (this.held && !this.made && it.fireplace && !this.busy) return this.warmAct;
     if (this.held && !this.made && it.entry === 'birch-bark' && !this.busy && this.game.player.pos.distanceTo(this.rest.p) < 4) return this.layAct; // the craft spot
     return undefined;
   }
@@ -73,14 +73,13 @@ export class Tuos {
   noAct = { id: 'none', label: L('', '', ''), thenCard: false, run: async () => {} };
 
   warmAct = { id: 'warm-bark', label: TXT.warm, thenCard: false, run: () => this.warmIt() };
-  warmTapAct = { id: 'warm-bark', label: TXT.warmTap, thenCard: false, run: () => this.warmIt() };
   // hold E: the sheet is turned to the fire and takes heat; let go inside the band
   async warmIt() {
     if (!this.held || this.busy) return;
     const g = this.game, inp = g.input;
     this.busy = true;
     const from = { p: V(...CARRY.p), q: CARRY.q.clone() }, P = this.pose = { p: from.p.clone(), q: from.q.clone() };
-    const hold = inp.down('KeyE');
+    const hold = inp.doing;
     let k = 0, t = 0, first = true;
     await new Promise((res) => {
       this.tick = (dt) => {
@@ -88,7 +87,7 @@ export class Tuos {
         const e = ease(Math.min(1, t / 0.4));
         P.p.lerpVectors(from.p, TOFIRE.p, e); P.q.slerpQuaternions(from.q, TOFIRE.q, e);
         this.work.meter(k, SOFT[0], SOFT[1]);
-        const go = hold ? !inp.down('KeyE') && t > 0.2 : !first && inp.hit('KeyE');
+        const go = hold ? !inp.doing && t > 0.2 : !first && inp.hit('Do');
         first = false;
         if (go || k >= 1) res();
       };

@@ -2,7 +2,7 @@
 
 | Path | Role |
 |---|---|
-| `src/main.js` | `Game`: boot, title, frame loop, focus (raycast ≤3.4 m or zone), E → act / card peek → full → close (non-blocking), save |
+| `src/main.js` | `Game`: boot, title, frame loop, focus (raycast ≤3.4 m or zone), do → act, put down, E → card peek → full → close (`docs/interactions.md`), save |
 | `src/interact/*` | Hands-on acts: carrying (pail, tools, an armful of firewood), sitting, berries; `work/` = jobs done with a tool (`docs/interactions.md`); props in `src/models/chores.js`, `work.js` |
 | `src/engine/engine.js` | `Engine`: WebGPURenderer, `SunLight` (cascades, cloud shadows from the sky's cloud field via a 512² `cloudMap` re-rendered 4×/s or on a texel move — every frame was ~30% of a phone frame's GPU), sun intensity by air mass, PMREM sky env (intensity 1: sky and sun share absolute units), aerial haze (`scene.fogNode`: horizon colour + forward-scatter lobe toward the sun), metered eye adaptation |
 | `src/engine/sky.js` | Perez/Preetham clear sky (T 1.9) in scene units, cumulus layer at 1.8 km (`cloudField`, shared with cloud shadows), sunlit ground below the horizon (green env bounce); `updateSky` on CPU gives haze colours |
@@ -25,7 +25,7 @@
 | `src/data/entries.json` | Explainer entries (Sakha + English) with sources and confidence |
 | `src/player.js` · `src/input.js` | Body: momentum walk 10:00/run (Shift) 5:30 min/km/crouch (C), jump (Space) with gather + landing spring, vault over 0.3–1.3 m obstacles (rays onto the contact collider's midline), wall sliding, footfall-synced bob/sway/roll, strafe lean, run FOV kick · keys/mouse, or touch (`active` = locked or touch live) |
 | `src/util.js` | Shared helpers: seeded random (`mulberry32`, `hash2`), value noise/`fbm`, `clamp`/`lerp`/`smooth`/`ease`/`damp`, yaw vectors, `urlFlag` (debug query switches) |
-| `src/ui/touch.js` | Phone controls (auto on coarse pointers; `?touch` / `?notouch`): stick fixed bottom left (safe-area insets; its place in the CSS), driven only by a touch starting ≤100 px from its middle (rim = run); a touch starting anywhere else on the view (the canvas: not windows, toasts or buttons) looks, short tap = E when something is in focus; one walk + one look touch at once; "Look around" tip until the first look drag (hidden under a card); glass buttons E/jump/crouch/journal/language/pause, 1·2·3 while an act runs; `tc-` scoped CSS |
+| `src/ui/touch.js` | Phone controls (auto on coarse pointers; `?touch` / `?notouch`): stick fixed bottom left (safe-area insets; its place in the CSS), driven only by a touch starting ≤100 px from its middle (rim = run); a touch starting anywhere else on the view (the canvas: not windows, toasts or buttons) looks, short tap = do (or the card) on the thing in focus; one walk + one look touch at once; "Look around" tip until the first look drag (hidden under a card); glass buttons hand (held; drags look) / eye / put down / jump / crouch / journal / language / pause, 1·2·3 while an act runs; `tc-` scoped CSS |
 
 - North is −Z, east +X; models face east (+X) locally — Sakha doors face east.
 - Player settings (`player.settings`, saved in `alaas-v1` settings): `sens`, `invertY`, `fov` (base; run adds ≤7.5°), `motion` 0–1 (camera motion comfort: bob, sway, roll, FOV kick; 0 = steady), `smooth` 0–1 (mouse-look smoothing; touch always has 0.3 for the finger's one-pixel steps, let go as the view falls behind: a drag of some speed is followed at once, it trailed ~10 ms). `main.js` binds `#s-motion` / `#s-smooth` sliders if present.
@@ -64,6 +64,6 @@
 ## UI API (`game.ui`)
 - `showEntry(id, { mode: 'peek'|'full' })` — side-panel card, never locks the player; `close()`; `open` = `'card'|'journal'|null`, `isOpen`, `mode`, `current`.
 - `scroll(dy)`; the wheel (pointer locked) and PageUp/PageDown scroll the open card; `[` `]` step its gallery; click the image to enlarge.
-- `toast(html, ms)` — Messenger-style pop-up, body = `<small>` + `<b>`; `discovered(id)`; `setPrompt(label, action)`.
+- `toast(html, ms)` — Messenger-style pop-up, body = `<small>` + `<b>`; `discovered(id)`; `setPrompt(label, action, { act, read })`.
 - Title bar progress is read from `#go`'s text (`N%` build → `… N%` warm-up); `#title.ready` once `game.ready`.
 - Settings ids → `save.settings`: `s-motion` `motion`, `s-smooth` `smooth`, `s-battery` `batterySaver`, `s-q` `quality` (auto/high/medium/low/mobile).
