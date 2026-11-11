@@ -278,6 +278,7 @@ function disc(pts, dir) {
 export function addLog(bucket, a, b, r0, r1, rng, sideMat, capMat, opts = {}, tint) {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
   const { side, caps } = logGeo(len, r0, r1, rng, { ...opts, caps: !!capMat });
+  if (opts.grain) { const u = side.attributes.uv; for (let i = 0; i < u.count; i++) u.setXY(i, u.getY(i), u.getX(i)); } // a thin pole of plank-textured wood: the grain along it
   const m = along(a, b, rng() * TAU);
   const t = tint || jitterTint(rng, 0.1);
   bucket.add(side, sideMat, m, t);
