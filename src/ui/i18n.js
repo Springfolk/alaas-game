@@ -61,7 +61,6 @@ export const CONTROLS = [
   { id: 'read', keys: ['E'], touch: 'eye', label: { sah: 'Чугастык көр', en: 'Look closer', ru: 'Рассмотреть' } },
   { id: 'journal', keys: ['J'], touch: 'book', label: { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' } },
   { id: 'lang', keys: ['L'], label: { sah: 'Тыл', en: 'Language', ru: 'Язык' } },
-  { id: 'hints', keys: ['H'], label: { sah: 'Салайыы', en: 'Controls', ru: 'Управление' } },
   { id: 'fps', keys: ['F3'], label: { sah: 'Кадр түргэнэ', en: 'Frame rate', ru: 'Частота кадров' } },
   { id: 'pause', keys: ['P'], touch: 'pause', label: { sah: 'Тохтобул', en: 'Pause / settings', ru: 'Пауза / настройки' } }, // Esc pauses too, but drops the pointer lock (main.js)
 ];

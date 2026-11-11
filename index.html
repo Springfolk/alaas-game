@@ -178,7 +178,7 @@
   .p-act .tool { width: 30px; height: 30px; flex: none; border-radius: 6px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.6);
     background: linear-gradient(180deg, #a5e88a 0%, #5cc23a 48%, #3a9c1c 52%, #56bd34 100%); }
   .p-act .tool .ic { width: 21px; height: 21px; color: #fff; stroke-width: 2.2; }
-  .p-act .verb { font: 600 14px/1.2 var(--sans); max-width: min(250px, calc(50vw / var(--ui) - 84px)); text-shadow: 0 1px 2px rgba(0,20,0,.9); }
+  .p-act .verb { font: 600 14px/1.2 var(--sans); max-width: min(250px, calc(50vw / var(--ui) - 104px)); text-shadow: 0 1px 2px rgba(0,20,0,.9); }
   .p-act .verb:empty { display: none; }
   .p-key { display: flex; align-items: center; gap: 3px; }
   .p-key .hold { display: none; width: 16px; height: 5px; border-radius: 3px; background: #1a2c40; }
@@ -361,6 +361,20 @@
     background: radial-gradient(circle, rgba(255,236,180,.35) 0, rgba(255,220,140,.14) 35%, rgba(255,220,140,0) 70%); mix-blend-mode: screen; }
   #gshimmer.on { display: block; }
   #gshimmer::after { content: ''; position: absolute; inset: 25%; border-radius: 50%; border: 1px solid rgba(255,230,170,.55); animation: gring 1.8s ease-out infinite; }
+  /* the next thing to do (src/ui/cue.js): a green glint on it, an arrow at the edge when it is out of view */
+  #cue { position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none; display: none; will-change: transform; font-size: calc(16px * var(--ui)); --star: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%); }
+  #cue.on { display: block; }
+  #cue .c-ring { position: absolute; left: -2.2em; top: -2.2em; width: 4.4em; height: 4.4em; border-radius: 50%; background: radial-gradient(closest-side, rgba(150,255,90,.6) 0, rgba(120,240,60,.28) 45%, rgba(110,230,60,0) 100%); animation: cue-halo 1.5s ease-in-out infinite; }
+  #cue .c-star { position: absolute; left: -1.5em; top: -1.5em; width: 3em; height: 3em; background: rgba(12,70,0,.8); clip-path: var(--star); animation: cue-star 1.5s ease-in-out infinite; }
+  #cue .c-star::before { content: ''; position: absolute; inset: .26em; background: linear-gradient(180deg, #fff, #dcffc4); clip-path: var(--star); }
+  #cue .c-arrow { display: none; position: absolute; left: -.8em; top: -.8em; width: 1.6em; height: 1.6em; background: #c4ff96; clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%); transform: rotate(var(--a)) translateX(1.9em); }
+  #cue.edge .c-arrow { display: block; }
+  #cue.edge .c-ring { animation: none; }
+  #cue.near .c-star { display: none; }
+  #cue.edge .c-star { left: -.9em; top: -.9em; width: 1.8em; height: 1.8em; animation: none; }
+  #cue.edge .c-star::before { inset: .18em; }
+  @keyframes cue-star { 0%, 100% { transform: scale(.62) rotate(0deg); } 50% { transform: scale(1.1) rotate(45deg); } }
+  @keyframes cue-halo { 0%, 100% { transform: scale(.7); opacity: .6; } 50% { transform: scale(1.15); opacity: 1; } }
   @keyframes gpulse { 50% { opacity: .55; } }
   @keyframes gring { from { transform: scale(.6); opacity: .9; } to { transform: scale(1.9); opacity: 0; } }
 
@@ -458,11 +472,49 @@
   }
   @media (max-height: 520px) { .menu { height: 100%; } .pz-nav { overflow-y: auto; } .pz-nav button { min-height: 44px; } .pz-nav #resume { min-height: 48px; } }
 
-  /* ---- on-screen controls list, F3 meter ---- */
-  #hints { position: fixed; z-index: 5; left: calc(14px + env(safe-area-inset-left)); bottom: calc(14px + env(safe-area-inset-bottom)); margin: 0; font-size: 12px; padding: 10px 13px; border-radius: 8px; transition: opacity .6s; pointer-events: none; gap: 5px 10px; color: var(--ink); }
-  #hints .mouse { color: #1a2c40; }
-  #hints.off { opacity: 0; }
-  #card.show ~ #hints, #journal.show ~ #hints { opacity: 0; }
+  /* ---- lessons (src/ui/teach.js): one control at a time, drawn; top centre, on a phone top left ---- */
+  #teach { position: fixed; z-index: 6; left: 50%; top: 7%; transform: translateX(-50%); zoom: calc(var(--ui) * 1.25); display: none; align-items: center; gap: 14px; padding: 10px 18px 10px 14px; pointer-events: none; }
+  #teach.on { display: flex; }
+  #teach.t-turn { z-index: 11; }
+  #teach.touch { left: calc(12px + env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); transform: none; zoom: 1; padding: 8px 14px 8px 10px; gap: 10px; }
+  .t-art { display: flex; align-items: center; gap: 10px; min-height: 46px; }
+  .t-art kbd { font-size: 18px; padding: 5px 0; min-width: 36px; border-radius: 7px; }
+  .t-art .lit, .t-art .tap, .t-press { animation: t-key 1.2s ease-in-out infinite; }
+  .t-art .mouse { width: 26px; height: 38px; color: #fff; }
+  .t-art .ic { width: 30px; height: 30px; }
+  .t-say { font: 600 17px var(--sans); white-space: nowrap; text-shadow: 0 1px 2px rgba(0,8,20,.8); }
+  .t-say:empty { display: none; }
+  .t-wasd { display: grid; grid-template-columns: repeat(3, 36px); gap: 3px; }
+  .t-wasd kbd:first-child { grid-column: 2; }
+  .t-wasd kbd:nth-child(2) { grid-column: 1; }
+  .t-sway { display: inline-flex; animation: t-sway 1.6s ease-in-out infinite; }
+  .t-press { display: inline-flex; }
+  .t-arr { width: 0; height: 0; border: 6px solid transparent; }
+  .t-arr.l { border-right-color: #fff; } .t-arr.r { border-left-color: #fff; }
+  .t-stick { position: relative; width: 46px; height: 46px; border-radius: 50%; border: 2px solid #fff; }
+  .t-stick i { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px; border-radius: 50%; background: #fff; animation: t-push 1.6s ease-in-out infinite; }
+  .t-aim { position: relative; width: 86px; height: 40px; }
+  .t-aim .thing { position: absolute; right: 2px; top: 5px; width: 30px; height: 30px; border: 2px solid #fff; border-radius: 7px; }
+  .t-aim .dot { position: absolute; left: 0; top: 16px; width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: t-aim 2s ease-in-out infinite; }
+  .t-btn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.75);
+    background: linear-gradient(180deg, rgba(255,255,255,.45) 0, rgba(255,255,255,.12) 48%, rgba(255,255,255,0) 52%, rgba(255,255,255,.14) 100%), rgb(34,70,106); }
+  .t-btn.sq { border-radius: 12px; }
+  .t-btn.read { background-color: rgb(var(--read)); }
+  .t-btn.do { background-color: rgb(58,156,28); }
+  .t-btn .ic { width: 24px; height: 24px; }
+  .t-hold { width: 24px; height: 6px; border-radius: 3px; background: #fff; }
+  #teach-ghost { position: fixed; z-index: 6; left: 50%; top: 40%; width: 0; height: 0; display: none; pointer-events: none; color: #fff; filter: drop-shadow(0 2px 5px rgba(0,10,30,.7)); }
+  #teach-ghost.on { display: block; animation: t-slide 2.2s ease-in-out infinite; }
+  #teach-ghost.g-turn { top: 30%; z-index: 11; }
+  #teach-ghost .ic { position: absolute; left: -22px; top: -8px; width: 64px; height: 64px; stroke-width: 1.4; fill: rgba(255,255,255,.25); }
+  #teach-ghost i { position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; background: rgba(255,255,255,.3); }
+  @keyframes t-slide { 0%, 100% { transform: translateX(-27vw); } 50% { transform: translateX(27vw); } }
+  @keyframes t-key { 0%, 100% { transform: none; } 50% { transform: translateY(3px) scale(.93); } }
+  @keyframes t-sway { 0%, 100% { transform: translateX(-8px); } 50% { transform: translateX(8px); } }
+  @keyframes t-push { 0%, 100% { transform: none; } 50% { transform: translateY(-11px); } }
+  @keyframes t-aim { 0%, 15% { transform: none; } 60%, 100% { transform: translate(61px, 0) scale(1.6); } }
+
+  /* ---- F3 meter ---- */
   #fps { position: fixed; z-index: 26; left: calc(10px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); font: 11px/1.45 ui-monospace, Menlo, monospace; color: #e8f6ff; display: none; pointer-events: none; white-space: pre; padding: 6px 10px; border-radius: 6px; background: rgba(5,11,18,.6); text-shadow: 0 1px 2px #000; }
   #fps.on { display: block; }
 
@@ -477,9 +529,9 @@
 
   /* src/ui/prewarm.js: every surface drawn once while loading, under the key art (which must not count as opaque:
      what an opaque layer hides is not drawn); with no key art (?auto), all but unseen instead */
-  .prewarm :is(#dot, #prompt, #puthint, #choice, #toasts, #dip, #card, #journal, #lightbox, #pause, #hints, #fps, #guide, #gshimmer, #vcursor, .tc-root) { pointer-events: none !important; z-index: 1 !important; }
+  .prewarm :is(#dot, #prompt, #puthint, #choice, #toasts, #dip, #card, #journal, #lightbox, #pause, #teach, #teach-ghost, #fps, #guide, #cue, #gshimmer, #vcursor, .tc-root) { pointer-events: none !important; z-index: 1 !important; }
   .prewarm #keyart { opacity: .999; transition: none; }
-  .prewarm.bare :is(#dot, #prompt, #puthint, #choice, #toasts, #dip, #card, #journal, #lightbox, #pause, #hints, #fps, #guide, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; }
+  .prewarm.bare :is(#dot, #prompt, #puthint, #choice, #toasts, #dip, #card, #journal, #lightbox, #pause, #teach, #teach-ghost, #fps, #guide, #cue, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; }
   #fade { position: fixed; inset: 0; background: #000; opacity: 1; transition: opacity 2.4s ease; pointer-events: none; }
   #fade.clear { opacity: 0; }
 
@@ -491,13 +543,14 @@
   /* touch: thumb-sized targets, no keyboard glyphs */
   @media (pointer: coarse) {
     #toasts { top: calc(68px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); }
-    .toast.say { bottom: auto; top: calc(128px + env(safe-area-inset-top)); } /* clear of the thumbs, the prompt and the corner buttons */
+    .toast.say { bottom: auto; top: calc(128px + env(safe-area-inset-top)); } /* clear of the thumbs, the prompt, the lesson and the corner buttons */
+    @media (orientation: landscape) { .toast.say { top: calc(8px + env(safe-area-inset-top)); max-width: 42vw; padding: 6px 16px 7px; } .toast.say b { font-size: 16px; } }
     .btn, .chip, .sel-btn, .sel-menu button { min-height: 44px; }
     .sel-menu button { font-size: 15px; }
     .settings .row { min-height: 50px; }
     input[type=range] { height: 44px; }
     .win-close { width: 56px; height: 34px; right: 8px; }
-    .kb, #hints { display: none !important; }
+    .kb { display: none !important; }
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 </style>
@@ -587,7 +640,6 @@
   </nav>
   <a class="studio" href="https://springfolk.co" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="/assets/ui/springfolk-logo.svg" alt="Springfolk"></a>
 </div>
-<div id="hints" class="keys pane"></div>
 <div id="fps"></div>
 <script type="module" src="/src/main.js"></script>
 </body>

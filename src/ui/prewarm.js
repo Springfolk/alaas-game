@@ -7,6 +7,7 @@
 // is not drawn at all); opacity on the surfaces themselves would change which shaders they need. Without the key
 // art (?auto) they are shown at 1% instead, which covers most.
 import { BY_ID } from './ui.js';
+import { LESSONS } from './teach.js';
 
 export async function prewarmUI(game) {
   const ui = game.ui, root = document.documentElement, undo = [];
@@ -15,7 +16,6 @@ export async function prewarmUI(game) {
   const on = (sel, ...cls) => {
     for (const el of document.querySelectorAll(sel)) for (const c of cls) if (!el.classList.contains(c)) { el.classList.add(c); undo.push(() => el.classList.remove(c)); }
   };
-  const off = (sel, c) => { for (const el of document.querySelectorAll(sel)) if (el.classList.contains(c)) { el.classList.remove(c); undo.push(() => el.classList.add(c)); } };
   const touch = game.touch; // its controls: one set at a time (`show` overrides what its own sync picks)
   // a card with a gallery; its pictures are swapped for the key art (in the cache already: nothing is fetched)
   const ids = Object.keys(BY_ID), id = ids.find((k) => ui.images[k]?.length > 1 && BY_ID[k].related?.length) || ids[0];
@@ -27,7 +27,6 @@ export async function prewarmUI(game) {
   try {
     // each surface at rest first, then its other states (the stick at rest and pushed are different gradients)
     on('#fps', 'on'); on('#vcursor', 'on');
-    off('#hints', 'off');
     if (touch) touch.show = 'play';
     ui.setPrompt('Алаас', { act: { id: 'strike', label: { en: 'Алаас' } }, read: true, put: { id: 'down' } }); // with every part it can have
     ui.toast('<b>Алаас</b><small>Алаас</small>', 1e9);
@@ -68,17 +67,21 @@ export async function prewarmUI(game) {
     await frames(3);
     ui.guided = null;
     ui.close();
+    for (const L of LESSONS) { game.teach.show(L); on('.tc-btn, .tc-stick', 'tc-teach'); on('#teach-ghost', 'on'); await frames(2); } // each lesson's drawing, the ring on a button
+    game.teach.show(null);
     on('#pause', 'show');
     await frames();
     on('#pause .sel', 'open'); // the selects' lists
     await frames();
     for (const tab of document.querySelectorAll('#pause .tab')) { on('#pause .menu', 'paged'); on(`#${tab.id}`, 'on'); await frames(); }
     document.getElementById('pause').classList.remove('show');
-    // what is made once the world is built: the journal's finder marker
+    // what is made once the world is built: the journal's finder marker, the cue
     for (const t = performance.now(); !game.guide && performance.now() - t < 60000;) await frames(6);
-    on('#guide', 'on'); on('#gshimmer', 'on');
+    on('#guide', 'on'); on('#gshimmer', 'on'); on('#cue', 'on');
     await frames(14);
-    on('#guide', 'edge');
+    on('#cue', 'near');
+    await frames(2);
+    on('#guide', 'edge'); on('#cue', 'edge');
     await frames(3);
   } finally {
     for (const u of undo.reverse()) u();
