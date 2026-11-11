@@ -27,13 +27,16 @@ export function smudge(K, x, z) {
       const s = 0.11 + rng() * 0.12;
       const lx = Math.cos(a) * r, lz = Math.sin(a) * r;
       const y = g(lx, lz) + (0.55 - r) * 0.55 - s * 0.4;
-      F.add(blob(s * 1.2, s * 0.7, s, rng, { detail: 1, rough: 0.3 }), M.dung, mtx([lx, y, lz], [rng() * 0.6, rng() * TAU, rng() * 0.6]), jitterTint(rng, 0.15));
+      F.add(blob(s * 1.2, s * 0.7, s, rng, { detail: 2, rough: 0.3 }), M.dung, mtx([lx, y, lz], [rng() * 0.6, rng() * TAU, rng() * 0.6]), jitterTint(rng, 0.15));
     }
     // damp green grass thrown on top to make it smoke
     for (let i = 0; i < 9; i++) {
       const a = rng() * TAU, r = rng() * 0.35;
       const lx = Math.cos(a) * r, lz = Math.sin(a) * r;
-      F.add(blob(0.22 + rng() * 0.1, 0.07, 0.18, rng, { detail: 1, rough: 0.4 }), M.hayGreen, mtx([lx, g(lx, lz) + 0.28 - r * 0.4, lz], [rng() * 0.4, rng() * TAU, 0]), jitterTint(rng, 0.2, [0.85, 0.9, 0.75]));
+      const top = [lx, g(lx, lz) + 0.28 - r * 0.4, lz], t = jitterTint(rng, 0.2, [0.85, 0.9, 0.75]);
+      F.add(blob(0.22 + rng() * 0.1, 0.07, 0.18, rng, { detail: 2, rough: 0.4 }), M.hayGreen, mtx(top, [rng() * 0.4, rng() * TAU, 0]), t);
+      // the armful's loose blades lying over it and hanging off its sides
+      for (let k = 0; k < 3; k++) F.add(wisp(rng, 16, 0.3, 0.2), M.hayGreen, mtx([top[0], top[1] + 0.03, top[2]], [0, rng() * TAU, 0]), t);
     }
     // embers glowing in the gaps at the foot of the heap
     for (let i = 0; i < 7; i++) {
@@ -51,7 +54,7 @@ export function smudge(K, x, z) {
     // a spare heap of dung clods and a wooden two-tined fork
     for (let i = 0; i < 9; i++) {
       const lx = 1.7 + (rng() - 0.5) * 0.6, lz = -1.4 + (rng() - 0.5) * 0.5, s = 0.1 + rng() * 0.08;
-      F.add(blob(s * 1.2, s * 0.6, s, rng, { detail: 1, rough: 0.3 }), M.dung, mtx([lx, g(lx, lz) + (i > 5 ? 0.08 : 0), lz], [0, rng() * TAU, 0]), jitterTint(rng, 0.15, [1.1, 1.05, 1]));
+      F.add(blob(s * 1.2, s * 0.6, s, rng, { detail: 2, rough: 0.3 }), M.dung, mtx([lx, g(lx, lz) + (i > 5 ? 0.08 : 0), lz], [0, rng() * TAU, 0]), jitterTint(rng, 0.15, [1.1, 1.05, 1]));
     }
     {
       const [ax, az] = F.tw(-1.2, 1.1), [bx, bz] = F.tw(0.4, 1.9);
@@ -71,6 +74,29 @@ export function smudge(K, x, z) {
   K.ups.push((dt, c) => { K.M.ember.value = 0.55 + 0.25 * Math.sin((c.time || 0) * 0.7) + 0.1 * Math.sin((c.time || 0) * 2.3); });
   K.colliders.push({ x, z, r: 0.85 });
   return { target: K.proxy(x, y0 + 0.3, z, 1.3, 0.7, 1.3) };
+}
+
+// A handful of cut grass thrown down: `n` thin blades fanned over a low mound of radius `r`, drooping at their ends.
+function wisp(rng, n, len, r) {
+  const pos = [], uvs = [], idx = [];
+  for (let i = 0; i < n; i++) {
+    const a = rng() * TAU, d = rng() * r * 0.6, l = len * (0.6 + rng() * 0.6), w = 0.004 + rng() * 0.004, dir = a + (rng() - 0.5) * 1.6;
+    const x0 = Math.cos(a) * d, z0 = Math.sin(a) * d, ux = Math.cos(dir), uz = Math.sin(dir), b = pos.length / 3, lift = 0.02 + rng() * 0.05;
+    for (let k = 0; k <= 3; k++) {
+      const t = k / 3, s = (t - 0.5) * l, y = lift * (1 - (2 * t - 1) ** 2) - Math.hypot(x0 + ux * s, z0 + uz * s) ** 2 * 0.9, wk = w * (1 - 0.7 * Math.abs(2 * t - 1));
+      pos.push(x0 + ux * s - uz * wk, y, z0 + uz * s + ux * wk, x0 + ux * s + uz * wk, y + 0.002, z0 + uz * s - ux * wk);
+      uvs.push(i * 0.37, t * l, i * 0.37 + 0.04, t * l);
+    }
+    for (let k = 0; k < 3; k++) { const o = b + k * 2; idx.push(o, o + 1, o + 2, o + 1, o + 3, o + 2, o, o + 2, o + 1, o + 1, o + 2, o + 3); } // both faces
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  const nrm = g.attributes.normal; // lit from above whichever face shows
+  for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
+  return g;
 }
 
 // ---------------- firewood stack and chopping block ----------------

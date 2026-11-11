@@ -1,5 +1,5 @@
 // The yard's material palette (shared by yardlife and lakeside so the two read as one place).
-import { color, uniform, mx_noise_float, positionWorld, time, float, vec3 } from 'three/tsl';
+import { color, uniform, mx_noise_float, positionWorld, time, float, vec3, mix } from 'three/tsl';
 import { pmat } from './kit.js';
 
 let M;
@@ -8,6 +8,7 @@ export function yardMats() {
   const glow = uniform(0.25); // coal glow (smithy), animated by the bellows
   const ember = uniform(0.6); // smudge-fire embers
   const flick = (u, k) => mx_noise_float(positionWorld.mul(k).add(vec3(0, time.mul(0.9), 0))).mul(0.5).add(0.5).mul(u);
+  const crust = mx_noise_float(positionWorld.mul(85)).mul(0.5).add(0.5).mul(mx_noise_float(positionWorld.mul(31).add(7)).mul(0.5).add(0.62)).smoothstep(0.24, 0.62);
   return M = {
     glow, ember,
     // weathered round larch, peeled, silver-grey with lichen on the north
@@ -43,8 +44,9 @@ export function yardMats() {
     earth: pmat('brown_mud_dry', { scale: 1.2, tint: 0x9a8a78, dirt: 0.2 }),
     slag: pmat('rock_ground', { scale: 0.3, tint: 0x3a3c36, rough: 0.7, dirt: 0 }),
     ore: pmat('rock_ground', { scale: 0.3, tint: 0x8a4a28, dirt: 0.2 }),
+    // live coals: a dark, ashy crust broken by glowing cracks; the heart of a crack burns yellow
     coal: pmat('rock_ground', { scale: 0.25, tint: 0x1a1817, dirt: 0, rough: 0.8, id: 'coal',
-      emissive: color(1.0, 0.32, 0.06).mul(flick(glow, 9).mul(flick(float(1), 23).add(0.4))).mul(2.4) }),
+      emissive: mix(color(0.9, 0.2, 0.03), color(1.0, 0.55, 0.16), crust.pow(3)).mul(crust).mul(flick(glow, 9).mul(flick(float(1), 23).add(0.4))).mul(3.4) }),
     embers: pmat('rock_ground', { scale: 0.25, tint: 0x2a221c, dirt: 0, rough: 0.9, id: 'embers',
       emissive: color(1.0, 0.28, 0.05).mul(flick(ember, 6).pow(2)).mul(1.6) }),
     charcoal: pmat('rock_ground', { scale: 0.25, tint: 0x1d1b1a, dirt: 0, rough: 0.85 }),
