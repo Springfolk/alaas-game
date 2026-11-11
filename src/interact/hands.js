@@ -22,7 +22,7 @@ const LIE = {
 };
 export const ARMFUL = 4; // billets carried at once
 // the 2nd…4th billet of an armful, relative to the first (camera space, metres)
-const ARM = [[0, 0, 0], [0.02, 0.085, 0.07], [-0.03, 0.09, -0.07], [0.0, 0.175, 0.0]];
+const ARM = [[0, 0, 0], [0.015, 0, -0.11], [-0.01, 0.095, -0.055], [0.01, 0.19, -0.055]]; // two side by side, two laid in the groove above
 const L = (sah, en, ru) => ({ sah, en, ru });
 const ACT = {
   take: L('ыл', 'pick it up', 'взять'),
@@ -320,9 +320,15 @@ export class Hands {
     if (!this.held) return;
     const lie = LIE[(this.more[this.more.length - 1] || this.held).kind], at = this.dropSpot(lie.r);
     if (!at) return;
-    const t = this.letGo(), { x, z } = at;
+    const t = this.letGo(), q = lie.q(pl.yaw);
+    let { x, z } = at;
+    if (lie.pivot) for (let i = 0; i < 2; i++) { // a billet's ends too: clear of walls and posts
+      const d = _v.set(0, 1, 0).applyQuaternion(q).setY(0).normalize();
+      let mx = 0, mz = 0;
+      for (const s of [lie.pivot, -lie.pivot]) { const ex = x + d.x * s, ez = z + d.z * s, c = g.world.collide(ex, ez, 0.12, pl.pos.y); mx += c.x - ex; mz += c.z - ez; }
+      x += mx; z += mz;
+    }
     const y = g.world.groundAt(x, z);
-    const q = lie.q(pl.yaw);
     const to = new THREE.Vector3(x, y + lie.lift, z);
     if (lie.pivot) to.add(_v.set(0, lie.pivot, 0).applyQuaternion(q).setY(0)); // pivot is the billet's end
     await this.fly(t, to, q, 0.45);

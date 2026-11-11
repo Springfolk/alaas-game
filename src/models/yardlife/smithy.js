@@ -217,7 +217,7 @@ export function smithy(K, x, z, yaw) {
     // tongs (long reins, blackened jaws) leaning on the forge
     const scrap = new Bucket(() => 0); // (keeps the yard's rng stream where it was: four thin logs stood for the tongs)
     for (const s of [-1, 1]) addLog(scrap, Wy(-0.05, fy + 0.005, 0.72 + s * 0.02), Wy(FX - FD / 2 - 0.02, fy + 0.58, 0.55 - s * 0.02), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2, bend: 0.01 });
-    for (const t of tongsGeo(0.66)) K.b.add(t, M.iron, along(Wy(-0.05, fy + 0.004, 0.72), Wy(FX - FD / 2 - 0.012, fy + 0.58, 0.55), 0.5), [0.8, 0.8, 0.84]);
+    // (the pair itself is `tongs` below)
     // a second pair and a file hung on pegs on the back wall
     for (const s of [-1, 1]) addLog(scrap, Wy(1.5, fy + 0.7, -0.75 + s * 0.015), Wy(1.52, fy + 1.25, -0.72 - s * 0.015), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2 });
     for (const t of tongsGeo(0.56)) F.add(t, M.iron, mtx([1.4, fy + 1.39, -0.75], [0, Math.PI / 2, Math.PI]), [0.75, 0.75, 0.79]); // astride the peg, jaws up
@@ -247,10 +247,12 @@ export function smithy(K, x, z, yaw) {
       }
     }
     // outside: a heap of rust-brown bog ore, glassy slag cakes by the door
+    const OH = 0.13, OR = 0.5, mound = (r) => OH * Math.max(0, 1 - (r / OR) ** 2); // the heap's body: fine ore under the lumps
+    F.add(new THREE.SphereGeometry(1, 18, 5, 0, TAU, 0, Math.PI / 2), M.ore, mtx([-2.3, g(-2.3, 1.6) - 0.03, 1.6], [0, 0, 0], [OR, OH + 0.03, OR]), [0.8, 0.75, 0.7]);
     for (let i = 0; i < 30; i++) {
       const a = rng() * TAU, r = Math.sqrt(rng()) * 0.45, s = 0.035 + rng() * 0.035;
       const lx = -2.3 + Math.cos(a) * r, lz = 1.6 + Math.sin(a) * r;
-      F.add(blob(s, s * 0.85, s, rng, { detail: 1, rough: 0.35 }), M.ore, mtx([lx, g(lx, lz) + (0.45 - r) * 0.35, lz], [rng(), rng() * TAU, 0]), jitterTint(rng, 0.15));
+      F.add(blob(s, s * 0.85, s, rng, { detail: 1, rough: 0.35 }), M.ore, mtx([lx, Math.max(g(lx, lz), g(-2.3, 1.6) - 0.03 + mound(r)) + s * 0.3, lz], [rng(), rng() * TAU, 0]), jitterTint(rng, 0.15));
     }
     for (let i = 0; i < 6; i++) {
       const lx = -2.1 + (rng() - 0.5) * 0.9, lz = -1.4 + (rng() - 0.5) * 0.6, s = 0.07 + rng() * 0.05;
@@ -339,14 +341,17 @@ export function smithy(K, x, z, yaw) {
   hammer.userData.dynamic = true;
   K.group.add(hammer);
 
-  // the tongs in the hand while the blank is carried: jaws on its tang, reins towards the smith's right hand
-  const tongs = new THREE.Group(); tongs.name = 'tongs-held';
-  for (const t of tongsGeo(0.6)) {
+  // the tongs: leaning on the forge; taken up while the blank is carried (jaws on its tang, reins towards the smith's right hand), then back
+  const tongs = new THREE.Group(); tongs.name = 'tongs';
+  for (const t of tongsGeo(0.66)) {
     t.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(t.attributes.position.count).fill(1), 1));
     const m = new THREE.Mesh(t, M.iron); m.castShadow = true; tongs.add(m);
   }
   tongs.userData.grips = [{ hand: 'R', p: [0, 0.5, 0], axis: [0, -1, 0], r: 0.02 }];
-  tongs.userData.dynamic = true; tongs.visible = false;
+  tongs.userData.dynamic = true;
+  const tongsRest = { p: new THREE.Vector3(), q: new THREE.Quaternion(), from: { p: new THREE.Vector3(), q: new THREE.Quaternion() }, k: 1 };
+  along(Wy(-0.05, fy + 0.004, 0.72), Wy(FX - FD / 2 - 0.012, fy + 0.58, 0.55), 0.5).decompose(tongsRest.p, tongsRest.q, new THREE.Vector3());
+  tongs.position.copy(tongsRest.p); tongs.quaternion.copy(tongsRest.q);
   K.group.add(tongs);
   const _tj = new THREE.Vector3(), _th = new THREE.Vector3(), _ty = new THREE.Vector3(0, 1, 0);
 
@@ -400,9 +405,12 @@ export function smithy(K, x, z, yaw) {
         _tj.set(-0.07, 0.004, 0).applyAxisAngle(_ty, blank.rotation.y).add(blank.position);
         K.group.worldToLocal(_th.set(0.22, -0.3, -0.55).applyQuaternion(c.camera.quaternion).add(c.camera.position));
         tongs.position.copy(_tj); tongs.quaternion.setFromUnitVectors(_ty, _th.sub(_tj).normalize());
-        tongs.visible = tongs.userData.inHands = true;
+        tongs.userData.inHands = true;
       }
-      if (f.k >= 1) { Wk.fly = null; tongs.visible = tongs.userData.inHands = false; f.res(); }
+      if (f.k >= 1) { Wk.fly = null; tongs.userData.inHands = false; tongsRest.from.p.copy(tongs.position); tongsRest.from.q.copy(tongs.quaternion); tongsRest.k = 0; f.res(); }
+    } else if (tongsRest.k < 1) { // set back against the forge
+      tongsRest.k = Math.min(1, tongsRest.k + dt / 0.45); const e = tongsRest.k * tongsRest.k * (3 - 2 * tongsRest.k);
+      tongs.position.lerpVectors(tongsRest.from.p, tongsRest.p, e); tongs.quaternion.slerpQuaternions(tongsRest.from.q, tongsRest.q, e);
     }
     // the hammer: up while the do input is held, down when it is let go
     const H = Wk.ham;

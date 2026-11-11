@@ -24,7 +24,7 @@ function basisQ(y, xHint, out = new THREE.Quaternion()) {
 }
 // camera-space poses (the trap's origin is its mouth): carried across the body, and tipped tail-down to pour
 const CARRY = { p: [-0.42, -0.46, -0.62], q: basisQ(new THREE.Vector3(0.95, 0.12, -0.25), new THREE.Vector3(0, 1, 0)) };
-const TIP = { p: new THREE.Vector3(-0.05, 0.2, -0.62), q: basisQ(new THREE.Vector3(0.05, -0.97, -0.2), new THREE.Vector3(1, 0, 0)) };
+const TIP = { p: new THREE.Vector3(0, -0.18, -0.9), q: basisQ(new THREE.Vector3(0.03, -0.75, -0.66), new THREE.Vector3(1, 0, 0)) }; // held out by the mouth, the tail down over the carrier
 const FULL = 110; // s for the trap to fill to ~2/3 of what it can hold
 
 export class Fish {

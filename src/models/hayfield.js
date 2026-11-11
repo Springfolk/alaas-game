@@ -62,9 +62,14 @@ export default async function build(ctx, placement) {
     for (const m of S.build(scythe)) m.castShadow = true;
     scythe.userData.tip = new T.Vector3(pos[N * 12], pos[N * 12 + 1], 0);
   }
-  // hung in the fork, the blade over it, the handle down along the post
-  scythe.position.set(0.1, g0 + 1.4 - SCYTHE.handle, 0.07);
-  scythe.rotation.set(0, -0.3, 0.06);
+  // hung in the fork: the handle's top lies in the crotch between post and branch, the blade arching back over the
+  // post's top, the handle across the fork, hanging down behind it
+  {
+    const up = new T.Vector3(0, 0.6, -0.8), crotch = new T.Vector3(0.1, g0 + 1.43, 0.035);
+    scythe.position.copy(crotch).addScaledVector(up, 0.12 - SCYTHE.handle);
+    const x = new T.Vector3(-1, 0, 0);
+    scythe.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(x, up, new T.Vector3().crossVectors(x, up)));
+  }
   scythe.userData.grips = [{ hand: 'R', p: [0, 0.34, 0], axis: [0, 1, 0], r: 0.017 }, { hand: 'L', p: [0, 0.1, 0], axis: [0, 1, 0], r: 0.017 }];
   scythe.userData.dynamic = true;
   object.add(scythe);
