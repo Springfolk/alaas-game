@@ -182,6 +182,7 @@ export function buildShell({ M, rng, winter, root }) {
     DB.add(M.doorWood, tube([[0.03, 0.97, DW - 0.12], [0.065, 0.94, DW - 0.125], [0.085, 0.9, DW - 0.13], [0.065, 0.86, DW - 0.125], [0.03, 0.83, DW - 0.12]], 0.011, 6), { color: [0.34, 0.25, 0.17] });
   });
   DB.build(doorPivot);
+  doorPivot.traverse((o) => { o.userData.dynamic = true; }); // it swings: its own shadow, not the merged proxy's
   root.add(doorPivot);
   const door = { pivot: doorPivot, open: winter ? 0 : 1, target: winter ? 0 : 1, maxAngle: 1.75 };
   doorPivot.rotation.y = door.open * door.maxAngle;

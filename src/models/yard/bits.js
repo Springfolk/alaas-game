@@ -245,6 +245,45 @@ export function swing(s, dt, accel = 3.5, max = 1.6) {
   return 'rest';
 }
 
+// A hinged leaf as a solid: its collider follows the leaf, and the swing stops at the player instead of passing
+// through. hinge = [x, z] model-local, len = leaf width, th = thickness centred `off` along the leaf's own x,
+// angle(a) = the leaf's turn about +Y at swing a (its width runs along its local +Z). find(world) returns the
+// leaf's own world collider (a box); move(s, dt, game, accel, max) swings like `swing`.
+export function leaf(placement, { hinge, len, th, off = 0, angle }) {
+  const yaw = placement.yaw || 0, c0 = Math.cos(yaw), s0 = Math.sin(yaw);
+  const span = (a) => { // the leaf's middle line, model-local
+    const A = angle(a), ux = Math.sin(A), uz = Math.cos(A), ox = hinge[0] + Math.cos(A) * off, oz = hinge[1] - Math.sin(A) * off;
+    return { A, x0: ox, z0: oz, x1: ox + ux * len, z1: oz + uz * len };
+  };
+  const toLocal = (wx, wz) => { const dx = wx - placement.x, dz = wz - placement.z; return [dx * c0 - dz * s0, dx * s0 + dz * c0]; };
+  const R = 0.28 + th / 2 + 0.07; // the player's radius, half the leaf, and room for the eye
+  const hits = (a, p) => {
+    const g = span(a), [x, z] = toLocal(p.x, p.z), ex = g.x1 - g.x0, ez = g.z1 - g.z0;
+    const t = Math.max(0, Math.min(1, ((x - g.x0) * ex + (z - g.z0) * ez) / (ex * ex + ez * ez)));
+    return Math.hypot(x - g.x0 - ex * t, z - g.z0 - ez * t) < R;
+  };
+  const self = {
+    k: null,
+    // the leaf's collider, local, at swing a (rot: the leaf's turn)
+    collider(a, extra = {}) { const g = span(a); return { x: (g.x0 + g.x1) / 2, z: (g.z0 + g.z1) / 2, hw: th / 2, hd: len / 2, rot: g.A, ...extra }; },
+    place(a) {
+      if (!self.k) return;
+      const g = span(a), mx = (g.x0 + g.x1) / 2, mz = (g.z0 + g.z1) / 2;
+      self.k.x = placement.x + mx * c0 + mz * s0; self.k.z = placement.z - mx * s0 + mz * c0;
+      self.k.c = Math.cos(yaw + g.A); self.k.s = Math.sin(yaw + g.A);
+    },
+    move(s, dt, game, accel, max) {
+      const a0 = s.a, v0 = s.v || 0, p = game?.player?.pos;
+      let r = swing(s, dt, accel, max);
+      // it meets the player on the way: stopped there with a small rebound (a knock if it came fast)
+      if (p && s.a !== a0 && hits(s.a, p) && !hits(a0, p)) { s.a = a0; s.v = -v0 * 0.25; r = Math.abs(v0) > 0.6 ? 'knock' : null; }
+      self.place(s.a);
+      return r;
+    },
+  };
+  return self;
+}
+
 // Tween helper for act animations: resolves after `dur` s while calling step(t 0..1) each frame.
 export function tween(dur, step) {
   return new Promise((res) => {
