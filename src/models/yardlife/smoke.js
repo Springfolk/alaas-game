@@ -38,13 +38,14 @@ function smokeNoise() {
 
 /**
  * origin: [x, y, z] local; wind: [x, z] m/s; opts: rate (puffs/s), life (s), size [start, end] m,
- * rise m/s, tint (lit colour), shade (shadowed colour), alpha.
+ * rise m/s, tint (lit colour), shade (shadowed colour), alpha, idle. Returns { mesh, update, ctl: { rate } }.
  */
 export function makeSmoke(origin, wind, opts = {}) {
   // phones: 45% of the puffs, each denser: the smudge fire's overlapping puffs were a warm iPhone's heaviest view
   const phone = TIER.name === 'mobile';
   if (phone) opts = { ...opts, count: Math.ceil((opts.count ?? 56) * 0.45), rate: (opts.rate ?? 4) * 0.45, alpha: Math.min(1, (opts.alpha ?? 0.55) * 1.35) };
-  const { count = 56, rate = 4, life = 14, size = [0.7, 5.5], rise = 0.45, tint = 0xc9c6bf, shade = 0x6d6c6a, alpha = 0.55, spread = 0.5, seed = 1 } = opts;
+  const { count = 56, life = 14, size = [0.7, 5.5], rise = 0.45, tint = 0xc9c6bf, shade = 0x6d6c6a, alpha = 0.55, spread = 0.5, seed = 1, idle = false } = opts;
+  const ctl = { rate: opts.rate ?? 4 }; // puffs a second: 0 = none (steam that comes in bursts sets it)
   const geo = new THREE.PlaneGeometry(1, 1);
   const fade = new Float32Array(count * 3); // alpha, seed, age 0..1
   const attr = new THREE.InstancedBufferAttribute(fade, 3).setUsage(THREE.DynamicDrawUsage);
@@ -72,8 +73,8 @@ export function makeSmoke(origin, wind, opts = {}) {
   let acc = 0, s = seed;
   const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < count; i++) P.push({ age: life * (i / count), x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, rot: 0, spin: 0, seed: rnd(), dead: false });
-  // pre-age the column so it already stands when the world appears
-  for (const p of P) spawn(p, p.age);
+  // pre-age the column so it already stands when the world appears (`idle`: nothing until `rate` is raised)
+  if (idle) for (const p of P) p.dead = true; else for (const p of P) spawn(p, p.age);
   function spawn(p, age = 0) {
     p.age = 0; p.dead = false;
     p.x = origin[0] + (rnd() - 0.5) * spread; p.y = origin[1] + rnd() * 0.15; p.z = origin[2] + (rnd() - 0.5) * spread;
@@ -97,7 +98,7 @@ export function makeSmoke(origin, wind, opts = {}) {
   const parentInv = new THREE.Matrix4(), rel = new THREE.Matrix4(), camQ = new THREE.Quaternion(), eye = new THREE.Vector3();
   function update(dt, camera) {
     for (const p of P) {
-      if (p.dead) { acc += dt * rate; if (acc >= 1) { acc -= 1; spawn(p); } else continue; }
+      if (p.dead) { acc = Math.min(2, acc + dt * ctl.rate); if (acc >= 1) { acc -= 1; spawn(p); } else continue; }
       step(p, dt);
     }
     // camera rotation and position in the mesh's parent frame
@@ -123,5 +124,5 @@ export function makeSmoke(origin, wind, opts = {}) {
     mesh.instanceMatrix.needsUpdate = true;
     attr.needsUpdate = true;
   }
-  return { mesh, update };
+  return { mesh, update, ctl };
 }

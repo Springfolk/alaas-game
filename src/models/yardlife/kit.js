@@ -12,7 +12,7 @@ import { canvasMaps } from './textures.js';
 import { bucket, bucketReplay, geoMaterialSource, section } from '../../load/geocache.js';
 
 export const TAU = Math.PI * 2;
-const _q = new THREE.Quaternion(), _v = new THREE.Vector3(), _s = new THREE.Vector3();
+const _q = new THREE.Quaternion(), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _n = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
 // ---------- materials ----------
@@ -460,19 +460,36 @@ export function boxUV(g, scale = 1) {
 }
 
 /** A displaced blob (stones, clods, heaps): an icosphere scaled to (sx, sy, sz) with noise. */
-export function blob(sx, sy, sz, rng, { detail = 2, rough = 0.18, flatBottom = true } = {}) {
+export function blob(sx, sy, sz, rng, { detail = 2, rough = 0.18, flatBottom = true, facet = 0 } = {}) {
   const g = new THREE.IcosahedronGeometry(1, detail);
   const p = g.attributes.position;
   const f = [rng() * 9, rng() * 9, rng() * 9];
+  const keys = new Array(p.count); // the corner each vertex shares with its neighbours' copies
   for (let i = 0; i < p.count; i++) {
     _v.fromBufferAttribute(p, i);
+    keys[i] = `${Math.round(_v.x * 1e3)},${Math.round(_v.y * 1e3)},${Math.round(_v.z * 1e3)}`;
     const d = 1 + rough * (Math.sin(_v.x * 3.1 + f[0]) * Math.sin(_v.y * 2.7 + f[1]) * Math.sin(_v.z * 3.3 + f[2]) + 0.5 * Math.sin(_v.x * 7 + _v.z * 5 + f[1]) * 0.5);
     _v.multiplyScalar(d);
     if (flatBottom && _v.y < -0.15) _v.y = -0.15 + (_v.y + 0.15) * 0.15;
     p.setXYZ(i, _v.x * sx, (_v.y + 0.15) * sy, _v.z * sz);
   }
   g.computeVertexNormals();
-  return boxUV(g.toNonIndexed ? g : g, 1);
+  boxUV(g, 1); // by the flat faces: a face keeps one projection
+  // rounded, not faceted: each corner's normal is the mean of its faces' (`facet` 1 keeps the flat faces)
+  if (facet < 1) {
+    const n = g.attributes.normal, sum = new Map();
+    for (let i = 0; i < p.count; i++) {
+      let a = sum.get(keys[i]);
+      if (!a) sum.set(keys[i], a = [0, 0, 0]);
+      a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i);
+    }
+    for (let i = 0; i < p.count; i++) {
+      const a = sum.get(keys[i]);
+      _v.set(a[0], a[1], a[2]).normalize().multiplyScalar(1 - facet).add(_n.fromBufferAttribute(n, i).multiplyScalar(facet)).normalize();
+      n.setXYZ(i, _v.x, _v.y, _v.z);
+    }
+  }
+  return g;
 }
 
 /** A tube along a curve (ropes, hoops, lashings). */

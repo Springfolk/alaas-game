@@ -1,4 +1,4 @@
-// Биэ сэлэтэ: the mare-milking line on the meadow. A long horsehair rope (18 m) between two plain
+// Биэ сэлэтэ: the mare-milking line on the meadow. A long rope of black and white horsehair (18 m) between two plain
 // posts of human height, sagging to ~0.7 m; short tethers along it where the foals are tied so the
 // mares stay near to be milked. The herd is out on pasture: only signs remain — hoof-trodden ground
 // along the line, horse droppings, a halter dropped in the grass, a birch-bark milk pail by a post.
@@ -44,7 +44,7 @@ export default async function build(ctx, placement) {
 
   // ── the rope: wrapped twice round each post, then the long sagging span ──
   // laid on the posts' real surfaces (bent, oval), so the turns neither sink into the wood nor float off it
-  const RR = 0.0065;
+  const RR = 0.011; // a mare-line rope is thick: it holds a row of foals
   for (const p of posts) p.surf = surfaceOf(postGeo, p.x, p.z);
   const on = (p, y, ang, out) => { const s = p.surf(y, ang), r = s.r + out; return new THREE.Vector3(s.cx + Math.cos(ang) * r, y, s.cz - Math.sin(ang) * r); };
   const ropes = [];
@@ -70,7 +70,7 @@ export default async function build(ctx, placement) {
     const t = i / 11 + (rng() - 0.5) * 0.02;
     const k = along(t);
     // the knot
-    const knot = new THREE.SphereGeometry(0.012, 8, 6);
+    const knot = new THREE.SphereGeometry(0.02, 8, 6);
     knot.scale(1, 0.8, 1.4);
     knot.translate(k.x, k.y - 0.004, k.z);
     knot.setAttribute('color', new THREE.Float32BufferAttribute(new Array(knot.attributes.position.count * 3).fill(1), 3));
@@ -83,7 +83,7 @@ export default async function build(ctx, placement) {
     const end = [k.x + side, endY, k.z + (rng() - 0.5) * 0.3];
     const pts = sagCurve([k.x, k.y - 0.01, k.z], end, -0.06, 0.05, 0.01, rng);
     if (lying) pts.forEach((p) => { p.y = Math.max(p.y, top(p.x, p.z) + 0.004); });
-    tethers.push(tube(pts, 0.0045, { radial: 6 }));
+    tethers.push(tube(pts, 0.0065, { radial: 6 }));
     // the loop at the free end
     const loop = [];
     const la = rng() * TAU;
@@ -94,9 +94,9 @@ export default async function build(ctx, placement) {
       const px = end[0] + Math.cos(la) * (lx + r) - Math.sin(la) * lz, pz = end[2] + Math.sin(la) * (lx + r) + Math.cos(la) * lz;
       loop.push(new THREE.Vector3(px, lying ? top(px, pz) + 0.004 : end[1] - Math.abs(lz) * 0.4 - (lx + r) * 0.9, lying ? pz : end[2] + lz * 0.3));
     }
-    tethers.push(tube(loop, 0.0045, { radial: 6 }));
+    tethers.push(tube(loop, 0.0065, { radial: 6 }));
   }
-  const ropeMesh = new THREE.Mesh(merge([...ropes, ...tethers].map(noSway)), rope({ key: 'sele-rope', colors: [0x2a221a, 0x3d3228, 0x5e5244], plies: 3, pitch: 0.04, radius: 0.0065, sheen: 0.4 }));
+  const ropeMesh = new THREE.Mesh(merge([...ropes, ...tethers].map(noSway)), rope({ key: 'sele-rope', colors: [0x241d17, 0xd6cfbf, 0x4a3f33], plies: 3, pitch: 0.07, radius: 0.011, sheen: 0.4 }));
   ropeMesh.name = 'sele-rope';
   ropeMesh.castShadow = true;
   object.add(ropeMesh);
@@ -161,7 +161,7 @@ export default async function build(ctx, placement) {
     const t = j / 40, x = hx + 0.3 + t * 1.3 + Math.sin(t * 5) * 0.18, z = hz - 0.1 - t * 0.7 + Math.cos(t * 4) * 0.12;
     lead.push(new THREE.Vector3(x, top(x, z) + 0.004, z));
   }
-  const leadMesh = new THREE.Mesh(noSway(tube(lead, 0.006, { radial: 6 })), rope({ key: 'sele-rope', colors: [0x2a221a, 0x3d3228, 0x5e5244], plies: 3, pitch: 0.04, radius: 0.0065 }));
+  const leadMesh = new THREE.Mesh(noSway(tube(lead, 0.006, { radial: 6 })), rope({ key: 'sele-rope', colors: [0x241d17, 0xd6cfbf, 0x4a3f33], plies: 3, pitch: 0.07, radius: 0.011, sheen: 0.4 }));
   leadMesh.castShadow = false;
   object.add(leadMesh);
 

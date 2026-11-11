@@ -5,6 +5,7 @@
 import * as THREE from 'three/webgpu';
 import { addLog, blob, boxUV, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, sheetGeo, sleep, TAU } from './kit.js';
 import { water } from './pieces.js';
+import { makeSmoke } from './smoke.js';
 import { uniform, color, mix } from 'three/tsl';
 
 export function smithy(K, x, z, yaw) {
@@ -122,11 +123,11 @@ export function smithy(K, x, z, yaw) {
     // coals heaped in the trench
     for (let i = 0; i < 46; i++) {
       const cx = FX + (rng() - 0.5) * 0.08, cz = (rng() - 0.5) * 0.66, s = 0.018 + rng() * 0.02;
-      F.add(blob(s, s * 0.8, s * 1.2, rng, { detail: 0, rough: 0.3 }), M.coal, mtx([cx, ty - 0.07 + rng() * 0.08, cz], [rng(), rng() * TAU, rng()]));
+      F.add(blob(s, s * 0.8, s * 1.2, rng, { detail: 1, rough: 0.34, facet: 0.45 }), M.coal, mtx([cx, ty - 0.07 + rng() * 0.08, cz], [rng(), rng() * TAU, rng()]));
     }
     for (let i = 0; i < 14; i++) {
       const cx = FX + (rng() < 0.5 ? -1 : 1) * (0.07 + rng() * 0.12), cz = (rng() - 0.5) * 0.8, s = 0.015 + rng() * 0.02;
-      F.add(blob(s, s * 0.7, s * 1.3, rng, { detail: 0, rough: 0.3 }), M.charcoal, mtx([cx, ty - 0.005, cz], [0, rng() * TAU, 0]));
+      F.add(blob(s, s * 0.7, s * 1.3, rng, { detail: 1, rough: 0.34, facet: 0.45 }), M.charcoal, mtx([cx, ty - 0.005, cz], [0, rng() * TAU, 0]));
     }
     K.colliders.push(F.col({ x: FX, z: 0, hw: FD / 2 + 0.1, hd: FL / 2 + 0.15 }));
   });
@@ -228,7 +229,7 @@ export function smithy(K, x, z, yaw) {
       F.add(coal, M.charcoal, mtx([bx, by, bz]));
       for (let i = 0; i < 26; i++) {
         const a = rng() * TAU, r = Math.sqrt(rng()) * 0.18, s = 0.022 + rng() * 0.02;
-        F.add(blob(s, s * 0.8, s * 1.2, rng, { detail: 0, rough: 0.3 }), M.charcoal, mtx([bx + Math.cos(a) * r, by + 0.27 + (0.18 - r) * 0.3, bz + Math.sin(a) * r], [rng(), rng() * TAU, 0]));
+        F.add(blob(s, s * 0.8, s * 1.2, rng, { detail: 1, rough: 0.34, facet: 0.45 }), M.charcoal, mtx([bx + Math.cos(a) * r, by + 0.27 + (0.18 - r) * 0.3, bz + Math.sin(a) * r], [rng(), rng() * TAU, 0]));
       }
     }
     // outside: a heap of rust-brown bog ore, glassy slag cakes by the door
@@ -292,6 +293,12 @@ export function smithy(K, x, z, yaw) {
     anvil: { p: new THREE.Vector3(ax, anvilY, az), yaw: yaw + 1.1 },
     tub: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.19, -0.85)), yaw: yaw + 0.4 },
   };
+  // steam off the quench tub: white puffs that rise fast and are gone in a breath, only while hot iron is in the water
+  const steam = makeSmoke(SPOT.tub.p.toArray(), [K.wind[0] * 0.5, K.wind[1] * 0.5], { count: 22, rate: 0, idle: true, life: 2.8, size: [0.14, 0.95], rise: 0.85, tint: 0xf6f6f2, shade: 0xc9cbcc, alpha: 0.6, spread: 0.16, seed: 31 });
+  steam.mesh.name = 'steam';
+  K.group.add(steam.mesh);
+  let steamT = 0; // seconds of hiss left
+  K.ups.push((dt, c) => { steamT = Math.max(0, steamT - dt); steam.ctl.rate = steamT > 0 ? 6 + 16 * Math.min(1, steamT / 1.2) : 0; if (c.camera) steam.update(dt, c.camera); });
   blank.position.copy(SPOT.fire.p); blank.rotation.y = SPOT.fire.yaw;
   blank.userData.dynamic = true;
   K.group.add(blank);
@@ -421,6 +428,7 @@ export function smithy(K, x, z, yaw) {
       run: async (game) => {
         await move('tub', 0.8);
         sound(game, 'quench', SPOT.tub.p) || sound(game, 'water-pour', SPOT.tub.p);
+        steamT = 1.6;
         await sleep(1500);
         await move('anvil', 0.8);
         Wk.at = 'rest';
