@@ -1,4 +1,4 @@
-// Boot and loop: title → walk. Looking at a thing + E opens its explainer card or does its action.
+// Boot and loop: title → walk. Looking at a thing: the do input acts on it (hands), E opens its explainer card.
 import * as THREE from 'three/webgpu';
 import { Engine } from './engine/engine.js';
 import { setAnisotropy, setTextureRenderer, sharpenTextures } from './engine/materials.js';
@@ -134,6 +134,8 @@ class Game {
       document.getElementById('pause').classList.add('show');
     };
     addEventListener('keydown', (e) => this.key(e));
+    this.input.onDo = (down) => { if (down && this.playing) this.act(this.focus); }; // the hands: left button, F, the touch hand button
+    this.input.onPut = () => this.put();
     this.ui.onAction = (a, id) => { // window buttons, journal tiles, card links
       if (a === 'lang') this.key({ code: 'KeyL' });
       else if (a === 'learn') this.discover(id);
@@ -376,7 +378,7 @@ class Game {
     if (!this.input.active) return;
     if (e.code === 'Escape' && this.cardOpen()) { this.closeCard(); return; } // touch: no pointer lock to eat Esc
     if (e.code === 'KeyJ' || e.code === 'Tab') { this.closeCard(); ui.showJournal(); }
-    if (e.code === 'KeyE') this.use(this.focus);
+    if (e.code === 'KeyE') this.inspect(this.focus);
   }
 
   discover(id) {
@@ -394,7 +396,13 @@ class Game {
   closeCard() { if (this.cardOpen()) this.ui.close(); this.reading = null; }
   // close any window and play on (lock() is a no-op while the pointer is still locked)
   closeUI() { this.reading = null; this.ui.close(); this.input.lock(); }
-  // E on a thing: peek (title + lead, you walk on) → full text (centred, you stand) → closed.
+  // Inspecting (E, the touch eye button): the card of the thing in view as a peek (title + lead, you walk on)
+  // → its full text (centred, you stand) → closed. The one entry point for looking closer; it never acts.
+  inspect(it) {
+    const r = this.cardOpen() ? this.reading : null;
+    if (r && (!it || !it.entry || r.it === it || it.entry === r.id)) { this.read(r.id, r.it); return; }
+    if (it?.entry) this.read(it.entry, it);
+  }
   read(id, it = null) {
     if (!BY_ID[id]) return;
     const r = this.cardOpen() ? this.reading : null;
@@ -404,7 +412,7 @@ class Game {
     this.ui.showEntry(id, { mode });
     this.reading = { id, it, mode, x: this.player.pos.x, z: this.player.pos.z };
   }
-  // The act E does on `it` now (what you carry can change it), or null.
+  // The act the hands do on `it` now (what you carry can change it), or null.
   actOf(it) {
     const o = this.interact?.actFor(it);
     if (o !== undefined) return o;
@@ -412,31 +420,33 @@ class Game {
     const doneKey = it.act.once ? `${it.entry}:${it.act.id || 'act'}` : null;
     return doneKey && this.done.has(doneKey) ? null : it.act;
   }
-  // for touch: is there anything E would do right now?
-  get useReady() { return !!(this.focus || this.idle || this.reading); }
-
-  async use(it) {
-    const r = this.cardOpen() ? this.reading : null;
-    const idle = it || this.acting ? null : this.interact?.idleAct() || null;
-    // E again on the thing whose card is up (or with nothing in view) turns the page instead
-    if (r && (it ? r.it === it || (it.entry === r.id && !this.actOf(it)) : !idle)) { this.read(r.id, r.it); return; }
-    const act = it ? this.actOf(it) : idle;
-    if (act) {
-      if (this.acting) return;
-      this.acting = act;
-      this.promptKey = null;
-      const doneKey = act === it?.act && act.once ? `${it.entry}:${act.id || 'act'}` : null;
-      if (act.freeze) this.player.frozen = true; // only acts that move the view or ask a choice
-      try { await act.run(this, it); } finally {
-        if (act.freeze) this.player.frozen = false;
-        this.acting = null; this.promptKey = null;
-      }
-      if (doneKey) this.done.add(doneKey);
-      if (!it) return;
-      this.discover(it.entry);
-      if (act.thenCard === false) return;
+  // taking play input: not on the title, in a menu or under a centred window
+  get playing() { return !this.title && !this.paused && !this.ui.modal && this.input.active; }
+  // Acting (the do input goes down): the act of the thing in view, or with nothing in view what the carried
+  // thing does by itself. Acts that last read `input.doing` (held) themselves. It never opens a card.
+  act(it) {
+    if (this.acting) return;
+    const act = it ? this.actOf(it) : this.interact?.idleAct();
+    if (act) return this.run(act, it);
+  }
+  // Putting down (right button, Q, the touch button): what you carry goes back to its place when that is
+  // within reach, else onto the ground before you.
+  put() {
+    if (!this.playing || this.acting) return;
+    const act = this.interact?.putAct();
+    if (act) return this.run(act, null);
+  }
+  async run(act, it) {
+    this.acting = act;
+    this.promptKey = null;
+    const doneKey = act === it?.act && act.once ? `${it.entry}:${act.id || 'act'}` : null;
+    if (act.freeze) this.player.frozen = true; // only acts that move the view or ask a choice
+    try { await act.run(this, it); } finally {
+      if (act.freeze) this.player.frozen = false;
+      this.acting = null; this.promptKey = null;
     }
-    if (it?.entry) this.read(it.entry, it);
+    if (doneKey) this.done.add(doneKey);
+    if (it?.entry) this.discover(it.entry); // learnt by doing; reading stays the player's own step
   }
 
   // What the player is looking at (a target within reach) or standing in (a zone).
@@ -493,17 +503,22 @@ class Game {
     const f = live ? (pick ? this.pickFocus() : this.focus) : null;
     if (f !== this.focus) { this.focus = f; this.promptKey = null; }
     if (pick || this.promptKey == null) {
-      // the prompt: what is in view (or carried) and what E would do with it
+      // the prompt names the thing in view, what the hands would do with it and whether it has a card; with
+      // nothing in view the dot alone turns into a ring when the carried thing can be used
       const act = !live || this.acting ? null : f ? this.actOf(f) : this.interact?.idleAct();
-      this.idle = !f && live ? act : null;
       const e = f && BY_ID[f.entry];
-      const what = f ? (f.label ? this.ui.t(f.label) : e ? e.sah.split(/[;(]/)[0].trim() : f.entry) : this.interact?.idleLabel() || null;
-      const actText = act ? this.ui.t(act.label) : null;
-      const key = `${what}|${actText}`;
+      const what = f ? (f.label ? this.ui.t(f.label) : e ? e.sah.split(/[;(]/)[0].trim() : f.entry) : null;
+      const actText = f && act ? this.ui.t(act.label) : null;
+      this.doReady = !!act && act.id !== 'none';
+      this.readReady = !!e || (live && !!this.reading);
+      this.putReady = live && !this.acting && !!this.interact?.putAct();
+      const key = `${what}|${actText}|${this.doReady}|${!!e}`;
       if (key !== this.promptKey) {
         this.promptKey = key;
-        document.getElementById('dot').classList.toggle('on', !!(f || act));
-        this.ui.setPrompt(what && (f || act) ? what : null, actText);
+        const dot = document.getElementById('dot');
+        dot.classList.toggle('on', !!(f || this.doReady));
+        dot.classList.toggle('do', this.doReady);
+        this.ui.setPrompt(what, actText, { act: this.doReady, read: !!e });
       }
     }
     // reading: walking away closes the card (the UI scrolls it: wheel, keys, drawn cursor)

@@ -4,7 +4,7 @@
 import ENTRIES from '../data/entries.json';
 import HINTS from '../data/hints.json';
 import { versioned } from '../load/assetv.js';
-import { T } from './i18n.js';
+import { T, MOUSE } from './i18n.js';
 import { VirtualCursor } from './cursor.js';
 import { WORKS } from '../interact/work/list.js';
 
@@ -118,9 +118,11 @@ export class UI {
   client() { return (this.open === 'journal' ? this.journal : this.card).querySelector('.client'); }
   scroll(dy, smooth = true) { this.client()?.scrollBy({ top: dy, behavior: smooth ? 'smooth' : 'auto' }); }
 
-  setPrompt(label, action) {
+  // The look prompt: the thing's name; with `act` the hands' glyph and what they would do; with `read` the E chip
+  // (it has a card). Touch shows no glyphs: its hand and eye buttons light up instead.
+  setPrompt(label, action, { act = false, read = false } = {}) {
     if (!label) { this.prompt.classList.remove('show'); return; }
-    this.prompt.innerHTML = `<span class="key">E</span><span class="what">${esc(label)}</span>${action ? `<span class="act">${esc(action)}</span>` : ''}`;
+    this.prompt.innerHTML = `<span class="what">${esc(label)}</span>${act ? `${MOUSE.left}${action ? `<span class="act">${esc(action)}</span>` : ''}` : ''}${read ? '<span class="key kb">E</span>' : ''}`;
     this.prompt.classList.add('show');
   }
 

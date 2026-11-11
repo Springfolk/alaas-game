@@ -148,6 +148,7 @@
   /* ---- crosshair + look prompt ---- */
   #dot { position: fixed; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: rgba(255,255,255,.8); box-shadow: 0 0 3px rgba(0,0,0,.6); pointer-events: none; transition: transform .25s var(--ease), background .25s, box-shadow .25s; }
   #dot.on { transform: scale(2); background: #dff4ff; box-shadow: 0 0 0 1px rgba(20,90,160,.6), 0 0 8px rgba(var(--glow),.95); }
+  #dot.do { transform: scale(3.5); background: rgba(223,244,255,.12); box-shadow: 0 0 0 .5px #eaf8ff, 0 0 5px rgba(var(--glow),.9); } /* the hands can do something here: a ring */
   /* the swing gauge of hands-on work (src/interact/work): the fill climbs, the bright band is the good range */
   #gauge { position: fixed; z-index: 4; left: calc(50% + 26px); top: calc(50% - 38px); width: 7px; height: 76px; border-radius: 4px; pointer-events: none; opacity: 0; transition: opacity .18s;
     background: linear-gradient(to top, rgba(8,24,44,.55) calc(var(--lo, 0) * 100%), rgba(150,215,255,.5) calc(var(--lo, 0) * 100%), rgba(150,215,255,.5) calc(var(--hi, 1) * 100%), rgba(255,170,120,.55) calc(var(--hi, 1) * 100%));
@@ -156,9 +157,11 @@
   #gauge i { position: absolute; inset: 0; transform-origin: bottom; transform: scaleY(0); background: rgba(255,255,255,.82); } /* (no layer of its own: the compositor's shader for one in a rounded clip stalled the first swing 136 ms) */
   #gauge.good i { background: #eaf8ff; box-shadow: 0 0 10px rgba(var(--glow),1); }
   #prompt { position: fixed; z-index: 4; left: 50%; top: calc(50% + 30px); display: flex; gap: 9px; align-items: center; font-size: 14px; pointer-events: none; white-space: nowrap;
-    padding: 6px 15px 6px 7px; border-radius: 999px; opacity: 0; transform: translate(-50%, 6px) scale(.96); transition: opacity .22s, transform .3s var(--ease); max-width: calc(100vw - 32px); }
+    padding: 6px 13px; border-radius: 999px; opacity: 0; transform: translate(-50%, 6px) scale(.96); transition: opacity .22s, transform .3s var(--ease); max-width: calc(100vw - 32px); }
   #prompt.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  #prompt .key { font-size: 12.5px; padding: 1px 8px; border-radius: 999px; }
+  #prompt .key { font-size: 11.5px; padding: 0 7px; border-radius: 999px; opacity: .8; }
+  .mouse { width: 11px; height: 16px; flex: none; color: #fff; vertical-align: -3px; filter: drop-shadow(0 0 3px rgba(0,20,50,.9)); }
+  kbd .mouse { color: inherit; filter: none; }
   #prompt .what { font-weight: 600; font-size: 15px; text-shadow: 0 0 10px rgba(0,20,50,.9); overflow: hidden; text-overflow: ellipsis; }
   #prompt .act { color: var(--live-l); font-size: 13px; text-shadow: 0 0 8px rgba(0,20,50,.9); }
 

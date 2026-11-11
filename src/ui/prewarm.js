@@ -33,7 +33,9 @@ export async function prewarmUI(game) {
     ui.toast('<small>Алаас</small><b>Алаас</b>', 1e9);
     await frames(3);
     on('#dot', 'on'); on('.tc-btn', 'down'); on('.tc-stick', 'on');
+    ui.setPrompt('Алаас', 'Алаас', { act: true, read: true });
     await frames();
+    on('#dot', 'do');
     on('.tc-stick', 'run');
     ui.showEntry(id, { mode: 'peek' });
     pictures(ui.card);

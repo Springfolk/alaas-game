@@ -26,7 +26,7 @@ export class Interactions {
     w.updaters.push((dt) => this.update(dt)); // after every model, and after the player moved
   }
 
-  // The act E does on `it` now. undefined = the interactable's own act decides.
+  // The act the hands do on `it` now. undefined = the interactable's own act decides.
   actFor(it) {
     if (it.berries !== undefined) return this.picked.has(it.berries) ? null : this.pickAct;
     if (it.sit) return this.seat.on || this.hands?.held ? null : this.seat.act;
@@ -35,13 +35,13 @@ export class Interactions {
     if (w !== undefined) return w;
     return this.hands?.actFor(it);
   }
-  // E with nothing in focus: stand up, or do something with what you carry.
+  // the hands with nothing in focus: stand up, or what the carried thing does by itself
   idleAct() {
     if (this.seat.on) return this.seat.standAct;
     return this.work.idleAct() || this.hands?.idleAct() || null;
   }
-  // what the prompt names when nothing is in focus
-  idleLabel() { return this.seat.on ? this.game.ui.t(this.seat.label) : this.hands?.name; }
+  // putting down what is carried (src/interact/hands.js)
+  putAct() { return this.seat.on ? null : this.hands?.putAct() || null; }
 
   pickAct = {
     id: 'pick', label: { sah: 'дьэдьэн хомуй', en: 'pick a handful', ru: 'собрать горсть' }, thenCard: false,

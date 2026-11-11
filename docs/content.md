@@ -87,3 +87,7 @@ Checked and correct: Дойду, Дьиэ-уот, Аһылык, Таҥас, Ит
 
 - `dyedyen` = small hand-picked wild strawberry (Fragaria vesca / F. viridis) gathered into birch-bark тууйас; оноойук and дьэдьэнньит (not in sakhatyla) replaced by тууйас and the verb дьэдьэннээ= (2026-10-24).
 - Added `dyedyen` (food), `ottuk-mas` (household), `mas-yagas` (household; the carried water pail points here, `ygas-bucket` stays the birch-bark milk bucket). Rain idiom fixed to «ыаҕастаах уунан кутар» (sakhatyla).
+
+## Actions rework 2026-11-11 (not yet approved)
+- Controls list: the E row «Чугастык көр / оҥор» split into «Оҥор» (the do input), «Уур» (put down), «Чугастык көр» (E); same words as before, now three rows.
+- Dropped with the E-only input: the "(E-ни тутан тур)" / "(hold E)" / «(удерживайте E)» variants of хайыт, тууну таһаар, оту оҕус, туоһу уокка сылыт, and the two E hints of the splitting job.

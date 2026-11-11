@@ -8,8 +8,7 @@ import { clamp, ease, fwdX, fwdZ } from '../../util.js';
 const L = (sah, en, ru) => ({ sah, en, ru });
 const TXT = {
   name: L('саха хотуура', 'Sakha scythe', 'якутская коса'),
-  mow: L('оту оҕус (E-ни тутан тур)', 'strike the grass (hold E)', 'ударить по траве (удерживайте E)'),
-  mowTap: L('оту оҕус', 'strike the grass', 'ударить по траве'),
+  mow: L('оту оҕус', 'strike the grass', 'ударить по траве'),
   hang: L('хотууру ыйаа', 'hang the scythe up', 'повесить косу'),
   how: L('Саха хотуурунан оту охсоллор: төбөҥ үрдүнэн далай, иннигэр аҥаар эргимтэнэн быһа оҕус.', 'With the Sakha scythe grass is struck, not swept: swing it over your head and undercut a half-circle before you.', 'Якутской косой траву не косят, а бьют: занесите её над головой и подрубите полукруг перед собой.'),
   step: L('Биир сиртэн икки-үс охсуу, онтон хардыылаа.', 'Two or three blows from one stance, then step on.', 'Два-три удара с одного места — и шаг вперёд.'),
@@ -40,6 +39,7 @@ export class Hay {
     });
     this.scythe = hands.addThing({ kind: 'khotuur', obj: parts.scythe, it: find(parts.scythe), name: TXT.name });
     this.scythe.it.thing = this.scythe;
+    this.scythe.put = () => (!this.sw && game.player.pos.distanceTo(this.home.p) < 2.6 ? this.hangAct : undefined); // by its post: hung up
     this.home = { p: parts.scythe.position.clone(), q: parts.scythe.quaternion.clone() };
     this.rackIt = game.world.interactables.find((i) => i.rack);
     this.sw = null;
@@ -58,14 +58,13 @@ export class Hay {
     if (it.rack) return this.held && !this.sw ? this.hangAct : undefined;
     return undefined;
   }
-  // E with nothing in focus: the scythe strikes (it is put away only at its post, never dropped by a stray E)
+  // the hands with nothing in focus: the scythe strikes
   idleAct() {
     if (!this.held) return null;
-    return this.sw ? this.noAct : this.game.input.touchMode ? this.mowTapAct : this.mowAct;
+    return this.sw ? this.noAct : this.mowAct;
   }
   noAct = { id: 'none', label: L('', '', ''), thenCard: false, run: async () => {} };
   mowAct = { id: 'mow', label: TXT.mow, thenCard: false, run: () => this.strike() };
-  mowTapAct = { id: 'mow', label: TXT.mowTap, thenCard: false, run: () => this.strike() };
   hangAct = {
     id: 'hang-scythe', label: TXT.hang, thenCard: false,
     run: async (game) => {
@@ -81,7 +80,7 @@ export class Hay {
     if (!this.held || this.sw) return;
     const g = this.game, inp = g.input;
     this.work.hint('hay-how', TXT.how, 2);
-    const sw = this.sw = { phase: 'raise', t: 0, power: 0, hold: inp.down('KeyE'), first: true, k: 0 };
+    const sw = this.sw = { phase: 'raise', t: 0, power: 0, hold: inp.doing, first: true, k: 0 };
     await new Promise((res) => { sw.go = res; });
     sw.phase = 'fall'; sw.k = 0;
     g.audio?.play('swish', g.engine.camera.position);
@@ -138,8 +137,8 @@ export class Hay {
       sw.t += dt;
       const inp = g.input, u = (sw.t / 0.8) % 2;
       sw.power = clamp(u < 1 ? u : 2 - u, 0, 1);
-      if (sw.hold && sw.t > 0.12 && sw.t < 0.2 && !inp.down('KeyE')) sw.hold = false;
-      const go = sw.hold ? !inp.down('KeyE') && sw.t >= 0.2 : !sw.first && inp.hit('KeyE');
+      if (sw.hold && sw.t > 0.12 && sw.t < 0.2 && !inp.doing) sw.hold = false;
+      const go = sw.hold ? !inp.doing && sw.t >= 0.2 : !sw.first && inp.hit('Do');
       sw.first = false;
       this.work.meter(sw.power, NEED, 1);
       if (go || sw.t > 6) { this.work.meter(null); sw.go(); }
