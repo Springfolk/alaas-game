@@ -38,8 +38,6 @@ function sectorBox(a0, a1, r0, r1, y0, y1) {
     const a = a0 + (a1 - a0) * fx, r = r0 + (r1 - r0) * fz, y = y0 + (y1 - y0) * fy;
     p.setXYZ(i, Math.cos(a) * r, y, Math.sin(a) * r);
   }
-  const ix = g.index.array; // (angle, radius) ← (x, z) mirrors the box: turn its triangles back so faces point out
-  for (let t = 0; t < ix.length; t += 3) { const k = ix[t + 1]; ix[t + 1] = ix[t + 2]; ix[t + 2] = k; }
   g.computeVertexNormals();
   return g;
 }
@@ -91,7 +89,7 @@ export function buildInterior(rng) {
     }
     // closed front apron, a squared front edge beam (plain), a back rail
     G.plank.push(sectorBox(a0, a1, R.rin - 0.05, R.rin + 0.03, R.top - 0.12, R.top - 0.035));
-    G.plank.push(sectorBox(a0, a1, R.rin - 0.01, R.rin + 0.025, 0.0, R.top - 0.12));
+    G.plank.push(sectorBox(a0, a1, R.rin - 0.01, R.rin + 0.025, 0.004, R.top - 0.12)); // just off the floor: no face on it
     G.plank.push(sectorBox(a0, a1, R.rout - 0.1, R.rout - 0.02, R.top - 0.12, R.top - 0.045));
     const mid = (R.rin + R.rout) / 2;
     colliders.push({ x: Math.cos(c) * mid, z: Math.sin(c) * mid, hw: (R.rout - R.rin) / 2 + 0.03, hd: mid * Math.sin(hs) + 0.06, rot: -c + 0.02 });
