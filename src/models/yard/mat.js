@@ -36,9 +36,10 @@ export function larch(ctx, { key = 'larch', tint = 0xffffff, lichen = 0.6, norma
     let col = mix(d1.rgb, d2.rgb, blend).mul(vertexColor().rgb).mul(new THREE.Color(tint));
     // grey-green crust lichen on north (−Z) and upward faces, in patches
     const north = smoothstep(0.0, 0.8, normalWorld.z.negate().add(normalWorld.y.mul(0.5)));
-    const patches = smoothstep(0.1, 0.55, mx_noise_float(positionWorld.mul(3.1)).add(mx_noise_float(positionWorld.mul(11.0)).mul(0.35)));
+    // crusts with a broken edge that follows the grain (they sit on the ridges), pale grey with a little green
+    const patches = smoothstep(0.3, 0.42, mx_noise_float(positionWorld.mul(3.1)).add(mx_noise_float(positionWorld.mul(11.0)).mul(0.35)).add(d1.g.sub(0.4).mul(0.9)));
     const lich = north.mul(patches).mul(lichen);
-    col = mix(col, vec3(0.42, 0.46, 0.36).mul(d1.r.mul(0.6).add(0.55)), lich.mul(0.75));
+    col = mix(col, vec3(0.5, 0.5, 0.41).mul(d1.r.mul(0.5).add(0.6)), lich.mul(0.6));
     // fine low-frequency colour wander (sun bleaching vs damp)
     col = col.mul(mx_noise_float(positionWorld.mul(1.3)).mul(0.12).add(1));
     const arm = texture(m.arm, u);
