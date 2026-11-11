@@ -118,10 +118,30 @@ export function buildInterior({ B, M, rng, winter, root }) {
   if (!winter) {
     const xr = -FRONT_X + 0.03, z0 = -FRONT_Z + 0.05, z1 = -0.65, top = 1.95;
     B.add(M.beams, log([xr, top, -FRONT_Z], [xr, top, 0.2], 0.022, 0.02, rng, { caps: true }), { color: [0.5, 0.4, 0.3] });
-    B.add(M.leather, sheet(30, 14, (u, v) => {
+    // three hides sewn edge to edge, each its own tan, darker where hands draw it and along the hem; welted
+    // seams, a turned hem, rawhide loops over the pole
+    const surf = (u, v) => {
       const z = z0 + Math.pow(u, 1.25) * (z1 - z0);
       return [xr + 0.04 * Math.sin(u * 40) * (0.6 + v * 0.4) + 0.02 * fbm2(u * 5, v * 3, 4), BT + 0.02 + v * (top - BT - 0.04), z];
-    }, { uvf: (u, v) => [u * 1.4, v * 1.4], face: () => [1, 0, 0] }), { color: [0.62, 0.5, 0.42] });
+    };
+    const cur = sheet(30, 14, surf, { uvf: (u, v) => [u * 1.4, v * 1.4], face: () => [1, 0, 0] });
+    {
+      const n = cur.attributes.position.count, cc = new Float32Array(n * 3), U = cur.attributes.uv, TAN = [[0.62, 0.5, 0.42], [0.5, 0.39, 0.31], [0.68, 0.53, 0.4]];
+      for (let i = 0; i < n; i++) {
+        const u = U.getX(i) / 1.4, v = U.getY(i) / 1.4, t = TAN[Math.min(2, Math.floor(u * 3))];
+        const k = (0.82 + 0.25 * fbm2(u * 7, v * 5, 6)) * (0.72 + 0.28 * Math.min(1, v * 5)) * (1 - 0.22 * Math.exp(-(((u - 0.97) / 0.06) ** 2)) * Math.exp(-(((v - 0.45) / 0.25) ** 2)));
+        cc.set(t.map((c) => c * k), i * 3);
+      }
+      cur.setAttribute('color', new THREE.BufferAttribute(cc, 3));
+    }
+    B.add(M.leather, cur);
+    const off = (u, v, d) => { const q = surf(u, v); return [q[0] + d, q[1], q[2]]; };
+    for (const u of [1 / 3, 2 / 3]) B.add(M.leather, tube(Array.from({ length: 15 }, (_, k) => off(u, k / 14, 0.004)), 0.0035, 4), { color: [0.3, 0.22, 0.16] });
+    B.add(M.leather, tube(Array.from({ length: 31 }, (_, k) => off(k / 30, 0.012, 0.003)), 0.006, 4), { color: [0.4, 0.3, 0.23] });
+    for (let k = 0; k < 8; k++) {
+      const u = (k + 0.5) / 8, q = surf(u, 1);
+      B.add(M.leather, tube([[q[0], q[1] - 0.02, q[2]], [xr + 0.03, top + 0.005, q[2]], [xr, top + 0.03, q[2]], [xr - 0.03, top + 0.005, q[2]], [q[0] - 0.006, q[1] - 0.02, q[2]]], 0.004, 4), { color: [0.34, 0.25, 0.18] });
+    }
   }
 
   // ---------- тойон баҕана: the master post in the SW corner, horse-head finial, horsehair tufts ----------
@@ -234,7 +254,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
     colliders.push({ x: T.x, z: T.z, hw: T.r, hd: T.r, y0: -1, y1: T.h + 0.05 });
   }
 
-  // ---------- кытыйа bowls: three sizes (A low, B standard with a copper band, C tall) ----------
+  // ---------- кытыйа bowls: low, standard with a copper band, and the deep one of the drawing (deepBowl) ----------
   const bowl = (rim, ht, x, y, z, { band = false, food = false, tint = [1, 1, 1] } = {}) => {
     const r = rim / 2, base = r * 0.45;
     // turned: a foot ring, a swelling wall, a bead under the lip, the inside following the outside
@@ -252,6 +272,17 @@ export function buildInterior({ B, M, rng, winter, root }) {
       B.add(M.food, butter, { color: [0.95, 0.8, 0.35] });
     }
   };
+  // the deep bowl of the reference drawing (kytyya-1): its outline and where its bands lie, the two rope rolls as
+  // beads, the turned lines; the bands' cut motifs and the flutes are not drawn (docs/patterns.md)
+  const deepBowl = (rim, x, y, z, tint) => {
+    const R = rim / 2, ht = rim * 0.7, w = 0.006 / R;
+    const bead = (r, h, d = 0.012) => [[r, h - 0.011], [r + d, h - 0.004], [r + d, h + 0.004], [r, h + 0.011]];
+    const out = [[0, 0.012], [0.42, 0.012], [0.44, 0], [0.47, 0], [0.49, 0.05], [0.7, 0.16], [0.82, 0.2], ...bead(0.835, 0.215, 0.008), ...bead(0.86, 0.25, 0.008), [0.875, 0.28],
+      [0.97, 0.38], [1.005, 0.44], [1.02, 0.51], [1.005, 0.575], [0.93, 0.6], [0.915, 0.615], [0.9, 0.68], ...bead(0.875, 0.7), [0.866, 0.74], [0.866, 0.78], [0.872, 0.84], [0.89, 0.88], ...bead(0.915, 0.91),
+      [0.96, 0.95], [1, 0.975], [1, 1], [1 - w * 0.6, 1.004],
+      [0.95 - w, 0.95], [0.9 - w, 0.9], [0.866 - w, 0.78], [0.9 - w, 0.62], [1.0 - w, 0.51], [0.96 - w, 0.38], [0.8, 0.22], [0.6, 0.11], [0.4, 0.07], [0, 0.06]];
+    B.add(M.oiled, lathe(out.map(([r, h]) => [r * R, h * ht]), 40).translate(x, y, z), { color: tint });
+  };
   // ---------- долбуур: the shelf over the women's benches ----------
   const SY = 1.42, sz = -inner(FZ, SY);
   const shelf = { x0: -1.25, x1: 0.95 };
@@ -264,7 +295,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
     bowl(0.28, 0.08, -1.0, shelfTop, sz + 0.16, { tint: [0.95, 0.85, 0.75] });
     bowl(0.22, 0.1, -1.0, shelfTop + 0.075, sz + 0.16, { tint: [1.05, 0.9, 0.8] });
     bowl(0.22, 0.1, -0.7, shelfTop, sz + 0.15, { band: true });
-    bowl(0.16, 0.14, -0.45, shelfTop, sz + 0.15, { tint: [0.85, 0.8, 0.75] });
+    deepBowl(0.19, -0.44, shelfTop, sz + 0.15, [0.8, 0.72, 0.66]);
     bowl(0.22, 0.1, T.x, T.h + 0.02, T.z + 0.15, { food: true, tint: [1.0, 0.9, 0.8] });
     targets.kytyya = proxy(root, 0.9, 0.3, 0.32, [-0.72, shelfTop + 0.1, sz + 0.15]);
   } // the winter house's dishes went to the summer place with the family
