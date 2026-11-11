@@ -16,7 +16,7 @@
   "model:serge": "ff4dc541171f",
   "model:urasa": "6158c4800398",
   "model:work": "7df6dd7d9096",
-  "model:yardlife": "55e3b997bbf7"
+  "model:yardlife": "cdd0cb459c8a"
  },
  "packs": {
   "forest#c904aa13": {
@@ -171,7 +171,7 @@
   },
   "model:yardlife#8f2bbc3c": {
    "group": "model:yardlife",
-   "key": "55e3b997bbf7",
+   "key": "cdd0cb459c8a",
    "file": "yardlife-8f2bbc3c.bin",
    "bytes": 1350715,
    "raw": 4575636
