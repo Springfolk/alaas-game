@@ -91,16 +91,15 @@ export default async function build(ctx, placement) {
   pile.name = 'woodpile';
   interactables.push({ entry: 'ottuk-mas', target: pile, take: 'woodpile', label: { sah: 'кыстаммыт мас', en: 'the woodpile', ru: 'поленница' } });
 
-  // ── дьэдьэн carpets (chores/dyedyen.js): each patch a thing to pick from ──
+  // ── дьэдьэн colonies (chores/dyedyen.js): each crown a thing to pick from ──
   const dy = buildDyedyen(T, { ground, forest: terrain.forest ? (x, z) => terrain.forest(px + x, pz + z) : null });
   object.add(...dy.meshes);
-  const mown = [];
   dy.patches.forEach((P, k) => {
-    const t = proxy(P.R * 1.7, 0.3, P.R * 1.7, P.cx, ground(P.cx, P.cz) + 0.1, P.cz);
+    const t = proxy(P.R * 1.8, 0.2, P.R * 1.8, P.cx, ground(P.cx, P.cz) + 0.1, P.cz);
     t.name = 'dyedyen-patch';
     interactables.push({ entry: 'dyedyen', target: t, berries: k, label: { sah: 'дьэдьэн', en: 'wild strawberries (дьэдьэн)', ru: 'земляника (дьэдьэн)' } });
-    mown.push(...P.short); // grass kept short so the carpet shows
   });
+  const mown = dy.colonies.flatMap((C) => C.short); // grass kept short so the colony shows
 
   // ── the player's hands (src/interact/arms.js): a closed and a cupping hand and a forearm per side ──
   const arms = {};
