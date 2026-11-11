@@ -102,8 +102,8 @@ export default async function build(ctx, placement) {
         const len = L + over0 + over1;
         const sag = 0.03 + L * 0.008;
         const fresh = rng() < 0.08;
-        const g = turned(logProfile(len, r, r * 0.8, { step: 0.4 }), {
-          radial: 9, rng, noise: 0.06, oval: 0.08, capTop: true, capBottom: true, endGrain: true,
+        const g = turned(logProfile(len, r, r * 0.8, { step: 0.4, extra: [r * 0.9, r * 1.8, r * 2.6, len - r * 2.6, len - r * 1.8, len - r * 0.9] }), {
+          radial: 9, rng, noise: 0.06, oval: 0.08, capTop: true, capBottom: true, endGrain: true, hew: 2.6,
           bend: (y) => { const t = y / len; return [Math.sin(Math.PI * t) * sag * 0.3, 0]; },
           color: (y, ang, c) => { const k = fresh ? 1.1 : 0.85 + rng() * 0.002; c[0] = fresh ? 0.95 : 0.9 * k; c[1] = fresh ? 0.86 : 0.86 * k; c[2] = fresh ? 0.66 : 0.8 * k; },
         });

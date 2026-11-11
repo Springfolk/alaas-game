@@ -19,13 +19,14 @@ function ringNoise(rng, n = 5) {
 // opts.bend(y) → [dx, dz] centre offset; noise: relative radius wobble; oval: 2-lobe ovality.
 // opts.endGrain: the caps are flagged for the end grain of `larch` / `barkPole` (yard/mat.js).
 export function turned(profile, opts = {}) {
-  const { radial = 14, rng = Math.random, noise = 0.035, oval = 0.05, bend, carve, color, tileU = 0.45, tileV = 0.7, capTop = false, capBottom = false, endGrain = false } = opts;
+  const { radial = 14, rng = Math.random, noise = 0.035, oval = 0.05, bend, carve, color, tileU = 0.45, tileV = 0.7, capTop = false, capBottom = false, endGrain = false, hew = 0 } = opts;
   const nz = ringNoise(rng), ovPhase = rng() * TAU, uOff = rng(), vOff = rng() * 3;
   const meanR = profile.reduce((s, p) => s + p[1], 0) / profile.length;
   const uTiles = Math.max(1, Math.round((TAU * meanR) / tileU));
   const pos = [], uv = [], col = [], idx = [];
   const c = [1, 1, 1];
-  let arc = 0;
+  const y0 = profile[0][0], y1 = profile[profile.length - 1][0], hewA = hew ? rng() * TAU : 0;
+  let arc = 0, hewn = 0;
   for (let i = 0; i < profile.length; i++) {
     const [y, r] = profile[i];
     if (i) arc += Math.hypot(y - profile[i - 1][0], r - profile[i - 1][1]);
@@ -35,10 +36,20 @@ export function turned(profile, opts = {}) {
       let rr = r * (1 + noise * nz(a, y) + oval * Math.cos(2 * (a - ovPhase)));
       if (carve) rr += carve(y, a, r);
       rr = Math.max(rr, 0.0005);
-      pos.push(bx + Math.cos(a) * rr, y, bz - Math.sin(a) * rr);
+      let px = Math.cos(a) * rr, pz = -Math.sin(a) * rr;
+      if (hew) { // an axe-hewn end: two slanting cuts from opposite sides leave a blunt wedge, the cuts' faces pale
+        const e = Math.min(y - y0, y1 - y), top = y1 - y < y - y0, h = hew * r;
+        if (e < h) {
+          const t = e / h, ha = top ? hewA + 1.9 : hewA, ux = Math.cos(ha), uz = Math.sin(ha), d = px * ux + pz * uz;
+          const hi = r * (0.12 + 0.95 * t), lo = -r * (0.3 + 0.75 * t);
+          if (d > hi) { px -= (d - hi) * ux; pz -= (d - hi) * uz; hewn = 1; } else if (d < lo) { px -= (d - lo) * ux; pz -= (d - lo) * uz; hewn = 1; } else hewn = 0;
+        } else hewn = 0;
+      }
+      pos.push(bx + px, y, bz + pz);
       uv.push(uOff + (j / radial) * uTiles, vOff + arc / tileV);
       c[0] = c[1] = c[2] = 1;
       if (color) color(y, a, c);
+      if (hewn) { c[0] *= 1.12; c[1] *= 1.08; c[2] *= 1.0; }
       col.push(c[0], c[1], c[2]);
     }
   }

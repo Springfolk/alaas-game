@@ -202,10 +202,13 @@ export function makeMats(maps, { winter = false } = {}) {
     const u = vec2(p.x, p.z);
     const g = smp(T.sodA.diff, u.mul(0.55)).rgb, g2 = smp(T.sodB.diff, u.mul(0.4)).rgb, s = smp(T.dirt.diff, u.mul(0.5)).rgb;
     const n = fz(vec3(p.x, p.y, p.z).mul(0.8), 3);
-    const bare = smoothstep(0.55, 0.75, n);
+    const bare = smoothstep(0.62, 0.8, n);
     let c = mix(g.mul(vec3(0.9, 1.0, 0.75)), g2, smoothstep(0.3, 0.6, fz(p.mul(0.37).add(5), 2)));
     if (winter) c = mix(c, c.mul(vec3(1.1, 0.95, 0.7)), 0.4);
-    c = mix(c, s.mul(vec3(0.7, 0.62, 0.52)), bare.mul(0.85));
+    // dry stalks among the green, matted and lying one way: last year's grass never cut up here
+    const thatch = smoothstep(0.45, 0.8, nz(vec3(p.x.mul(60).add(p.z.mul(14)), p.y.mul(8), p.z.mul(9))));
+    c = mix(c, vec3(0.5, 0.44, 0.24), thatch.mul(0.35));
+    c = mix(c, s.mul(vec3(0.7, 0.62, 0.52)), bare.mul(0.7));
     // steep banks (the berm's slumped ends and toes): earth breaks through the turf, mapped on the bank itself
     // (the top-down map smears into streaks there)
     const steep = smoothstep(0.8, 0.45, normalLocal.y);

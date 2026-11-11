@@ -96,10 +96,33 @@ export function ribbon(rng, at, { len = 0.2, width = 0.025, color = [0.9, 0.9, 0
     // hangs from the knot, bellies out a little and curls at the end
     pts.push(new THREE.Vector3(...at).addScaledVector(D, len * t).addScaledVector(side, Math.sin(t * 4.2 + ph) * amp * t + t * t * 0.03));
   }
-  const g = strip(pts, (t) => width * (1 - 0.15 * t), {
-    up: [side.x, 0, side.z], twist: (rng() - 0.5) * 2.4,
-    color: (t, s, c) => { const k = 1 - 0.12 * Math.sin(t * 9 + s * 2); c[0] = color[0] * k; c[1] = color[1] * k; c[2] = color[2] * k; },
-  });
+  // cloth, not a flat tape: three verts across, creased down the middle (the fold it was tied by), the crease
+  // dying out and turning over along its length, a swallow-tail cut at the end
+  const tw = (rng() - 0.5) * 2.4, cr = (0.25 + rng() * 0.3) * (rng() < 0.5 ? -1 : 1), n = pts.length - 1;
+  const pos = [], uv = [], col = [], idx = [], U = new THREE.Vector3(side.x, 0, side.z);
+  let s = 0;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    if (i) s += pts[i].distanceTo(pts[i - 1]);
+    const tg = pts[Math.min(i + 1, n)].clone().sub(pts[Math.max(i - 1, 0)]).normalize();
+    const sd = tg.clone().cross(U).normalize().applyAxisAngle(tg, tw * t), nr = sd.clone().cross(tg).normalize();
+    const w = width * (1 - 0.15 * t) * (i === 0 ? 0.35 : i === 1 ? 0.8 : 1);   // gathered into the knot
+    const fold = w * cr * Math.cos(t * 2.6) * (1 - 0.5 * t);
+    for (const k of [-0.5, 0, 0.5]) {
+      const back = i === n && k === 0 ? -width * 0.7 : 0;   // the notch
+      pos.push(pts[i].x + sd.x * w * k + nr.x * (k ? 0 : fold) + tg.x * back, pts[i].y + sd.y * w * k + nr.y * (k ? 0 : fold) + tg.y * back, pts[i].z + sd.z * w * k + nr.z * (k ? 0 : fold) + tg.z * back);
+      uv.push(k + 0.5, s);
+      const c = (1 - 0.12 * Math.sin(t * 9 + (k + 0.5) * 2)) * (k ? 1 : 0.9);
+      col.push(color[0] * c, color[1] * c, color[2] * c);
+    }
+  }
+  for (let i = 0; i < n; i++) { const a = i * 3; idx.push(a, a + 1, a + 3, a + 1, a + 4, a + 3, a + 1, a + 2, a + 4, a + 2, a + 5, a + 4); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
   return withSway(g, null, pts.length);
 }
 
