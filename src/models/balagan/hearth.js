@@ -30,7 +30,7 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
 
     // hood + chimney, one lofted shell with the mouth carved as raised column starts
     const rows = [[h, 0.64], [0.55, 0.62], [0.85, 0.57], [1.15, 0.5], [1.45, 0.4], [1.75, 0.3], [2.0, 0.25], [2.3, 0.235], [chTop - 0.05, 0.225], [chTop, 0.25]];
-    const NC = 56;
+    const NC = 156, POLES = 26; // the hood's slanted poles show through the clay above the mouth (6 columns a pole)
     const ringAt = (th, j, inset) => {
       const [y0, r0] = rows[j];
       const d = th - mouthTh, dd = Math.atan2(Math.sin(d), Math.cos(d));
@@ -40,7 +40,8 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
       if (y0 <= 1.75) y = arch + (y0 - h) / (1.75 - h) * (1.75 - arch);   // rows squeeze above the arch
       const lean = Math.min(y, 1.9) / 1.9 * 0.16;
       const wob = 1 + 0.03 * fbm2(th * 3, y * 4, 7);
-      const r = (r0 - inset) * wob;
+      const ribs = inset ? 0 : 0.013 * Math.max(0, Math.cos(th * POLES)) ** 0.8 * Math.min(1, Math.max(0, (y - 1.0) / 0.6));
+      const r = (r0 - inset) * wob + ribs;
       return [c0[0] + ne[0] * lean + Math.cos(th) * r, y, c0[1] + ne[1] * lean + Math.sin(th) * r];
     };
     const shell = (inset) => sheet(NC, rows.length - 1, (u, v) => ringAt(u * Math.PI * 2, Math.round(v * (rows.length - 1)), inset),
@@ -87,8 +88,10 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
       cards.push(g);
     }
     for (const g of cards) B.add(M.flame, g);
-    const light = new THREE.PointLight(0xffb57a, 6, 6.5, 2);
-    light.position.set(F[0] + sw[0] * 0.25, F[1] + 0.4, F[2] + sw[1] * 0.25);
+    // reach and decay: the far benches keep their shape in its light; it stands before the mouth, so the hood's
+    // own front takes some of it
+    const light = new THREE.PointLight(0xffb57a, 6, 9, 1.5);
+    light.position.set(F[0] + sw[0] * 0.62, F[1] + 0.5, F[2] + sw[1] * 0.62);
     // No shadow map: a point-light shadow adds a sampled texture to every lit material in the scene and
     // pushes the ground shader past WebGPU's default 16-texture limit. Re-enable if the engine raises
     // requiredLimits.maxSampledTexturesPerShaderStage.

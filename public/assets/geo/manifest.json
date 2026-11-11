@@ -3,7 +3,7 @@
  "keys": {
   "jobs": "ec383225c5a8",
   "model:ampaar": "4b7c05913e43",
-  "model:balagan": "2203ee272639",
+  "model:balagan": "77daa10c61b5",
   "model:barkwork": "355efd6ab42d",
   "model:chores": "11623c32eee7",
   "model:drywood": "8c598419a573",
@@ -77,17 +77,17 @@
   },
   "model:balagan#782a55bb": {
    "group": "model:balagan",
-   "key": "2203ee272639",
+   "key": "77daa10c61b5",
    "file": "balagan-782a55bb.bin",
-   "bytes": 585655,
-   "raw": 2943764
+   "bytes": 595787,
+   "raw": 3003772
   },
   "model:balagan#c00f8976": {
    "group": "model:balagan",
-   "key": "2203ee272639",
+   "key": "77daa10c61b5",
    "file": "balagan-c00f8976.bin",
-   "bytes": 605136,
-   "raw": 3141228
+   "bytes": 626634,
+   "raw": 3304572
   },
   "model:barkwork#12dda7fb": {
    "group": "model:barkwork",
