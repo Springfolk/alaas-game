@@ -1,17 +1,18 @@
-// The journal's finder: a not-yet-found entry chosen in the journal gets a small marker over the nearest
-// place it is found (clamped to the screen edge, with an arrow, when out of view) and a soft shimmer once
-// you are close. DOM only (styles in index.html), so it never builds a shader. Entries with no place of
+// The finder: the destination chosen on the journal's map (a thing, a job, any spot) gets a gold marker over it
+// with the metres left (at the screen edge, with an arrow, when out of view) and a soft shimmer once you are
+// close. DOM only (styles in index.html), so it never builds a shader. Entries with no place of
 // their own (told of in other cards) point at the nearest card that links to them.
 import * as THREE from 'three/webgpu';
 import { BY_ID } from './ui.js';
 
 const NEAR = 7; // m: the shimmer shows inside this
+const ARRIVE = 3; // m: a place or a found thing is reached
 const EDGE = 44; // px: the edge marker's inset
 
 export class Guide {
   constructor(game) {
     this.game = game;
-    this.id = null;
+    this.id = null; this.dest = null; this.targets = [];
     this.el = document.createElement('div');
     this.el.id = 'guide';
     this.el.innerHTML = '<i class="pin"></i><i class="arrow"></i><span class="dist"></span>';
@@ -42,18 +43,28 @@ export class Guide {
     return new THREE.Box3().setFromObject(it.target).getCenter(new THREE.Vector3());
   }
 
+  box(obj) { return new THREE.Box3().setFromObject(obj); }
+
+  // Be led somewhere (the journal's map): `d` = { key, id } an entry (its nearest place; gone once it is found)
+  // or { key, at } a point (gone on arrival); `at` with an `id` only says where the map draws it.
+  go(d) {
+    this.dest = d; this.id = d.id || null;
+    this.targets = d.id ? this.places(d.id) : [d.at];
+    this.target = null; this.t = 0;
+    if (!this.targets.length) return this.clear();
+    this.update();
+    return d;
+  }
+  clear() { this.dest = null; this.id = null; this.targets = []; this.target = null; this.update(); return null; }
   // choose (or, with the same id, drop) the entry to be guided to
   set(id) {
-    this.id = id && id !== this.id ? id : null;
-    this.targets = this.id ? this.places(this.id) : [];
-    this.target = null; this.t = 0;
-    if (!this.targets.length) this.id = null;
-    this.update();
+    if (!id || id === this.id) return this.clear();
+    this.go({ key: id, id });
     return this.id;
   }
 
   update(dt = 0) {
-    const g = this.game, show = this.id && !g.title && !g.ui.modal && !g.paused;
+    const g = this.game, show = this.dest && !g.title && !g.ui.modal && !g.paused;
     this.el.classList.toggle('on', !!show);
     if (!show) { this.glow.classList.remove('on'); return; }
     const p = g.player.pos, cam = g.engine.camera;
@@ -62,6 +73,7 @@ export class Guide {
       this.target = this.targets.reduce((a, b) => (a && a.distanceToSquared(p) < b.distanceToSquared(p) ? a : b), null);
     }
     const d = Math.hypot(this.target.x - p.x, this.target.z - p.z);
+    if (d < ARRIVE && !(this.id && !g.state.found.has(this.id))) { this.clear(); return; } // there (a thing not yet found: until it is)
     this.dist.textContent = d < 10 ? `${d.toFixed(1)} m` : `${Math.round(d)} m`;
     // camera space: in front when z < 0
     const v = this.v.copy(this.target).applyMatrix4(cam.matrixWorldInverse);

@@ -2,8 +2,7 @@
 //  1. `dir` (and `free`) of every entry's view in src/data/views.json: the side its thing is best seen from, found by
 //     casting rays at it from all round (entries with `fix`, `cam` or `photo` keep what they have);
 //  2. the journal's pictures, public/assets/ui/journal/<id>.webp (+ <id>.s.webp, a 20 px blur for what is not found
-//     yet): each entry's view as the stage shows it; work-<job>.webp for the jobs; map.webp, the homestead from
-//     above, with its projection in src/data/journal.json (the journal puts its markers on it).
+//     yet): each entry's view as the stage shows it; work-<job>.webp for the jobs. (The journal's map: tools/bake-map.mjs.)
 // npm run bake-journal [-- id …] — needs the dev server (PORT) and `cwebp`. Rerun after changing a model, the layout
 // or the light (after bake-geometry and bake-impostors).
 import { execFileSync } from 'node:child_process';
@@ -15,7 +14,6 @@ import { launch, PORT as port } from './browser.mjs';
 const only = process.argv.slice(2);
 const ROOT = new URL('..', import.meta.url).pathname;
 const VIEWS = join(ROOT, 'src/data/views.json'), OUT = join(ROOT, 'public/assets/ui/journal');
-const MAP = { cam: [10, 150, -130, 0, -42, 32], w: 1600, h: 900 }; // the homestead from above the south
 const WORK = { split: 'block', hay: 'khotuur', tuos: 'bark', gather: 'drywood' }; // a job's own thing (flag on its interactable); the others share their entry's picture
 const S = 512;
 mkdirSync(OUT, { recursive: true });
@@ -125,15 +123,6 @@ for (const s of shots) {
   webp(png, s.name + '.s.webp', 20, 60);
 }
 await page.evaluate(() => { const g = window.game; g.stage.on = false; g.stage.s = null; });
-if (!only.length || only.includes('map')) { // the homestead from above
-  await page.setViewportSize({ width: MAP.w, height: MAP.h });
-  const vp = await page.evaluate((cam) => { const g = window.game; g.player.view = cam; g.player.update(0); const c = g.engine.camera; c.updateMatrixWorld(); return c.projectionMatrix.clone().multiply(c.matrixWorldInverse).elements; }, MAP.cam);
-  await settle();
-  const png = join(tmp, 'map.png');
-  await page.screenshot({ path: png });
-  webp(png, 'map.webp', 1600, 78);
-  writeFileSync(join(ROOT, 'src/data/journal.json'), JSON.stringify({ map: { w: MAP.w, h: MAP.h, vp: vp.map((x) => +x.toPrecision(7)) } }) + '\n');
-}
 console.log(`pictures: ${shots.length} in ${OUT}`);
 await browser.close();
 rmSync(tmp, { recursive: true, force: true });

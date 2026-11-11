@@ -60,12 +60,12 @@ export async function prewarmUI(game) {
     ui.enlarge();
     pictures(ui.lightbox);
     await frames(3);
-    ui.guided = ids[1]; // the journal with a chosen "?", its pictures and the pins on the homestead
-    ui.showJournal();
-    pictures(ui.journal);
+    ui.showJournal('map'); // the journal: its map with a marker of every kind, then its two lists
+    ui.j.demo();
     if (touch) touch.show = 'choice';
     await frames(3);
-    ui.guided = null;
+    for (const tab of ['finds', 'work']) { ui.showJournal(tab); pictures(ui.journal.querySelector('.j-leaf.on')); await frames(3); }
+    ui.j.reset();
     ui.close();
     for (const L of LESSONS) { game.teach.show(L); on('.tc-btn, .tc-stick', 'tc-teach'); on('#teach-ghost', 'on'); await frames(2); } // each lesson's drawing, the ring on a button
     game.teach.show(null);
@@ -87,7 +87,7 @@ export async function prewarmUI(game) {
     for (const u of undo.reverse()) u();
     if (touch) touch.show = null;
     ui.close(); ui.setPrompt(null); ui.toasts.replaceChildren();
-    ui.card.innerHTML = ui.journal.innerHTML = ui.lightbox.innerHTML = '';
+    ui.card.innerHTML = ui.lightbox.innerHTML = '';
     ui.current = undefined; ui.kind = undefined; ui.marks = null;
     root.classList.remove('prewarm', 'bare');
   }

@@ -1,16 +1,14 @@
 // DOM overlay: look prompt, the inspect stage's type and photographs (the thing itself is the live view:
-// src/ui/stage.js), journal (Бэлиэтээһин), Messenger-style toasts, and the title's loading bar. Styles live in
+// src/ui/stage.js), the journal's window (src/ui/journal.js), toasts, and the title's loading bar. Styles live in
 // index.html. The windows take the mouse through a drawn cursor while pointer lock stays on (cursor.js).
 import ENTRIES from '../data/entries.json';
-import HINTS from '../data/hints.json';
 import { versioned } from '../load/assetv.js';
 import { T, LANGS, LANG_NAMES } from './i18n.js';
 import { icon, actIcon, actHeld, MOUSE } from './icons.js';
 import { selectHTML } from './select.js';
 import { VirtualCursor } from './cursor.js';
-import { WORKS } from '../interact/work/list.js';
 import { VIEWS } from './stage.js';
-import JOURNAL from '../data/journal.json';
+import { Journal } from './journal.js';
 
 export const BY_ID = Object.fromEntries(ENTRIES.map((e) => [e.id, e]));
 // { entryId: [{ src, w, h, caption: {sah,en,ru}, credit, license, url }] } — optional (src/data/images.json)
@@ -24,13 +22,10 @@ const CATS = {
   belief: { sah: 'Итэҕэл', en: 'Belief', ru: 'Верования' }, rite: { sah: 'Сиэр-туом', en: 'Rites', ru: 'Обряды' },
   calendar: { sah: 'Дьыл кэмнэрэ', en: 'The year', ru: 'Годовой круг' },
 };
-const JOB_PICS = { split: 'work-split', hay: 'work-hay', tuos: 'work-tuos', gather: 'work-gather' }; // a job's own picture; the others show their entry's
 const L = {
   journal: { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' }, found: { sah: 'булулунна', en: 'found', ru: 'найдено' },
   close: { sah: 'сап', en: 'close', ru: 'закрыть' },
   related: { sah: 'Сибээстээх', en: 'Related', ru: 'См. также' }, sources: { sah: 'Сигэлэр', en: 'Sources', ru: 'Источники' },
-  guideHow: { sah: '«?» тал — бэлиэ онно сирдиэ.', en: 'Pick a “?” and a marker will lead you there.', ru: 'Выберите «?», и метка приведёт вас туда.' },
-  work: { sah: 'Үлэ', en: 'Work', ru: 'Работа' },
 };
 
 const $ = (s) => document.querySelector(s);
@@ -66,15 +61,8 @@ export class UI {
     this.img = 0;     // gallery index
     this.images = IMAGES;
     this.menu = false; // the pause menu is up while the pointer stays locked (main.js)
-    this.guided = null; // the entry the finder points at (src/ui/guide.js)
     this.placed = new Set(); // entries found somewhere in the world (others are told of in cards)
     this.cursor = new VirtualCursor(() => this.modal || this.menu);
-    // window buttons (close, language) and a click on the dim backdrop round the journal
-    const winAct = (e) => {
-      const a = e.target.closest('[data-act]')?.dataset.act || (e.target === e.currentTarget && 'close');
-      if (a) this.onAction?.(a); // set by main.js: 'close' | 'lang'
-      return !!a;
-    };
     this.card.addEventListener('click', (e) => {
       if (e.target.closest('.sel')) return;
       const act = e.target.closest('[data-act]')?.dataset.act;
@@ -109,14 +97,10 @@ export class UI {
       if (img.tagName !== 'IMG') return;
       (img.closest('.st-strip button') || img).remove();
     }, true);
-    this.journal.addEventListener('click', (e) => {
-      if (e.target.closest('.sel') || winAct(e)) return;
-      const job = e.target.closest('[data-job]');
-      if (job) { const j = WORKS.find((x) => x.id === job.dataset.job); this.keepScroll(() => this.showJournal(j.done(this.state.work || {}) ? j.stat(this.state.work) : j.where)); return; } // where a job waits, in words, only when asked
-      const r = e.target.closest('[data-entry]');
-      if (r && this.state.found.has(r.dataset.entry)) this.onAction?.('open', r.dataset.entry, null, 'journal');
-      else if (r) { this.jsay = null; this.onAction?.('guide', r.dataset.entry); }
-    });
+    this.j = new Journal(this, CATS, L.journal); // (src/ui/journal.js; it takes its own clicks and drags)
+    this.cursor.onMapPan = (dx, dy) => this.j.cursorPan(dx, dy);
+    this.cursor.onMapZoom = (d, x, y) => this.j.cursorZoom(d, x, y);
+    this.cursor.onMapTap = (x, y) => this.j.cursorTap(x, y);
     this.lightbox.addEventListener('click', () => this.lightbox.classList.remove('show'));
     addEventListener('wheel', (e) => { // a free pointer over the open view: nearer, further
       if (this.open === 'card' && !document.pointerLockElement && e.target.closest?.('[data-orbit]')) this.stage?.zoomBy(e.deltaY);
@@ -142,8 +126,7 @@ export class UI {
   get isOpen() { return !!this.open; }
   // the journal or a card is up: the player stands still and the mouse drives a cursor
   get modal() { return !!this.open; }
-  client() { return this.open === 'journal' ? this.journal.querySelector('.jr-scroll') : this.card.querySelector('.client'); }
-  keepScroll(fn) { const top = this.client()?.scrollTop; fn(); const c = this.client(); if (c && top) c.scrollTop = top; }
+  client() { return this.open === 'journal' ? this.journal.querySelector('.j-list.on') : this.card.querySelector('.client'); }
   scroll(dy, smooth = true) { this.client()?.scrollBy({ top: dy, behavior: smooth ? 'smooth' : 'auto' }); }
 
   // The interface's scale on a big screen (`--ui`, index.html): a desktop larger than 1600×900 gets everything
@@ -292,61 +275,13 @@ export class UI {
     this.lightbox.classList.add('show');
   }
 
-  // The journal (docs/ui.md): what was found, as pictures of the things themselves (baked from the game:
-  // tools/bake-journal.mjs; an idea: its photograph) on the homestead seen from above and in rows by kind. What is not
-  // found yet is a dim blur with a "?": choosing one starts the finder (src/ui/guide.js) and shows where to look.
-  // The work log: a picture per job with what the hands have done.
-  showJournal(say = this.jsay) {
-    const n = this.state.found.size, found = this.state.found, pic = (name) => esc(imgSrc(`assets/ui/journal/${name}.webp`));
-    const thumb = (id, known) => {
-      const v = VIEWS[id] || {}, im = this.images[id]?.[0];
-      if (v.photo) return known && im ? `<img src="${esc(imgSrc(im.src))}" alt="" loading="lazy">` : '';
-      return `<img src="${pic(known ? id : id + '.s')}" alt="" loading="lazy">`;
-    };
-    const tile = (e) => {
-      const k = found.has(e.id), on = !k && this.guided === e.id;
-      return k ? `<button class="jt" data-entry="${e.id}">${thumb(e.id, true)}<b>${esc(head(e))}</b></button>`
-        : `<button class="jt q${on ? ' on' : ''}" data-entry="${e.id}" aria-label="?">${thumb(e.id, false)}<i>${on ? '<span class="gmark"></span>' : '?'}</i></button>`;
-    };
-    // the homestead from above: a dot where a found thing is, a "?" where one waits (places out of the picture sit on its edge)
-    const m = JOURNAL.map, pins = [];
-    for (const e of ENTRIES) {
-      const p = this.placeOf?.(e.id);
-      if (!p) continue;
-      const v = m.vp, w = v[3] * p.x + v[7] * p.y + v[11] * p.z + v[15];
-      let x = (v[0] * p.x + v[4] * p.y + v[8] * p.z + v[12]) / Math.abs(w), y = (v[1] * p.x + v[5] * p.y + v[9] * p.z + v[13]) / Math.abs(w);
-      if (w < 0) { x = -x * 9; y = 9; }
-      const far = Math.abs(x) > 0.94 || Math.abs(y) > 0.9, k = far ? Math.min(0.94 / Math.abs(x || 1e-6), 0.9 / Math.abs(y || 1e-6)) : 1;
-      const kn = found.has(e.id), on = !kn && this.guided === e.id;
-      pins.push(`<button class="jp${kn ? '' : ' q'}${on ? ' on' : ''}${far ? ' far' : ''}" data-entry="${e.id}" style="left:${((x * k + 1) * 50).toFixed(1)}%;top:${((1 - y * k) * 50).toFixed(1)}%" aria-label="${esc(kn ? head(e) : '?')}">${on ? '<span class="gmark"></span>' : kn ? '' : '?'}</button>`);
-    }
-    const groups = {};
-    for (const e of ENTRIES) (groups[e.category] ||= []).push(e);
-    let rows = '';
-    for (const cat of Object.keys(CATS)) if (groups[cat]) rows += `<h4>${esc(this.t(CATS[cat]))}</h4><div class="jg">${groups[cat].map(tile).join('')}</div>`;
-    // the work log: what the hands have done (counts from the save)
-    const w = this.state.work || {};
-    rows += `<h4>${esc(this.t(L.work))}</h4><div class="jg work">${WORKS.map((job) => {
-      const done = job.done(w), name = JOB_PICS[job.id] || job.entry;
-      return `<button class="jt job${done ? '' : ' q'}" data-job="${job.id}"><img src="${pic(done ? name : name + '.s')}" alt="" loading="lazy"><b>${esc(this.t(job.name))}${done ? `<small>${esc(this.t(job.stat(w)))}</small>` : ''}</b></button>`;
-    }).join('')}</div>`;
-    const g = this.guided && BY_ID[this.guided];
-    const line = say ? esc(this.t(say)) : g ? `<span class="gmark"></span>${esc(this.t(HINTS[g.id]))}` : n < ENTRIES.length ? esc(this.t(L.guideHow)) : '';
-    this.journal.innerHTML = `<div class="jr">
-      <div class="jr-head"><h2>${esc(this.t(L.journal))}</h2>
-        <div class="count"><div class="bar"><i style="--p:${n / ENTRIES.length}"></i></div><span><b>${n}</b> / ${ENTRIES.length}</span></div>
-        ${this.langSelect(false)}</div>
-      <button class="win-close" data-act="close" title="${esc(this.t(L.close))}" aria-label="${esc(this.t(L.close))}"></button>
-      <div class="jr-main">
-        <div class="jr-map"><img src="${pic('map')}" alt="">${pins.join('')}</div>
-        <div class="jr-scroll">${rows}</div>
-      </div>
-      <div class="jr-say">${line}</div>
-    </div>`;
-    this.jsay = say;
+  // The journal (src/ui/journal.js): the map, the finds, the work. `tab`: which leaf (none: the last one);
+  // `here`: the map comes up round the player.
+  showJournal(tab, here = false) {
     this.card.classList.remove('show');
     this.journal.classList.add('show');
     this.open = 'journal';
+    this.j.show(tab, here);
     this.cursor.sync();
   }
 
@@ -357,7 +292,6 @@ export class UI {
     this.journal.classList.remove('show');
     this.lightbox.classList.remove('show');
     this.card.innerHTML = '';
-    this.jsay = null;
     document.documentElement.classList.remove('carded');
     this.open = null;
     this.mode = null;
