@@ -156,12 +156,23 @@
   #gauge.on { opacity: 1; }
   #gauge i { position: absolute; inset: 0; transform-origin: bottom; transform: scaleY(0); background: rgba(255,255,255,.82); } /* (no layer of its own: the compositor's shader for one in a rounded clip stalled the first swing 136 ms) */
   #gauge.good i { background: #eaf8ff; box-shadow: 0 0 10px rgba(var(--glow),1); }
+  /* a choice of ribbons under the look (yard/bits.js `choose`): strips of their colour, the picked one lifted */
+  #choice { position: fixed; z-index: 20; left: 50%; top: calc(50% + 26px); transform: translateX(-50%); display: none; gap: 16px; align-items: flex-start; }
+  #choice.show { display: flex; }
+  #choice button { all: unset; display: flex; flex-direction: column; align-items: center; gap: 7px; width: 64px; padding: 6px 0; cursor: pointer; transition: transform .16s var(--ease); -webkit-tap-highlight-color: transparent; }
+  #choice i { width: 20px; height: 74px; background: var(--c); border-radius: 2px 2px 9px 3px; box-shadow: 0 0 0 1px rgba(10,30,60,.45), 0 2px 8px rgba(0,0,0,.45); transform: skewX(-4deg); }
+  #choice span { font: 400 14px var(--serif); color: #fff; text-shadow: 0 0 8px rgba(0,20,50,.95); opacity: 0; white-space: nowrap; }
+  #choice .on { transform: translateY(-9px); }
+  #choice .on i { box-shadow: 0 0 0 1.5px #eaf8ff, 0 0 14px rgba(var(--glow),.95); }
+  #choice .on span { opacity: 1; }
+  #choice .x { display: none; width: 44px; height: 44px; margin-top: 14px; border-radius: 50%; align-items: center; justify-content: center; color: #fff; font-size: 16px; background: rgba(200,225,255,.16); box-shadow: 0 0 0 1px rgba(255,255,255,.55); }
+  @media (pointer: coarse) { #choice { gap: 10px; } #choice button { width: 72px; } #choice span { opacity: 1; } #choice .x { display: flex; } }
   #prompt { position: fixed; z-index: 4; left: 50%; top: calc(50% + 30px); display: flex; gap: 9px; align-items: center; font-size: 14px; pointer-events: none; white-space: nowrap;
     padding: 6px 13px; border-radius: 999px; opacity: 0; transform: translate(-50%, 6px) scale(.96); transition: opacity .22s, transform .3s var(--ease); max-width: calc(100vw - 32px); }
   #prompt.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  #prompt .key { font-size: 11.5px; padding: 0 7px; border-radius: 999px; opacity: .8; }
-  .mouse { width: 11px; height: 16px; flex: none; color: #fff; vertical-align: -3px; filter: drop-shadow(0 0 3px rgba(0,20,50,.9)); }
-  kbd .mouse { color: inherit; filter: none; }
+  #prompt .key { font-size: 11.5px; padding: 0 7px; border-radius: 999px; background: #e9eef4; box-shadow: none; } /* flat: its gradient and shadows cost a compositor shader at the first prompt (117 ms late, ?auto) */
+  .mouse { width: 11px; height: 16px; flex: none; color: #fff; vertical-align: -3px; } /* (no filter, no opacity: each is one more kind of surface for the compositor to build a shader for at its first paint) */
+  kbd .mouse { color: inherit; }
   #prompt .what { font-weight: 600; font-size: 15px; text-shadow: 0 0 10px rgba(0,20,50,.9); overflow: hidden; text-overflow: ellipsis; }
   #prompt .act { color: var(--live-l); font-size: 13px; text-shadow: 0 0 8px rgba(0,20,50,.9); }
 
@@ -356,9 +367,9 @@
 
   /* src/ui/prewarm.js: every surface drawn once while loading, under the key art (which must not count as opaque:
      what an opaque layer hides is not drawn); with no key art (?auto), all but unseen instead */
-  .prewarm :is(#dot, #prompt, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #gauge, #guide, #gshimmer, #vcursor, .tc-root) { pointer-events: none !important; z-index: 1 !important; }
+  .prewarm :is(#dot, #prompt, #choice, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #gauge, #guide, #gshimmer, #vcursor, .tc-root) { pointer-events: none !important; z-index: 1 !important; }
   .prewarm #keyart { opacity: .999; transition: none; }
-  .prewarm.bare :is(#dot, #prompt, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #gauge, #guide, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; }
+  .prewarm.bare :is(#dot, #prompt, #choice, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #gauge, #guide, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; }
   #fade { position: fixed; inset: 0; background: #000; opacity: 1; transition: opacity 2.4s ease; pointer-events: none; }
   #fade.clear { opacity: 0; }
 
@@ -406,6 +417,7 @@
 <canvas id="game"></canvas>
 <div id="dot"></div>
 <div id="prompt" class="glass"></div>
+<div id="choice"></div>
 <div id="toasts"></div>
 <div id="card" class="layer"></div>
 <div id="journal" class="layer"></div>

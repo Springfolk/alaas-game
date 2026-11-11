@@ -4,7 +4,7 @@
 
 ## Audio (`public/audio/`, baked by `tools/fetch-audio.mjs`)
 
-- **Khomus** (`khomus`, `discover`): "Klangdemonstration einer jakutischen Maultrommel" by DrTrumpet, player Roland Bades — CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:Klangdemonstration_einer_jakutischen_Maultrommel.wav. Trimmed, normalised, re-encoded; the derived clips are CC BY-SA 4.0.
+- **Khomus** (`khomus`, `khomus-pluck`, `khomus-pluck-2`, `discover`): "Klangdemonstration einer jakutischen Maultrommel" by DrTrumpet, player Roland Bades — CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:Klangdemonstration_einer_jakutischen_Maultrommel.wav. Trimmed, normalised, re-encoded; the derived clips are CC BY-SA 4.0.
 - **Everything else**: Freesound, CC0 (no attribution required; listed for provenance):
   - wind_forest_08_strong — https://freesound.org/s/403051/
   - breeze.wav — https://freesound.org/s/181801/

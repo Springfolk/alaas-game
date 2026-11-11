@@ -211,19 +211,21 @@ export default async function build(ctx, placement) {
   const world = (v) => root.localToWorld(v.clone());
 
   // the hearth: in the summer house the player may feed the fire (a pinch of butter, respectfully)
-  let flare = 0, morselT = -1, fedOnce = false, fuel = 0;
+  let flare = 0, morselT = -1, fuel = 0;
+  const morselFrom = new THREE.Vector3();
   const hearthIt = { entry: 'ohokh', target: hearthT };
   if (!winter) {
     hearthIt.act = {
+      // a pinch of butter from the hand: it flies into the hearth's mouth, and the fire takes it
       id: 'feed', label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
-      run: async (game, it) => {
-        it.act.thenCard = !fedOnce;
+      run: async (game) => {
+        const cam = game.engine.camera;
+        morselFrom.set(0.14, -0.2, -0.35).applyQuaternion(cam.quaternion).add(cam.position);
+        root.worldToLocal(morselFrom);
         morselT = 0; morsel.visible = true;
-        await wait(650);
+        await wait(600);
         flare = 1;
         game.audio?.play('fire-feed', world(fire.pos));
-        await wait(1500);
-        fedOnce = true;
       },
     };
   }
@@ -231,23 +233,10 @@ export default async function build(ctx, placement) {
   if (!winter) hearthIt.fireplace = { pos: () => world(fire.pos), upright: true, fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); } };
   its.push(hearthIt);
 
-  // хомус: play it — but never after dark (the card explains the taboo)
+  // хомус: taken from its peg and played at the lips (src/interact/rites.js), never after dark (the card explains the taboo)
   if (!winter) {
-    let played = false;
-    its.push({
-      entry: 'khomus', target: T.khomus,
-      act: {
-        id: 'play', label: { sah: 'Хомустаа', en: 'Play the khomus', ru: 'Сыграть на хомусе' },
-        run: async (game, it) => {
-          const dark = (game.engine?.sunElev ?? 30) < 0;
-          if (dark) { it.act.thenCard = true; return; }
-          it.act.thenCard = !played;
-          game.audio?.play('khomus', world(new THREE.Vector3(0, 1.2, -FZ + 0.2)));
-          await wait(2600);
-          played = true;
-        },
-      },
-    });
+    its.push({ entry: 'khomus', target: T.khomus, khomus: true });
+    root.userData.khomus = { obj: T.khomusObj };
   }
 
   // the door: open or shut it (the winter house stands shut)
@@ -296,7 +285,7 @@ export default async function build(ctx, placement) {
       if (morselT >= 0) {
         morselT += dt;
         const k = Math.min(1, morselT / 0.6);
-        morsel.position.set(fire.pos.x + 0.25 * (1 - k) * -Math.SQRT1_2, fire.pos.y + 0.25 - k * k * 0.45, fire.pos.z + 0.25 * (1 - k) * Math.SQRT1_2);
+        morsel.position.lerpVectors(morselFrom, fire.pos, k); morsel.position.y += Math.sin(k * Math.PI) * 0.22 - k * 0.2;
         if (k >= 1) { morsel.visible = false; morselT = -1; }
       }
     }

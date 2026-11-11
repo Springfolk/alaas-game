@@ -51,7 +51,9 @@
   "chop-stuck",
   "swish",
   "scythe",
-  "anvil"
+  "anvil",
+  "khomus-pluck",
+  "khomus-pluck-2"
  ],
  "steps": {
   "grass": {

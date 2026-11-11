@@ -2,7 +2,7 @@
 // board, the low table, the долбуур shelf with bowls, ladle and birch-bark ware, the festive outfit and
 // silver laid out for Ysyakh, the хомус on its peg, the knife on the work board, furs and curtains.
 import * as THREE from 'three/webgpu';
-import { box, log, sheet, fbm2, xf, lathe, tube } from './geo.js';
+import { box, log, sheet, fbm2, xf, lathe, tube, Buckets } from './geo.js';
 import { FX, FZ, H, ZD, DW, inner } from './dims.js';
 
 const BT = 0.5; // bench top height
@@ -363,13 +363,19 @@ export function buildInterior({ B, M, rng, winter, root }) {
     B.add(M.beams, new THREE.CylinderGeometry(0.012, 0.014, 0.12, 6).rotateX(Math.PI / 2 - 0.25).translate(px, py, pz + 0.04), { color: [0.5, 0.4, 0.3] });
     if (!winter) {
       const kx = px, ky = py - 0.11, kz = pz + 0.075;
+      // its own group and bucket (it is taken from the peg and played: src/interact/rites.js), built about its middle
+      const KB = new Buckets(), kh = new THREE.Group();
+      kh.name = 'khomus'; kh.position.set(kx, ky, kz); kh.userData.dynamic = true;
       // keyhole frame: ring + two parallel cheeks
       const pts = [];
-      for (let k = 0; k <= 20; k++) { const a = -Math.PI / 2 + 0.35 + (k / 20) * (Math.PI * 2 - 0.7); pts.push([kx + Math.cos(a) * 0.014, ky + 0.035 + Math.sin(a) * -0.014, kz]); }
-      B.add(M.iron, tube(pts, 0.002, 5, false, 30), { color: [1, 1, 1] });
-      for (const s of [-1, 1]) B.add(M.iron, tube([[kx + s * 0.004, ky + 0.023, kz], [kx + s * 0.0022, ky - 0.01, kz], [kx + s * 0.0026, ky - 0.045, kz]], 0.0018, 4), { color: [1.3, 1.3, 1.3] });
-      B.add(M.iron, box(0.0012, 0.08, 0.0006, { p: [kx, ky - 0.015, kz] }), { color: [0.8, 0.85, 0.95] });
-      B.add(M.iron, box(0.0012, 0.0006, 0.018, { p: [kx, ky - 0.055, kz + 0.009] }), { color: [0.8, 0.85, 0.95] });
+      for (let k = 0; k <= 20; k++) { const a = -Math.PI / 2 + 0.35 + (k / 20) * (Math.PI * 2 - 0.7); pts.push([Math.cos(a) * 0.014, 0.035 + Math.sin(a) * -0.014, 0]); }
+      KB.add(M.iron, tube(pts, 0.002, 5, false, 30), { color: [1, 1, 1] });
+      for (const s of [-1, 1]) KB.add(M.iron, tube([[s * 0.004, 0.023, 0], [s * 0.0022, -0.01, 0], [s * 0.0026, -0.045, 0]], 0.0018, 4), { color: [1.3, 1.3, 1.3] });
+      KB.add(M.iron, box(0.0012, 0.08, 0.0006, { p: [0, -0.015, 0] }), { color: [0.8, 0.85, 0.95] });
+      KB.add(M.iron, box(0.0012, 0.0006, 0.018, { p: [0, -0.055, 0.009] }), { color: [0.8, 0.85, 0.95] });
+      KB.build(kh, { cast: false });
+      root.add(kh);
+      targets.khomusObj = kh;
       B.add(M.hair, tube([[px, py + 0.01, pz + 0.07], [kx, ky + 0.06, kz], [kx, ky + 0.05, kz]], 0.0012, 3), { color: [0.12, 0.1, 0.08] });
       // its small birch-bark case on a horsehair cord
       B.add(M.birch, box(0.05, 0.12, 0.02, { p: [px + 0.06, py - 0.12, pz + 0.07], r: [0, 0, 0.1] }), { color: [0.95, 0.88, 0.75] });

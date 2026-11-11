@@ -20,7 +20,8 @@ for (let attempt = 1; ; attempt++) try { // Vite reloads the page when files cha
   res = await page.evaluate(async (ROUTE) => {
     const g = window.game, r = g.engine.renderer, built = [], pipes = [];
     const cnb = r.backend.createNodeBuilder.bind(r.backend);
-    r.backend.createNodeBuilder = (o, rr) => { built.push(`${o.name || o.type}/${o.material?.name || o.material?.type}`); return cnb(o, rr); };
+    const where = (o) => { const up = []; for (let p = o.parent; p && up.length < 3; p = p.parent) up.push(p.name || p.type); return up.join(' < '); }; // an unnamed mesh: its parents say which
+    r.backend.createNodeBuilder = (o, rr) => { built.push(`${o.name || o.type}/${o.material?.name || o.material?.type}${o.name ? '' : ` in ${where(o)}`}`); return cnb(o, rr); };
     const crp = r.backend.createRenderPipeline.bind(r.backend);
     r.backend.createRenderPipeline = (ro, p) => { pipes.push(`${ro.object.name || ro.object.type}/${ro.material.name || ro.material.type}`); return crp(ro, p); };
     const ccp = r.backend.createComputePipeline.bind(r.backend);

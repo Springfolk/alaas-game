@@ -124,6 +124,9 @@ export const OUT = {
   scythe: { src: 'bushcut', kind: 'shot', ss: 0, t: 0.9, db: -25, mono: true, hp: 120, fade: [0.003, 0.3] },
   // the hammer on the glowing blank (src/models/yardlife/smithy.js): the blow and its rebounds on the anvil
   anvil: { src: 'smithhammer', kind: 'shot', ss: 0, t: 0.7, db: -24, mono: true, hp: 150, fade: [0.002, 0.25] },
+  // single strokes left to ring (a tap on the khomus: src/interact/rites.js)
+  'khomus-pluck': { src: 'khomus2', kind: 'shot', ss: 4.8, t: 1.15, db: -24, mono: true, fade: [0.003, 0.5] },
+  'khomus-pluck-2': { src: 'khomus2', kind: 'shot', ss: 7.04, t: 1.35, db: -24, mono: true, fade: [0.003, 0.6] },
   khomus: { src: 'khomus2', kind: 'shot', ss: 0, t: 18, db: -20, mono: true, fade: [0.05, 2.5], hp: 60 },
 };
 

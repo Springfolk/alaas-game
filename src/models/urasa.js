@@ -14,7 +14,6 @@ import { makeMats, smoothstep, uDoorOpen } from './urasa/mats.js';
 import { merge, lathe } from './urasa/geom.js';
 import { section } from '../load/geocache.js';
 import { noSun, noLocalLights } from '../engine/master.js';
-import { angleDiff, yawTo } from '../util.js';
 
 const EXPO_IN = 1.5, EXPO_OUT = 0.62;
 
@@ -137,8 +136,6 @@ export default async function build(ctx) {
   const wait = (s) => tween(s, () => {});
   const ease = (k) => k * k * (3 - 2 * k);
   const local = (v) => root.worldToLocal(v.clone());
-  // main line in the reader's language, the Sakha word (or English for Sakha readers) underneath
-  const toast = (game, sah, en, ru) => { const l = game?.state?.lang; const main = l === 'en' ? en : l === 'ru' ? (ru || en) : sah; game?.ui?.toast(`<b>${main}</b><small>${l === 'sah' ? en : sah}</small>`, 2600); };
   const churn = { live: false, since: 0, streak: 0 }, BEAT = [0.12, 1.1]; // s between strokes that keep the beat
   const CHURN = {
     beat: { sah: 'Биир тэҥник хамнат: хамнатар өрө тахсарын кэтэс, ол эрээри уһатыма.', en: 'Keep an even beat: let the dasher come up, but do not linger.', ru: 'Держите ровный ритм: дайте мутовке подняться, но не медлите.' },
@@ -161,22 +158,44 @@ export default async function build(ctx) {
       d.t = 1.4; d.o.visible = true;
     }
   };
+  // n drops thrown from a world point with a world velocity, gone after `life` s
+  const toss = (fromW, velW, n, life) => {
+    const from = local(fromW), v = velW.clone().applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()).invert());
+    for (const d of drops.slice(0, n)) { d.o.position.copy(from); d.v.copy(v).add(new THREE.Vector3((Math.random() - 0.5) * 0.25, (Math.random() - 0.5) * 0.25, (Math.random() - 0.5) * 0.25)); d.t = life; d.o.visible = true; }
+  };
+  // The guest's choron (src/interact/rites.js takes it into the hands): the ladle fills it from the sack where it stands.
+  const fillChoron = async (game) => {
+    const hero = ky.hero, ladle = ky.ladle, kl = ky.heroKymys;
+    root.updateMatrixWorld();
+    const rootQi = root.getWorldQuaternion(new THREE.Quaternion()).invert();
+    const at = local(hero.getWorldPosition(new THREE.Vector3()));
+    const homeL = { parent: ladle.parent, p: ladle.position.clone(), q: ladle.quaternion.clone(), rp: local(ladle.getWorldPosition(new THREE.Vector3())), rq: rootQi.clone().multiply(ladle.getWorldQuaternion(new THREE.Quaternion())) };
+    root.attach(ladle);
+    await flyTo(ladle, ladle.position.clone().add(new THREE.Vector3(0, 0.3, 0)), 0.4);
+    await flyTo(ladle, at.clone().add(new THREE.Vector3(-0.08, 0.37, 0)), 0.55);
+    sound(game, 'pour', hero);
+    const q1 = ladle.quaternion.clone(), q2 = q1.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.9));
+    await tween(0.35, (k) => ladle.quaternion.slerpQuaternions(q1, q2, ease(k)));
+    const v0 = kl.vol, v1 = Math.max(v0, kl.volAt(KYMYS.full));
+    await tween(0.6, (k) => { kl.vol = v0 + (v1 - v0) * ease(k); });   // the choron fills
+    await tween(0.3, (k) => ladle.quaternion.slerpQuaternions(q2, q1, ease(k)));
+    await flyTo(ladle, homeL.rp, 0.55, homeL.rq);
+    homeL.parent.attach(ladle); ladle.position.copy(homeL.p); ladle.quaternion.copy(homeL.q);
+  };
+  ky.hero.userData.dynamic = true; ky.ladle.userData.dynamic = true;
+  root.userData.guest = {
+    hero: ky.hero, kymys: ky.heroKymys, KYMYS, fill: fillChoron,
+    sprinkle: (fromW, dirW) => sprinkle(local(fromW), dirW.clone().applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()).invert())),
+    hearth: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)),
+    flare: (game) => { sound(game, 'fire-feed', fire.group); fire.flare(); },
+    inside: (p) => { const l = root.worldToLocal(p.clone()); return Math.hypot(l.x, l.z) < R0 - 0.2; },
+  };
 
   // the sprinkle-and-drink act (model space; the model only turns about +Y)
-  const Y = new THREE.Vector3(0, 1, 0);
   const flyTo = async (obj, to, dur, quatTo, during) => {
     const from = obj.position.clone(), q0 = obj.quaternion.clone();
     await tween(dur, (k) => { const e = ease(k); obj.position.lerpVectors(from, to, e); if (quatTo) obj.quaternion.slerpQuaternions(q0, quatTo, e); during?.(e); });
   };
-  // a tilt of `angle` rad towards the horizontal direction `dir`; the rim towards `dir` of a cup standing at `pos` so tilted
-  const tiltQ = (dir, angle) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3().crossVectors(Y, dir).normalize(), angle);
-  const lipAt = (pos, dir, T) => dir.clone().multiplyScalar(ky.heroKymys.rTop).addScaledVector(Y, ky.heroKymys.top).applyQuaternion(T).add(pos);
-  // a point held before the eye for a view (yaw, pitch): `fwd` along the view, `down` along its up
-  const held = (eye, yaw, pitch, fwd, down) => {
-    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
-    return local(eye.clone().addScaledVector(new THREE.Vector3(0, 0, -1).applyQuaternion(q), fwd).addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(q), -down));
-  };
-  const ACT_PITCH = -0.5; // the view while the choron is in hand: it sits low in the middle, its kymys in sight
 
   const interactables = [
     { entry: 'urasa', target: outerProxy },
@@ -190,11 +209,17 @@ export default async function build(ctx) {
       // src/interact lays carried firewood here
       fireplace: { pos: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), upright: false, fuel: fire.fuel },
       act: {
+        // a pinch from the hand: it flies to the hearth, and the fire takes it
         id: 'feed', label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
         run: async (game) => {
+          const cam = game.engine.camera, hearth = fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top + 0.1, 0));
+          const hand = new THREE.Vector3(0.14, -0.2, -0.35).applyQuaternion(cam.quaternion).add(cam.position);
+          const d = hearth.distanceTo(hand), t = 0.25 + d * 0.12;
+          // thrown so that it lands on the hearth after t seconds
+          toss(hand, hearth.clone().sub(hand).divideScalar(t).add(new THREE.Vector3(0, 4.9 * t, 0)), 3, t);
+          await wait(t);
           sound(game, 'fire-feed', fire.group);
           fire.flare();
-          await wait(1.4);
         },
       },
     },
@@ -226,78 +251,8 @@ export default async function build(ctx) {
       },
     },
     { entry: 'khamyiakh-ladle', target: ky.ladle },
-    {
-      entry: 'choron', target: ky.chorons,
-      act: {
-        id: 'sprinkle', freeze: true, label: { sah: 'Ыс уонна ис', en: 'Sprinkle, then drink', ru: 'Окропить, потом выпить' },
-        // Ladle kymys from the sack into the guest's choron (it fills), raise it side-on to the fire, a few drops to
-        // the fire, the earth and the sky, then drink: the choron tips at the lips and its kymys runs out over the
-        // near rim (kymysSurface keeps the volume) until what it held at the start is left; set it back.
-        run: async (game) => {
-          const hero = ky.hero, ladle = ky.ladle, kl = ky.heroKymys, pl = game.player;
-          root.updateMatrixWorld();
-          const rootQi = root.getWorldQuaternion(new THREE.Quaternion()).invert();
-          // each one's home: in its parent, and in the model's space it flies in
-          const home = (o) => ({ parent: o.parent, p: o.position.clone(), q: o.quaternion.clone(),
-            rp: local(o.getWorldPosition(new THREE.Vector3())), rq: rootQi.clone().multiply(o.getWorldQuaternion(new THREE.Quaternion())) });
-          const homeH = home(hero), homeL = home(ladle);
-          const backHome = (o, h) => { h.parent.attach(o); o.position.copy(h.p); o.quaternion.copy(h.q); };
-          // ladle kymys from the sack into the choron
-          root.attach(ladle); root.attach(hero);
-          await flyTo(ladle, ladle.position.clone().add(new THREE.Vector3(0, 0.35, 0)), 0.6);
-          await flyTo(ladle, hero.position.clone().add(new THREE.Vector3(-0.08, 0.37, 0)), 0.8);
-          sound(game, 'pour', hero);
-          const q1 = ladle.quaternion.clone(), q2 = q1.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.9));
-          await tween(0.5, (k) => ladle.quaternion.slerpQuaternions(q1, q2, ease(k)));
-          const v0 = kl.vol, v1 = Math.max(v0, kl.volAt(KYMYS.full));
-          await tween(0.6, (k) => { kl.vol = v0 + (v1 - v0) * ease(k); });   // the choron fills
-          await tween(0.4, (k) => ladle.quaternion.slerpQuaternions(q2, q1, ease(k)));
-          await flyTo(ladle, homeL.rp, 0.7, homeL.rq);
-          backHome(ladle, homeL);
-          // raise the choron in both hands, turning side-on to the fire (facing it, the choron is a black silhouette:
-          // the uraha's inside takes the fire's light alone)
-          const eye = game.engine.camera.position.clone(), view0 = { yaw: pl.yaw, pitch: pl.pitch };
-          const look = (yaw, pitch) => { pl.yaw = pl.aimYaw = yaw; pl.pitch = pl.aimPitch = pitch; };
-          const hearthW = fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), hearth = local(hearthW);
-          const yawF = yawTo(hearthW.x - eye.x, hearthW.z - eye.z);
-          const turns = [angleDiff(view0.yaw, yawF + Math.PI / 2), angleDiff(view0.yaw, yawF - Math.PI / 2)];
-          const yawA = view0.yaw + (Math.abs(turns[0]) < Math.abs(turns[1]) ? turns[0] : turns[1]);
-          const hold = held(eye, yawA, ACT_PITCH, 0.42, 0.16);
-          await flyTo(hero, hold, 1.0, homeH.rq, (e) => look(view0.yaw + (yawA - view0.yaw) * e, view0.pitch + (ACT_PITCH - view0.pitch) * e));
-          const fwd = new THREE.Vector3(-Math.sin(yawA), 0, -Math.cos(yawA)).applyQuaternion(rootQi);
-          const toFire = hearth.clone().sub(hold).setY(0).normalize();
-          const dirs = [
-            { d: toFire, tilt: 0.5, lift: 0, fly: hearth.clone().sub(hold).normalize().addScaledVector(Y, 0.5).normalize(), sah: 'Уокка', en: 'a few drops to the fire', ru: 'несколько капель огню' },
-            { d: fwd, tilt: 0.5, lift: -0.12, fly: fwd.clone().multiplyScalar(0.35).addScaledVector(Y, -1).normalize(), sah: 'Сиргэ', en: 'to the earth', ru: 'земле' },
-            { d: fwd, tilt: 0.22, lift: 0.14, fly: Y, sah: 'Халлааҥҥа', en: 'to the sky', ru: 'небу' },
-          ];
-          for (const s of dirs) {
-            const T = tiltQ(s.d, s.tilt), at = hold.clone().addScaledVector(Y, s.lift);
-            toast(game, s.sah, s.en, s.ru);
-            await flyTo(hero, at, 0.45, T.clone().multiply(homeH.rq));
-            sprinkle(lipAt(at, s.d, T), s.fly);
-            kl.vol *= 0.995; // the drops
-            sound(game, 'pour', hero);
-            await wait(0.35);
-            await flyTo(hero, hold, 0.45, homeH.rq);
-            await wait(0.25);
-          }
-          // drink as a guest: the near rim at the lips, the choron tipping about it towards the face
-          toast(game, 'Кымыс', 'drink as a guest — the first kymys of Ysyakh is sprinkled by the algyschyt', 'пейте как гость — первый кумыс ысыаха окропляет алгысчыт');
-          const face = fwd.clone().negate(), mouth = local(eye).addScaledVector(fwd, 0.11).addScaledVector(Y, -0.1);
-          const drinkAt = (th) => { const T = tiltQ(face, th); return { p: mouth.clone().sub(lipAt(new THREE.Vector3(), face, T)), q: T.multiply(homeH.rq) }; };
-          const th0 = 0.25, th1 = kl.tiltFor(kl.volAt(KYMYS.left)); // tipped until what it held at the start is left
-          const D0 = drinkAt(th0);
-          await flyTo(hero, D0.p, 0.7, D0.q);
-          await tween(1.6, (k) => { const e = ease(k), D = drinkAt(th0 + (th1 - th0) * e); hero.position.copy(D.p); hero.quaternion.copy(D.q); look(yawA, ACT_PITCH + 0.12 * e); });
-          await wait(0.3);
-          await flyTo(hero, hold, 0.7, homeH.rq, (e) => look(yawA, ACT_PITCH + 0.12 * (1 - e)));
-          // set it back on the board, looking back at it
-          await flyTo(hero, homeH.rp, 1.0, homeH.rq, (e) => look(yawA + (view0.yaw - yawA) * e, ACT_PITCH + (view0.pitch - ACT_PITCH) * e));
-          backHome(hero, homeH);
-        },
-      },
-    },
+    { entry: 'choron', target: ky.chorons },
+    { entry: 'choron', target: ky.hero, guest: true, label: { sah: 'ыалдьыт чорооно', en: 'the guest’s choron', ru: 'чорон гостя' } },
     { entry: 'ygas-bucket', target: ky.buckets },
   ];
 
