@@ -20,3 +20,11 @@ Look: the Aero glass frames (blurred, with chrome) stay only on system surfaces 
 - From the journal or a related link the view goes to the entry's own thing (`pickThing`: `it` = index or a piece of its English label; `as` = another entry's thing) wherever it stands; closing returns to the journal.
 - `src/data/views.json`: one row per entry (all 52). `dir` [yaw°, elevation°] and `free` are baked by `npm run bake-journal` unless `fix`; `dist` scales the distance; `cam` [x, y, z, yaw°, pitch°, fov°].
 - The body waits where it stood (`stage.body`; what is carried stays with it); WASD, Esc, the close button return to it.
+
+## Journal (`ui.showJournal`)
+- Purpose: browsing what was found and seeing what still waits.
+- Shows: the homestead from above with a blue dot where a found thing is and a gold ring where one waits (places outside the picture sit on its edge); rows by kind of square pictures: a found entry is its thing as the stage shows it (an idea: its photograph) with its Sakha name, one not found is a dim blur with "?"; the work log as a picture per job with its counts; found / total.
+- Acts: a found picture or dot → that thing on the stage, closing returns here; a "?" or ring → the finder marker (again: off) and, only then, its where-to-look line at the foot; a job → its counts or where it waits, at the foot.
+- Layout: landscape = picture of the homestead left, rows right; portrait = picture above, three pictures a row.
+- Cut: the window frame, the list of hint sentences, the instruction paragraph as a heading, the orb.
+- Pictures: `public/assets/ui/journal/<id>.webp` (320 px) and `<id>.s.webp` (20 px, the blur), `work-<job>.webp`, `map.webp` + its projection in `src/data/journal.json`: `npm run bake-journal`.
