@@ -257,7 +257,7 @@ export default async function build(ctx, placement) {
   // ---------- per-frame: eye adaptation, fire flicker, smoke, door, shafts ----------
   let wasInside = false, doorCol = null, shaftClock = 99, lastSun = new THREE.Vector3();
   const doorS = { a: door.open, v: 0, to: door.target };
-  const camLocal = new THREE.Vector3();
+  const camLocal = new THREE.Vector3(), lookAt = new THREE.Vector3(), FILL_HOME = new THREE.Vector3(2.5, 1.1, 0.5);
   const engine = ctx.world?.engine;
   if (engine) M.setEnv(engine.scene.environment);
   function update(dt, { time: t, camera, game }) {
@@ -280,7 +280,14 @@ export default async function build(ctx, placement) {
       const fk = Math.min(1, fuel * 4);
       const f = 0.78 + 0.12 * Math.sin(t * 11.3) * Math.sin(t * 7.1 + 1) + 0.1 * Math.sin(t * 23.7 + Math.sin(t * 3));
       fire.light.intensity = 6 * f * (1 + flare * 1.6 + fk * 0.6);
-      fire.fill.intensity = door.open > 0.5 ? 1.4 : 0.2;
+      // the door's daylight; while a thing is looked at closely (the inspect stage, `closeLook`) it comes from beside
+      // the eye instead, so a thing in a dark corner is modelled by light rather than lifted flat by exposure
+      const near = !!eng?.closeLook && wasInside && camera;
+      if (near) lookAt.set(0.28, 0.22, 0.1).applyQuaternion(camera.quaternion).add(camera.position), root.worldToLocal(lookAt);
+      else lookAt.copy(FILL_HOME);
+      const k = 1 - Math.exp(-dt * 7);
+      fire.fill.position.lerp(lookAt, k);
+      fire.fill.intensity += ((near ? 0.3 : door.open > 0.5 ? 1.4 : 0.2) - fire.fill.intensity) * k;
       M.flare.value = Math.max(flare, fk * 0.45);
       if (morselT >= 0) {
         morselT += dt;

@@ -3,7 +3,7 @@
  "keys": {
   "jobs": "ec383225c5a8",
   "model:ampaar": "ca7327d470d8",
-  "model:balagan": "d1f5b85de35d",
+  "model:balagan": "9e2b541ec4fc",
   "model:barkwork": "17f228ee4709",
   "model:chores": "1b5285d8eac0",
   "model:drywood": "92f37a583694",
@@ -72,17 +72,17 @@
   },
   "model:balagan#782a55bb": {
    "group": "model:balagan",
-   "key": "d1f5b85de35d",
+   "key": "9e2b541ec4fc",
    "file": "balagan-782a55bb.bin",
    "bytes": 576938,
    "raw": 2896492
   },
   "model:balagan#c00f8976": {
    "group": "model:balagan",
-   "key": "d1f5b85de35d",
+   "key": "9e2b541ec4fc",
    "file": "balagan-c00f8976.bin",
-   "bytes": 531336,
-   "raw": 2493164
+   "bytes": 599992,
+   "raw": 3116564
   },
   "model:barkwork#12dda7fb": {
    "group": "model:barkwork",
