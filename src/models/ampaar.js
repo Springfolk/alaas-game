@@ -8,7 +8,7 @@ import * as THREE from 'three/webgpu';
 import { texture, vec3, float, mix, smoothstep, positionWorld, normalWorld, mx_noise_float, normalMap } from 'three/tsl';
 import { turned, logProfile, bow, tube, orient, board, merge } from './yard/geo.js';
 import { larch, birchBark, hide, plain, grass, rope } from './yard/mat.js';
-import { groundOf, grassClump, noSway, tween, ease, troddenPatch, blob } from './yard/bits.js';
+import { groundOf, grassClump, noSway, tween, ease, troddenPatch, blob, swing } from './yard/bits.js';
 import { trodden } from './yard/mat.js';
 import { section } from '../load/geocache.js';
 
@@ -220,7 +220,8 @@ export default async function build(ctx, placement) {
   const lows = [{ x: HW, z: 0, hw: T + 0.05, hd: (DOOR.z1 - DOOR.z0) / 2, h: lintelY }]; // stoop through the low door
 
   // ── door act ──
-  let open = false, busy = false, doorK = null;
+  let doorK = null;
+  const doorS = { a: 0, v: 0, to: 0 };
   const c0 = Math.cos(placement.yaw || 0), s0 = Math.sin(placement.yaw || 0);
   const tw = (x, z2) => ({ x: placement.x + x * c0 + z2 * s0, z: placement.z - x * s0 + z2 * c0 });
   const toLocal = (wx, wz) => { const dx = wx - placement.x, dz = wz - placement.z; return [dx * c0 - dz * s0, dx * s0 + dz * c0]; };
@@ -231,22 +232,22 @@ export default async function build(ctx, placement) {
     return doorK;
   };
   const OPEN = -1.75; // radians: swung inward against the north wall
+  // a push: the heavy leaf swings by its own weight and knocks against its stop; a push on the way turns it back
+  const LABEL = [{ sah: 'аанны ас', en: 'open the door', ru: 'открыть дверь' }, { sah: 'аанны сап', en: 'close the door', ru: 'закрыть дверь' }];
   const doorAct = {
-    id: 'door', thenCard: false,
-    label: { sah: 'аанны ас', en: 'open the door', ru: 'открыть дверь' },
+    id: 'door', label: LABEL[0],
     run: async (game) => {
-      if (busy) return;
-      busy = true;
-      const to = !open;
+      doorS.to = 1 - doorS.to;
+      doorAct.label = LABEL[doorS.to];
       game?.audio?.play('door', object.localToWorld(new THREE.Vector3(HW, 1, 0)));
-      await tween(1.4, (t) => { const e = ease(t); door.rotation.y = to ? OPEN * e : OPEN * (1 - e); });
-      open = to;
-      const k = findDoor(game);
-      if (k) { k.y0 = open ? 1e5 : undefined; k.y1 = open ? 1e5 + 1 : undefined; }
-      doorAct.label = open ? { sah: 'аанны сап', en: 'close the door', ru: 'закрыть дверь' } : { sah: 'аанны ас', en: 'open the door', ru: 'открыть дверь' };
-      if (game) game.focus = undefined;
-      busy = false;
     },
+  };
+  const swingDoor = (dt, game) => {
+    if (doorS.a === doorS.to && !doorS.v) return;
+    if (swing(doorS, dt, 2.2, 1.3) === 'knock') game.audio?.play('wood-take', object.localToWorld(new THREE.Vector3(HW, 1, 0)));
+    door.rotation.y = OPEN * doorS.a;
+    const k = findDoor(game), open = doorS.a > 0.55;
+    if (k) { k.y0 = open ? 1e5 : undefined; k.y1 = open ? 1e5 + 1 : undefined; }
   };
 
   // ── tar tub act: lift the lid aside (stays off; remembered) ──
@@ -277,6 +278,7 @@ export default async function build(ctx, placement) {
     update: (dt, { game, camera }) => {
       if (!game) return;
       if (!restored) { restored = true; if (game.done?.has('dairy-suorat-tar:lid')) tar.liftPose(1); }
+      swingDoor(dt, game);
       const [lx, lz] = toLocal(camera.position.x, camera.position.z);
       const isIn = Math.abs(lx) < HW - 0.05 && Math.abs(lz) < HW - 0.05;
       if (isIn !== wasIn) { game.engine.exposureTarget = isIn ? 1.5 : 0.62; wasIn = isIn; }

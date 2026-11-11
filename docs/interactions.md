@@ -28,17 +28,22 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 - Winter place (кыстык, `sayylyk-kystyk`): no marker unless chosen. In-world hint `src/interact/glint.js`: a brief additive star on the winter balagan's west window every 5–12 s, seen from 40–400 m while the sun lights that wall and it faces you; never once found. One sprite added before the warm-up; only its opacity uniform and scale change.
 - First visit: language from `navigator.languages` (`detectLang` in `i18n.js`: `sah` anywhere → Sakha; first language ru / be / uk → Russian; else English). A pick on the title or in settings sets `save.langSet` and wins from then on.
 
-## Hands-on acts
-| Act | Where | Notes |
-|---|---|---|
-| Doors, gate rails | ampaar, balagan, күрүө | non-blocking |
-| Carry the мас ыаҕас | wooden water pail by the uraha door | take, carry, put down anywhere dry |
-| Scoop water / pour it back | any shore, looking down at the water | pail shows water; pouring back only into the lake |
-| Firewood | woodpile → billet in arms | set down, or lay it on the balagan or uraha fire: it burns down over 60 s, fire brighter; loose billets gather into an armful (≤4), E on the woodpile stacks it |
-| Sit / stand | every орон bench | view turns to the room and lowers; the do input, a step or a jump stands up |
-| Pick дьэдьэн | 8 wild-strawberry patches round the yard | tiny conical red berries; a handful, regrows after 4 min |
-| Feed the fire, churn, bellows, tie a ribbon, khomus, lake milk | model acts (`act` in each model) | |
-| Sprinkle, then drink (`urasa.js` `sprinkle`) | the guest's choron on the board in the kymys corner | the ladle fills it from the симиир; the view turns side-on to the fire (facing it the choron is a silhouette); drops to the fire, earth, sky (tilts ≤0.5 rad: drops only); drink: it tips about the near rim at the lips, the kymys running out over it, until what it held at the start is left; set back, view restored |
+## Actions
+Tap = the do input pressed and let go; hold = kept down. Nothing here has a fail state.
+
+| Action | Where | The hands | The world answers |
+|---|---|---|---|
+| Doors | ampaar, balagan | tap: a push; a push on the way turns the leaf back | it gathers speed by its weight, knocks on its stop and settles (`swing` in `yard/bits.js`); passable from ~0.6 open |
+| Gate rails (сүрдьүгэс) | күрүө | hold: the rails are drawn out of the south post (0.8 s); let go early and they slide back in. Closing: a tap | once free they swing aside by their weight and knock; closing swings them back and runs them home |
+| Мас ыаҕас | by the uraha door | tap takes it; put down anywhere dry. At water, looking down: hold dips it, and it fills while held there (a quick dip ≈ half, 1.2 s full). Looking down with water in it: hold tips it out, let go keeps the rest | the water stands as high as it was filled; the pail hangs lower and trails the view more the fuller it is; a strand runs from the rim while it pours |
+| Firewood | woodpile, loose billets, dry branches under the north trees | on the pile: tap takes a billet, hold an armful (≤4); with billets in the arms tap stacks one, hold the next ones; put down by the pile stacks them all, elsewhere drops one. On a hearth: tap lays one | each billet knocks; the view dips as the load comes on; a laid billet burns down over 60 s and the fire is brighter (`fireplace.fuel()`); a branch lies in the forest again 5 min after it was used |
+| Sit / stand | every орон bench | tap on the bench; tap with nothing in view, a step or a jump stands up | the view turns to the room and lowers |
+| Дьэдьэн | 8 patches round the yard | tap picks one berry, hold strips the patch berry by berry | the berries go from the plant (into the тордуйа when one is carried); full again 4 min after the last one |
+| Tar tub lid | ampaar | tap, once | the lid stays aside |
+| Feed the fire, tie a ribbon, khomus, lake milk | model acts (`act` in each model) | tap | |
+| Sprinkle, then drink (`urasa.js` `sprinkle`) | the guest's choron on the board in the kymys corner | tap | the ladle fills it from the симиир; the view turns side-on to the fire; drops to the fire, earth, sky; drink; set back, view restored |
+
+- What is carried has weight (`hands.js`): it trails the turning view, sits nearer the middle on a narrow screen, and `weigh()` dips the view when a load comes on.
 
 ## Work (`src/interact/work/`)
 - A placed model names its job in `object.userData.work.job` (`JOBS` in `index.js`).
@@ -53,7 +58,7 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 | Туу (`fish.js`) | weir in the lake shallows, east of the net rack (`src/models/fishery.js`) | take the trap → E on the weir's gap sets it → мунду come in over minutes (fast at first, ~110 s to two thirds) → hold on the trap lifts it → E on the тымтай on the shore opens the tail clamp and tips the catch in (count: `save.work.mundu`) |
 | От охсуу (`hay.js`) | the scythe post by the hay meadow fence (`src/models/hayfield.js`) | take the саха хотуура → hold anywhere (gauge), release: the blow mows the real meadow in a half-circle before you (reach 2.1 m, ±60°; `world._field.mask.mow` rewrites the grass mask, only the touched block is uploaded) and lays cut wisps; E on the post hangs it up (`save.work.mown` m², `blows`) |
 | Туос үлэтэ: тордуйа (`tuos.js`) | the bark sheet on the craft spot's hide (`src/models/barkwork.js`) | take the sheet → hold at a hearth fire (gauge: release in the band; under: stiff, over: scorched) → soft for 150 s → E on the craft spot lays it on the hide → E ×2 folds the long sides, E ×2 folds each end with its corner flaps and pegs → the тордуйа is carried; дьэдьэн picked while it is held go into it (`save.work.torduya`, `berries`) |
-| Хаппыт мас (`gather.js`) | under the first trees north of the homestead (`src/models/drywood.js`) | nine dry branches: each is a 'log' of the carrying code (armful of four → woodpile or a fire); one lies there again 5 min after it was used (`save.work.drywood`) |
+| Хаппыт мас (`gather.js`) | under the first trees north of the homestead (`src/models/drywood.js`) | nine dry branches: each is a 'log' of the carrying code (`save.work.drywood`) |
 | Уус кыһата (`src/models/yardlife/smithy.js`) | the smith's lean-to | the helper's part: each E on the forge presses one bag (the gauge = the blast; even strokes 0.1–1.25 s apart build it) → the blank in the coals heats with it → E on the blank: tongs to the anvil → E: hammer blows, three passes of five while it glows (уһугун тардыы, хаптатыы, биитин таптайыы; the gauge = its heat), back to the coals when it cools → quench in the tub. A full blast held on a hot blank burns it (the pass again). `it.live()` gives the blank's act of the moment (`save.work.hammer`, `blades`) |
 | Кымыһы хамнатыы (`src/models/urasa.js` `churn`) | the симиир in the uraha | one stroke per E; the gauge is the pause since the last stroke (even: 0.12–1.1 s); 12 even strokes in a row: the kymys foams, its card opens (`save.work.churn`, `kymys`) |
 - Journal: the Work section lists every job (`src/interact/work/list.js` `WORKS`): its counts once done, else where it waits.
