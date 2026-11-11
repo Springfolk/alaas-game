@@ -32,7 +32,7 @@ Every drawn ornament, its source and how faithful it is. Rule: an ornament is tr
 ## Plain (no traceable source)
 - Urasa lower hoop: sources say it was carved like the posts (ru.wikipedia «Ураса»; the Uran reconstruction shows an arcade frieze); no free image to trace.
 - Balagan and urasa bench beams: Jochelson's «kardis oyu» (Fig. 93w) is a notched line on kumys vessels, not on beams.
-- Serge small posts.
+- Serge small posts (`serge.js` `smallPost`): no source of their own; each repeats the main post's traced teeth band once under the neck (16 round), the top stays a plain knob.
 - Coat breast and back bead panels: REM 8762-19876 (women's festive coat) shows bead-and-braid strips too small in its 1353 px photo to trace.
 - The breast ornament (илин кэбиһэр): three chains of the traced кэлин кэбиһэр links to a bar and the күн disc, arranged after the entry's sources, not an image. Rys. 106 is a different piece (a silver-embroidered breastplate).
 - Urasa cover, top garland band (Suntar photo: motifs ~6 px, unreadable).

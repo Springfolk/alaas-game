@@ -23,6 +23,7 @@ export default async function build(ctx, placement) {
 - Indoors: raise `game.engine.exposureTarget` (base 0.62) while the player is inside, back to 0.62 outside.
 - Materials: `pbr(id, { repeat, tint, normalScale })` from `public/assets/tex/<id>/`; new sets go in `tools/fetch-assets.mjs`, then `npm run fetch-assets`. TSL procedural detail welcome. Real-world metres.
 - Shadows: meshes receive by default and cast only with `castShadow = true` (not on tiny parts and ground cover). Static casters merge into one shadow proxy per model (`merge.js`): mark a part that moves or hides later `userData.dynamic = true` (act/take targets are kept out already).
+- Log ends: `turned(…, { endGrain: true })` flags the caps (blue vertex colour); `larch` and `barkPole` draw rings, heart and checks there.
 - Alpha-tested materials carry alpha in `colorNode` (vec4): the shadow pass reads `colorNode.a`, so a vec3 casts no shadow.
 - `envMapIntensity` works only with `material.envMap` set; to dim sky light indoors assign `scene.environment` as `envMap` (`balagan/mats.js`).
 - Grass hints, local coords: `object.userData.paths = [{ w, pts: [[x, z], …] }]` (cut, a short sparse sward stays), `.mown = [{ x, z, rx, rz }]` (short), `.bare = [{ x, z, r } | { x, z, hw, hd }]` (earth floors: no blade or flower).
