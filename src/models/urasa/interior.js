@@ -24,21 +24,26 @@ const BAYS = [
   { c: 300, hide: null },           // иһит ороно: the bench for vessels
 ];
 
-// A box whose ends are cut along radial lines (a0, a1), between radii r0..r1 and heights y0..y1.
+// A box whose ends are cut along radial lines (a0, a1), between radii r0..r1 and heights y0..y1: a plank bent round
+// the wall. uv for the `plank` material: x = the plank's number + its width 0..1, y = metres along the grain.
+let plankNo = 0;
 function sectorBox(a0, a1, r0, r1, y0, y1) {
   const g = new THREE.BoxGeometry(1, 1, 1);
-  const p = g.attributes.position, uv = g.attributes.uv;
-  const len = ((r0 + r1) / 2) * (a1 - a0);
+  const p = g.attributes.position, uv = g.attributes.uv, n = g.attributes.normal;
+  const len = ((r0 + r1) / 2) * (a1 - a0), id = ++plankNo;
   for (let i = 0; i < p.count; i++) {
-    const a = a0 + (a1 - a0) * (p.getX(i) + 0.5), r = r0 + (r1 - r0) * (p.getZ(i) + 0.5), y = y0 + (y1 - y0) * (p.getY(i) + 0.5);
+    const fx = p.getX(i) + 0.5, fy = p.getY(i) + 0.5, fz = p.getZ(i) + 0.5;
+    const across = Math.abs(n.getY(i)) > 0.5 ? fz : Math.abs(n.getZ(i)) > 0.5 ? fy : fz;
+    uv.setXY(i, id + 0.04 + 0.92 * across, fx * len);
+    const a = a0 + (a1 - a0) * fx, r = r0 + (r1 - r0) * fz, y = y0 + (y1 - y0) * fy;
     p.setXYZ(i, Math.cos(a) * r, y, Math.sin(a) * r);
-    uv.setXY(i, uv.getX(i) * 0.2, uv.getY(i) * len);
   }
   g.computeVertexNormals();
   return g;
 }
 
 export function buildInterior(rng) {
+  plankNo = 0;
   const G = { floor: [], plank: [], clay: [], poleIn: [], hide: [], hair: [] };
   const colliders = [], benchTargets = [];
 
