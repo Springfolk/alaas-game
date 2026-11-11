@@ -117,8 +117,7 @@
   "dir": [
    300,
    13
-  ],
-  "free": true
+  ]
  },
  "homestead-layout": {
   "cam": [
@@ -240,7 +239,7 @@
   },
   "dir": [
    240,
-   22
+   34
   ]
  },
  "knife": {
@@ -347,12 +346,14 @@
   "fix": true
  },
  "horse-and-cow": {
-  "dir": [
-   75,
-   7
-  ],
-  "fix": true,
-  "dist": 0.4
+  "cam": [
+   47.9,
+   93.5,
+   -214.4,
+   166,
+   -6,
+   48
+  ]
  },
  "hospitality": {
   "dir": [
