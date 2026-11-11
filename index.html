@@ -146,16 +146,9 @@
   .about small { color: var(--c-dim); font-size: 12px; line-height: 1.5; }
 
   /* ---- crosshair + look prompt ---- */
-  #dot { position: fixed; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: rgba(255,255,255,.8); box-shadow: 0 0 3px rgba(0,0,0,.6); pointer-events: none; transition: transform .25s var(--ease), background .25s, box-shadow .25s; }
+  #dot { position: fixed; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: rgba(255,255,255,.8); box-shadow: 0 0 3px rgba(0,0,0,.6); pointer-events: none; } /* its states switch at once: animated between dot and ring, a frame came 67–100 ms late about a quarter of a second after a state change (3 loads in 12 against 0 in 12 without, ?auto) */
   #dot.on { transform: scale(2); background: #dff4ff; box-shadow: 0 0 0 1px rgba(20,90,160,.6), 0 0 8px rgba(var(--glow),.95); }
   #dot.do { transform: scale(3.5); background: rgba(223,244,255,.12); box-shadow: 0 0 0 .5px #eaf8ff, 0 0 5px rgba(var(--glow),.9); } /* the hands can do something here: a ring */
-  /* the swing gauge of hands-on work (src/interact/work): the fill climbs, the bright band is the good range */
-  #gauge { position: fixed; z-index: 4; left: calc(50% + 26px); top: calc(50% - 38px); width: 7px; height: 76px; border-radius: 4px; pointer-events: none; opacity: 0; transition: opacity .18s;
-    background: linear-gradient(to top, rgba(8,24,44,.55) calc(var(--lo, 0) * 100%), rgba(150,215,255,.5) calc(var(--lo, 0) * 100%), rgba(150,215,255,.5) calc(var(--hi, 1) * 100%), rgba(255,170,120,.55) calc(var(--hi, 1) * 100%));
-    box-shadow: 0 0 0 1px rgba(255,255,255,.45), 0 0 8px rgba(0,20,50,.6); overflow: hidden; }
-  #gauge.on { opacity: 1; }
-  #gauge i { position: absolute; inset: 0; transform-origin: bottom; transform: scaleY(0); background: rgba(255,255,255,.82); } /* (no layer of its own: the compositor's shader for one in a rounded clip stalled the first swing 136 ms) */
-  #gauge.good i { background: #eaf8ff; box-shadow: 0 0 10px rgba(var(--glow),1); }
   /* a choice of ribbons under the look (yard/bits.js `choose`): strips of their colour, the picked one lifted */
   #choice { position: fixed; z-index: 20; left: 50%; top: calc(50% + 26px); transform: translateX(-50%); display: none; gap: 16px; align-items: flex-start; }
   #choice.show { display: flex; }
@@ -168,7 +161,7 @@
   #choice .x { display: none; width: 44px; height: 44px; margin-top: 14px; border-radius: 50%; align-items: center; justify-content: center; color: #fff; font-size: 16px; background: rgba(200,225,255,.16); box-shadow: 0 0 0 1px rgba(255,255,255,.55); }
   @media (pointer: coarse) { #choice { gap: 10px; } #choice button { width: 72px; } #choice span { opacity: 1; } #choice .x { display: flex; } }
   #prompt { position: fixed; z-index: 4; left: 50%; top: calc(50% + 30px); display: flex; gap: 9px; align-items: center; font-size: 14px; pointer-events: none; white-space: nowrap;
-    padding: 6px 13px; border-radius: 999px; opacity: 0; transform: translate(-50%, 6px) scale(.96); transition: opacity .22s, transform .3s var(--ease); max-width: calc(100vw - 32px); }
+    padding: 6px 13px; border-radius: 999px; opacity: 0; transform: translate(-50%, 6px) scale(.96); transition: transform .3s var(--ease); max-width: calc(100vw - 32px); } /* it settles into place but does not fade: an opacity animation is one more surface for the compositor to build a shader for */
   #prompt.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
   #prompt .key { font-size: 11.5px; padding: 0 7px; border-radius: 999px; background: #e9eef4; box-shadow: none; border: 0; padding: 1px 8px; } /* flat and borderless: its gradient, shadows and rounded border each cost a compositor shader at the pill's first fade (a frame 83–170 ms late, ?auto) */
   .mouse { width: 11px; height: 16px; flex: none; color: #fff; vertical-align: -3px; } /* (no filter, no opacity: each is one more kind of surface for the compositor to build a shader for at its first paint) */
@@ -367,9 +360,9 @@
 
   /* src/ui/prewarm.js: every surface drawn once while loading, under the key art (which must not count as opaque:
      what an opaque layer hides is not drawn); with no key art (?auto), all but unseen instead */
-  .prewarm :is(#dot, #prompt, #choice, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #gauge, #guide, #gshimmer, #vcursor, .tc-root) { pointer-events: none !important; z-index: 1 !important; }
+  .prewarm :is(#dot, #prompt, #choice, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #guide, #gshimmer, #vcursor, .tc-root) { pointer-events: none !important; z-index: 1 !important; }
   .prewarm #keyart { opacity: .999; transition: none; }
-  .prewarm.bare :is(#dot, #prompt, #choice, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #gauge, #guide, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; }
+  .prewarm.bare :is(#dot, #prompt, #choice, #toasts, #card, #journal, #lightbox, #pause, #hints, #fps, #guide, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; }
   #fade { position: fixed; inset: 0; background: #000; opacity: 1; transition: opacity 2.4s ease; pointer-events: none; }
   #fade.clear { opacity: 0; }
 

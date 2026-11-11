@@ -136,12 +136,13 @@ export default async function build(ctx) {
   const wait = (s) => tween(s, () => {});
   const ease = (k) => k * k * (3 - 2 * k);
   const local = (v) => root.worldToLocal(v.clone());
-  const churn = { live: false, since: 0, streak: 0 }, BEAT = [0.12, 1.1]; // s between strokes that keep the beat
-  const CHURN = {
-    beat: { sah: 'Биир тэҥник хамнат: хамнатар өрө тахсарын кэтэс, ол эрээри уһатыма.', en: 'Keep an even beat: let the dasher come up, but do not linger.', ru: 'Держите ровный ритм: дайте мутовке подняться, но не медлите.' },
-    foam: { sah: 'Кымыс күүгэннирдэ.', en: 'The kymys is foaming.', ru: 'Кумыс запенился.' },
-    quiet: { sah: 'Саҥа көөнньөр кымыс аттыгар айдаарбаттар.', en: 'Nobody makes a noise beside young kymys.', ru: 'Возле молодого кумыса не шумят.' },
-  };
+  // Churning: the хамнатар is lifted for as long as the do input is held on the sack and plunges when it is let
+  // go. A stroke from the top counts whole, a short one in part; strokes one after another raise a froth at the
+  // collar (12 whole ones: it foams over, `save.work.kymys`), a long rest lets it fall again.
+  const churn = { up: 0, top: 0, fall: 0, lifting: false, t: 0, score: 0, idle: 9, bulge: 0, foamed: 0, base: ky.stirrer.position.y };
+  const froth = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 8).scale(1, 0.42, 1), M.kymys);
+  froth.position.set(0, ky.neckY + 0.05, 0); froth.visible = false; froth.castShadow = false; froth.userData.dynamic = true;
+  ky.sackRoot.add(froth);
   const sound = (game, name, obj) => { const p = new THREE.Vector3(); obj.getWorldPosition(p); game?.audio?.play(name, p); };
 
   // milk-white drops for the sprinkling
@@ -226,27 +227,11 @@ export default async function build(ctx) {
     {
       entry: 'kymys', target: ky.sackRoot,
       act: {
-        // One stroke of the хамнатар for each E. The gauge by the crosshair is the pause since the last stroke:
-        // inside its band the beat is even, and a run of even strokes sets the kymys foaming (churn in update).
-        id: 'churn', label: { sah: 'Хамнат', en: 'Churn the kymys', ru: 'Покачать мутовку в кумысе' }, thenCard: false,
-        run: async (game, it) => {
-          const base = churn.base ??= ky.stirrer.position.y;
-          const even = churn.since > BEAT[0] && churn.since < BEAT[1];
-          churn.streak = churn.live && even ? churn.streak + 1 : churn.live ? 0 : 1;
-          if (churn.live && !even) game.work?.hint('churn-beat', CHURN.beat);
-          churn.live = true; churn.since = -1; // (a stroke is running)
-          await tween(0.34, (k) => { ky.stirrer.position.y = base + 0.26 * ease(k); ky.sack.scale.set(1, 1, 1); });
-          sound(game, 'churn', ky.sack);
-          await tween(0.3, (k) => { ky.stirrer.position.y = base + 0.26 * (1 - k * k); const s = Math.sin(k * Math.PI) * (0.02 + 0.012 * Math.min(1, churn.streak / 8)); ky.sack.scale.set(1 + s, 1 - s * 0.6, 1 + s); });
-          ky.stirrer.position.y = base; ky.sack.scale.set(1, 1, 1);
-          churn.since = 0;
-          game.work?.count('churn');
-          if (churn.streak === 12) {
-            game.work?.count('kymys');
-            game.work?.say(CHURN.foam, CHURN.quiet);
-            churn.live = false; churn.streak = 0; game.work?.meter(null);
-            game.read(it.entry, it); // the card, as the work's close (E again turns its page)
-          }
+        id: 'churn', label: { sah: 'Хамнат', en: 'Churn the kymys', ru: 'Покачать мутовку в кумысе' },
+        run: async () => {
+          if (churn.lifting || churn.fall > 0) return;
+          churn.lifting = true; churn.t = 0;
+          await new Promise((res) => { churn.res = res; });
         },
       },
     },
@@ -261,11 +246,29 @@ export default async function build(ctx) {
   const _kQ = new THREE.Quaternion(), _kUp = new THREE.Vector3(), kLast = { vol: -1, up: new THREE.Vector3() };
   const _p = new THREE.Vector3(), _lp = new THREE.Vector3(), _iq = new THREE.Quaternion(), _sun = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
   const update = (dt, c) => {
-    if (churn.live && churn.since >= 0) { // between strokes: the pause, on the gauge
-      churn.since += dt;
-      const w = c.game?.work;
-      if (churn.since > 2.6) { churn.live = false; churn.streak = 0; w?.meter(null); } else w?.meter(Math.min(1, churn.since / 1.3), BEAT[0] / 1.3, BEAT[1] / 1.3);
-    }
+    // the dasher
+    if (churn.lifting) {
+      churn.t += dt; churn.up = Math.min(1, churn.up + dt / 0.34);
+      if (!c.game?.input.doing && churn.t > 0.08) { churn.lifting = false; churn.top = churn.up; churn.fall = 1; }
+    } else if (churn.fall > 0) {
+      churn.fall = Math.max(0, churn.fall - dt / (0.08 + 0.12 * churn.top));
+      churn.up = churn.top * churn.fall * churn.fall;
+      if (churn.fall === 0) { // the plunge
+        sound(c.game, 'churn', ky.sack);
+        churn.score = Math.min(12, churn.score + (churn.top > 0.7 ? 1 : churn.top * 0.5));
+        churn.idle = 0; churn.bulge = 0.5 + 0.5 * churn.top;
+        c.game?.work?.count('churn');
+        if (churn.score >= 12 && !churn.foamed) { churn.foamed = 90; c.game?.work?.count('kymys'); }
+        churn.res?.();
+      }
+    } else if ((churn.idle += dt) > 1.6 && !churn.foamed) churn.score = Math.max(0, churn.score - dt * 1.5); // left alone, the froth falls
+    if (churn.foamed && (churn.foamed -= dt) <= 0) { churn.foamed = 0; churn.score = 0; }
+    ky.stirrer.position.y = churn.base + 0.26 * ease(churn.up);
+    churn.bulge = Math.max(0, churn.bulge - dt * 3);
+    { const s = Math.sin(churn.bulge * Math.PI) * 0.03; ky.sack.scale.set(1 + s, 1 - s * 0.6, 1 + s); }
+    const fk = churn.score / 12;
+    froth.visible = fk > 0.04;
+    if (froth.visible) froth.scale.setScalar((0.25 + 0.75 * fk) * (1 + 0.04 * Math.sin((c.time || 0) * 3.1)));
     for (let i = tweens.length - 1; i >= 0; i--) {
       const tw = tweens[i];
       tw.t += dt;

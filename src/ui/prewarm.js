@@ -56,13 +56,11 @@ export async function prewarmUI(game) {
     on('#pause', 'show');
     for (const tab of document.querySelectorAll('#pause .tab')) { on(`#${tab.id}`, 'on'); await frames(); }
     document.getElementById('pause').classList.remove('show');
-    // what is made once the world is built: the journal's finder marker, the work gauge (its fill at some height)
+    // what is made once the world is built: the journal's finder marker
     for (const t = performance.now(); !game.guide && performance.now() - t < 60000;) await frames(6);
-    const gauge = document.getElementById('gauge'), fill = gauge?.firstChild;
-    if (fill) { fill.style.transform = 'scaleY(.4)'; undo.push(() => { fill.style.transform = ''; }); }
-    on('#guide', 'on'); on('#gshimmer', 'on'); on('#gauge', 'on');
-    await frames(14); // (the gauge fades in)
-    on('#guide', 'edge'); on('#gauge', 'good');
+    on('#guide', 'on'); on('#gshimmer', 'on');
+    await frames(14);
+    on('#guide', 'edge');
     await frames(3);
   } finally {
     for (const u of undo.reverse()) u();
