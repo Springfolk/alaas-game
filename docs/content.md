@@ -91,3 +91,5 @@ Checked and correct: Дойду, Дьиэ-уот, Аһылык, Таҥас, Ит
 ## Actions rework 2026-11-11 (not yet approved)
 - Controls list: the E row «Чугастык көр / оҥор» split into «Оҥор» (the do input), «Уур» (put down), «Чугастык көр» (E); same words as before, now three rows.
 - Dropped with the E-only input: the "(E-ни тутан тур)" / "(hold E)" / «(удерживайте E)» variants of хайыт, тууну таһаар, оту оҕус, туоһу уокка сылыт, and the two E hints of the splitting job.
+- Changed labels: дьэдьэн «pick a handful / собрать горсть» → "pick berries" / «собрать ягоды» (Sakha «дьэдьэн хомуй» kept); gate "open the gate rails" → "draw the gate rails" (Sakha, Russian kept); pail «ууну күөлгэ төттөрү кут» → **«ууну кут»** ("pour the water out", «вылить воду»); new **«төттөрү уур»** ("put it back", «вернуть на место»; unused in the prompt so far).
+- Dropped toasts: «Минньигэс!» (berries eaten), «дьэдьэн тордуйаҕа» (count), «Тыаҕа наадалааҕыҥ эрэ ыл, айдаарыма.» (the forest advice: worth a line in the `ottuk-mas` card instead).

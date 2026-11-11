@@ -12,7 +12,7 @@ import { buildShell } from './balagan/shell.js';
 import { buildHearth } from './balagan/hearth.js';
 import { buildInterior } from './balagan/interior.js';
 import { PlantBatch, sodRoof } from './balagan/plants.js';
-import { groundOf, troddenPatch, blob } from './yard/bits.js';
+import { groundOf, troddenPatch, blob, swing } from './yard/bits.js';
 import { trodden } from './yard/mat.js';
 import { FX, FZ, H, ZD, DW, DH, XD, ROOF, HEARTH, WIN, KH, inner } from './balagan/dims.js';
 
@@ -255,17 +255,19 @@ export default async function build(ctx, placement) {
   its.push({
     entry: 'balagan', target: doorT, label: { sah: 'Аан', en: 'Door', ru: 'Дверь' },
     act: {
-      id: 'door', label: { sah: 'Ааны ас / сап', en: 'Open / shut the door', ru: 'Открыть / закрыть дверь' }, thenCard: false,
+      // a push: the leaf swings by its own weight and knocks against its stop; a push on the way turns it back
+      id: 'door', label: { sah: 'Ааны ас / сап', en: 'Open / shut the door', ru: 'Открыть / закрыть дверь' },
       run: async (game) => {
         door.target = door.target > 0.5 ? 0 : 1;
+        doorS.to = door.target;
         game.audio?.play('door', world(new THREE.Vector3(XD, 1, ZD)));
-        await wait(450);
       },
     },
   });
 
   // ---------- per-frame: eye adaptation, fire flicker, smoke, door, shafts ----------
   let wasInside = false, doorCol = null, shaftClock = 99, lastSun = new THREE.Vector3();
+  const doorS = { a: door.open, v: 0, to: door.target };
   const camLocal = new THREE.Vector3();
   const engine = ctx.world?.engine;
   if (engine) M.setEnv(engine.scene.environment);
@@ -308,10 +310,10 @@ export default async function build(ctx, placement) {
       p.op.value = Math.min(1, a * 6) * (1 - a) * (0.75 + flare * 0.5);
     }
     // door swing (and its collider)
-    if (Math.abs(door.open - door.target) > 1e-3) {
-      door.open += Math.sign(door.target - door.open) * Math.min(Math.abs(door.target - door.open), dt * 1.8);
-      const e = door.open * door.open * (3 - 2 * door.open);
-      door.pivot.rotation.y = e * door.maxAngle;
+    if (doorS.a !== doorS.to || doorS.v) {
+      if (swing(doorS, dt) === 'knock') game?.audio?.play('wood-take', world(new THREE.Vector3(XD, 1, ZD)));
+      door.open = doorS.a;
+      door.pivot.rotation.y = doorS.a * door.maxAngle;
     }
     if (game?.world && !doorCol) doorCol = game.world.colliders.find((c) => Math.abs((c.y0 ?? 1e9) - DOOR_TAG) < 1e-6);
     if (doorCol) doorCol.y1 = door.open > 0.6 ? Y - 50 : Y + 3;

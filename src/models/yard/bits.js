@@ -178,6 +178,21 @@ export function choose(game, title, options) {
   });
 }
 
+// A hinged leaf with weight (a door, gate rails). s = { a: 0…1, v, to: 0 | 1 }: pushed towards `to` it gathers
+// speed, knocks once against its stop and settles; pushed again on the way it turns back. Returns 'knock' on the
+// frame it meets the stop, 'rest' when it lies still there, else null.
+export function swing(s, dt, accel = 3.5, max = 1.6) {
+  const d = s.to ? 1 : -1;
+  if (s.a === s.to && !s.v) return null;
+  s.v = Math.max(-max, Math.min(max, (s.v || 0) + d * accel * dt));
+  s.a += s.v * dt;
+  if (d * (s.a - s.to) < 0) return null;
+  s.a = s.to;
+  if (d * s.v > 0.8) { s.v *= -0.2; return 'knock'; }
+  s.v = 0;
+  return 'rest';
+}
+
 // Tween helper for act animations: resolves after `dur` s while calling step(t 0..1) each frame.
 export function tween(dur, step) {
   return new Promise((res) => {

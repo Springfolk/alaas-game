@@ -56,6 +56,11 @@ export default async function build(ctx, placement) {
     water.position.y = H - 0.05; water.visible = false; water.castShadow = false; water.name = 'pail-water';
     pail.add(water);
     pail.userData.water = water;
+    // the water running out of the tipped pail: a thin falling strand from the rim (placed and stretched by src/interact/hands.js)
+    const stream = new T.Mesh(new T.CylinderGeometry(0.009, 0.02, 1, 7, 1, true).translate(0, -0.5, 0), water.material);
+    stream.visible = false; stream.castShadow = false; stream.name = 'pail-stream'; stream.userData.dynamic = true;
+    object.add(stream);
+    pail.userData.stream = stream; pail.userData.rim = [R1 - W, H];
   }
   pail.position.set(PAIL_AT[0], ground(...PAIL_AT), PAIL_AT[1]);
   pail.rotation.y = 0.6;

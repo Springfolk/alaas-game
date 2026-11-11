@@ -4,7 +4,6 @@
 const L = (sah, en, ru) => ({ sah, en, ru });
 const TXT = {
   name: L('хаппыт мас', 'dry wood', 'сушняк'),
-  quiet: L('Тыаҕа наадалааҕыҥ эрэ ыл, айдаарыма.', 'In the forest take only what you need, and make no noise.', 'В лесу бери только нужное и не шуми.'),
 };
 const BACK = 300; // s until a carried-off branch lies in its place again
 
@@ -16,7 +15,7 @@ export class Gather {
       const home = { p: null, q: null };
       const t = hands.addThing({
         kind: 'log', obj: s.obj, it: find(s.obj), name: TXT.name, state: 'ground', t: 0, away: -1,
-        onTake: () => { t.away = 0; work.count('drywood'); work.hint('forest-quiet', TXT.quiet, 2); },
+        onTake: () => { t.away = 0; work.count('drywood'); },
         release: () => { t.used = true; },
       });
       home.p = s.obj.position.clone(); home.q = s.obj.quaternion.clone(); // (world, after addThing)

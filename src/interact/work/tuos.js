@@ -21,7 +21,6 @@ const TXT = {
   cold: L('Туос сойон кытаатта. Хат сылыт.', 'The bark has cooled and stiffened. Warm it again.', 'Береста остыла и затвердела. Согрейте ещё раз.'),
   done: L('Тордуйа бэлэм.', 'The тордуйа is made.', 'Тордуйа готова.'),
   doneBy: L('тигиитэ суох, түөрт муннуга тоһоҕостоох туос иһит', 'a bark vessel without a stitch, pegged at its four corners', 'берестяной сосуд без единого шва, сколотый по четырём углам'),
-  berries: L('дьэдьэн тордуйаҕа', 'дьэдьэн in the тордуйа', 'дьэдьэн в тордуйе'),
 };
 const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
 function basisQ(y, xHint, out = new THREE.Quaternion()) {
@@ -132,15 +131,15 @@ export class Tuos {
     g.promptKey = null;
   }
 
-  // called by the berry picking (src/interact/index.js): a handful into the vessel, if it is in the hands
-  picked(handful) {
+  // called by the berry picking (src/interact/index.js): each berry into the vessel, if it is in the hands;
+  // `gathered` once the hands leave the patch
+  picked(n) {
     if (!this.held || !this.made) return false;
-    this.n = Math.min(this.parts.max, this.n + handful);
+    this.n = Math.min(this.parts.max, this.n + n);
     this.parts.berries.userData.show(this.n);
-    const all = this.work.count('berries', handful);
-    this.game.ui.toast(`<small>${this.game.ui.t(TXT.berries)}</small><b>${all}</b>`, 2600);
     return true;
   }
+  gathered(n) { if (n && this.held && this.made) this.work.count('berries', n); }
 
   update(dt) {
     this.tick?.(dt);
