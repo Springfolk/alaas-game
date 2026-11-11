@@ -4,6 +4,7 @@
 // blade about 75 cm long and two fingers wide, curved, set at an open angle on a straight handle of about
 // 73 cm whose end bends a fist's length for the left hand and is wrapped in birch bark.
 import { Bucket, addLog, boxUV, logGeo, mtx } from './yardlife/kit.js';
+import { grainAlong } from './yardlife/forged.js';
 import { yardMats } from './yardlife/mats.js';
 
 export const SCYTHE = { handle: 0.73, blade: 0.75 }; // the handle along +Y from the grip's end; the blade runs on from its top towards +X
@@ -33,7 +34,7 @@ export default async function build(ctx, placement) {
     const H = SCYTHE.handle;
     // the handle: straight, swelling at the grip's end, which turns a fist's length aside
     const h = logGeo(H, 0.017, 0.015, rng, { seg: 8, step: 0.1, bend: 0.006, wob: 0.03, caps: true });
-    S.add(h.side, M.fresh, null, [0.66, 0.56, 0.44]); S.add(h.caps, M.end, null, [0.7, 0.6, 0.5]);
+    S.add(grainAlong(h.side), M.fresh, null, [0.66, 0.56, 0.44]); S.add(h.caps, M.end, null, [0.7, 0.6, 0.5]);
     const grip = logGeo(0.11, 0.019, 0.021, rng, { seg: 8, step: 0.05, caps: true });
     const gm = mtx([0, 0.012, 0], [0, 0, Math.PI / 2 + 0.5]);
     S.add(grip.side, M.birch, gm, [0.86, 0.78, 0.62]); S.add(grip.caps, M.end, gm); // wrapped in a thin layer of birch bark
