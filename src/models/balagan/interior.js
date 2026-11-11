@@ -118,10 +118,30 @@ export function buildInterior({ B, M, rng, winter, root }) {
   if (!winter) {
     const xr = -FRONT_X + 0.03, z0 = -FRONT_Z + 0.05, z1 = -0.65, top = 1.95;
     B.add(M.beams, log([xr, top, -FRONT_Z], [xr, top, 0.2], 0.022, 0.02, rng, { caps: true }), { color: [0.5, 0.4, 0.3] });
-    B.add(M.leather, sheet(30, 14, (u, v) => {
+    // three hides sewn edge to edge, each its own tan, darker where hands draw it and along the hem; welted
+    // seams, a turned hem, rawhide loops over the pole
+    const surf = (u, v) => {
       const z = z0 + Math.pow(u, 1.25) * (z1 - z0);
       return [xr + 0.04 * Math.sin(u * 40) * (0.6 + v * 0.4) + 0.02 * fbm2(u * 5, v * 3, 4), BT + 0.02 + v * (top - BT - 0.04), z];
-    }, { uvf: (u, v) => [u * 1.4, v * 1.4], face: () => [1, 0, 0] }), { color: [0.62, 0.5, 0.42] });
+    };
+    const cur = sheet(30, 14, surf, { uvf: (u, v) => [u * 1.4, v * 1.4], face: () => [1, 0, 0] });
+    {
+      const n = cur.attributes.position.count, cc = new Float32Array(n * 3), U = cur.attributes.uv, TAN = [[0.62, 0.5, 0.42], [0.5, 0.39, 0.31], [0.68, 0.53, 0.4]];
+      for (let i = 0; i < n; i++) {
+        const u = U.getX(i) / 1.4, v = U.getY(i) / 1.4, t = TAN[Math.min(2, Math.floor(u * 3))];
+        const k = (0.82 + 0.25 * fbm2(u * 7, v * 5, 6)) * (0.72 + 0.28 * Math.min(1, v * 5)) * (1 - 0.22 * Math.exp(-(((u - 0.97) / 0.06) ** 2)) * Math.exp(-(((v - 0.45) / 0.25) ** 2)));
+        cc.set(t.map((c) => c * k), i * 3);
+      }
+      cur.setAttribute('color', new THREE.BufferAttribute(cc, 3));
+    }
+    B.add(M.leather, cur);
+    const off = (u, v, d) => { const q = surf(u, v); return [q[0] + d, q[1], q[2]]; };
+    for (const u of [1 / 3, 2 / 3]) B.add(M.leather, tube(Array.from({ length: 15 }, (_, k) => off(u, k / 14, 0.004)), 0.0035, 4), { color: [0.3, 0.22, 0.16] });
+    B.add(M.leather, tube(Array.from({ length: 31 }, (_, k) => off(k / 30, 0.012, 0.003)), 0.006, 4), { color: [0.4, 0.3, 0.23] });
+    for (let k = 0; k < 8; k++) {
+      const u = (k + 0.5) / 8, q = surf(u, 1);
+      B.add(M.leather, tube([[q[0], q[1] - 0.02, q[2]], [xr + 0.03, top + 0.005, q[2]], [xr, top + 0.03, q[2]], [xr - 0.03, top + 0.005, q[2]], [q[0] - 0.006, q[1] - 0.02, q[2]]], 0.004, 4), { color: [0.34, 0.25, 0.18] });
+    }
   }
 
   // ---------- тойон баҕана: the master post in the SW corner, horse-head finial, horsehair tufts ----------
@@ -155,28 +175,53 @@ export function buildInterior({ B, M, rng, winter, root }) {
         B.add(M.leather, new THREE.CylinderGeometry(0.014, 0.014, 0.025, 8).translate(fx + side.x, fy - 0.1, fz + side.z), { color: [0.3, 0.2, 0.14] });
       }
     }
-    targets.toyon = proxy(root, 0.38, 2.1, 0.38, [px, 1.05, pz]);
+    targets.toyon = proxy(root, 0.38, 1.2, 0.38, [px, 1.5, pz]);   // the upper post: the stage view frames the head, the tufts and the calendar
 
-    // calendar board (ый ааттара): a larch plank, 12 months of notches, a peg on a string
-    const CB = [];
-    CB.push([box(0.12, 0.6, 0.02), [0.62, 0.48, 0.34]]);
-    for (let m = 0; m <= 12; m++) CB.push([box(0.12, 0.004, 0.006, { p: [0, -0.3 + m * 0.05, 0.009] }), [0.12, 0.09, 0.07]]);
-    for (let m = 0; m < 12; m++) for (let k = 0; k < 30; k++) {
-      const grp = Math.floor(k / 10), y = -0.3 + m * 0.05 + 0.004 + (k % 10) * 0.0042 + grp * 0.0001;
-      const x = -0.05 + grp * 0.035 + (k % 10 === 9 ? 0.002 : 0);
-      CB.push([new THREE.PlaneGeometry(0.012 + (k % 5 === 4 ? 0.006 : 0), 0.0016).translate(x, y, 0.0102), [0.15, 0.11, 0.08]]);
+    // calendar (эбэскэ): a round board on a cord, a row of day holes winding out between the turns of a cut
+    // spiral, pegs left in some, a small pierced head to hang it by (reference photo sakha-calendar-1)
+    const CB = [], CR = 0.14, CZ = 0.009, WOOD = [0.38, 0.3, 0.21], CUT = [0.1, 0.07, 0.05];
+    CB.push([new THREE.CylinderGeometry(CR, CR, CZ * 2, 40).rotateX(Math.PI / 2), WOOD]);
+    CB.push([new THREE.CylinderGeometry(0.027, 0.027, CZ * 2, 16).rotateX(Math.PI / 2).translate(0, CR + 0.03, 0), WOOD]);
+    CB.push([box(0.022, 0.03, CZ * 2, { p: [0, CR + 0.004, 0] }), WOOD]);
+    const TURNS = 7.5, R0 = 0.012, PITCH = (CR - 0.012 - R0) / TURNS, sp = (th) => R0 + PITCH * th / (Math.PI * 2);
+    const flat = (pts, col) => {   // a fan/strip of flat triangles on the face
+      for (let i = 0; i < pts.length; i += 9) {   // every triangle faces the room
+        if ((pts[i + 3] - pts[i]) * (pts[i + 7] - pts[i + 1]) - (pts[i + 4] - pts[i + 1]) * (pts[i + 6] - pts[i]) < 0) for (let k = 0; k < 3; k++) [pts[i + 3 + k], pts[i + 6 + k]] = [pts[i + 6 + k], pts[i + 3 + k]];
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3)); CB.push([g, col]);
+    };
+    { // the spiral cut: a dark ribbon, start at twelve o'clock like the photo's
+      const pts = [], N = Math.round(TURNS * 44), hw = 0.0013;
+      const at = (i, d) => { const th = i / N * TURNS * Math.PI * 2, r = sp(th) + d; return [Math.sin(th) * r, Math.cos(th) * r, CZ + 0.0003]; };
+      for (let i = 0; i < N; i++) pts.push(...at(i, -hw), ...at(i + 1, hw), ...at(i + 1, -hw), ...at(i, -hw), ...at(i, hw), ...at(i + 1, hw));
+      flat(pts, CUT);
     }
-    for (let m = 0; m < 12; m++) CB.push([new THREE.CylinderGeometry(0.004, 0.004, 0.022, 6).rotateX(Math.PI / 2).translate(0.045, -0.275 + m * 0.05, 0), [0.05, 0.04, 0.03]]);
-    CB.push([new THREE.CylinderGeometry(0.0035, 0.0035, 0.035, 6).rotateX(Math.PI / 2).translate(0.045, -0.275 + 6 * 0.05, 0.02), [0.85, 0.72, 0.55]]);   // the peg in От ыйа (July)
-    CB.push([tube([[0.045, -0.275 + 6 * 0.05, 0.03], [0.06, -0.0, 0.025], [0.05, 0.27, 0.015]], 0.0012, 3), [0.3, 0.25, 0.2]]);
-    CB.push([tube([[0, 0.3, 0.0], [0, 0.36, 0.01], [0, 0.41, -0.02]], 0.004, 4), [0.3, 0.2, 0.14]]);
+    { // 365 day holes at an even step between the turns, a short cut across the spiral at each month's end, pegs
+      const holes = [], cuts = [], STEP = 0.0098, HR = 0.0028;
+      let th = Math.PI * 0.9, n = 0;
+      const hex = (x, y, r, z) => { const v = []; for (let k = 0; k < 6; k++) v.push([x + Math.cos(k * Math.PI / 3) * r, y + Math.sin(k * Math.PI / 3) * r, z]); return [v[0], v[1], v[2], v[0], v[2], v[3], v[0], v[3], v[5], v[3], v[4], v[5]].flat(); };
+      while (n < 365) {
+        const r = sp(th) + PITCH / 2, x = Math.sin(th) * r, y = Math.cos(th) * r;
+        holes.push(...hex(x, y, HR, CZ + 0.0004));
+        const h = Math.sin(n * 127.1 + 3.3) * 43758.5453, f = h - Math.floor(h);
+        if (f < 0.12) CB.push([new THREE.CylinderGeometry(0.002, 0.0026, 0.016, 5).rotateX(Math.PI / 2 + (f - 0.06) * 4).translate(x, y, CZ + 0.003), [0.3, 0.21, 0.13]]);
+        if (n % 30 === 29 || n === 364) { const c = Math.sin(th + STEP / r / 2), d = Math.cos(th + STEP / r / 2), w = 0.0007, r1 = r - PITCH * 0.5, r2 = r + PITCH * 0.32;
+          cuts.push(c * r1 - d * w, d * r1 + c * w, CZ + 0.0003, c * r1 + d * w, d * r1 - c * w, CZ + 0.0003, c * r2 + d * w, d * r2 - c * w, CZ + 0.0003, c * r1 - d * w, d * r1 + c * w, CZ + 0.0003, c * r2 + d * w, d * r2 - c * w, CZ + 0.0003, c * r2 - d * w, d * r2 + c * w, CZ + 0.0003); }
+        th += STEP / r; n++;
+      }
+      for (let k = 0; k < 7; k++) holes.push(...hex(Math.sin(k * 0.8976) * 0.018, CR + 0.03 + Math.cos(k * 0.8976) * 0.018, 0.002, CZ + 0.0004));   // the head's seven
+      flat(holes, [0.05, 0.035, 0.025]); flat(cuts, CUT);
+      CB.push([new THREE.TorusGeometry(0.008, 0.0012, 4, 14).translate(0, CR + 0.03, CZ), CUT]);
+    }
+    CB.push([tube([[0, CR + 0.052, 0.0], [0.004, CR + 0.1, 0.006], [0, CR + 0.15, -0.012]], 0.0022, 4), [0.3, 0.2, 0.14]]);
+    const CY = 1.2;
     for (const [g, c] of CB) {
       xf(g, { r: [0, Math.atan2(inDir.x, inDir.z), 0] });
-      xf(g, { p: [px + inDir.x * 0.19, 1.45, pz + inDir.z * 0.19] });
+      xf(g, { p: [px + inDir.x * 0.19, CY, pz + inDir.z * 0.19] });
       B.add(M.oiled, g, { color: c.map((v) => v * 1.2) });
     }
-    B.add(M.beams, new THREE.CylinderGeometry(0.012, 0.012, 0.08, 6).rotateX(Math.PI / 2).rotateY(Math.atan2(inDir.x, inDir.z)).translate(px + inDir.x * 0.2, 1.86, pz + inDir.z * 0.2), { color: [0.5, 0.4, 0.3] });
-    targets.calendar = proxy(root, 0.2, 0.68, 0.08, [px + inDir.x * 0.2, 1.47, pz + inDir.z * 0.2], [0, Math.atan2(inDir.x, inDir.z), 0]);
+    B.add(M.beams, new THREE.CylinderGeometry(0.012, 0.012, 0.08, 6).rotateX(Math.PI / 2).rotateY(Math.atan2(inDir.x, inDir.z)).translate(px + inDir.x * 0.2, CY + CR + 0.15, pz + inDir.z * 0.2), { color: [0.5, 0.4, 0.3] });
+    targets.calendar = proxy(root, 0.32, 0.4, 0.08, [px + inDir.x * 0.2, CY + 0.03, pz + inDir.z * 0.2], [0, Math.atan2(inDir.x, inDir.z), 0]);
   }
 
   // ---------- low round table (сандалы) before the best bench, with a bowl of salamaat ----------
@@ -209,7 +254,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
     colliders.push({ x: T.x, z: T.z, hw: T.r, hd: T.r, y0: -1, y1: T.h + 0.05 });
   }
 
-  // ---------- кытыйа bowls: three sizes (A low, B standard with a copper band, C tall) ----------
+  // ---------- кытыйа bowls: low, standard with a copper band, and the deep one of the drawing (deepBowl) ----------
   const bowl = (rim, ht, x, y, z, { band = false, food = false, tint = [1, 1, 1] } = {}) => {
     const r = rim / 2, base = r * 0.45;
     // turned: a foot ring, a swelling wall, a bead under the lip, the inside following the outside
@@ -227,6 +272,17 @@ export function buildInterior({ B, M, rng, winter, root }) {
       B.add(M.food, butter, { color: [0.95, 0.8, 0.35] });
     }
   };
+  // the deep bowl of the reference drawing (kytyya-1): its outline and where its bands lie, the two rope rolls as
+  // beads, the turned lines; the bands' cut motifs and the flutes are not drawn (docs/patterns.md)
+  const deepBowl = (rim, x, y, z, tint) => {
+    const R = rim / 2, ht = rim * 0.7, w = 0.006 / R;
+    const bead = (r, h, d = 0.012) => [[r, h - 0.011], [r + d, h - 0.004], [r + d, h + 0.004], [r, h + 0.011]];
+    const out = [[0, 0.012], [0.42, 0.012], [0.44, 0], [0.47, 0], [0.49, 0.05], [0.7, 0.16], [0.82, 0.2], ...bead(0.835, 0.215, 0.008), ...bead(0.86, 0.25, 0.008), [0.875, 0.28],
+      [0.97, 0.38], [1.005, 0.44], [1.02, 0.51], [1.005, 0.575], [0.93, 0.6], [0.915, 0.615], [0.9, 0.68], ...bead(0.875, 0.7), [0.866, 0.74], [0.866, 0.78], [0.872, 0.84], [0.89, 0.88], ...bead(0.915, 0.91),
+      [0.96, 0.95], [1, 0.975], [1, 1], [1 - w * 0.6, 1.004],
+      [0.95 - w, 0.95], [0.9 - w, 0.9], [0.866 - w, 0.78], [0.9 - w, 0.62], [1.0 - w, 0.51], [0.96 - w, 0.38], [0.8, 0.22], [0.6, 0.11], [0.4, 0.07], [0, 0.06]];
+    B.add(M.oiled, lathe(out.map(([r, h]) => [r * R, h * ht]), 40).translate(x, y, z), { color: tint });
+  };
   // ---------- долбуур: the shelf over the women's benches ----------
   const SY = 1.42, sz = -inner(FZ, SY);
   const shelf = { x0: -1.25, x1: 0.95 };
@@ -239,7 +295,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
     bowl(0.28, 0.08, -1.0, shelfTop, sz + 0.16, { tint: [0.95, 0.85, 0.75] });
     bowl(0.22, 0.1, -1.0, shelfTop + 0.075, sz + 0.16, { tint: [1.05, 0.9, 0.8] });
     bowl(0.22, 0.1, -0.7, shelfTop, sz + 0.15, { band: true });
-    bowl(0.16, 0.14, -0.45, shelfTop, sz + 0.15, { tint: [0.85, 0.8, 0.75] });
+    deepBowl(0.19, -0.44, shelfTop, sz + 0.15, [0.8, 0.72, 0.66]);
     bowl(0.22, 0.1, T.x, T.h + 0.02, T.z + 0.15, { food: true, tint: [1.0, 0.9, 0.8] });
     targets.kytyya = proxy(root, 0.9, 0.3, 0.32, [-0.72, shelfTop + 0.1, sz + 0.15]);
   } // the winter house's dishes went to the summer place with the family

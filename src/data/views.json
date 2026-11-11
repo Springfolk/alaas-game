@@ -64,11 +64,11 @@
  },
  "toyon-baghana": {
   "dir": [
-   128,
-   10
+   163,
+   3
   ],
   "fix": true,
-  "dist": 0.6
+  "dist": 0.55
  },
  "muus-tunnuk": {
   "dir": [
@@ -341,8 +341,8 @@
  },
  "sakha-calendar": {
   "dir": [
-   128,
-   12
+   150,
+   8
   ],
   "fix": true
  },

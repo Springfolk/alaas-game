@@ -378,14 +378,23 @@ export function makeMats(maps, { winter = false } = {}) {
     return m;
   })();
   M.birchCurtain = (() => {
+    // boiled bark, soft and brown, sewn of strips a span high: each sheet its own tone, the upper strip lapping
+    // the lower, a row of horsehair stitches under the lap, upright joins staggered from strip to strip
     const m = new S({ name: 'birch-curtain', roughness: 0.6, side: THREE.DoubleSide, alphaTest: 0.5 });
     const u = uv();                       // metres: x across, y up
-    const len = nz(vec3(u.x.mul(3), u.y.mul(40), 0.5));
-    let base = mix(vec3(0.24, 0.15, 0.07), vec3(0.16, 0.09, 0.04), fz(vec3(u.mul(2.5), 1.0), 3));
-    base = mix(base, vec3(0.1, 0.08, 0.06), smoothstep(0.8, 0.88, len).mul(0.8));
-    // plain: the black openwork bands drawn here before had no image source (docs/patterns.md)
-    m.colorNode = base;
-    // leather-bound edges
+    const ROW = 0.24, row = floor(u.y.div(ROW)), fy = fract(u.y.div(ROW));
+    const sx = u.x.div(0.62).add(row.mul(0.37)), col = floor(sx), fx = fract(sx);
+    const tone = nz(vec3(col.mul(7.3), row.mul(3.7), 2.0));
+    const len = nz(vec3(u.x.mul(26), u.y.mul(190), 0.5));
+    let base = mix(vec3(0.27, 0.17, 0.08), vec3(0.15, 0.085, 0.04), fz(vec3(u.mul(2.5), 1.0), 3).mul(0.7).add(tone.mul(0.5)));
+    base = mix(base, vec3(0.08, 0.06, 0.045), smoothstep(0.74, 0.82, len).mul(0.75));          // lenticel dashes
+    const lap = smoothstep(0.0, 0.03, fy).mul(smoothstep(0.0, 0.012, fx));                       // dark under each lap and join
+    const stitch = smoothstep(0.012, 0.004, abs(fy.sub(0.08))).mul(step(0.45, fract(u.x.div(0.016))));
+    const join = smoothstep(0.006, 0.002, abs(fx.sub(0.035))).mul(step(0.45, fract(u.y.div(0.016))));
+    base = base.mul(lap.mul(0.55).add(0.45));
+    m.colorNode = mix(base, vec3(0.035, 0.03, 0.025), max(stitch, join).mul(0.85));
+    m.normalNode = bumpMap(lap.mul(1.2).add(len.mul(0.25)).add(nz(vec3(u.x.mul(8), u.y.mul(420), 3.0)).mul(0.2)).sub(max(stitch, join).mul(0.5)), 0.9);
+    m.roughnessNode = mix(float(0.52), float(0.78), tone);
     m.userData.noShadow = false;
     return m;
   })();
@@ -395,9 +404,11 @@ export function makeMats(maps, { winter = false } = {}) {
     // guard hairs: fine streaks drawn out along the lie of the coat, clumps, paler tips over a dark underfur
     const m = new S({ name: 'fur', vertexColors: true, roughness: 0.95 });
     const p = positionLocal;
-    const tuft = nz(p.mul(210).add(nz(p.mul(45)).mul(5)));
-    const fine = nz(p.mul(vec3(90, 70, 90)));
-    const clump = fz(p.mul(24), 2);
+    // the hair lies one way (aslant in the model's frame, so along no bench): long streaks, wavering, in locks
+    const q = vec3(p.x.add(p.z), p.y, p.x.sub(p.z)).add(nz(p.mul(11)).mul(0.05));
+    const tuft = nz(vec3(q.x.mul(38), q.y.mul(160), q.z.mul(330)));
+    const fine = nz(vec3(q.x.mul(90), q.y.mul(300), q.z.mul(900)));
+    const clump = fz(vec3(q.x.mul(9), q.y.mul(24), q.z.mul(30)), 2);
     const h = tuft.mul(0.6).add(fine.mul(0.4));
     m.colorNode = vertexColor().mul(mix(float(0.3), float(1.55), smoothstep(0.3, 0.72, h))).mul(clump.mul(0.3).add(0.82));
     m.normalNode = bumpMap(h.mul(0.85).add(clump.mul(0.25)), 7);
