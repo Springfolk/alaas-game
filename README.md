@@ -77,13 +77,14 @@ Node 20.19+ or 22.12+. The textures, audio and images are in the repository; no 
 |---|---|
 | W A S D · mouse | walk · look |
 | Shift · Space · C | run · jump / vault · crouch |
-| E | look closer / do |
-| 1 2 3 | choose |
+| left button or F · right button or Q | do (hold where the work asks) · put down |
+| E | look closer, then read |
+| 1 2 3 | choose a ribbon |
 | J · L · H | journal · language · controls |
 | P · F3 | pause and settings (keeps the mouse) · frame-rate meter |
 | Esc | pause (releases the mouse) |
 
-Phones: left thumb walks (push to the rim to run), right thumb looks, a tap is E.
+Phones: the left thumb walks (push the stick to its rim to run), a drag anywhere else looks, a tap on a thing does it; the hand, eye and put-down buttons do, look closer and put down.
 
 ## Project structure
 | Path | What |

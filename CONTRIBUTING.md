@@ -24,14 +24,14 @@ For anything visual, compare before/after screenshots: `npm run shot -- "/?auto&
 More in [`docs/testing.md`](docs/testing.md).
 
 ## Code
-- Follow the [performance rules](docs/architecture.md#performance-rules): no lights added, removed or
-  hidden at runtime, no material changes after the warm-up, `positionPrevious` with a custom
-  `positionNode`, at most 16 textures per shader stage.
+- Follow the [performance rules](docs/performance.md): no lights added, removed or hidden at runtime,
+  no material changes after the warm-up, `positionPrevious` with a custom `positionNode`, at most 16
+  textures per shader stage.
 - New buildings and props follow the [model-module contract](docs/models.md).
 - Loading work follows [`docs/loading.md`](docs/loading.md).
 - Plain ES modules, 2-space indent, single quotes, semicolons (`.editorconfig`). Each file opens with a
   one-line comment on what it does. Shared math lives in `src/util.js`.
-- Update the doc your change touches, one line per fact.
+- Update the doc your change touches: what is true now, one line per fact, no history.
 
 ## Content
 - **Cultural accuracy first.** Every entry in `src/data/entries.json` carries its `sources`; don't invent
