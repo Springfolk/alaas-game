@@ -160,7 +160,8 @@ export function buildShell({ M, rng, winter, root }) {
     B.add(M.outWood, box(0.12, DH + 0.12, 0.1, { p: [XD + 0.02, DH / 2, ZD - DW / 2 - 0.05] }), { color: [0.75, 0.73, 0.7] });
     B.add(M.outWood, box(0.12, DH + 0.12, 0.1, { p: [XD + 0.02, DH / 2, ZD + DW / 2 + 0.05] }), { color: [0.75, 0.73, 0.7] });
     B.add(M.outWood, box(0.14, 0.12, DW + 0.32, { p: [XD + 0.02, DH + 0.06, ZD] }), { color: [0.72, 0.7, 0.66] });
-    B.add(M.logs, log([XD - 0.2, 0.03, ZD - DW / 2 - 0.1], [XD - 0.2, 0.05, ZD + DW / 2 + 0.1], 0.08, 0.075, rng, { caps: true }), { color: [0.8, 0.75, 0.7], extra: { outw: [0, 1, 0] } });
+    // (outdoor wood: the wall timber's sky cut for indoors would leave it black in the doorway)
+    B.add(M.outWood, log([XD - 0.2, 0.03, ZD - DW / 2 - 0.1], [XD - 0.2, 0.05, ZD + DW / 2 + 0.1], 0.08, 0.075, rng, { caps: true }), { color: [0.6, 0.54, 0.46] });
   });
   colliders.push({ x: (2.6 + 4.3) / 2, z: (-3.9 + ZD - DW / 2 + 0.02) / 2, hw: (4.3 - 2.6) / 2, hd: (ZD - DW / 2 + 0.02 + 3.9) / 2 });
   colliders.push({ x: (2.6 + 4.3) / 2, z: (ZD + DW / 2 - 0.02 + 3.9) / 2, hw: (4.3 - 2.6) / 2, hd: (3.9 - ZD - DW / 2 + 0.02) / 2 });
@@ -176,8 +177,9 @@ export function buildShell({ M, rng, winter, root }) {
   section(() => {
     for (let i = 0; i < nP; i++) DB.add(M.doorWood, box(0.055, DH - 0.03 - rng() * 0.03, pw - 0.006, { p: [0, (DH - 0.03) / 2, (i + 0.5) * pw], r: [0, 0, (rng() - 0.5) * 0.008] }), { color: [0.78 + rng() * 0.15, 0.74, 0.7] });
     for (const y of [0.3, DH - 0.35]) DB.add(M.doorWood, box(0.04, 0.12, DW - 0.06, { p: [-0.045, y, DW / 2], r: [0.03, 0, 0] }), { color: [0.7, 0.66, 0.62] });
-    for (const y of [0.28, DH - 0.33]) DB.add(M.leather, box(0.09, 0.08, 0.14, { p: [0.0, y, 0.0] }), { color: [0.5, 0.4, 0.32] });
-    DB.add(M.leather, tube([[0.04, 0.95, DW - 0.12], [0.08, 0.9, DW - 0.13], [0.04, 0.85, DW - 0.12]], 0.012, 5), { color: [0.45, 0.35, 0.28] });
+    // rawhide straps round the hinge edge and a pull loop (door wood's material: the indoor leather is unlit out here)
+    for (const y of [0.3, DH - 0.35]) for (const dy of [-0.035, 0.035]) DB.add(M.doorWood, box(0.075, 0.035, 0.2, { p: [-0.002, y + dy, 0.06], r: [0, 0, (rng() - 0.5) * 0.08] }), { color: [0.34, 0.25, 0.17] });
+    DB.add(M.doorWood, tube([[0.03, 0.97, DW - 0.12], [0.065, 0.94, DW - 0.125], [0.085, 0.9, DW - 0.13], [0.065, 0.86, DW - 0.125], [0.03, 0.83, DW - 0.12]], 0.011, 6), { color: [0.34, 0.25, 0.17] });
   });
   DB.build(doorPivot);
   root.add(doorPivot);
