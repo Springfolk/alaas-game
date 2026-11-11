@@ -29,13 +29,15 @@ export async function prewarmUI(game) {
     on('#fps', 'on'); on('#vcursor', 'on');
     off('#hints', 'off');
     if (touch) touch.show = 'play';
-    ui.setPrompt('Алаас', 'Алаас');
+    ui.setPrompt('Алаас', 'Алаас', { act: true, read: true }); // with every part it can have: its fade-in is a surface of its own
     ui.toast('<small>Алаас</small><b>Алаас</b>', 1e9);
     await frames(3);
     on('#dot', 'on'); on('.tc-btn', 'down'); on('.tc-stick', 'on');
-    ui.setPrompt('Алаас', 'Алаас', { act: true, read: true });
     await frames();
     on('#dot', 'do');
+    const choice = document.getElementById('choice'); // the ribbon choice (yard/bits.js)
+    choice.innerHTML = '<button style="--c:#f1efe8"><i></i><span>Алаас</span></button><button class="on" style="--c:#8fb9e6"><i></i><span>Алаас</span></button><button class="x">✕</button>';
+    on('#choice', 'show'); undo.push(() => { choice.innerHTML = ''; });
     on('.tc-stick', 'run');
     ui.showEntry(id, { mode: 'peek' });
     pictures(ui.card);

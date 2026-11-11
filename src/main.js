@@ -252,7 +252,7 @@ class Game {
     document.documentElement.lang = lang;
     for (const el of document.querySelectorAll('[data-t]')) el.textContent = this.tt(T[el.dataset.t]);
     for (const el of document.querySelectorAll('.ver')) el.textContent = 'v' + version;
-    const keys = (mini) => CONTROLS.filter((c) => !mini || !['F3', 'L', '1 2 3'].includes(c[0]))
+    const keys = (mini) => CONTROLS.filter((c) => !mini || !['F3', 'L'].includes(c[0]))
       .map(([k, l]) => `<kbd>${typeof k === 'string' ? k : this.tt(k)}</kbd><span>${this.tt(l)}</span>`).join('');
     document.getElementById('keys-title').innerHTML = keys(false);
     document.getElementById('keys-pause').innerHTML = keys(false);

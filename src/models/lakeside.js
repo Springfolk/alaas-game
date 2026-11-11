@@ -7,7 +7,7 @@ import * as THREE from 'three/webgpu';
 import { texture, uv, uniform, positionLocal, positionWorld, cameraPosition, smoothstep, mix, float, color, exp, attribute, mx_noise_float } from 'three/tsl';
 import { LAKE } from '../world/terrain.js';
 import {
-  Bucket, addLog, blob, decalMat, jitterTint, lathe, mtx, patchGeo, pmat, ribbonGeo, sleep, tube, TAU,
+  Bucket, addLog, blob, decalMat, jitterTint, lathe, mtx, patchGeo, pmat, ribbonGeo, tube, TAU,
 } from './yardlife/kit.js';
 import { yardMats } from './yardlife/mats.js';
 import { maps } from '../engine/materials.js';
@@ -301,49 +301,13 @@ export default async function build(ctx, placement) {
   ripple.castShadow = false; ripple.receiveShadow = false; ripple.renderOrder = 4;
   group.add(ripple);
 
-  let pour = null; // { t }
-  const home = cup.position.clone();
-  ups.push((dt) => {
-    rippleT.value += dt;
-    if (!pour) return;
-    pour.t += dt;
-    const t = pour.t;
-    // 0–1.2 s lift and carry over the water, 1.2–3.4 tip and pour, 3.4–4.6 bring it back
-    const k = t < 1.2 ? t / 1.2 : t < 3.4 ? 1 : Math.max(0, 1 - (t - 3.4) / 1.2);
-    const e = k * k * (3 - 2 * k);
-    cup.position.set(home.x + (pourAt[0] - home.x) * e * 0.9, home.y + e * 0.35, home.z + (pourAt[1] - home.z - 0.12) * e * 0.9);
-    const tip = t > 1.2 && t < 3.4 ? Math.min(1, (t - 1.2) / 0.6) * Math.min(1, (3.4 - t) / 0.4) : 0;
-    cup.rotation.x = tip * 1.25;
-    milkTop.visible = t < 2.6;
-    const flowing = t > 1.6 && t < 3.1;
-    stream.visible = flowing;
-    if (flowing) {
-      const lip = new T.Vector3(0, 0.1, 0.066).applyEuler(cup.rotation).add(cup.position);
-      const len = Math.max(0.05, lip.y - waterY);
-      stream.position.copy(lip);
-      stream.scale.set(1, len, 1);
-    }
-    if (t > 1.75 && !pour.rippled) { pour.rippled = true; rippleT.value = 0; ripple.position.set(cup.position.x, waterY + 0.012, cup.position.z + 0.066); }
-    if (t > 4.6) { pour = null; cup.position.copy(home); cup.rotation.set(0, 0, 0); milkTop.visible = true; }
-  });
+  ups.push((dt) => { rippleT.value += dt; });
+  cup.userData.dynamic = true;
+  group.userData.offering = { group, cup, milkTop, stream, ripple, rippleT, waterY };
   interactables.push({
-    entry: 'ichchi',
+    entry: 'ichchi', offering: true,
     target: proxy(stoneX, sy + 0.12, stoneZ, 0.9, 0.4, 0.7),
     label: { sah: 'Эбэни аһатыы', en: 'Greeting the lake', ru: 'Приветствие озеру' },
-    act: {
-      id: 'milk',
-      label: { sah: 'Эбэҕэ үүт кут', en: 'Pour a little milk for the lake', ru: 'Плеснуть озеру немного молока' },
-      thenCard: true,
-      run: async (game, it) => {
-        pour = { t: 0 };
-        await sleep(1500);
-        const wp = new T.Vector3(pourAt[0], waterY, pourAt[1]);
-        group.localToWorld(wp);
-        game.audio?.play('water-pour', wp);
-        await sleep(3300);
-        delete it.act; // once per visit: the lake is greeted, not farmed
-      },
-    },
   });
 
   // the view over the lake and the meadow

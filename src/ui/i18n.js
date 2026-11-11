@@ -64,7 +64,6 @@ export const CONTROLS = [
   [MOUSE.left, { sah: 'Оҥор', en: 'Do, use (hold where the work asks)', ru: 'Сделать, применить' }],
   [MOUSE.right, { sah: 'Уур', en: 'Set down, put back', ru: 'Положить, убрать' }],
   ['E', { sah: 'Чугастык көр', en: 'Look closer', ru: 'Рассмотреть' }],
-  ['1 2 3', { sah: 'Талыы', en: 'Choose', ru: 'Выбор' }],
   ['J', { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' }],
   ['L', { sah: 'Тыл', en: 'Language', ru: 'Язык' }],
   ['H', { sah: 'Салайыы', en: 'Controls', ru: 'Управление' }],

@@ -3,7 +3,7 @@
 // thing does its act, or shows its card when it has none; a tip says "look around" until the first look drag).
 // Glass buttons: the hand (the do input: held while the thumb stays down, and a drag that starts on it looks,
 // so a held tool can be aimed), the eye (inspect; shown when the thing in view has a card), put down (shown
-// while carrying), jump, crouch, journal, language, pause, and 1·2·3 while an act asks for a choice.
+// while carrying), jump, crouch, journal, language, pause; none while an act asks for a choice (its own strips are tapped).
 // Windows, toasts and buttons keep their touches.
 // Auto-enabled on coarse-pointer devices; `?touch` forces it, `?notouch` disables it.
 // Self-contained: every class is `tc-` prefixed and the stylesheet is injected here.
@@ -15,7 +15,6 @@ const CSS = `
 .tc-root[data-mode=off]>*{display:none!important}
 .tc-root:not([data-mode=play]) .tc-play,.tc-root:not([data-mode=play]) .tc-stick{display:none}
 .tc-root:not([data-mode=ui]) .tc-ui{display:none}
-.tc-root:not([data-mode=choice]) .tc-choice{display:none}
 .tc-stick{position:absolute;left:calc(36px + env(safe-area-inset-left));bottom:calc(48px + env(safe-area-inset-bottom));width:128px;height:128px;border-radius:50%;pointer-events:none;opacity:.55;transition:opacity .25s;
   background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.04) 52%,rgba(var(--tc-glow),.12) 70%,rgba(255,255,255,.08) 71%);
   border:1px solid var(--tc-edge);box-shadow:inset 0 0 0 1px rgba(0,30,60,.35),inset 0 10px 24px rgba(255,255,255,.12),0 2px 14px rgba(0,0,0,.35);
@@ -43,8 +42,6 @@ const CSS = `
 .tc-crouch.on{box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -5px 12px rgba(var(--tc-glow),.6),0 0 14px rgba(var(--tc-glow),.6)}
 .tc-top{position:absolute;top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));display:flex;gap:10px}
 .tc-top .tc-btn{position:relative;width:46px;height:46px;border-radius:12px;font-size:13px}
-.tc-choice{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:14px}
-.tc-choice .tc-btn{position:relative;width:58px;height:58px;font-size:20px}
 .tc-ui{position:absolute;top:calc(10px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));display:flex;gap:10px;z-index:40}
 .tc-ui .tc-btn{position:relative;width:46px;height:46px;border-radius:12px;font-size:13px}
 @media (max-height:500px){.tc-stick{left:calc(32px + env(safe-area-inset-left));bottom:calc(26px + env(safe-area-inset-bottom))}}
@@ -102,8 +99,7 @@ export class TouchControls {
       <div class="tc-top tc-play">
         <div class="tc-btn" data-b="lang">САХ</div><div class="tc-btn" data-b="journal">${ICON.journal}</div><div class="tc-btn" data-b="pause">${ICON.pause}</div>
       </div>
-      <div class="tc-ui"><div class="tc-btn" data-b="lang">САХ</div><div class="tc-btn" data-b="close">${ICON.close}</div></div>
-      <div class="tc-choice"><div class="tc-btn" data-b="1">1</div><div class="tc-btn" data-b="2">2</div><div class="tc-btn" data-b="3">3</div><div class="tc-btn" data-b="esc">${ICON.close}</div></div>`;
+      <div class="tc-ui"><div class="tc-btn" data-b="lang">САХ</div><div class="tc-btn" data-b="close">${ICON.close}</div></div>`;
     document.body.appendChild(root);
     this.stick = root.querySelector('.tc-stick');
     this.knob = root.querySelector('.tc-knob');
@@ -148,7 +144,6 @@ export class TouchControls {
     else if (b === 'lang') this.key('KeyL');
     else if (b === 'pause') inp.release();
     else if (b === 'close') { g.ui?.close(); inp.lock(); }
-    else if (b === 'esc' || /^[123]$/.test(b)) dispatchEvent(new KeyboardEvent('keydown', { code: b === 'esc' ? 'Escape' : 'Digit' + b }));
   }
 
   stickHome() { // the stick never moves (its place is in the CSS); the knob goes back to the middle

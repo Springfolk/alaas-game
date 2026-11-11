@@ -6,6 +6,7 @@ import { Hands } from './hands.js';
 import { Seat } from './seat.js';
 import { Glint } from './glint.js';
 import { Work } from './work/index.js';
+import { Choron, Cup, Khomus } from './rites.js';
 
 const REGROW = 240; // s after the last berry was picked until a дьэдьэн patch is full again
 
@@ -19,6 +20,9 @@ export class Interactions {
     this.hands = parts ? new Hands(game, parts, find) : null;
     this.parts = parts;
     this.work = new Work(game, this.hands, find); // jobs with a tool in the hands (src/interact/work)
+    // the guest's choron, the lake's cup of milk, the khomus: taken from their place and put back (rites.js)
+    const part = (k) => w.placed.find((p) => p.object?.userData[k])?.object.userData[k];
+    this.rites = !this.hands ? [] : [[Choron, 'guest'], [Cup, 'offering'], [Khomus, 'khomus']].filter(([, k]) => part(k)).map(([C, k]) => new C(game, this.hands, part(k)));
     this.seat = new Seat(game);
     this.glint = new Glint(game); // the winter place's sun glint
     for (const it of w.interactables) if (it.entry === 'oron' && it.target && !it.act) it.sit = true;
@@ -31,6 +35,7 @@ export class Interactions {
   actFor(it) {
     if (it.berries !== undefined) return (this.patches.get(it.berries)?.n ?? 1) > 0 ? this.pickAct : null;
     if (it.sit) return this.seat.on || this.hands?.held ? null : this.seat.act;
+    for (const r of this.rites) { const a = r.actFor(it); if (a !== undefined) return a; }
     if (it.live) return it.live(); // a model's thing whose act follows its own state (the forge's knife blank)
     const w = this.work.actFor(it);
     if (w !== undefined) return w;
@@ -39,6 +44,7 @@ export class Interactions {
   // the hands with nothing in focus: stand up, or what the carried thing does by itself
   idleAct() {
     if (this.seat.on) return this.seat.standAct;
+    for (const r of this.rites) { const a = r.idleAct(); if (a) return a; }
     return this.work.idleAct() || this.hands?.idleAct() || null;
   }
   // putting down what is carried (src/interact/hands.js)
@@ -71,6 +77,7 @@ export class Interactions {
     this.seat.update(dt);
     this.glint.update(dt);
     this.work.update(dt);
+    for (const r of this.rites) r.update(dt);
     this.hands?.update(dt);
     for (let i = this.ticks.length - 1; i >= 0; i--) if (this.ticks[i](dt)) this.ticks.splice(i, 1);
     for (const [k, P] of this.patches) {

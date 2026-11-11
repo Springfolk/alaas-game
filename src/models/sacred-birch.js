@@ -285,11 +285,23 @@ export default async function build(ctx, placement) {
     label: { sah: 'эҕэрдэлээ, лиэнтэ баай', en: 'greet the tree and tie a ribbon', ru: 'поприветствовать дерево и повязать ленточку' },
     run: async (game) => {
       const pl = game?.player;
-      // a slight bow and a short silence
-      const p0 = pl ? pl.pitch : 0;
-      if (pl) await tween(1.1, (t) => { pl.pitch = p0 + (-0.32 - p0) * ease(t); });
-      await tween(1.6, () => {});
-      if (pl) await tween(0.9, (t) => { pl.pitch = -0.32 + (Math.min(p0, 0.15) + 0.32) * ease(t); });
+      // the bow is the player's own: the head goes down for as long as the hands are held out to the tree (a tap
+      // is a nod), and rises when they are lowered
+      const p0 = pl ? pl.pitch : 0, back = Math.min(p0, 0.15);
+      if (pl) {
+        let k = 0, held = 0, last = performance.now();
+        await new Promise((res) => {
+          const f = () => {
+            const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
+            const down = game.input.doing || held < 0.35;
+            held += dt;
+            k = Math.max(0, Math.min(1, k + (down ? dt / 1.1 : -dt / 0.9)));
+            pl.pitch = pl.aimPitch = (down ? p0 : back) + (-0.32 - (down ? p0 : back)) * ease(k);
+            if (k <= 0 && !down) res(); else requestAnimationFrame(f);
+          };
+          requestAnimationFrame(f);
+        });
+      }
       const pick = await choose(game, { sah: 'Ханнык өҥнөөх лиэнтэни баайаҕын?', en: 'Which ribbon will you tie?', ru: 'Какую ленточку повязать?' },
         Object.entries(RIBBONS).map(([id, r]) => ({ id, label: r.label, swatch: r.swatch })));
       if (!pick) { setTimeout(() => { game?.done?.delete(doneKey); game?.persist?.(); }, 0); return; }
