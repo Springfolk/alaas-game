@@ -4,7 +4,7 @@ Tap = the do input pressed and let go; hold = kept down (`docs/interactions.md`)
 
 | Action | Where | The hands | The world answers |
 |---|---|---|---|
-| Doors | ampaar, balagan | tap: a push; a push on the way turns the leaf back | it gathers speed by its weight, knocks on its stop and settles (`swing` in `yard/bits.js`); passable from ~0.6 open |
+| Doors | ampaar, balagan | tap: a push; a push on the way turns the leaf back | it gathers speed by its weight, knocks on its stop and settles (`swing` in `yard/bits.js`); the leaf is solid wherever it stands and stops at the player (`leaf`) |
 | Gate rails (сүрдьүгэс) | күрүө | hold: drawn out of the south post (0.8 s), let go early and they slide back; closing: a tap | once free they swing aside and knock; closing runs them home |
 | Мас ыаҕас | by the uraha door | tap takes it; put down anywhere dry. At water, looking down: hold dips it and it fills while held (quick dip ≈ half, 1.2 s full). With water, looking down: hold tips it out, let go keeps the rest | the water stands as high as filled; the fuller pail hangs lower and trails more; a strand runs from the rim while it pours |
 | Firewood | woodpile, loose billets, nine dry branches under the north trees (`gather.js`, `save.work.drywood`) | on the pile: tap takes a billet, hold an armful (≤4); with billets, tap stacks one, hold the next; put down by the pile stacks all, elsewhere drops one. On a hearth: tap lays one | each billet knocks; the view dips as the load comes on; a laid billet burns down over 60 s, the fire brighter (`fireplace.fuel()`); a branch lies again 5 min after use |

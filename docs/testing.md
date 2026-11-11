@@ -12,6 +12,7 @@
 | First world pixel, playable, stalls before and 2.5 s after ready | `npm run loadprof -- chrome\|webkit\|phone [query] [shotPrefix]` (`THROTTLE=4` CPU ×4; shots at 1/2/4/8 s) |
 | Load breakdown (`?prof`: ms per stage and bucket, worker and pipeline spans; Chrome CPU profile) | `npm run loadtrace -- chrome\|webkit [query] [profile.json]` (`AFTER=1`: the 2.5 s after ready) |
 | Uncapped CPU ms, fps, calls, triangles at five views | `npm run bench -- chrome\|webkit\|phone [query]` (`?gputime`: GPU timestamps per pass, overcount on Apple GPUs: compare only relatively) |
+| Clipping: welded parts floating, sunk, gaping over the ground, interpenetrating, z-fighting (also with the ground), walkable eye spots near geometry (`?nogeo&keepgeo&nomerge`; `MODEL=` regex, `STATE=` js first) | `node tools/clipcheck.mjs [out.json]` |
 | Every shader build, by pass and material | `node tools/shaders.mjs` (`docs/materials.md`) |
 | CPU profile of play, ms per frame by file and function | `node tools/jsprof.mjs [query] [x,z,yaw] [s]` |
 | Phone tier on WebGL2 at an iPhone's pixel count: median GPU and JS ms | `node tools/gpuab.mjs "<query>\|<query>" [spots] [toggles]` |
