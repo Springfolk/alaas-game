@@ -38,7 +38,7 @@ export default async function build(ctx, placement) {
     const addLog = (p0, p1, r, { caps = true, k = 0.85 + rng() * 0.22 } = {}) => {
       const L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]);
       const g = turned(logProfile(L, r, r * 0.86, { step: 0.3 }), {
-        radial: 14, rng, noise: 0.05, oval: 0.05, bend: bow(rng, L, 0.025), capTop: caps, capBottom: caps,
+        radial: 14, rng, noise: 0.05, oval: 0.05, bend: bow(rng, L, 0.025), capTop: caps, capBottom: caps, endGrain: true,
         color: logTone(k, (p0[1] + p1[1]) / 2 - g0),
       });
       orient(g, p0, p1, rng() * TAU);
@@ -76,7 +76,7 @@ export default async function build(ctx, placement) {
     const sills = [];
     for (const sz of [-1, 1]) addLog([-HW - 0.3 - rng() * 0.04, g0 + 0.08, sz * HW], [HW + 0.3 + rng() * 0.04, g0 + 0.08, sz * HW], 0.125, { k: 0.72 });
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      const b = turned(logProfile(0.28, 0.16, 0.15, { step: 0.14 }), { radial: 12, rng, noise: 0.06, capTop: true, color: (y, a, c) => { c[0] = 0.55; c[1] = 0.5; c[2] = 0.44; } });
+      const b = turned(logProfile(0.28, 0.16, 0.15, { step: 0.14 }), { radial: 12, rng, noise: 0.06, capTop: true, endGrain: true, color: (y, a, c) => { c[0] = 0.55; c[1] = 0.5; c[2] = 0.44; } });
       b.translate(sx * HW, g0 - 0.2 + Y0, sz * HW);
       sills.push(b);
     }
@@ -415,13 +415,13 @@ function coat(g, c) {
 }
 
 function post(rng, base, H, r) {
-  const g = turned(logProfile(H + 0.05, r, r * 0.85, { step: 0.3 }), { radial: 9, rng, noise: 0.06, capTop: true, color: (y, a, c) => { c[0] = 0.85; c[1] = 0.78; c[2] = 0.68; } });
+  const g = turned(logProfile(H + 0.05, r, r * 0.85, { step: 0.3 }), { radial: 9, rng, noise: 0.06, capTop: true, endGrain: true, color: (y, a, c) => { c[0] = 0.85; c[1] = 0.78; c[2] = 0.68; } });
   g.translate(base[0], base[1] - 0.05, base[2]);
   return g;
 }
 function pole(rng, a, b, r) {
   const L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-  const g = turned(logProfile(L, r, r * 0.85, { step: 0.4 }), { radial: 8, rng, noise: 0.06, bend: bow(rng, L, 0.015), capTop: true, capBottom: true, color: (y, ang, c) => { const k = 0.75 + rng() * 0.01; c[0] = 0.9 * k; c[1] = 0.83 * k; c[2] = 0.72 * k; } });
+  const g = turned(logProfile(L, r, r * 0.85, { step: 0.4 }), { radial: 8, rng, noise: 0.06, bend: bow(rng, L, 0.015), capTop: true, capBottom: true, endGrain: true, color: (y, ang, c) => { const k = 0.75 + rng() * 0.01; c[0] = 0.9 * k; c[1] = 0.83 * k; c[2] = 0.72 * k; } });
   orient(g, a, b, rng() * TAU);
   return g;
 }

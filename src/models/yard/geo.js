@@ -17,8 +17,9 @@ function ringNoise(rng, n = 5) {
 // profile: [[y, r], ...] (y may fold back, e.g. into a cup); radial: segments around.
 // opts.carve(y, a, r) → radius offset (grooves, relief); opts.color(y, a, out[3]) → vertex colour;
 // opts.bend(y) → [dx, dz] centre offset; noise: relative radius wobble; oval: 2-lobe ovality.
+// opts.endGrain: the caps are flagged for the end grain of `larch` / `barkPole` (yard/mat.js).
 export function turned(profile, opts = {}) {
-  const { radial = 14, rng = Math.random, noise = 0.035, oval = 0.05, bend, carve, color, tileU = 0.45, tileV = 0.7, capTop = false, capBottom = false } = opts;
+  const { radial = 14, rng = Math.random, noise = 0.035, oval = 0.05, bend, carve, color, tileU = 0.45, tileV = 0.7, capTop = false, capBottom = false, endGrain = false } = opts;
   const nz = ringNoise(rng), ovPhase = rng() * TAU, uOff = rng(), vOff = rng() * 3;
   const meanR = profile.reduce((s, p) => s + p[1], 0) / profile.length;
   const uTiles = Math.max(1, Math.round((TAU * meanR) / tileU));
@@ -60,9 +61,9 @@ export function turned(profile, opts = {}) {
       const k = (start + (j % radial)) * 3;
       pos.push(pos[k], pos[k + 1], pos[k + 2]);
       uv.push((pos[k] - cx) * 2 + 0.5, (pos[k + 2] - cz) * 2 + 0.5);
-      col.push(0.62, 0.6, 0.57);
+      endGrain ? col.push(0.2, 0.2, 0.6) : col.push(0.62, 0.6, 0.57);
     }
-    pos.push(cx, cy, cz); uv.push(0.5, 0.5); col.push(0.55, 0.52, 0.48);
+    pos.push(cx, cy, cz); uv.push(0.5, 0.5); endGrain ? col.push(0.2, 0.2, 0.6) : col.push(0.55, 0.52, 0.48);
     const ctr = base + row;
     for (let j = 0; j < radial; j++) dir > 0 ? idx.push(base + j, base + j + 1, ctr) : idx.push(base + j + 1, base + j, ctr);
   }
