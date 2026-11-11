@@ -23,7 +23,7 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const CARRY = { p: V(0.34, -0.5, -0.42), q: basisQ(V(-0.25, 0.25, -0.93), V(-0.9, -0.3, 0.2)) };
 const UP = { p: V(0.3, -0.04, -0.46), q: basisQ(V(0.22, 0.88, 0.42), V(-0.6, 0.2, -0.8)) }; // the hands at the face: the snath stands in view as high as it is swung
 const LOW = { p: V(0.45, -0.45, -0.3), q: basisQ(V(0.25, -0.3, -0.92), V(-1, -0.15, -0.2)) };
-const LEFT = { p: V(-0.05, -0.5, -0.32), q: basisQ(V(-0.55, -0.3, -0.78), V(-0.3, 0.1, 0.9)) };
+const LEFT = { p: V(-0.05, -0.42, -0.58), q: basisQ(V(-0.55, -0.12, -0.82), V(-0.3, 0.1, 0.9)) }; // far enough out that the hands stay in view
 const REACH = 2.1, HALF = 1.05; // the blade's reach (m) and half-angle (rad) from a full swing
 const RISE = 0.7, TIRE = 2.4; // s to swing it up fully; s after which the arms begin to tire
 

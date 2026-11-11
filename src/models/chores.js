@@ -78,7 +78,8 @@ export default async function build(ctx, placement) {
     const t = jitterTint(rng, 0.12);
     B.add(pc.bark, M.bark, null, t); B.add(pc.split, M.split, null, t); B.add(pc.ends, M.endFresh, null, t);
     B.build(g);
-    g.userData.grips = [{ hand: 'R', p: [0, 0.12, 0], axis: [0, 1, 0], r: 0.075 }, { hand: 'L', p: [0, 0.4, 0], axis: [0, 1, 0], r: 0.075 }];
+    g.userData.grips = [{ hand: 'R', p: [0, 0.12, 0], axis: [0, 1, 0], r: 0.075 }, { hand: 'L', p: [0, 0.4, 0], axis: [0, 1, 0], r: 0.075 },
+      { hand: 'L', over: [0, 1, 0.1], p: [0, 0.3, 0], axis: [0, -1, 0], r: 0.075, elbow: [-0.44, -0.52, 0.02] }]; // the top billet of an armful: the left arm lies over it, the hand on its far side
     g.visible = false;
     object.add(g);
     logs.push(g);

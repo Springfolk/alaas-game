@@ -339,6 +339,17 @@ export function smithy(K, x, z, yaw) {
   hammer.userData.dynamic = true;
   K.group.add(hammer);
 
+  // the tongs in the hand while the blank is carried: jaws on its tang, reins towards the smith's right hand
+  const tongs = new THREE.Group(); tongs.name = 'tongs-held';
+  for (const t of tongsGeo(0.6)) {
+    t.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(t.attributes.position.count).fill(1), 1));
+    const m = new THREE.Mesh(t, M.iron); m.castShadow = true; tongs.add(m);
+  }
+  tongs.userData.grips = [{ hand: 'R', p: [0, 0.5, 0], axis: [0, -1, 0], r: 0.02 }];
+  tongs.userData.dynamic = true; tongs.visible = false;
+  K.group.add(tongs);
+  const _tj = new THREE.Vector3(), _th = new THREE.Vector3(), _ty = new THREE.Vector3(0, 1, 0);
+
   const Wk = { at: 'fire', heat: 0, stage: 0, blows: 0, blast: 0, side: 0, fly: null, busy: false, press: [0, 0], pressing: false, pressT: 0, ham: { phase: null, up: 0, top: 0, t: 0, k: 0 } };
   const NEED = 0.58, BLOWS = 5; // forging heat; full blows a pass
   // sparks off the anvil: specks of the glowing iron's own material
@@ -383,7 +394,15 @@ export function smithy(K, x, z, yaw) {
       blank.position.lerpVectors(f.from, f.to, e); blank.position.y += Math.sin(f.k * Math.PI) * 0.18;
       blank.rotation.y = f.y0 + (f.y1 - f.y0) * e;
       blank.userData.sphere = undefined;
-      if (f.k >= 1) { Wk.fly = null; f.res(); }
+      if (c.camera) {
+        // the smith stands within a tongs' length of where the blank goes; the reins run to below the right of the view
+        if (!f.stand) { K.group.worldToLocal(_th.copy(c.camera.position)).sub(f.to).setY(0); _th.setLength(Math.min(0.85, Math.max(0.6, _th.length()))); f.stand = tongs.userData.stand = { of: K.group, x: f.to.x + _th.x, z: f.to.z + _th.z }; }
+        _tj.set(-0.07, 0.004, 0).applyAxisAngle(_ty, blank.rotation.y).add(blank.position);
+        K.group.worldToLocal(_th.set(0.22, -0.3, -0.55).applyQuaternion(c.camera.quaternion).add(c.camera.position));
+        tongs.position.copy(_tj); tongs.quaternion.setFromUnitVectors(_ty, _th.sub(_tj).normalize());
+        tongs.visible = tongs.userData.inHands = true;
+      }
+      if (f.k >= 1) { Wk.fly = null; tongs.visible = tongs.userData.inHands = false; f.res(); }
     }
     // the hammer: up while the do input is held, down when it is let go
     const H = Wk.ham;
