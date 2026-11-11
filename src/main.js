@@ -110,7 +110,7 @@ class Game {
     this.guide = new Guide(this); // the journal's finder (DOM only)
     this.stage = this.ui.stage = new Stage(this); // the inspect stage: the view goes to the thing (src/ui/stage.js)
     this.ui.placed = new Set(this.world.interactables.map((i) => i.entry).filter(Boolean));
-    this.ui.placeOf = (id) => this.guide.places(id)[0] || null; // where on the journal's picture of the homestead
+    this.ui.j.init(this); // the journal's map: where everything is
     if (params.has('sun')) { const [e, a] = params.get('sun').split(',').map(Number); this.engine.setSun(e, a ?? this.engine.sunAz); }
     await this.warmUp();
     await painted;
@@ -149,7 +149,6 @@ class Game {
     this.input.onPut = () => this.put();
     this.ui.onAction = (a, id, it, back) => { // window buttons, journal tiles, card links, the names on the stage
       if (a === 'learn') this.discover(id, true);
-      else if (a === 'guide') this.setGuide(id);
       else if (a === 'more') this.inspect(null);
       else if (a === 'open') { if (back) this.ui.close(); this.read(id, it, back); }
       else this.closeUI();
@@ -342,12 +341,6 @@ class Game {
     this.persist();
     if (this.input.locked) this.unpause(); else this.input.lock(); // the menu goes once the lock is back
   }
-  // the journal's finder: choose (or drop) the entry to be led to
-  setGuide(id) {
-    this.ui.guided = this.guide.set(id);
-    if (this.ui.open === 'journal') this.ui.keepScroll(() => this.ui.showJournal());
-  }
-
   applySettings() {
     const s = this.save.settings;
     this.player.settings.sens = s.sens;
@@ -391,7 +384,7 @@ class Game {
       return;
     }
     if (!this.input.active) return;
-    if (e.code === 'KeyJ' || e.code === 'Tab') { ui.showJournal(); this.teach.note('journal'); }
+    if (e.code === 'KeyJ' || e.code === 'Tab') { ui.showJournal(undefined, true); this.teach.note('journal'); }
     if (e.code === 'KeyE') this.inspect(this.focus);
   }
 
@@ -400,7 +393,7 @@ class Game {
     if (!BY_ID[id] || this.state.found.has(id)) return false;
     this.state.found.add(id);
     if (!quiet) this.ui.discovered(id);
-    if (this.guide?.id === id) this.ui.guided = this.guide.set(null);
+    if (this.guide?.id === id) this.guide.clear();
     this.audio?.play('discover');
     this.persist();
     return true;

@@ -18,7 +18,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 | Put-down hint (`#puthint`) | low on the right while something is carried: where it goes (down / back) + right mouse |
 | Found by doing (`ui.discovered`) | glass pill, top right: the thing's journal picture in a gold ring and its name, 2.6 s |
 | Saying (`ui.toast`) | glass caption: one italic line and its by-line, low in the view (phones: under the corner buttons) |
-| Finder marker | gold diamond + metres over the place, at the edge with an arrow |
+| Finder marker (`#guide`) | gold diamond + metres over the destination set on the journal's map, at the edge with an arrow |
 | Cue (`#cue`, `src/ui/cue.js`) | green star on the next thing for the hands, a green arrow at the edge when it is out of view; a pale ghost of the carried thing where it belongs (`docs/interactions.md`) |
 | Touch (`src/ui/touch.js`) | stick left; right: the hand (green square, the act's tool, a bar = hold), the eye (blue, round), put down, jump, crouch; journal and pause top right. The prompt's lens and plate are the same two inputs at the thing. A touch on the view only looks |
 
@@ -58,10 +58,14 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 - `src/data/views.json`: one row per entry. `dir` [yaw°, elevation°] and `free` are baked by `npm run bake-journal` unless `fix`; `dist` scales the distance; `cam` [x, y, z, yaw°, pitch°, fov°].
 - The body waits where it stood (`stage.body`); WASD, Esc, the close button return to it.
 
-## Journal (`ui.showJournal`)
-- Shows: the homestead from above with a blue dot where a found thing is and a gold ring where one waits; rows by kind of square pictures (found: the thing as the stage shows it; not found: a dim blur with "?"); the work log as a picture per job with its counts; found / total; language select; close.
-- Acts: a found picture or dot → that thing on the stage, closing returns here; a "?" or ring → the finder marker (again: off) and its where-to-look line; a job → its counts or where it waits.
-- Pictures: `public/assets/ui/journal/<id>.webp` (320 px), `<id>.s.webp` (20 px), `work-<job>.webp`, `map.webp` + projection in `src/data/journal.json`: `npm run bake-journal`.
+## Journal (`src/ui/journal.js`, `ui.showJournal(tab, here)`, `ui.j`)
+- A glass window with three leaves: map, finds, work; found / total; language select; close.
+- Map: the alaas drawn from above, north up (`map.webp`, 2048 px for 820 m), the houses, pens and posts drawn from the placed models' bounds. Drag moves it, pinch / wheel / + − zoom (nearly the whole alaas to 10 cm a pixel), the arrow button centres on the player; opened in play it comes up round the player.
+- Markers: red arrow = the player and where they face; blue dot = a found thing (a house or place with its name); gold "?" = one that waits; green square with its tool = a job; gold diamond = the destination. Markers that would overlap give way to the more important one until zoomed in.
+- A marker chosen: a pane with its picture and name (a job: what the hands have made), the eye (found: that thing on the stage, closing returns here) and the gold walk button = be led there (`game.guide.go`, again: off). A tap on the bare map puts the destination there.
+- Finds: square pictures by kind (found: the thing as the stage shows it → the stage; not found: a dim blur with "?" → its marker on the map).
+- Work: a picture per job with glyphs and counts of what was made (`WORKS` in `work/list.js`) → its marker on the map.
+- Pictures: `public/assets/ui/journal/<id>.webp` (320 px), `<id>.s.webp` (20 px), `work-<job>.webp`: `npm run bake-journal`. `map.webp` + its extent in `src/data/journal.json`: `npm run bake-map` (after a change to the terrain).
 
 ## Title and loading
 - Key art, the name, a glass dock: the loading bar and its status, then the start button; under it the language select. Version, source, credits and the ticket call beneath.
@@ -75,8 +79,8 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 ## UI API (`game.ui`)
 - `showEntry(id, { mode: 'peek'|'full', kind })` (`game.read` opens stage and card together); `close()`; `open` = `'card'|'journal'|null`, `modal`, `mode`, `current`.
 - `scroll(dy)`; `setImage(i)`; `enlarge()`; `layout()` → `stage.area`; `frame()` moves the names on the stage; `fit()` sets `--ui`.
-- `toast(html, ms)`; `discovered(id)`; `setPrompt(label, { act, read, put })` (`act`, `put`: the act objects); `langSelect(up)`.
-- `onAction('close'|'guide'|'learn'|'more'|'open', id, it, back)`: buttons, journal tiles, card links, stage names → `main.js`.
+- `toast(html, ms)`; `discovered(id)`; `setPrompt(label, { act, read, put })` (`act`, `put`: the act objects); `langSelect(up)`; `showJournal(tab, here)`.
+- `onAction('close'|'learn'|'more'|'open', id, it, back)`: buttons, journal tiles, card links, stage names → `main.js`.
 - `game.stage`: `on`, `open`, `close`, `orbit`, `zoomBy`. `game.paused`, `game.pausePage(id)`.
 - Title progress is read from `#go`'s text (`N%` build → `… N%` warm-up); `#title.ready` once `game.ready`.
 - Settings ids → `save.settings`: `s-sens`, `s-fov`, `s-vol`, `s-inv` `invertY`, `s-motion`, `s-smooth`, `s-battery` `batterySaver`; selects `q` → `quality` (auto/high/medium/low/mobile), `lang` → `save.lang`.

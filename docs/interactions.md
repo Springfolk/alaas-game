@@ -16,7 +16,7 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 
 ## Inspect flow
 - E on a thing: the stage, with its name and one line (`mode: 'peek'`) → E: its text beside it (`'full'`) → E: closed, the view back in the body. You stand still throughout; WASD, Esc or close also close. `game.inspect(it)` is the one entry point; `game.read(id, it, back)` opens an entry (no `it`: its own view, as from the journal).
-- Stage and journal are mouse-driven: drag turns the thing, the wheel moves nearer or scrolls the sheet under the cursor; photographs, names, related links, close and the language select are clickable. Keys: E next step, ← → turn, PgUp/PgDn/↑/↓ scroll, `[` `]` photographs, L language, J journal. Phones: drag to turn, native scrolling, the touch close and language buttons.
+- Stage and journal are mouse-driven: drag turns the thing or moves the map, the wheel moves nearer, zooms the map or scrolls the sheet under the cursor; photographs, names, related links, close and the language select are clickable. Keys: E next step, ← → turn, PgUp/PgDn/↑/↓ scroll, `[` `]` photographs, L language, J journal. Phones: drag to turn, native scrolling, the touch close and language buttons.
 
 ## Pointer lock and pause
 - The lock is taken once (title click) and kept: browsers show their "Esc to return the mouse" banner on every grant. While a window or the pause menu is up, `movementX/Y` drive a drawn cursor (`#vcursor`, `src/ui/cursor.js`) that hit-tests with `elementFromPoint` and dispatches clicks (sliders drag; selects are the game's own, `src/ui/select.js`); `.vh` / `.vdown` stand in for :hover / :active.
@@ -52,8 +52,8 @@ No sentence says the next step: the cue marks it (`docs/ui.md`). One rule table,
 
 - Ghosts (`trap`, `bark`): the thing's own geometry under one additive material, made before the warm-up, shown within 40 m.
 
-## Journal finder (`src/ui/guide.js`, DOM only)
-- A "?" in the journal shows its where-to-look hint (`src/data/hints.json`) and `game.setGuide(id)` (again: off) puts a gold diamond with the distance over its nearest place, at the screen edge with an arrow when out of view, a soft shimmer within 7 m; cleared when found.
-- Places: `world.interactables` (bounding-box centre; zones at their centre). Entries with no place (`mogol-urasa`, `ornament`, `urung-aar-toyon-aiyy`, `baay-bayanay`, `algys`, `ysyakh`, `osuokhai`, `olonkho`) are found through the dashed related link in a card that names them (`.chip.told`); the finder points at that card's place.
+## Finder (`src/ui/guide.js`, DOM only)
+- `game.guide.go({ key, id, at })` (the journal's map; `clear()`, `dest`): a gold diamond with the distance over the destination, at the screen edge with an arrow when out of view, a soft shimmer within 7 m. An entry (`id`): its nearest place, until found. A job or a spot (`at`): until within 3 m.
+- Places: `world.interactables` (bounding-box centre; zones at their centre). Entries with no place (`mogol-urasa`, `ornament`, `urung-aar-toyon-aiyy`, `baay-bayanay`, `algys`, `ysyakh`, `osuokhai`, `olonkho`) are found through the dashed related link in a card that names them (`.chip.told`); their marker is that card's place.
 - Winter place (`sayylyk-kystyk`): no marker unless chosen; `src/interact/glint.js` flashes a star on the winter balagan's west window every 5–12 s, seen from 40–400 m while the sun lights that wall and it faces you, until found (one sprite added before the warm-up).
 - First visit: language from `navigator.languages` (`detectLang`: `sah` anywhere → Sakha; first language ru/be/uk → Russian; else English); a pick on the title or in settings sets `save.langSet` and wins.

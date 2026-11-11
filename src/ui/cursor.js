@@ -45,6 +45,7 @@ export class VirtualCursor {
     this.x = Math.min(innerWidth - 1, Math.max(0, this.x + dx));
     this.y = Math.min(innerHeight - 1, Math.max(0, this.y + dy));
     this.el.style.transform = `translate(${this.x}px,${this.y}px)`;
+    if (this.drag?.map) { this.drag.moved += Math.abs(dx) + Math.abs(dy); this.onMapPan?.(dx, dy); return; } // the journal's map goes with the cursor
     if (this.drag?.orbit) { this.x -= dx; this.y -= dy; this.el.style.transform = `translate(${this.x}px,${this.y}px)`; this.onOrbit?.(dx, dy); return; } // turning the thing: the cursor stays
     if (this.drag) { this.dragTo(); return; }
     this.setHover(this.at());
@@ -66,11 +67,13 @@ export class VirtualCursor {
     if (sc && this.onScrollbar(sc)) { this.startDrag(sc); return; }
     if (t.matches('input[type=range]')) { this.drag = { range: t }; this.dragTo(); return; }
     if (t.closest('[data-orbit]') && !t.closest(CLICKABLE)) { this.drag = { orbit: true }; return; } // the open view of the inspect stage
+    if (t.closest('[data-map]') && !t.closest('.j-ctl, .j-sel')) { this.drag = { map: true, moved: 0, pin: t.closest('[data-pin]') }; return; } // the journal's map: a drag moves it (from a marker too), a click chooses the marker or marks a spot
     this.down = t;
     this.hover?.classList.add('vdown');
   }
   release() {
     this.hover?.classList.remove('vdown');
+    if (this.drag?.map && this.drag.moved < 6) { if (this.drag.pin) this.click(this.drag.pin); else this.onMapTap?.(this.x, this.y); }
     if (this.drag) { this.drag = null; return; }
     const t = this.at(), d = this.down;
     this.down = null;
@@ -106,6 +109,7 @@ export class VirtualCursor {
     const t = this.at(), sc = t && scroller(t);
     if (sc) sc.scrollBy({ top: dy });
     else if (t?.closest('[data-orbit]')) this.onZoom?.(dy);
+    else if (t?.closest('[data-map]')) this.onMapZoom?.(dy, this.x, this.y);
   }
 }
 

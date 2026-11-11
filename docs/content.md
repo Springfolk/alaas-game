@@ -1,7 +1,6 @@
 # Content: explainer entries
 
 - `src/data/entries.json`: 52 entries, one per thing or idea the player can look at.
-- `src/data/hints.json`: per entry `{sah, en, ru}`, where to look (the journal finder).
 - `src/data/images.json`: reference images for 42 entries (72 images): `src` (`public/assets/ref/<id>-<n>.webp`, ≤1200 px), `w`, `h`, `caption{sah,en,ru}`, `credit`, `license`, `url`; credits in `docs/credits.md`. None yet: baay-bayanay, mas-yagas, mogol-urasa, munkha, muus-tunnuk, ottuk-mas, sacred-birch, salama, tupte, tuu.
 - An entry's saying on the stage: `say` in `src/data/views.json` (`docs/ui.md`).
 
@@ -30,5 +29,6 @@ Approved by the maintainer: the entries' `sah` and `ru` texts, the interface lab
 - The entry `tuu`.
 - Work prompts, hints and sayings: `src/interact/work/*.js` (`TXT`), `work/list.js`, the `churn` act in `src/models/urasa.js`, `src/models/yardlife/smithy.js` `TXT` (the three passes' names follow a 2023 school programme: medium confidence).
 - Controls rows «Оҥор» (do), «Уур» (put down), «Чугастык көр» (E).
+- Journal leaves «Хаарта» (Map, «Карта»), «Булумньу» (Finds, «Находки»), «Үлэ» (Work, «Работа»).
 - Act labels: дьэдьэн "pick berries" / «собрать ягоды»; gate "draw the gate rails"; pail «ууну кут» ("pour the water out", «вылить воду»); «төттөрү уур» ("put it back", «вернуть на место»); «ыалдьыт чорооно», «кымыста кут», «ыс эбэтэр ис», «үүттээх туос иһит», «үүтү ыл»; forge passes «уһугун тарт», «хаптат», «биитин таптай» («оттянуть остриё», «расплющить», «проковать лезвие»).
 - Source-pass facts (sah.wikipedia, sakhatyla.ru, Jochelson 1933, Bravina & Ivanova-Unarova 2020, Danilova 2014, Nikolaev 2023 / 2026): `alaas` Мүрү ~41 km round · `muus-tunnuk` a cow's afterbirth, кэнэҕэски · `kuruo` the быар бүтэй gloss as one explanation · `birch-bark` items, season June–July · `mas-yagas` 'many households' · `munkha`, `saddle` EN wording · `clothing` дьабака fur band (sable, beaver, lynx) · `serge`, `ysyakh` аар баҕах (түһүлгэ = the festival ground) · `salama` саппай = short hair at the root of the tail · `sacred-birch` without кэрэх (a blood sacrifice to evil spirits) · `baay-bayanay`, `algys` барыылаах = swift, eldest of nine spirits · `sakha-calendar` two halves counted 1–15 and 15–1, бииринньик · `khomus` сыҥаах · `knife` удьурҕай · `horse-and-cow` арыы. New facts in `ohokh`, `sayylyk-kystyk`, `khoton`, `kytyya`, `khamyiakh-ladle`, `ygas-bucket`, `hay-making`, `tupte`, `horse-and-cow`, `blacksmith`, `serge`, `choron`, `dyedyen`, `munkha`, `hospitality`; `confidence` high in 14 entries where two independent sources agree, `hay-making` medium. Not yet read: Seroshevsky 1896, Pekarsky.
