@@ -4,7 +4,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 
 ## Look
 - Aero glass, drawn: `.glass` (window frame: tint, gloss band, streaks, bright edge), `.pane` (small glass on the view), `.client` (light reading sheet), glossy `.btn`, key caps, the red caption close (`.win-close`). No backdrop blur anywhere.
-- Colours: blue = looking closer (inspect), green = the hands (do), gold = a place to go to.
+- Colours: blue = looking closer (inspect), green = the hands (do, and the next thing for them), gold = a place to go to.
 - Glyphs: `src/ui/icons.js` (`icon`, `actIcon(act)` = an act's own tool, `actHeld(act)`, `glyph(control, touch)`, `MOUSE`).
 - Scale: `--ui` (`UI.fit`): 1 up to 1600×900 and on phones, then with the screen (2560×1440: 1.6); every surface has `zoom: var(--ui)`.
 - Select (`src/ui/select.js`, `.sel[data-sel]`): the current choice on a button, the list drops from it, the current one ticked. Language (`lang`: title, pause, stage, journal) and quality (`q`).
@@ -19,7 +19,27 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 | Found by doing (`ui.discovered`) | glass pill, top right: the thing's journal picture in a gold ring and its name, 2.6 s |
 | Saying (`ui.toast`) | glass caption: one italic line and its by-line, low in the view (phones: under the corner buttons) |
 | Finder marker | gold diamond + metres over the place, at the edge with an arrow |
+| Cue (`#cue`, `src/ui/cue.js`) | green star on the next thing for the hands, a green arrow at the edge when it is out of view; a pale ghost of the carried thing where it belongs (`docs/interactions.md`) |
 | Touch (`src/ui/touch.js`) | stick left; right: the hand (green square, the act's tool, a bar = hold), the eye (blue, round), put down, jump, crouch; journal and pause top right. The prompt's lens and plate are the same two inputs at the thing. A touch on the view only looks |
+
+## Lessons (`src/ui/teach.js`, `#teach`)
+- One control at a time, at the moment it is first needed, drawn (keys and mouse, or the phone's stick, drag and buttons), with its word from `CONTROLS`; gone once done, for good (`save.taught`). Top centre; on a phone top left.
+- On a phone the real stick or button gets a ring, and `look` / `turn` slide a finger across the view (`#teach-ghost`).
+- `game.teach.note(id)` = the player did it (taught or not). Off with `?auto` unless `?teach`.
+
+| Lesson | When | Done by |
+|---|---|---|
+| `look` | the walk begins | turning the view |
+| `walk` | after `look` | walking 3 m |
+| `aim` | 2.5 s beside a thing without looking at it | the dot on a thing |
+| `read` | a thing with a card is in view | inspecting |
+| `turn` | the stage is open | dragging the thing |
+| `do` | the hands can do something (its own tool drawn; a bar: hold) | doing it |
+| `put` | carrying for 2.5 s | putting down |
+| `journal` | something is found after a first `read` or `do`, nothing in view | opening it |
+| `pause` | after `journal` | shown 9 s, once |
+
+- A lesson shown 8 s gives way to another that waits and comes back later.
 
 ## Inspect stage (`src/ui/stage.js`, `ui.showEntry`)
 - The view leaves the body and goes to the thing in the live world; no copy, render target or shader.

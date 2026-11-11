@@ -31,6 +31,27 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 - Tools are carried things: `hands.addKind(kind, hold, lie)`, `hands.addThing({ kind, obj, it, name })`, `it.thing`, `thing.put()`; `hands.pose(dt, cam)` → `{ p, q, world? }` drives a held tool. Carried things have weight: they trail the turning view, sit nearer the middle on a narrow screen, and `weigh()` dips the view.
 - A job's movable parts are scene children marked `userData.dynamic`; after moving one, clear its `userData.sphere` (the look-at cache).
 
+## Cues (`src/ui/cue.js` `next()`, `game.cues`)
+No sentence says the next step: the cue marks it (`docs/ui.md`). One rule table, read from the jobs' own state; nothing while acting, sitting or choosing.
+
+| In the hands / state | The cue goes to |
+|---|---|
+| empty pail | the lake's edge |
+| billets | the nearer of the woodpile and a hearth |
+| axe | the round on the block; none there: a fallen half, else the heap of rounds, else the loose billets |
+| nothing, ≤ 8 m from the block | the axe when a round stands ready; a fallen half |
+| fish trap | empty: its ghost in the weir's gap; with fish: the тымтай |
+| nothing, trap set with ≥ 3 fish, ≤ 45 m | the trap |
+| scythe, standing on mown ground | the nearest standing grass |
+| bark sheet | cold: the nearest hearth; warm: its ghost on the hide |
+| warm bark on the hide, nothing held | the hide |
+| тордуйа | the nearest full дьэдьэн patch ≤ 80 m |
+| nothing, forge begun, ≤ 14 m | the blank when it is ready for the hands, else the bellows |
+| the guest's choron | the nearest hearth |
+| the lake's milk | the lake's edge |
+
+- Ghosts (`trap`, `bark`): the thing's own geometry under one additive material, made before the warm-up, shown within 40 m.
+
 ## Journal finder (`src/ui/guide.js`, DOM only)
 - A "?" in the journal shows its where-to-look hint (`src/data/hints.json`) and `game.setGuide(id)` (again: off) puts a gold diamond with the distance over its nearest place, at the screen edge with an arrow when out of view, a soft shimmer within 7 m; cleared when found.
 - Places: `world.interactables` (bounding-box centre; zones at their centre). Entries with no place (`mogol-urasa`, `ornament`, `urung-aar-toyon-aiyy`, `baay-bayanay`, `algys`, `ysyakh`, `osuokhai`, `olonkho`) are found through the dashed related link in a card that names them (`.chip.told`); the finder points at that card's place.

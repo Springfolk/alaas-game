@@ -19,6 +19,8 @@ import { isShadowProxy } from './engine/merge.js';
 import { T, CONTROLS, LANGS, LANG_NAMES, tr, detectLang } from './ui/i18n.js';
 import { Guide } from './ui/guide.js';
 import { Stage } from './ui/stage.js';
+import { Teach } from './ui/teach.js';
+import { Cues } from './ui/cue.js';
 import { prewarmUI } from './ui/prewarm.js';
 import { icon, glyph } from './ui/icons.js';
 import { fillSelects, watchSelects } from './ui/select.js';
@@ -38,12 +40,11 @@ const keyartShown = () => !!keyart && getComputedStyle(keyart).display !== 'none
 const setRes = (e, k) => { e.renderer.setPixelRatio(e.pixelRatio() * k); e.renderer.setSize(innerWidth, innerHeight, false); };
 
 function loadSave() {
-  const def = { lang: detectLang(), found: [], done: [], ui2: true, settings: { sens: 1, fov: 72, vol: 0.85, quality: 'auto', invertY: false, hints: false, motion: 1, smooth: 0 } };
+  const def = { lang: detectLang(), found: [], done: [], settings: { sens: 1, fov: 72, vol: 0.85, quality: 'auto', invertY: false, motion: 1, smooth: 0 } };
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
     // the language comes from the browser until the player picks one (langSet)
     if (s) {
-      if (!s.ui2) { s.ui2 = true; (s.settings ||= {}).hints = false; } // 2026-11: the controls list is off unless asked for (H)
       return { ...def, ...s, lang: s.langSet ? s.lang : def.lang, settings: { ...def.settings, ...s.settings } };
     }
   } catch { /* storage blocked */ }
@@ -71,6 +72,7 @@ class Game {
     this.player = new Player(this.engine.camera, this.world, this.input);
     if (params.has('cam')) this.player.view = params.get('cam').split(',').map(Number); // free camera: x,y,z,yaw°,pitch°,fov° (tools/key-art.mjs)
     this.touch = TouchControls.attach(this); // phones: virtual stick + buttons, no pointer lock
+    this.teach = new Teach(this); // the controls, one at a time, when first needed (src/ui/teach.js)
     this.ray = new THREE.Raycaster();
     this.ray.far = 3.4;
     this.applySettings();
@@ -104,6 +106,7 @@ class Game {
     mark('built');
     releaseGeometry(this); // vertex arrays the GPU holds leave the JS heap before the warm-up (src/load/release.js)
     this.interact = new Interactions(this); // carrying, sitting, berries (src/interact)
+    this.cues = new Cues(this); // the next thing to do, shown (src/ui/cue.js); its ghosts exist before the warm-up
     this.guide = new Guide(this); // the journal's finder (DOM only)
     this.stage = this.ui.stage = new Stage(this); // the inspect stage: the view goes to the thing (src/ui/stage.js)
     this.ui.placed = new Set(this.world.interactables.map((i) => i.entry).filter(Boolean));
@@ -139,6 +142,7 @@ class Game {
       if (this.title) return;
       this.closeCard(); this.ui.close(); // Esc closes the card or journal (and, as pointer lock goes, pauses)
       this.showPause();
+      this.teach.note('pause');
     };
     addEventListener('keydown', (e) => this.key(e));
     this.input.onDo = (down) => { if (down && this.playing) this.act(this.focus); }; // the hands: left button, F, the touch hand button
@@ -267,15 +271,14 @@ class Game {
     for (const el of document.querySelectorAll('[data-ic]')) if (!el.firstChild) { el.innerHTML = icon(el.dataset.ic, el.className); el.className = ''; el.style.display = 'contents'; }
     // the controls, drawn: on a phone its own (stick, drag, buttons), else the keys and the mouse
     const touch = !!this.touch;
-    const keys = (mini) => CONTROLS.filter((c) => (touch ? c.touch : !mini || !['fps', 'lang'].includes(c.id)))
+    const keys = () => CONTROLS.filter((c) => !touch || c.touch)
       .map((c) => `<span>${glyph(c, touch)}</span><span>${this.tt(c.label)}</span>`).join('');
-    document.getElementById('keys-pause').innerHTML = keys(false);
-    document.getElementById('hints').innerHTML = keys(true);
+    document.getElementById('keys-pause').innerHTML = keys();
     fillSelects('lang', LANGS.map((l) => [l, LANG_NAMES[l]]), lang);
     this.fillQuality?.();
+    this.teach?.show(null);
     const go = document.getElementById('go');
     if (this.ready && this.title) go.textContent = this.tt(T.clickToWalk);
-    this.showHints();
   }
   setLang(lang) {
     this.state.lang = lang;
@@ -285,18 +288,8 @@ class Game {
     this.applyStatic();
     this.persist();
   }
-  showHints() {
-    const h = document.getElementById('hints');
-    h.classList.toggle('off', !(this.save.settings.hints || this.firstKeys) || this.title !== false);
-  }
-
   start(auto = false) {
     this.title = false;
-    if (!this.save.seenKeys && !auto) { // a first walk: the controls list for a while, then only on H
-      this.save.seenKeys = this.firstKeys = true; this.persist();
-      setTimeout(() => { this.firstKeys = false; this.showHints(); }, 14000);
-    }
-    this.showHints();
     document.getElementById('title').classList.remove('show');
     this.audio?.start();
     if (!auto) this.input.lock();
@@ -308,6 +301,7 @@ class Game {
     this.closeCard(); this.ui.close();
     this.showPause();
     this.ui.setMenu(true);
+    this.teach.note('pause');
   }
   // the pause window; on a phone it opens on its list of what can be done
   showPause() {
@@ -340,7 +334,6 @@ class Game {
     this.title = true; // first: losing the pointer lock then shows no pause menu
     this.unpause(); this.closeCard(); this.ui.close();
     document.exitPointerLock();
-    this.showHints();
     document.getElementById('title').classList.add('show');
     const prev = window.navigation?.entries()[navigation.currentEntry?.index - 1]; // same-origin entries only
     if (!prev || new URL(prev.url).pathname !== location.pathname) history.back();
@@ -374,7 +367,6 @@ class Game {
     if (s.batterySaver == null && this.engine) document.getElementById('s-battery').checked = !!this.engine.autoSaver; // auto until toggled
     this.fillQuality();
     document.getElementById('fovv')?.replaceChildren(s.fov + '°');
-    if (this.ui) this.showHints();
   }
 
   persist() {
@@ -391,7 +383,6 @@ class Game {
     if (e.code === 'F3') { e.preventDefault(); document.getElementById('fps').classList.toggle('on'); return; }
     if (e.code === 'KeyP' && this.input.locked) { if (this.paused) this.resume(); else this.pause(); return; }
     if (this.paused) return;
-    if (e.code === 'KeyH' && !ui.open) { this.firstKeys = false; this.save.settings.hints = !this.save.settings.hints; this.showHints(); this.persist(); return; }
     // a card or the journal is up: E goes on (the thing → its text → closed), Esc / J / a step away close; the
     // pointer lock is kept throughout
     if (ui.modal) {
@@ -400,7 +391,7 @@ class Game {
       return;
     }
     if (!this.input.active) return;
-    if (e.code === 'KeyJ' || e.code === 'Tab') ui.showJournal();
+    if (e.code === 'KeyJ' || e.code === 'Tab') { ui.showJournal(); this.teach.note('journal'); }
     if (e.code === 'KeyE') this.inspect(this.focus);
   }
 
@@ -446,6 +437,7 @@ class Game {
       return;
     }
     const fresh = this.discover(id, true);
+    this.teach.note('read');
     const kind = this.stage.open(id, it);
     this.ui.showEntry(id, { mode: 'peek', kind, fresh });
     this.reading = { id, it, mode: 'peek', back: back || r?.back };
@@ -465,6 +457,7 @@ class Game {
   act(it) {
     if (this.acting) return;
     const act = it ? this.actOf(it) : this.interact?.idleAct();
+    if (act && act.id !== 'none') this.teach.note('do');
     if (act) return this.run(act, it);
   }
   // Putting down (right button, Q, the touch button): what you carry goes back to its place when that is
@@ -472,6 +465,7 @@ class Game {
   put() {
     if (!this.playing || this.acting) return;
     const act = this.interact?.putAct();
+    if (act) this.teach.note('put');
     if (act) return this.run(act, null);
   }
   async run(act, it) {
@@ -568,8 +562,10 @@ class Game {
     this.engine.update(dt);
     this.engine.render();
     this.guide?.update(dt);
+    this.cues?.update(dt);
     this.ui.frame();
     this.fpsMeter(dt);
+    this.teach.update(dt);
     this.input.endFrame();
     this.engine.frameDone(performance.now() - t0);
   }

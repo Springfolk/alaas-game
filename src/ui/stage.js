@@ -113,6 +113,7 @@ export class Stage {
     s.oy = clamp(s.oy - dx * k * (s.mode === 'here' ? -1 : 1), -s.yawMax, s.yawMax);
     s.op = clamp(s.op + dy * k * (s.mode === 'here' ? -1 : 1), -80 * D2R, 80 * D2R);
     s.idle = 0;
+    if (Math.abs(dx) > 2) this.game.teach?.note('turn');
   }
   zoomBy(d) { const s = this.s; if (s && s.mode !== 'photo') { s.zoom = clamp(s.zoom * (d > 0 ? 1.12 : 0.89), 0.6, 1.7); s.idle = 0; } }
 

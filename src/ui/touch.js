@@ -1,5 +1,6 @@
 // Phone / tablet controls, no pointer lock: a stick fixed bottom left (a touch that starts on or near it
 // walks; push to the rim = run); a drag that starts anywhere else on the open view looks, and does nothing else.
+// A lesson (src/ui/teach.js) rings the button it is about (`.tc-teach`).
 // Buttons (drawn glass, no blur): the hand, green (the do input: held while the thumb stays down, a drag that
 // starts on it looks, so a held tool can be aimed; it shows the tool of the act of the moment), the eye, blue
 // (inspect; shown when the thing in view has a card), put down (shown while carrying), jump, crouch, journal,
@@ -7,7 +8,6 @@
 // Windows, toasts and buttons keep their touches.
 // Auto-enabled on coarse-pointer devices; `?touch` forces it, `?notouch` disables it.
 // Self-contained: every class is `tc-` prefixed and the stylesheet is injected here.
-import { CONTROLS, tr } from './i18n.js';
 import { icon, actIcon, actHeld } from './icons.js';
 
 const CSS = `
@@ -42,17 +42,12 @@ const CSS = `
 .tc-top .tc-btn{position:relative;width:48px;height:48px;border-radius:12px}
 .tc-live #prompt .p-act,.tc-live #prompt .p-read{pointer-events:auto;touch-action:none}
 .tc-live #prompt .p-act *,.tc-live #prompt .p-read *{pointer-events:none}
+.tc-teach::before{content:'';position:absolute;inset:-7px;border-radius:inherit;border:3px solid #fff;animation:tc-ring 1.2s ease-out infinite;pointer-events:none}
+@keyframes tc-ring{from{transform:scale(.86);opacity:1}to{transform:scale(1.22);opacity:0}}
 @media (max-height:500px){.tc-stick{left:calc(32px + env(safe-area-inset-left));bottom:calc(26px + env(safe-area-inset-bottom))}
   .tc-act{bottom:calc(96px + env(safe-area-inset-bottom))}.tc-eye{bottom:calc(106px + env(safe-area-inset-bottom))}.tc-put{bottom:calc(184px + env(safe-area-inset-bottom))}
   .tc-jump{bottom:calc(24px + env(safe-area-inset-bottom))}.tc-crouch{bottom:calc(22px + env(safe-area-inset-bottom))}}
-.tc-tip{position:absolute;left:50%;top:27%;transform:translateX(-50%);white-space:nowrap;display:flex;align-items:center;gap:8px;padding:7px 14px 7px 9px;
-  border-radius:22px;color:#fff;font-size:14px;font-weight:600;pointer-events:none;
-  background:rgba(18,46,76,.74);border:1px solid var(--tc-edge);transition:opacity .8s}
-.tc-tip.gone,.tc-tip.hid{opacity:0}
-.tc-tip .ic{width:28px;height:28px}
 `;
-
-const LOOK = CONTROLS.find((c) => c.id === 'look').label; // the hand-written "Look around"
 
 export class TouchControls {
   static wanted() {
@@ -77,7 +72,6 @@ export class TouchControls {
     root.dataset.mode = 'off';
     root.innerHTML = `
       <div class="tc-stick"><div class="tc-knob"></div></div>
-      <div class="tc-tip tc-play">${icon('look')}<span></span></div>
       <div class="tc-btn tc-play tc-act" data-b="act">${icon('hand')}</div>
       <div class="tc-btn tc-play tc-eye" data-b="eye">${icon('eye')}</div>
       <div class="tc-btn tc-play tc-put" data-b="put">${icon('put')}</div>
@@ -92,7 +86,6 @@ export class TouchControls {
     this.knob = root.querySelector('.tc-knob');
     this.act = root.querySelector('.tc-act'); this.eye = root.querySelector('.tc-eye'); this.putBtn = root.querySelector('.tc-put');
     this.crouchBtn = root.querySelector('.tc-crouch');
-    this.tip = root.querySelector('.tc-tip'); this.tipText = this.tip.querySelector('span');
     this.toasts = document.getElementById('toasts');
     this.moveId = null; this.lookId = null; this.actId = null; // the walk touch, the look touch, the thumb on the hand button
     this.stickHome();
@@ -194,7 +187,6 @@ export class TouchControls {
         this.ax = t.clientX; this.ay = t.clientY;
       } else if (t.identifier === this.lookId) {
         e.preventDefault();
-        if (!this.looked && this.tap && Math.hypot(t.clientX - this.tap.x, t.clientY - this.tap.y) > 40) { this.looked = true; this.tip.classList.add('gone'); }
         this.input.lookX += (t.clientX - this.lx) * this.lookScale;
         this.input.lookY += (t.clientY - this.ly) * this.lookScale;
         this.lx = t.clientX; this.ly = t.clientY;
@@ -233,8 +225,5 @@ export class TouchControls {
     this.eye.classList.toggle('ready', !!(this.show || g.readReady));
     this.putBtn.classList.toggle('ready', !!(this.show || g.putReady));
     this.crouchBtn.classList.toggle('on', !!g.player?.crouch);
-    const tip = tr(LOOK, g.state?.lang);
-    if (this.tipText.textContent !== tip) this.tipText.textContent = tip;
-    this.tip.classList.toggle('hid', !!g.ui?.open);
   }
 }
