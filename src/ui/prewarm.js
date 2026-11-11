@@ -39,11 +39,20 @@ export async function prewarmUI(game) {
     choice.innerHTML = '<button style="--c:#f1efe8"><i></i><span>Алаас</span></button><button class="on" style="--c:#8fb9e6"><i></i><span>Алаас</span></button><button class="x">✕</button>';
     on('#choice', 'show'); undo.push(() => { choice.innerHTML = ''; });
     on('.tc-stick', 'run');
-    ui.showEntry(id, { mode: 'peek' });
+    // the inspect stage: its type on the scrim, the strip, a photograph beside the thing, the names on it, the
+    // reading sheet, a photograph-led card, the dip of a cut, the enlarged photograph
+    on('#dip', 'on');
+    ui.showEntry(id, { mode: 'peek', kind: 'near', fresh: true });
+    ui.card.querySelector('.st-marks').innerHTML = '<button class="st-mark on" style="transform:translate(40px,40px)"><i></i>Алаас</button>';
     pictures(ui.card);
     await frames(3);
-    ui.showEntry(id, { mode: 'full' });
+    ui.setImage(0, true);
     if (touch) touch.show = 'ui';
+    pictures(ui.card);
+    await frames(3);
+    ui.showEntry(id, { mode: 'full', kind: 'near' });
+    await frames(3);
+    ui.showEntry(id, { mode: 'peek', kind: 'photo' });
     pictures(ui.card);
     await frames(3);
     ui.enlarge();
@@ -67,7 +76,7 @@ export async function prewarmUI(game) {
     if (touch) touch.show = null;
     ui.close(); ui.setPrompt(null); ui.toasts.replaceChildren();
     ui.card.innerHTML = ui.journal.innerHTML = ui.lightbox.innerHTML = '';
-    ui.current = undefined;
+    ui.current = undefined; ui.kind = undefined; ui.marks = null;
     root.classList.remove('prewarm', 'bare');
   }
 }

@@ -360,7 +360,7 @@ export class Hands {
   weigh(k) { this.game.player.springV -= k; }
 
   update(dt) {
-    const cam = this.game.engine.camera;
+    const cam = this.game.stage?.body || this.game.engine.camera; // (the body's eye while the view is away: src/ui/stage.js)
     for (const m of [...this.moves]) {
       if (m.until) { if (m.until(dt)) { this.moves.splice(this.moves.indexOf(m), 1); m.res(); } continue; }
       m.k = Math.min(1, m.k + dt / m.dur);

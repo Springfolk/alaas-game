@@ -143,7 +143,7 @@ export class TouchControls {
     else if (b === 'journal') this.key('KeyJ');
     else if (b === 'lang') this.key('KeyL');
     else if (b === 'pause') inp.release();
-    else if (b === 'close') { g.ui?.close(); inp.lock(); }
+    else if (b === 'close') g.closeUI();
   }
 
   stickHome() { // the stick never moves (its place is in the CSS); the knob goes back to the middle
@@ -232,7 +232,7 @@ export class TouchControls {
   sync() {
     const g = this.game;
     const mode = this.show ? this.show : !g.ready || g.title || (!this.input.touchLive && !g.ui?.open) ? 'off' // (show: src/ui/prewarm.js)
-      : g.ui?.modal || (g.ui?.open && !this.input.touchLive) ? 'ui' : g.choosing ? 'choice' : 'play'; // a peek is a side panel: play on
+      : g.ui?.open ? 'ui' : g.choosing ? 'choice' : 'play';
     if (mode !== this.root.dataset.mode) {
       this.root.dataset.mode = mode;
       if (mode !== 'play') { this.moveId = this.lookId = this.actId = null; this.input.setDo(false); this.input.stickX = this.input.stickY = 0; this.stickHome(); }
@@ -246,6 +246,6 @@ export class TouchControls {
     for (const b of this.langBtns) if (b.textContent !== l) b.textContent = l;
     const tip = tr(LOOK, g.state?.lang);
     if (this.tipText.textContent !== tip) this.tipText.textContent = tip;
-    this.tip.classList.toggle('hid', !!g.ui?.open); // a card's top sheet would sit on it
+    this.tip.classList.toggle('hid', !!g.ui?.open);
   }
 }

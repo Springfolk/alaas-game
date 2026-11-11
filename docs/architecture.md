@@ -2,7 +2,7 @@
 
 | Path | Role |
 |---|---|
-| `src/main.js` | `Game`: boot, title, frame loop, focus (raycast ≤3.4 m or zone), do → act, put down, E → card peek → full → close (`docs/interactions.md`), save |
+| `src/main.js` | `Game`: boot, title, frame loop, focus (raycast ≤3.4 m or zone), do → act, put down, E → inspect stage → its text → close (`docs/interactions.md`), save |
 | `src/interact/*` | Hands-on acts: carrying (pail, tools, an armful of firewood), sitting, berries; `work/` = jobs done with a tool (`docs/interactions.md`); props in `src/models/chores.js`, `work.js` |
 | `src/engine/engine.js` | `Engine`: WebGPURenderer, `SunLight` (cascades, cloud shadows from the sky's cloud field via a 512² `cloudMap` re-rendered 4×/s or on a texel move — every frame was ~30% of a phone frame's GPU), sun intensity by air mass, PMREM sky env (intensity 1: sky and sun share absolute units), aerial haze (`scene.fogNode`: horizon colour + forward-scatter lobe toward the sun), metered eye adaptation |
 | `src/engine/sky.js` | Perez/Preetham clear sky (T 1.9) in scene units, cumulus layer at 1.8 km (`cloudField`, shared with cloud shadows), sunlit ground below the horizon (green env bounce); `updateSky` on CPU gives haze colours |
@@ -20,7 +20,8 @@
 | `src/models/*.js` | One module per placed thing (contract: `docs/models.md`) |
 | `src/nature/*.js` | `default (ctx, world)`, auto-loaded after the models: `forest.js` + `trees/` (procedural larch/birch/pine taiga: generator, wind/LOD-dither materials, baked impostors, canopy band, deadwood; textures from `tools/gen-forest-tex.mjs`; `?trees`, `?noforest`), `grass.js` (blade grass, flowers, shore plants; `natureField`/`natureWind` shared fields), `lake.js` (planar-reflection water), `life.js` + `life/` (birds, insects/leaves, midges/fluff/dust motes, lake ripples/striders: 4 draws, GPU- or CPU-steered, follow `natureWind`; debug `world.life`) |
 | `src/audio/audio.js` | `AudioScape`: ambience beds, 3D one-shots, footsteps, named action sounds |
-| `src/ui/ui.js` · `src/ui/i18n.js` | Prompt, explainer card (+ reference-image gallery from optional `src/data/images.json`), journal, toasts, title loading bar (title also: Springfolk mark top-left, links row with version, GitHub, credits and the "open a ticket" call; pause: About tab with the same links and the licence line) · interface strings and the controls list; Sakha/English/Russian (L cycles) |
+| `src/ui/stage.js` | The inspect stage's camera: the game's own view goes to the thing (`docs/ui.md`); views per entry in `src/data/views.json` |
+| `src/ui/ui.js` · `src/ui/i18n.js` | Prompt, the stage's type and photographs (`src/data/images.json`), journal, toasts, title loading bar (title also: Springfolk mark top-left, links row with version, GitHub, credits and the "open a ticket" call; pause: About tab with the same links and the licence line) · interface strings and the controls list; Sakha/English/Russian (L cycles) |
 | `index.html` · `public/assets/ui/` | All interface styles (Vista/Live-Messenger Aero look: `.glass` frame + light `.client`, glossy `.btn`) · self-hosted Open Sans + Noto Serif (`fonts.css`) |
 | `src/data/entries.json` | Explainer entries (Sakha + English) with sources and confidence |
 | `src/player.js` · `src/input.js` | Body: momentum walk 10:00/run (Shift) 5:30 min/km/crouch (C), jump (Space) with gather + landing spring, vault over 0.3–1.3 m obstacles (rays onto the contact collider's midline), wall sliding, footfall-synced bob/sway/roll, strafe lean, run FOV kick · keys/mouse, or touch (`active` = locked or touch live) |
@@ -28,6 +29,7 @@
 | `src/ui/touch.js` | Phone controls (auto on coarse pointers; `?touch` / `?notouch`): stick fixed bottom left (safe-area insets; its place in the CSS), driven only by a touch starting ≤100 px from its middle (rim = run); a touch starting anywhere else on the view (the canvas: not windows, toasts or buttons) looks, short tap = do (or the card) on the thing in focus; one walk + one look touch at once; "Look around" tip until the first look drag (hidden under a card); glass buttons hand (held; drags look) / eye / put down / jump / crouch / journal / language / pause, 1·2·3 while an act runs; `tc-` scoped CSS |
 
 - North is −Z, east +X; models face east (+X) locally — Sakha doors face east.
+- Eye adaptation (`Engine.update`): `closeLook` = full adaptation up to 24× (a thing held up to the eye in a dark corner), `adaptFast` (s) = at once (after a cut of the view); both set by the stage.
 - Player settings (`player.settings`, saved in `alaas-v1` settings): `sens`, `invertY`, `fov` (base; run adds ≤7.5°), `motion` 0–1 (camera motion comfort: bob, sway, roll, FOV kick; 0 = steady), `smooth` 0–1 (mouse-look smoothing; touch always has 0.3 for the finger's one-pixel steps, let go as the view falls behind: a drag of some speed is followed at once, it trailed ~10 ms). `main.js` binds `#s-motion` / `#s-smooth` sliders if present.
 - Player yaw 0 looks −Z; `util.js` has `fwd*/right*/yawTo`.
 - Ground height: `world.groundAt()` (knows floors), not `terrain.height()`.
@@ -62,8 +64,8 @@
 - Look-at raycast runs every 3rd frame and only against targets whose bounds are within reach; target meshes over 1500 triangles test only the triangles near the ray (`src/interact/raycast.js`: a 16³ grid per geometry, built in idle moments; beside the ampaar's logs a pick took 2.6 ms and left 2.4 MB of garbage, now < 0.1 ms).
 - Texture limit: 16 sampled textures per shader stage on WebGPU — the ground splat shares maps carefully.
 ## UI API (`game.ui`)
-- `showEntry(id, { mode: 'peek'|'full' })` — side-panel card, never locks the player; `close()`; `open` = `'card'|'journal'|null`, `isOpen`, `mode`, `current`.
-- `scroll(dy)`; the wheel (pointer locked) and PageUp/PageDown scroll the open card; `[` `]` step its gallery; click the image to enlarge.
+- `showEntry(id, { mode: 'peek'|'full', kind })` — the stage's interface (`docs/ui.md`; `game.read` opens stage and card together); `close()`; `open` = `'card'|'journal'|null`, `isOpen`, `modal`, `mode`, `current`.
+- `scroll(dy)`; `setImage(i)` a photograph beside the thing; `enlarge()`; `layout()` → `stage.area`; `frame()` moves the names on the stage.
 - `toast(html, ms)` — Messenger-style pop-up, body = `<small>` + `<b>`; `discovered(id)`; `setPrompt(label, action, { act, read })`.
 - Title bar progress is read from `#go`'s text (`N%` build → `… N%` warm-up); `#title.ready` once `game.ready`.
 - Settings ids → `save.settings`: `s-motion` `motion`, `s-smooth` `smooth`, `s-battery` `batterySaver`, `s-q` `quality` (auto/high/medium/low/mobile).
