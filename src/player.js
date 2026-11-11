@@ -126,7 +126,8 @@ export class Player {
     this.camY = clamp(this.camY, this.pos.y - 0.5, this.pos.y + 0.5);
     // stoop under low lintels and ceilings (world.lows): the eye stays ~14 cm below the beam
     const room = (this.world.headroomAt?.(this.pos.x, this.pos.z, 0.45) ?? Infinity) - this.pos.y - 0.14;
-    const eyeTo = Math.max(CROUCH_EYE, Math.min(this.crouch ? CROUCH_EYE : EYE, room));
+    this.kneel = Math.max(0, (this.kneel || 0) - dt); // set by work done low at the ground (src/interact/arms.js)
+    const eyeTo = Math.max(CROUCH_EYE, Math.min(this.crouch || this.kneel ? CROUCH_EYE : EYE, room));
     this.eye = damp(this.eye, eyeTo, eyeTo < this.eye ? 12 : 7, dt);
 
     // footfalls: the stride lengthens with speed; the camera is lowest at heel strike (phase 0)

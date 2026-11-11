@@ -260,6 +260,7 @@ export default async function build(ctx, placement) {
   colliders.push({ x: stoneX, z: stoneZ, r: 0.3, y0: sy - 0.2, y1: sy + 0.12 });
   // the birch-bark cup of milk on the stone (its own group so it can be lifted and tipped)
   const cup = new T.Group();
+  cup.userData.grips = [{ hand: 'R', p: [0, 0.05, 0], axis: [0, 1, 0], r: 0.062 }];
   const cupY = sy - 0.05 + 0.14 * 1.12;
   cup.position.set(stoneX + 0.08, cupY, stoneZ - 0.05);
   const mkMesh = (geo, mat, tint = [1, 1, 1]) => {

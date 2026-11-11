@@ -80,6 +80,7 @@ export default async function build(ctx, placement) {
 
   vessel.position.set(AT[0], ground(AT[0], AT[1]) + 0.045, AT[1]);
   vessel.rotation.y = AT[2] + 0.5;
+  vessel.userData.grips = [{ hand: 'R', p: [BASE[0] / 2 + 0.01, -0.06, 0], axis: [0, 0, -1], r: 0.06 }, { hand: 'L', p: [-BASE[0] / 2 - 0.01, -0.06, 0], axis: [0, 0, -1], r: 0.06 }];
   vessel.userData.dynamic = true;
   object.add(vessel);
   const interactables = [{ target: vessel, bark: true, entry: 'birch-bark', label: { sah: 'туос', en: 'a sheet of birch bark (туос)', ru: 'лист бересты (туос)' } }];

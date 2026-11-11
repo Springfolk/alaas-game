@@ -23,7 +23,7 @@ function basisQ(y, xHint, out = new THREE.Quaternion()) {
   return out.setFromRotationMatrix(_m.makeBasis(X, Y, Z));
 }
 // camera-space poses (the trap's origin is its mouth): carried across the body, and tipped tail-down to pour
-const CARRY = { p: [-0.42, -0.5, -0.62], q: basisQ(new THREE.Vector3(0.95, 0.12, -0.25), new THREE.Vector3(0, 1, 0)) };
+const CARRY = { p: [-0.42, -0.46, -0.62], q: basisQ(new THREE.Vector3(0.95, 0.12, -0.25), new THREE.Vector3(0, 1, 0)) };
 const TIP = { p: new THREE.Vector3(-0.05, 0.2, -0.62), q: basisQ(new THREE.Vector3(0.05, -0.97, -0.2), new THREE.Vector3(1, 0, 0)) };
 const FULL = 110; // s for the trap to fill to ~2/3 of what it can hold
 

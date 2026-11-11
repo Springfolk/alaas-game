@@ -72,6 +72,7 @@ export default async function build(ctx, placement) {
     axe.quaternion.copy(q);
     axe.position.set(bx + 0.03, by - 0.015, bz).sub(new T.Vector3(AXE.edge, AXE.head, 0).applyQuaternion(q));
   }
+  axe.userData.grips = [{ hand: 'R', p: [0, 0.4, 0], axis: [0, 1, 0], r: 0.018 }, { hand: 'L', p: [0, 0.1, 0], axis: [0, 1, 0], r: 0.018 }];
   axe.userData.dynamic = true;
   object.add(axe);
   interactables.push({ target: axe, tool: 'axe', label: { sah: 'сүгэ', en: 'axe (сүгэ)', ru: 'топор (сүгэ)' } });
