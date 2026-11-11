@@ -1,4 +1,4 @@
-// Дьэдьэн (wild strawberry, Fragaria orientalis): carpets on the dry, sunny ground round the homestead, on the
+// Дьэдьэн (wild strawberry, Fragaria): carpets on the dry, sunny ground round the homestead, on the
 // slope above it and along the forest's edge. Trefoil leaves on stalks, red berries hanging from arching
 // trusses at the height of the leaves, a few white flowers and unripe berries. Instanced per region of
 // ~45 m (leaves, berries, flower trusses), drawn within sight range. Local frame: HOME.
