@@ -469,10 +469,11 @@ export function makeMats(maps, { winter = false } = {}) {
     const m = new S({ name: 'web', transparent: true, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9, color: 0x6a6660 });
     const u = uv();
     const r = length(u), a = u.y.atan(u.x);
-    const radial = smoothstep(0.93, 0.99, abs(sin(a.mul(13))));
-    const rings = smoothstep(0.85, 0.97, abs(sin(r.mul(60).add(sin(a.mul(5)).mul(1.5)))));
+    // hair-thin threads sagging between the spokes, grey with dust
     const dust = fz(vec3(u.mul(6), 1.0), 2);
-    m.opacityNode = radial.add(rings).min(1).mul(0.35).add(dust.mul(0.12)).mul(smoothstep(1.0, 0.6, r));
+    const radial = smoothstep(0.993, 0.9995, abs(sin(a.mul(11))));
+    const rings = smoothstep(0.985, 0.998, abs(sin(r.mul(34).add(abs(sin(a.mul(11))).mul(1.0)))));
+    m.opacityNode = radial.add(rings).min(1).mul(0.2).add(dust.mul(0.07)).mul(smoothstep(1.0, 0.6, r));
     m.userData.noShadow = true;
     return m;
   })();
