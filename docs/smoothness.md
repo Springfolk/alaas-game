@@ -27,7 +27,7 @@ Late = a drawn frame that came a display refresh late or more. Headless Chrome a
 | 8 | Pacer counted refreshes from the low quartile of rAF deltas | off the beat with timestamp jitter or on a slow device | beat on the display's clock from the last drawn frame |
 | 9 | Touch look always smoothed | view trailed a drag ~10 ms at 30 fps | smoothing lets go on faster drags |
 | 10 | Safari's WebGL2 waits ~5 ms in a GL fence | (would have cost that with fix 2) | no GPU timing where the fence is slow |
-| 11 | The prompt's E chip (gradient, two shadows) moved to the pill's end with the actions rework | the first prompt of a visit 83–170 ms late on `?auto` (not on the player's load path) | the chip is flat |
+| 11 | The prompt's E chip (gradient, two shadows) moved to the pill's end with the actions rework | a frame 83–170 ms late at the first prompt or its first fade on `?auto` (not on the player's load path) | the chip is flat and borderless |
 | 12 | A model gained a mesh and the impostor atlas was not rebaked: its key no longer matched, so the atlas was baked at load, into play | 44–108 shaders built on a walk, in some runs only | `npm run bake-impostors` after any model change; `walkcheck` names an unnamed mesh's parents |
 
 ## Before → after
