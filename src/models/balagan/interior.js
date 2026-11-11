@@ -27,7 +27,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
   // ---------- floor of beaten earth (and through the door passage) ----------
   const fl = sheet(30, 26, (u, v) => [-3.7 + u * 7.5, 0.012 + 0.006 * fbm2(u * 9, v * 9, 2), -3.2 + v * 6.4], { face: () => [0, 1, 0] });
   B.add(M.floorMat, fl);
-  B.add(M.floorMat, sheet(6, 4, (u, v) => [3.5 + u * 0.7, 0.014, ZD - DW / 2 - 0.05 + v * (DW + 0.1)], { face: () => [0, 1, 0] }));
+  B.add(M.floorMat, sheet(4, 4, (u, v) => [3.8 + u * 0.4, 0.014, ZD - DW / 2 - 0.05 + v * (DW + 0.1)], { face: () => [0, 1, 0] }));
 
   // ---------- benches ----------
   // rect in plan, which side is the front (room side), label
@@ -41,6 +41,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
     { x0: 0.25, x1: 0.98, z0: -bz, z1: -FRONT_Z, front: 'z+', sah: 'Иһит ороно', en: 'Ihit orono, the bench for vessels', ru: 'Иһит ороно — лавка для посуды', hide: null },
     { x0: -bx + 0.02, x1: -1.35, z0: -bz, z1: -FRONT_Z, front: 'z+', alcove: true },
   ];
+  const partitions = new Set();
   for (const d of defs) {
     const alongX = d.front[0] === 'z';
     const L = alongX ? d.x1 - d.x0 : d.z1 - d.z0;
@@ -66,6 +67,9 @@ export function buildInterior({ B, M, rng, winter, root }) {
     // low partition board at the bench's ends ("doorways" between compartments)
     if (!d.alcove) for (const k of [0, L]) {
       const q = alongX ? [d.x0 + k, BT + 0.15, cz] : [cx, BT + 0.15, d.z0 + k];
+      const at = q.map((x) => x.toFixed(2)).join(); // two benches meeting share one board
+      if (partitions.has(at)) continue;
+      partitions.add(at);
       B.add(M.planks, alongX ? box(0.04, 0.3, D * 0.7, { p: [q[0], q[1], cz - fs * D * 0.15] }) : box(D * 0.7, 0.3, 0.04, { p: [cx - fs * D * 0.15, q[1], q[2]] }), { color: [0.75, 0.62, 0.5] });
     }
     colliders.push({ x: cx, z: cz, hw: Math.abs(d.x1 - d.x0) / 2, hd: Math.abs(d.z1 - d.z0) / 2, y0: -1, y1: BT + 0.05 });
@@ -149,7 +153,7 @@ export function buildInterior({ B, M, rng, winter, root }) {
     const px = -FX, pz = FZ;
     B.add(M.logs, log([px, -0.3, pz], [px + 0.01, H, pz - 0.01], 0.175, 0.16, rng, { seg: 12, knob: 0.03, caps: true }), { color: [0.85, 0.72, 0.6], extra: { outw: [0, 0, 0] } });
     const inDir = new THREE.Vector3(1, 0, -1).normalize();   // faces the room (NE)
-    const fy = 1.9, fx = px + inDir.x * 0.2, fz = pz + inDir.z * 0.2;
+    const fy = 1.74, fx = px + inDir.x * 0.2, fz = pz + inDir.z * 0.2;
     if (!winter) {
       // carved horse head: neck block, head, muzzle, ears
       const yaw = Math.atan2(-inDir.z, inDir.x);
@@ -448,8 +452,8 @@ export function buildInterior({ B, M, rng, winter, root }) {
     B.add(M.beams, box(dx1 - dx0 + 0.18, 0.08, 0.12, { p: [(dx0 + dx1) / 2, dh + 0.06, dzF - 0.03] }), { color: [0.4, 0.34, 0.3] });
   }
 
-  // cobwebs in the sooty corners under the ceiling
-  for (const [cx, cz, ax, az] of [[-FX, -FZ, 1, 1], [FX, FZ, -1, -1], [-FX, FZ, 1, -1], [0, -FZ, 1, 1], [FX - 0.2, -FZ, -1, 1], [-FX, -0.4, 1, 1]]) {
+  // cobwebs in the sooty corners under the ceiling (not the master post's: it is kept)
+  for (const [cx, cz, ax, az] of [[-FX, -FZ, 1, 1], [FX, FZ, -1, -1], [0, -FZ, 1, 1], [FX - 0.2, -FZ, -1, 1], [-FX, -0.4, 1, 1]]) {
     const y = H - 0.18, L = 0.35 + rng() * 0.3;
     const g = new THREE.BufferGeometry();
     const C = [cx + ax * 0.12, y + 0.05, cz + az * 0.12], A = [cx + ax * (L + 0.12), y + 0.08, cz + az * 0.14], Bp = [cx + ax * 0.14, y - L * 0.8, cz + az * (0.15 + L * 0.3)];

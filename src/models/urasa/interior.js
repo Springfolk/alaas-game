@@ -63,11 +63,11 @@ export function buildInterior(rng) {
     G.poleIn.push(log([-h - 0.12, 0.06, s * h], [h + 0.12, 0.06, s * h], 0.068, s * 3));
     G.poleIn.push(log([s * h, 0.165, -h - 0.12], [s * h, 0.165, h + 0.12], 0.064, s * 5 + 1));
   }
-  // clay: a slab filling the box, domed slightly, burnt in the middle
+  // clay: filling the box down to the floor (it shows in the gaps under the upper course), domed slightly, burnt in the middle
   G.clay.push(grid(18, 18, (u, v) => {
     const x = (u - 0.5) * 2 * (h + 0.02), z = (v - 0.5) * 2 * (h + 0.02);
     const e = Math.max(Math.abs(x), Math.abs(z)) / h;
-    const y = HEARTH.top - Math.max(0, e - 0.9) * 0.4 + valueNoise(x * 6, z * 6, 31) * 0.006 - Math.exp(-(x * x + z * z) / 0.08) * 0.02;
+    const y = (HEARTH.top + valueNoise(x * 6, z * 6, 31) * 0.006 - Math.exp(-(x * x + z * z) / 0.08) * 0.02) * (1 - Math.min(1, Math.max(0, (e - 0.9) / 0.12))) - 0.012 * Math.min(1, Math.max(0, (e - 0.9) / 0.12));
     return [x, y, z];
   }, (u, v) => [u, v], false));
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
@@ -89,7 +89,7 @@ export function buildInterior(rng) {
     }
     // closed front apron, a squared front edge beam (plain), a back rail
     G.plank.push(sectorBox(a0, a1, R.rin - 0.05, R.rin + 0.03, R.top - 0.12, R.top - 0.035));
-    G.plank.push(sectorBox(a0, a1, R.rin - 0.01, R.rin + 0.025, 0.0, R.top - 0.12));
+    G.plank.push(sectorBox(a0, a1, R.rin - 0.01, R.rin + 0.025, 0.004, R.top - 0.12)); // just off the floor: no face on it
     G.plank.push(sectorBox(a0, a1, R.rout - 0.1, R.rout - 0.02, R.top - 0.12, R.top - 0.045));
     const mid = (R.rin + R.rout) / 2;
     colliders.push({ x: Math.cos(c) * mid, z: Math.sin(c) * mid, hw: (R.rout - R.rin) / 2 + 0.03, hd: mid * Math.sin(hs) + 0.06, rot: -c + 0.02 });

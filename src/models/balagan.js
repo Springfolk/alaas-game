@@ -12,7 +12,7 @@ import { buildShell } from './balagan/shell.js';
 import { buildHearth } from './balagan/hearth.js';
 import { buildInterior } from './balagan/interior.js';
 import { PlantBatch, sodRoof } from './balagan/plants.js';
-import { groundOf, troddenPatch, blob, swing } from './yard/bits.js';
+import { groundOf, troddenPatch, blob, leaf } from './yard/bits.js';
 import { trodden } from './yard/mat.js';
 import { FX, FZ, H, ZD, DW, DH, XD, ROOF, HEARTH, WIN, KH, inner } from './balagan/dims.js';
 
@@ -161,7 +161,9 @@ export default async function build(ctx, placement) {
   const lift = (c) => (c.y0 !== undefined ? { ...c, y0: c.y0 + Y, y1: c.y1 + Y } : c);
   const colliders = [...shell.colliders, ...hearth.colliders, ...inside.colliders].map(lift);
   const DOOR_TAG = Y - 0.5 - 0.0137 * (winter ? 2 : 1);
-  colliders.push({ x: XD, z: ZD, hw: 0.12, hd: DW / 2 + 0.02, y0: DOOR_TAG, y1: shell.door.open > 0.5 ? Y - 50 : Y + 3 });
+  // the leaf (planks and battens, 9.5 cm) is solid wherever it stands, and stops at the player as it swings
+  const doorLeaf = leaf(placement, { hinge: [shell.door.pivot.position.x, shell.door.pivot.position.z], len: DW, th: 0.095, off: -0.019, angle: (a) => a * shell.door.maxAngle });
+  colliders.push(doorLeaf.collider(shell.door.open, { y0: DOOR_TAG, y1: Y + 3 }));
 
   // ---------- ray targets (invisible proxies) and interactables ----------
   const proxy = (w, h, d, p, r = [0, 0, 0], parent = root) => {
@@ -256,7 +258,7 @@ export default async function build(ctx, placement) {
   });
 
   // ---------- per-frame: eye adaptation, fire flicker, smoke, door, shafts ----------
-  let wasInside = false, doorCol = null, shaftClock = 99, lastSun = new THREE.Vector3();
+  let wasInside = false, shaftClock = 99, lastSun = new THREE.Vector3();
   const doorS = { a: door.open, v: 0, to: door.target };
   const camLocal = new THREE.Vector3(), lookAt = new THREE.Vector3(), FILL_HOME = new THREE.Vector3(2.5, 1.1, 0.5);
   const engine = ctx.world?.engine;
@@ -306,14 +308,13 @@ export default async function build(ctx, placement) {
       p.s.scale.setScalar(0.35 + a * 1.8);
       p.op.value = Math.min(1, a * 6) * (1 - a) * (0.75 + flare * 0.5);
     }
-    // door swing (and its collider)
+    // door swing (its collider follows the leaf)
+    if (game?.world && !doorLeaf.k) doorLeaf.k = game.world.colliders.find((c) => Math.abs((c.y0 ?? 1e9) - DOOR_TAG) < 1e-6) || null;
     if (doorS.a !== doorS.to || doorS.v) {
-      if (swing(doorS, dt) === 'knock') game?.audio?.play('wood-take', world(new THREE.Vector3(XD, 1, ZD)));
+      if (doorLeaf.move(doorS, dt, game) === 'knock') game?.audio?.play('wood-take', world(new THREE.Vector3(XD, 1, ZD)));
       door.open = doorS.a;
       door.pivot.rotation.y = doorS.a * door.maxAngle;
     }
-    if (game?.world && !doorCol) doorCol = game.world.colliders.find((c) => Math.abs((c.y0 ?? 1e9) - DOOR_TAG) < 1e-6);
-    if (doorCol) doorCol.y1 = door.open > 0.6 ? Y - 50 : Y + 3;
     // sunbeams follow the sun
     shaftClock += dt;
     if (eng && shaftClock > 0.5) {

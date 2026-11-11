@@ -58,6 +58,7 @@ export function smithy(K, x, z, yaw) {
       addLog(K.b, W(wx, -1.62, -0.25), Wy(wx, top - rng() * 0.15, -1.62), 0.05, 0.04, rng, M.wood, M.end, { seg: 7, step: 0.35 });
     }
     K.colliders.push(F.col({ x: 0.45, z: -1.62, hw: 1.0, hd: 0.08 }));
+    K.lows.push({ ...F.col({ x: 1.85, z: 0, hw: 0.3, hd: 2.0 }), h: BH - 0.1 }); // the back eave: the player stoops under it
   });
 
   // ---- the forge: log crib, clay hearth bench 60 cm high, trench 70 × 9 × 8 cm ----

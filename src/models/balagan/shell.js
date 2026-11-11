@@ -6,6 +6,7 @@ import { FX, FZ, H, OUT, GAP, PL, ZD, DW, DH, XD, BAY, ROOF, KH, WINDOWS, WIN, H
 import { openingsNode } from './mats.js';
 import { float } from 'three/tsl';
 import { section } from '../../load/geocache.js';
+import { leaf } from '../yard/bits.js';
 
 const lin = (F, y) => F + GAP + OUT * (1 - y / H);           // inner face, extrapolated below 0
 const hp = (F, y) => lin(F, y) + PL;                          // plaster surface
@@ -182,6 +183,7 @@ export function buildShell({ M, rng, winter, root }) {
     DB.add(M.doorWood, tube([[0.03, 0.97, DW - 0.12], [0.065, 0.94, DW - 0.125], [0.085, 0.9, DW - 0.13], [0.065, 0.86, DW - 0.125], [0.03, 0.83, DW - 0.12]], 0.011, 6), { color: [0.34, 0.25, 0.17] });
   });
   DB.build(doorPivot);
+  doorPivot.traverse((o) => { o.userData.dynamic = true; }); // it swings: its own shadow, not the merged proxy's
   root.add(doorPivot);
   const door = { pivot: doorPivot, open: winter ? 0 : 1, target: winter ? 0 : 1, maxAngle: 1.75 };
   doorPivot.rotation.y = door.open * door.maxAngle;
@@ -299,6 +301,7 @@ export function buildShell({ M, rng, winter, root }) {
   KB.build(kd);
   kd.rotation.y = winter ? 0 : 1.9;
   root.add(kd);
+  colliders.push(leaf({}, { hinge: [kd.position.x, kd.position.z], len: 1.0, th: 0.085, off: -0.018, angle: () => kd.rotation.y }).collider(0)); // the leaf is solid, propped or shut
   colliders.push({ x: 0, z: (KR.z1 - 0.6 - 3.4) / 2, hw: klin(KH.hx, 0) + PL + 0.35, hd: (KR.z1 - 0.6 + 3.4) / -2 }); // to the berm's foot
   // ---------- earth berm (кунус) round the foot, held by horizontal logs on stakes ----------
   // Two cross-sections (offset out from the wall foot, height), blended per point round the perimeter:

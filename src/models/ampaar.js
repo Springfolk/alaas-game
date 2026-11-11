@@ -8,7 +8,7 @@ import * as THREE from 'three/webgpu';
 import { texture, vec3, float, mix, smoothstep, positionWorld, normalWorld, mx_noise_float, normalMap } from 'three/tsl';
 import { turned, logProfile, bow, tube, orient, board, merge } from './yard/geo.js';
 import { larch, birchBark, hide, plain, grass, rope } from './yard/mat.js';
-import { groundOf, grassClump, noSway, tween, ease, troddenPatch, blob, swing } from './yard/bits.js';
+import { groundOf, grassClump, noSway, tween, ease, troddenPatch, blob, leaf } from './yard/bits.js';
 import { trodden } from './yard/mat.js';
 import { section } from '../load/geocache.js';
 
@@ -130,7 +130,8 @@ export default async function build(ctx, placement) {
   object.add(roofGrass);
 
   // ── the door: three planks on two battens, a leather pull; hinged at the north jamb, opens inward ──
-  const doorW = DOOR.z1 - DOOR.z0 + 0.04, doorH = lintelY - thresholdY + 0.02;
+  const doorW = DOOR.z1 - DOOR.z0 + 0.04, doorH = lintelY - thresholdY - 0.01;
+  const OPEN = -1.75; // radians: swung inward against the north wall
   const door = new THREE.Group();
   door.name = 'ampaar-door';
   door.position.set(HW - 0.02, g0 + thresholdY, DOOR.z0 - 0.02);
@@ -214,24 +215,23 @@ export default async function build(ctx, placement) {
     { x: tar.x, z: tar.z, r: 0.27 },
     { x: cream.x, z: cream.z, hw: 0.22, hd: 0.45 },
   ];
-  const doorCol = { x: HW, z: (DOOR.z0 + DOOR.z1) / 2, hw: T, hd: (DOOR.z1 - DOOR.z0) / 2 };
+  // the leaf (planks and battens, 8.5 cm) is solid wherever it stands, and stops at the player as it swings
+  const doorLeaf = leaf(placement, { hinge: [door.position.x, door.position.z], len: doorW, th: 0.085, off: -0.02, angle: (a) => OPEN * a });
+  const doorCol = doorLeaf.collider(0);
   colliders.push(doorCol);
   const floors = [{ x: HW, z: 0, hw: 0.13, hd: (DOOR.z1 - DOOR.z0) / 2, h: thresholdY }];
   const lows = [{ x: HW, z: 0, hw: T + 0.05, hd: (DOOR.z1 - DOOR.z0) / 2, h: lintelY }]; // stoop through the low door
 
   // ── door act ──
-  let doorK = null;
   const doorS = { a: 0, v: 0, to: 0 };
   const c0 = Math.cos(placement.yaw || 0), s0 = Math.sin(placement.yaw || 0);
   const tw = (x, z2) => ({ x: placement.x + x * c0 + z2 * s0, z: placement.z - x * s0 + z2 * c0 });
   const toLocal = (wx, wz) => { const dx = wx - placement.x, dz = wz - placement.z; return [dx * c0 - dz * s0, dx * s0 + dz * c0]; };
   const findDoor = (game) => {
-    if (doorK || !game?.world?.colliders) return doorK;
+    if (doorLeaf.k || !game?.world?.colliders) return;
     const w = tw(doorCol.x, doorCol.z);
-    doorK = game.world.colliders.find((k) => k.kind === 'box' && k.hw === doorCol.hw && k.hd === doorCol.hd && Math.abs(k.x - w.x) < 1e-6 && Math.abs(k.z - w.z) < 1e-6) || null;
-    return doorK;
+    doorLeaf.k = game.world.colliders.find((k) => k.kind === 'box' && k.hw === doorCol.hw && k.hd === doorCol.hd && Math.abs(k.x - w.x) < 1e-6 && Math.abs(k.z - w.z) < 1e-6) || null;
   };
-  const OPEN = -1.75; // radians: swung inward against the north wall
   // a push: the heavy leaf swings by its own weight and knocks against its stop; a push on the way turns it back
   const LABEL = [{ sah: 'аанны ас', en: 'open the door', ru: 'открыть дверь' }, { sah: 'аанны сап', en: 'close the door', ru: 'закрыть дверь' }];
   const doorAct = {
@@ -243,11 +243,10 @@ export default async function build(ctx, placement) {
     },
   };
   const swingDoor = (dt, game) => {
+    findDoor(game);
     if (doorS.a === doorS.to && !doorS.v) return;
-    if (swing(doorS, dt, 2.2, 1.3) === 'knock') game.audio?.play('wood-take', object.localToWorld(new THREE.Vector3(HW, 1, 0)));
+    if (doorLeaf.move(doorS, dt, game, 2.2, 1.3) === 'knock') game.audio?.play('wood-take', object.localToWorld(new THREE.Vector3(HW, 1, 0)));
     door.rotation.y = OPEN * doorS.a;
-    const k = findDoor(game), open = doorS.a > 0.55;
-    if (k) { k.y0 = open ? 1e5 : undefined; k.y1 = open ? 1e5 + 1 : undefined; }
   };
 
   // ── tar tub act: lift the lid aside (stays off; remembered) ──

@@ -26,7 +26,7 @@ export default async function build(ctx, placement) {
     const main = logGeo(len, r, r * 0.6, rng, { seg: 6, step: 0.12, bend: 0.05, wob: 0.12, caps: true });
     B.add(main.side, M.wood, null, tint); B.add(main.caps, M.end, null, tint);
     for (let k = 0; k < 3; k++) {
-      const y = len * (0.3 + rng() * 0.5), a = rng() * 6.28, l = 0.12 + rng() * 0.2;
+      const y = len * (0.3 + rng() * 0.5), a = Math.PI / 2 + rng() * Math.PI, l = 0.12 + rng() * 0.2; // up or sideways, never into the ground
       const tw = logGeo(l, r * 0.45, r * 0.2, rng, { seg: 4, step: 0.1, bend: 0.06, wob: 0.1 });
       B.add(tw.side, M.wood, mtx([0, y, 0], [0.7 + rng() * 0.5, a, 0]), tint);
     }
@@ -36,8 +36,10 @@ export default async function build(ctx, placement) {
     B.add(side.side, M.wood, sm, tint); B.add(side.caps, M.end, sm, tint);
     for (const m of B.build(g)) m.castShadow = true;
     const home = { x, z, yaw: rng() * 6.28 };
+    // lying along the slope: the tip on the ground as well as the butt
+    const tilt = Math.atan2(ground(x + Math.sin(home.yaw) * len, z + Math.cos(home.yaw) * len) - ground(x, z), len);
     g.position.set(x, ground(x, z) + r + 0.01, z);
-    g.rotation.set(Math.PI / 2, home.yaw, 0, 'YXZ');
+    g.rotation.set(Math.PI / 2 - tilt, home.yaw, 0, 'YXZ');
     g.userData.dynamic = true;
     object.add(g);
     sticks.push({ obj: g, x, z });

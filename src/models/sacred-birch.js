@@ -333,10 +333,24 @@ export default async function build(ctx, placement) {
   object.userData.paths = [{ w: 0.55, pts: [[2.2, -1.2], [14, -5], [40, -10], [72, -21], [104, -31], [138, -44], [170, -53], [196, -61], [218, -67]] }];
   object.userData.info = { tris: tris(v.lod0.bark) + tris(v.lod0.leaves) + tris(rootGeo) + tris(ropeGeo) };
   const base = trunkAt(0.3);
+  // limbs hanging to head height: the player stoops under them, and cannot walk into the lowest
+  const lows = [], limbCols = [], cellY = new Map(), C = 0.4;
+  { const p = v.lod0.bark.attributes.position;
+    for (let k = 0; k < p.count; k++) {
+      const x = p.getX(k), y = p.getY(k), z = p.getZ(k);
+      if (y < 0.6 || y > 2.0 || Math.hypot(x - base.p.x, z - base.p.z) < 0.5) continue;
+      const key = `${Math.floor(x / C)},${Math.floor(z / C)}`;
+      if (!(cellY.get(key) <= y)) cellY.set(key, y);
+    }
+    for (const [key, y] of cellY) {
+      const [i, j] = key.split(',').map(Number), cell = { x: (i + 0.5) * C, z: (j + 0.5) * C, hw: C / 2, hd: C / 2 };
+      if (y < 1.25) limbCols.push(cell); else lows.push({ ...cell, h: y - 0.04 });
+    } }
   return {
     object,
-    colliders: [{ x: base.p.x, z: base.p.z, r: 0.38 }],
+    colliders: [{ x: base.p.x, z: base.p.z, r: 0.38 }, ...limbCols],
     floors: [],
+    lows,
     interactables: [
       { entry: 'sacred-birch', target: trunkTarget, act: greet },
       { entry: 'salama', target: salama },
