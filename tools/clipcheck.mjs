@@ -28,6 +28,14 @@ const report = await page.evaluate(({ only, camera }) => {
 
   // ---- gather visible solid meshes, split into welded connected parts
   const placed = w.placed.map((p, i) => ({ i, name: p.model + (p.variant ? ':' + p.variant : ''), p }));
+  // loose things in the scene itself (carried and set-down things, work props): not the placed models, ground or nature
+  const own = new Set(w.placed.map((p) => p.object)), home = w.placed[0];
+  for (const o of w.scene.children) {
+    if (own.has(o) || o === w.ground || o.isLight || /forest|grass|tree|lake|life|sky|impost|shadow|ground|meadow|shore/i.test(o.name)) continue;
+    const s = new o.position.constructor(); o.getWorldPosition(s);
+    if (Math.hypot(s.x - home.x, s.z - home.z) > 150) continue;
+    placed.push({ name: 'loose/' + (o.name || o.type), p: { object: o } });
+  }
   for (const { name, p } of placed) {
     if (only && !new RegExp(only).test(name)) continue;
     const inv = p.object.matrixWorld.clone().invert();
@@ -81,7 +89,7 @@ const report = await page.evaluate(({ only, camera }) => {
         for (const c of byRoot.values()) {
           if (!c.tris.length) continue;
           let open = 0; for (const v of c.edges.values()) if (v % 2) open++;
-          c.closed = open <= c.edges.size * 0.02;
+          c.closed = open <= c.edges.size * 0.003;
           c.vs = [...c.verts.values()].map((k) => [c.P[k], c.P[k + 1], c.P[k + 2]]);
           const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
           for (const v of c.vs) for (let j = 0; j < 3; j++) { lo[j] = Math.min(lo[j], v[j]); hi[j] = Math.max(hi[j], v[j]); }

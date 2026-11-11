@@ -38,6 +38,8 @@ function sectorBox(a0, a1, r0, r1, y0, y1) {
     const a = a0 + (a1 - a0) * fx, r = r0 + (r1 - r0) * fz, y = y0 + (y1 - y0) * fy;
     p.setXYZ(i, Math.cos(a) * r, y, Math.sin(a) * r);
   }
+  const ix = g.index.array; // (angle, radius) ← (x, z) mirrors the box: turn its triangles back so faces point out
+  for (let t = 0; t < ix.length; t += 3) { const k = ix[t + 1]; ix[t + 1] = ix[t + 2]; ix[t + 2] = k; }
   g.computeVertexNormals();
   return g;
 }
@@ -67,7 +69,7 @@ export function buildInterior(rng) {
   G.clay.push(grid(18, 18, (u, v) => {
     const x = (u - 0.5) * 2 * (h + 0.02), z = (v - 0.5) * 2 * (h + 0.02);
     const e = Math.max(Math.abs(x), Math.abs(z)) / h;
-    const y = (HEARTH.top + valueNoise(x * 6, z * 6, 31) * 0.006 - Math.exp(-(x * x + z * z) / 0.08) * 0.02) * (1 - Math.min(1, Math.max(0, (e - 0.9) / 0.12)));
+    const y = (HEARTH.top + valueNoise(x * 6, z * 6, 31) * 0.006 - Math.exp(-(x * x + z * z) / 0.08) * 0.02) * (1 - Math.min(1, Math.max(0, (e - 0.9) / 0.12))) - 0.012 * Math.min(1, Math.max(0, (e - 0.9) / 0.12));
     return [x, y, z];
   }, (u, v) => [u, v], false));
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {

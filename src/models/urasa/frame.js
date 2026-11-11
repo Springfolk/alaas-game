@@ -122,9 +122,11 @@ export function buildFrame(rng, P) {
       const a0 = (k / parts) * TAU + seed, a1 = a0 + TAU / parts + 0.25;
       const pts = [], nh = 32;
       for (let i = 0; i <= nh; i++) {
-        const a = a0 + (a1 - a0) * (i / nh), side = (k % 2 ? 1 : -1) * 0.012;
+        // each pole lies beside the one it overlaps (an odd count's last one beside both): never in the same place
+        const lane = parts % 2 && k === parts - 1 ? 2 : k % 2;
+        const a = a0 + (a1 - a0) * (i / nh), side = [-0.012, 0.012, 0][lane];
         const rr = rc + side + valueNoise(a * 3, seed, 9) * 0.008;
-        pts.push(new THREE.Vector3(Math.cos(a) * rr, y + valueNoise(a * 2, seed, 11) * 0.01 + (k % 2) * 0.01, Math.sin(a) * rr));
+        pts.push(new THREE.Vector3(Math.cos(a) * rr, y + valueNoise(a * 2, seed, 11) * 0.01 + [0, 0.01, 0.02][lane], Math.sin(a) * rr));
       }
       const g = tube(pts, (t) => rt * (1.1 - 0.25 * Math.abs(t - 0.5) * 2) * (t < 0.03 || t > 0.97 ? 0.85 : 1), radial, { capStart: true, capEnd: true });
       const uv = g.attributes.uv;

@@ -130,7 +130,7 @@ export default async function build(ctx, placement) {
   object.add(roofGrass);
 
   // ── the door: three planks on two battens, a leather pull; hinged at the north jamb, opens inward ──
-  const doorW = DOOR.z1 - DOOR.z0 + 0.04, doorH = lintelY - thresholdY + 0.02;
+  const doorW = DOOR.z1 - DOOR.z0 + 0.04, doorH = lintelY - thresholdY - 0.01;
   const OPEN = -1.75; // radians: swung inward against the north wall
   const door = new THREE.Group();
   door.name = 'ampaar-door';

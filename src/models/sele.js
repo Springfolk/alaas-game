@@ -193,7 +193,7 @@ export default async function build(ctx, placement) {
   object.userData.info = { tris: tris(ropeMesh.geometry) };
   return {
     object,
-    colliders: posts.map((p) => ({ x: p.x, z: p.z, r: 0.11 })),
+    colliders: [...posts.map((p) => ({ x: p.x, z: p.z, r: 0.11 })), { x: 0, z: 0, hw: 0.03, hd: HALF }], // the rope at hip height: walked round, not through
     floors: [],
     interactables: [{ entry: 'horse-and-cow', target }],
   };

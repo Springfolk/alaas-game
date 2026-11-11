@@ -50,11 +50,11 @@ export default async function build(ctx, placement) {
   const group = new T.Group();
   group.name = 'yardlife';
   const M = yardMats();
-  const colliders = [], interactables = [], ups = [];
+  const colliders = [], lows = [], interactables = [], ups = [];
   const yardB = new Bucket(ground), meadowB = new Bucket(ground);
   const proxyMat = new T.MeshBasicMaterial({ visible: false });
   const K = {
-    M, rng, group, colliders, ups, b: yardB, bm: meadowB, wind: WIND, gate: PLACES.gate,
+    M, rng, group, colliders, lows, ups, b: yardB, bm: meadowB, wind: WIND, gate: PLACES.gate,
     barkCraft: pmat('canvas:birch', { scale: 0.5, back: 'birchIn', double: true, dirt: 0.4, tint: 0xecd3a6 }),
     // an invisible box the player's ray can hit
     proxy(x, y, z, w, h, d, yaw = 0) {
@@ -100,6 +100,7 @@ export default async function build(ctx, placement) {
   return {
     object: group,
     colliders,
+    lows,
     interactables,
     update: (dt, c) => { for (const u of ups) u(dt, c); },
   };
