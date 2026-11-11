@@ -37,8 +37,8 @@ export function yardMats() {
     rope: pmat('acg_rope', { scale: 0.08, tint: 0xa89a82, dirt: 0.2 }),
     hair: pmat('acg_rope', { scale: 0.05, tint: 0x3a3430, dirt: 0 }),
     cloth: pmat('canvas:cloth', { scale: 0.06, dirt: 0.15, double: true }),
-    silver: pmat('canvas:silver', { scale: 0.12, metal: 1, rough: 0.95, dirt: 0, vary: 0.1, tint: 0xb4b1aa }),
-    bowplate: pmat('canvas:bowplate', { scale: 0.34, metal: 1, rough: 0.95, dirt: 0, vary: 0.1, tint: 0xb4b1aa }), // engraved front bow (tools/make-carving.mjs)
+    silver: pmat('canvas:silver', { scale: 0.12, metal: 1, rough: 1.9, dirt: 0, vary: 0.32, tint: 0xa6a096 }),
+    bowplate: pmat('canvas:bowplate', { scale: 0.34, metal: 1, rough: 1.9, dirt: 0, vary: 0.32, tint: 0xa6a096 }), // engraved front bow (tools/make-carving.mjs)
     bone: pmat('raw_plank_wall', { scale: 0.3, tint: 0xf6ead4, rough: 0.6, dirt: 0 }),
     dung: pmat('brown_mud_dry', { scale: 0.6, tint: 0x6e5a48, dirt: 0.2 }),
     earth: pmat('brown_mud_dry', { scale: 1.2, tint: 0x9a8a78, dirt: 0.2 }),
