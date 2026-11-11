@@ -17,11 +17,11 @@ if (process.env.STATE) await page.evaluate(process.env.STATE);
 await page.waitForTimeout(500);
 
 const report = await page.evaluate(({ only, camera }) => {
-  const TOL = { float: 0.015, touch: 0.03, sunk: 0.05, gap: 0.04, pen: 0.01, z: 0.003, eye: 0.12, R: 0.25 };
+  const TOL = { float: 0.015, touch: 0.03, sunk: 0.05, gap: 0.04, pen: 0.01, z: 0.0003, eye: 0.12, R: 0.25 };
   const SKIP = /grass|dyedyen|smoke|steam|^decal|trodden|^earth$/i; // ground cover, decals and particles: not solids
   const w = window.game.world, C = 0.25, cell = (v) => Math.floor(v / C), key = (ix, iz) => (ix + 4000) * 8000 + (iz + 4000);
   const tris = [], triComp = [], comps = [];
-  const grid = new Map(), col = new Map(); // 3D cells of every triangle; columns of closed parts' triangles (parity)
+  const grid = new Map(), col = new Map(), cols = new Set(); // 3D cells of every triangle; columns of closed parts' triangles (parity)
   const key3 = (ix, iy, iz) => ((ix + 4000) * 8000 + iz + 4000) * 2000 + iy + 1000;
   const near3 = function* (x, y, z, r = 1) { const a = cell(x), b = cell(y), c = cell(z); for (let i = a - r; i <= a + r; i++) for (let j = b - r; j <= b + r; j++) for (let k = c - r; k <= c + r; k++) { const l = grid.get(key3(i, j, k)); if (l) yield l; } };
   const put = (g, k, i) => { let a = g.get(k); if (!a) g.set(k, (a = [])); a.push(i); };
@@ -35,7 +35,7 @@ const report = await page.evaluate(({ only, camera }) => {
       if (!o.isMesh) return;
       for (let q = o; q; q = q.parent) if (!q.visible) return;
       const m = o.material;
-      if (Array.isArray(m) || m.visible === false || m.colorWrite === false || m.transparent && m.opacity < 0.05) return;
+      if (Array.isArray(m) || m.visible === false || m.colorWrite === false || m.transparent && (m.opacity < 0.05 || !m.depthWrite)) return; // proxies, particles, glows
       const label = `${name}/${o.name || '-'}|${m.name || '-'}`;
       if (SKIP.test(o.name) || SKIP.test(m.name)) return;
       const pos = o.geometry.attributes.position;
@@ -100,6 +100,7 @@ const report = await page.evaluate(({ only, camera }) => {
     for (let ix = cell(Math.min(t[0], t[3], t[6])); ix <= cell(Math.max(t[0], t[3], t[6])); ix++)
       for (let iz = cell(Math.min(t[2], t[5], t[8])); iz <= cell(Math.max(t[2], t[5], t[8])); iz++) {
         if (closed) put(col, key(ix, iz), i);
+        cols.add(key(ix, iz));
         for (let iy = cell(Math.min(t[1], t[4], t[7])); iy <= cell(Math.max(t[1], t[4], t[7])); iy++) put(grid, key3(ix, iy, iz), i);
       }
   }
@@ -272,6 +273,7 @@ const report = await page.evaluate(({ only, camera }) => {
     for (const c of comps) { lo[0] = Math.min(lo[0], c.lo[0]); lo[1] = Math.min(lo[1], c.lo[2]); hi[0] = Math.max(hi[0], c.hi[0]); hi[1] = Math.max(hi[1], c.hi[2]); }
     const S = 0.1;
     for (let x = lo[0]; x < hi[0]; x += S) for (let z = lo[1]; z < hi[1]; z += S) {
+      if (!cols.has(key(cell(x), cell(z)))) continue;
       if (!col.has(key(cell(x), cell(z))) && !grid.has(key3(cell(x), cell(w.groundAt(x, z) + 1.3), cell(z))) && !grid.has(key3(cell(x), cell(w.groundAt(x, z) + 0.9), cell(z)))) continue;
       const g = w.groundAt(x, z), r = w.collide(x, z, 0.28, g);
       if (Math.hypot(r.x - x, r.z - z) > 1e-3 || w.terrain.height(x, z) < (w.terrain.waterLevel ?? -1e9)) continue;
