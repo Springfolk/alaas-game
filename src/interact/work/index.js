@@ -40,5 +40,5 @@ export class Work {
     this.game.persist();
     return w[key];
   }
-  say(text, small) { this.game.ui.toast(`${small ? `<small>${this.game.ui.t(small)}</small>` : ''}<b>${this.game.ui.t(text)}</b>`, 4600); }
+  say(text, small) { this.game.ui.toast(`<b>${this.game.ui.t(text)}</b>${small ? `<small>${this.game.ui.t(small)}</small>` : ''}`, 5200); }
 }

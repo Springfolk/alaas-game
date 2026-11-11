@@ -28,3 +28,20 @@ Look: the Aero glass frames (blurred, with chrome) stay only on system surfaces 
 - Layout: landscape = picture of the homestead left, rows right; portrait = picture above, three pictures a row.
 - Cut: the window frame, the list of hint sentences, the instruction paragraph as a heading, the orb.
 - Pictures: `public/assets/ui/journal/<id>.webp` (320 px) and `<id>.s.webp` (20 px, the blur), `work-<job>.webp`, `map.webp` + its projection in `src/data/journal.json`: `npm run bake-journal`.
+
+## Title and loading
+- Shows: the key art, the name, a hairline that fills, then one button and the three languages; version, source, credits and the ticket call small beneath.
+- Cut: the glass dock, the 13-row controls grid, the glossy progress bar.
+
+## In play
+| Surface | Shows | Cut |
+|---|---|---|
+| Look prompt | the thing's name, the mouse glyph + what the hands would do, an E chip when it can be inspected: type on the view | the glass pill and its blur |
+| Found by doing (`ui.discovered`) | the thing's journal picture in a gold ring and its name, top right (where the journal's button is on a phone), 2.6 s | the "added to the journal" window |
+| Saying (`ui.toast`) | one italic line and its by-line, low in the view (above the thumbs on a phone) | the window |
+| Controls list (`#hints`) | off; a first walk shows it for 14 s; H or the setting brings it back (`save.ui2` turned it off once for old saves) | always on, its blur |
+| Finder marker | gold diamond + metres over the place, at the edge with an arrow | |
+| Touch | stick left, hand (big) with eye and put-down beside it, small jump and crouch, journal and pause top right; over a card or the journal: language and close | blur behind every button, the language button in play |
+
+## Pause, settings, about
+- The one Aero window left (system surface; no frames are drawn behind it once settled). Tabs: Settings, Controls (keyboard only), About.

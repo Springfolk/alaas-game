@@ -36,11 +36,14 @@ const keyartShown = () => !!keyart && getComputedStyle(keyart).display !== 'none
 const setRes = (e, k) => { e.renderer.setPixelRatio(e.pixelRatio() * k); e.renderer.setSize(innerWidth, innerHeight, false); };
 
 function loadSave() {
-  const def = { lang: detectLang(), found: [], done: [], settings: { sens: 1, fov: 72, vol: 0.85, quality: 'auto', invertY: false, hints: true, motion: 1, smooth: 0 } };
+  const def = { lang: detectLang(), found: [], done: [], ui2: true, settings: { sens: 1, fov: 72, vol: 0.85, quality: 'auto', invertY: false, hints: false, motion: 1, smooth: 0 } };
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
     // the language comes from the browser until the player picks one (langSet)
-    if (s) return { ...def, ...s, lang: s.langSet ? s.lang : def.lang, settings: { ...def.settings, ...s.settings } };
+    if (s) {
+      if (!s.ui2) { s.ui2 = true; (s.settings ||= {}).hints = false; } // 2026-11: the controls list is off unless asked for (H)
+      return { ...def, ...s, lang: s.langSet ? s.lang : def.lang, settings: { ...def.settings, ...s.settings } };
+    }
   } catch { /* storage blocked */ }
   return def;
 }
@@ -259,7 +262,6 @@ class Game {
     for (const el of document.querySelectorAll('.ver')) el.textContent = 'v' + version;
     const keys = (mini) => CONTROLS.filter((c) => !mini || !['F3', 'L'].includes(c[0]))
       .map(([k, l]) => `<kbd>${typeof k === 'string' ? k : this.tt(k)}</kbd><span>${this.tt(l)}</span>`).join('');
-    document.getElementById('keys-title').innerHTML = keys(false);
     document.getElementById('keys-pause').innerHTML = keys(false);
     document.getElementById('hints').innerHTML = keys(true);
     const langs = document.getElementById('title-langs');
@@ -281,11 +283,15 @@ class Game {
   }
   showHints() {
     const h = document.getElementById('hints');
-    h.classList.toggle('off', !this.save.settings.hints || this.title !== false);
+    h.classList.toggle('off', !(this.save.settings.hints || this.firstKeys) || this.title !== false);
   }
 
   start(auto = false) {
     this.title = false;
+    if (!this.save.seenKeys && !auto) { // a first walk: the controls list for a while, then only on H
+      this.save.seenKeys = this.firstKeys = true; this.persist();
+      setTimeout(() => { this.firstKeys = false; this.showHints(); }, 14000);
+    }
     this.showHints();
     document.getElementById('title').classList.remove('show');
     this.audio?.start();
@@ -373,7 +379,7 @@ class Game {
     if (e.code === 'F3') { e.preventDefault(); document.getElementById('fps').classList.toggle('on'); return; }
     if (e.code === 'KeyP' && this.input.locked) { if (this.paused) this.resume(); else this.pause(); return; }
     if (this.paused) return;
-    if (e.code === 'KeyH' && ui.open !== 'journal') { this.save.settings.hints = !this.save.settings.hints; document.getElementById('s-hints').checked = this.save.settings.hints; this.showHints(); this.persist(); return; }
+    if (e.code === 'KeyH' && !ui.open) { this.firstKeys = false; this.save.settings.hints = !this.save.settings.hints; document.getElementById('s-hints').checked = this.save.settings.hints; this.showHints(); this.persist(); return; }
     // a card or the journal is up: E goes on (the thing → its text → closed), Esc / J / a step away close; the
     // pointer lock is kept throughout
     if (ui.modal) {

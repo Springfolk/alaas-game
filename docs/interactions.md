@@ -9,7 +9,7 @@ Code: `src/interact/rites.js` (choron, lake cup, khomus); input flow in `src/mai
 | **Put down**: the carried thing back to its place when that is within reach (`thing.put()`: axe → block, scythe → post, bark → hide), else onto dry ground ahead; of an armful, one billet | right button (Q) | the put-down button (shown while carrying) |
 | **Inspect**: the thing comes up (the inspect stage, `docs/ui.md`), never an act | E | the eye button (shown when the thing in view has a card) |
 
-- The prompt names the thing in view, then the mouse glyph with what the hands would do, then an E chip when it has a card (no glyphs on touch: its buttons light up). The dot becomes a ring when the hands can do something; with nothing in view that ring is the only sign (no pill).
+- The prompt (type on the view, no pill) names the thing in view, then the mouse glyph with what the hands would do, then an E chip when it has a card (no glyphs on touch: its buttons light up). The dot becomes a ring when the hands can do something; with nothing in view that ring is the only sign (no pill).
 - An act never opens a card; doing a thing still adds its entry to the journal.
 - One thing in the hands at a time (or an armful of billets); nothing goes into the lake.
 

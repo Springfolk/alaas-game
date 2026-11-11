@@ -28,7 +28,6 @@ const L = {
   journal: { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' }, found: { sah: 'булулунна', en: 'found', ru: 'найдено' },
   close: { sah: 'сап', en: 'close', ru: 'закрыть' },
   related: { sah: 'Сибээстээх', en: 'Related', ru: 'См. также' }, sources: { sah: 'Сигэлэр', en: 'Sources', ru: 'Источники' },
-  newEntry: { sah: 'Бэлиэтээһиҥҥэ киирдэ', en: 'Added to the journal', ru: 'Добавлено в дневник' },
   guideHow: { sah: '«?» тал — бэлиэ онно сирдиэ.', en: 'Pick a “?” and a marker will lead you there.', ru: 'Выберите «?», и метка приведёт вас туда.' },
   work: { sah: 'Үлэ', en: 'Work', ru: 'Работа' },
 };
@@ -347,19 +346,21 @@ export class UI {
     else if (this.open === 'journal') this.showJournal();
   }
 
-  // A Messenger-style pop-up, bottom right. `html` is the body (a <small> line and a <b> line).
-  toast(html, ms = 3600) {
+  // A beat (docs/ui.md), no window: `html` is its body. A saying (`say`): a caption low in the view, a <b> line
+  // and a <small> by-line.
+  toast(html, ms = 3600, cls = 'say') {
     const d = document.createElement('div');
-    d.className = 'toast glass';
-    d.innerHTML = `<div class="t-head"><span class="orb"></span>Алаас</div><div class="t-body">${html}</div>`;
+    d.className = 'toast ' + cls;
+    d.innerHTML = html;
     this.toasts.appendChild(d);
     while (this.toasts.children.length > 4) this.toasts.firstChild.remove();
     setTimeout(() => d.classList.add('out'), ms);
-    setTimeout(() => d.remove(), ms + 800);
+    setTimeout(() => d.remove(), ms + 700);
   }
-
+  // found by doing: the thing's own picture (the journal's) and its name, by the journal's corner
   discovered(id) {
-    const e = BY_ID[id];
-    this.toast(`<small>${esc(this.t(L.newEntry))}</small><b>${esc(head(e))}</b>`);
+    const e = BY_ID[id], v = VIEWS[id] || {}, im = this.images[id]?.[0];
+    const src = v.photo ? im && imgSrc(im.src) : imgSrc(`assets/ui/journal/${id}.webp`);
+    this.toast(`<b>${esc(head(e))}</b>${src ? `<img src="${esc(src)}" alt="">` : '<span class="gmark"></span>'}`, 2600, 'found');
   }
 }
