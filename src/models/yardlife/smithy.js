@@ -3,7 +3,8 @@
 // tongs, hammer, a knife blank, the quench tub, a basket of charcoal, ore and slag by the door.
 // The smith is away. Pumping the bellows (the act) makes the coals flare.
 import * as THREE from 'three/webgpu';
-import { addLog, blob, boxUV, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, sheetGeo, sleep, TAU } from './kit.js';
+import { addLog, along, blob, boxUV, Bucket, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, sheetGeo, sleep, TAU } from './kit.js';
+import { anvilGeo, fileGeo, grainAlong, haftGeo, hammerHeadGeo, tongsGeo } from './forged.js';
 import { water } from './pieces.js';
 import { makeSmoke } from './smoke.js';
 import { uniform, color, mix } from 'three/tsl';
@@ -198,7 +199,13 @@ export function smithy(K, x, z, yaw) {
       const st = logGeo(0.42, 0.21, 0.2, rng, { seg: 12, caps: true, wob: 0.05 });
       K.b.add(st.side, M.darkwood, mtx([ax, ay - 0.03, az])); K.b.add(st.caps, M.end, mtx([ax, ay - 0.03, az]), [0.55, 0.5, 0.46]);
       const top = ay + 0.39;
-      F.add(boxUV(new THREE.BoxGeometry(0.12, 0.1, 0.08), 4), M.iron, mtx([-0.5, top + 0.02, 0.95], [0, 0.2, 0]), [0.65, 0.65, 0.68]);
+      F.add(anvilGeo(0.12, 0.1, 0.085), M.iron, mtx([-0.5, top - 0.03, 0.95], [0, 0.2, 0]), [0.62, 0.62, 0.66]); // кыстык: its tang is in the stump
+      // the sledge (балта) stands against the stump, head on the ground
+      {
+        const sm = mtx([ax - 0.05, K.b.ground(ax - 0.05, az - 0.37), az - 0.37], [0.42, 0.3, 0]);
+        K.b.add(hammerHeadGeo(0.15, 0.058, false), M.iron, sm.clone().multiply(mtx([0, 0.04, 0])), [0.6, 0.6, 0.64]);
+        K.b.add(haftGeo(0.66, 0.016, 0.018), M.fresh, sm.clone().multiply(mtx([0, 0.012, 0])), [0.6, 0.52, 0.44]);
+      }
       // (the knife blank and the hammer are separate things now: the forge work below)
       K.colliders.push({ x: ax, z: az, r: 0.27 });
       // low stool for the smith
@@ -207,11 +214,15 @@ export function smithy(K, x, z, yaw) {
       K.b.add(sg.side, M.darkwood, mtx([sx, K.b.ground(sx, sz) - 0.02, sz])); K.b.add(sg.caps, M.end, mtx([sx, K.b.ground(sx, sz) - 0.02, sz]), [0.7, 0.65, 0.6]);
     }
     // tongs (long reins, blackened jaws) leaning on the forge
-    for (const s of [-1, 1]) addLog(K.b, Wy(-0.05, fy + 0.005, 0.72 + s * 0.02), Wy(FX - FD / 2 - 0.02, fy + 0.58, 0.55 - s * 0.02), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2, bend: 0.01 });
+    const scrap = new Bucket(() => 0); // (keeps the yard's rng stream where it was: four thin logs stood for the tongs)
+    for (const s of [-1, 1]) addLog(scrap, Wy(-0.05, fy + 0.005, 0.72 + s * 0.02), Wy(FX - FD / 2 - 0.02, fy + 0.58, 0.55 - s * 0.02), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2, bend: 0.01 });
+    for (const t of tongsGeo(0.66)) K.b.add(t, M.iron, along(Wy(-0.05, fy + 0.004, 0.72), Wy(FX - FD / 2 - 0.012, fy + 0.58, 0.55), 0.5), [0.8, 0.8, 0.84]);
     // a second pair and a file hung on pegs on the back wall
-    for (const s of [-1, 1]) addLog(K.b, Wy(1.5, fy + 0.7, -0.75 + s * 0.015), Wy(1.52, fy + 1.25, -0.72 - s * 0.015), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2 });
+    for (const s of [-1, 1]) addLog(scrap, Wy(1.5, fy + 0.7, -0.75 + s * 0.015), Wy(1.52, fy + 1.25, -0.72 - s * 0.015), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2 });
+    for (const t of tongsGeo(0.56)) F.add(t, M.iron, mtx([1.4, fy + 1.39, -0.75], [0, Math.PI / 2, Math.PI]), [0.75, 0.75, 0.79]); // astride the peg, jaws up
     addLog(K.b, Wy(1.48, fy + 1.27, -0.75), Wy(1.3, fy + 1.27, -0.75), 0.012, 0.012, rng, M.wood, M.end, { seg: 5 });
-    F.add(boxUV(new THREE.BoxGeometry(0.012, 0.3, 0.02), 6), M.iron, mtx([1.5, fy + 0.95, -0.45], [0, 0, 0.08]), [0.7, 0.7, 0.72]);
+    F.add(fileGeo(0.28), M.iron, mtx([1.5, fy + 0.86, -0.45], [0, Math.PI / 2, 0.08]), [0.75, 0.75, 0.8]); // игии, point up, in a birch handle
+    F.add(haftGeo(0.1, 0.013, 0.012), M.fresh, mtx([1.5, fy + 0.86 + 0.045, -0.45], [0, 0, 0.08 + Math.PI]), [0.7, 0.6, 0.48]);
     // quench tub (birch bark) with water
     {
       const tub = lathe([[0.19, 0], [0.2, 0.15], [0.205, 0.28], [0.19, 0.28], [0.185, 0.03]], 22, rng, 0.02);
@@ -307,15 +318,18 @@ export function smithy(K, x, z, yaw) {
   // the hammer (өтүйэ): a small heavy head on a short haft, lying on the stump; it rises and falls by itself with each blow
   const hammer = new THREE.Group(); hammer.name = 'hammer';
   {
-    const head = new THREE.Mesh(boxUV(new THREE.BoxGeometry(0.1, 0.034, 0.034), 6), M.iron);
-    head.geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(head.geometry.attributes.position.count * 3).fill(1), 3));
+    const head = new THREE.Mesh(hammerHeadGeo(0.105, 0.034), M.iron); // a cross peen
     head.geometry.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(head.geometry.attributes.position.count).fill(1), 1));
     head.position.set(0, 0.3, 0); head.castShadow = true;
     const hg = logGeo(0.3, 0.013, 0.012, rng, { seg: 6, step: 0.1 }).side;
     hg.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(hg.attributes.position.count * 3).fill(0.6), 3));
     hg.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(hg.attributes.position.count).fill(1), 1));
     const haft = new THREE.Mesh(hg, M.fresh); haft.castShadow = true;
-    hammer.add(head, haft);
+    grainAlong(hg);
+    const eg = haftGeo(0.026, 0.0125, 0.012, 6).translate(0, 0.297, 0); // the haft's end through the eye
+    eg.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(eg.attributes.position.count * 3).fill(0.5), 3));
+    eg.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(eg.attributes.position.count).fill(1), 1));
+    hammer.add(head, haft, new THREE.Mesh(eg, M.fresh));
   }
   hammer.userData.grips = [{ hand: 'R', p: [0, 0.07, 0], axis: [0, 1, 0], r: 0.013 }];
   hammer.userData.stand = { of: K.group, x: ax - 0.05, z: az + 0.82 }; // the smith's place, the anvil before him

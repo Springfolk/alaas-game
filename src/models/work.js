@@ -3,6 +3,7 @@
 // Placed at the homestead centre (HOME); everything here moves, so src/interact reparents it to the scene.
 // The parts are found in `object.userData.work`.
 import { Bucket, boxUV, logGeo, mtx } from './yardlife/kit.js';
+import { grainAlong } from './yardlife/forged.js';
 import { yardMats } from './yardlife/mats.js';
 
 // the woodpile's frame (yardlife PLACES.woodpile) and its chopping block (pieces.js `woodpile`)
@@ -44,7 +45,7 @@ export default async function build(ctx, placement) {
       hp.setXYZ(i, hp.getX(i) * 1.22 * k, y, hp.getZ(i) * 0.86 * k);
     }
     haft.side.computeVertexNormals();
-    B.add(haft.side, M.fresh, null, [0.72, 0.6, 0.48]);
+    B.add(grainAlong(haft.side), M.fresh, null, [0.72, 0.6, 0.48]);
     B.add(haft.caps, M.end, null, [0.8, 0.7, 0.6]);
     // the head: poll at −X, thinning to the edge at +X; the lower corner drawn down into a beard
     const L = 0.15, H = 0.046, W = 0.034;
