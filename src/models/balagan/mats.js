@@ -347,12 +347,16 @@ export function makeMats(maps, { winter = false } = {}) {
 
   // ---- birch bark: cream outer face with dark lenticels; the хаппахчы curtain (plain boiled bark)
   M.birch = (() => {
+    // туос, the pale inner side out: honey to cream in soft bands, dark lenticel dashes, a faint peel grain
     const m = new S({ name: 'birch', vertexColors: true, roughness: 0.62 });
-    const u = uv();
-    const len = nz(vec3(u.x.mul(1.8), u.y.mul(28), 0.5));
-    const lent = smoothstep(0.78, 0.86, len);
-    const base = mix(vec3(0.42, 0.33, 0.21), vec3(0.32, 0.22, 0.12), fz(vec3(u.mul(3), 2.0), 3));
-    m.colorNode = mix(base, vec3(0.09, 0.07, 0.06), lent.mul(0.85)).mul(vertexColor());
+    const u = uv(), p = positionLocal;
+    const len = nz(vec3(u.x.mul(46), p.y.mul(260), 0.5));
+    const lent = smoothstep(0.7, 0.78, len);
+    const band = fz(vec3(u.x.mul(2.5), p.y.mul(14), 2.0), 3);
+    const grain = nz(vec3(u.x.mul(9), p.y.mul(700), 4.0));
+    const base = mix(vec3(0.46, 0.36, 0.22), vec3(0.3, 0.2, 0.11), band).mul(grain.mul(0.16).add(0.92));
+    m.colorNode = mix(base, vec3(0.09, 0.06, 0.045), lent.mul(0.8)).mul(vertexColor());
+    m.roughnessNode = mix(float(0.5), float(0.8), band);
     m.envMapIntensity = 0.35;
     return m;
   })();
@@ -371,12 +375,15 @@ export function makeMats(maps, { winter = false } = {}) {
 
   // ---- furs (vertex colour), textiles, leather, metals, oiled wood
   M.fur = (() => {
+    // guard hairs: fine streaks drawn out along the lie of the coat, clumps, paler tips over a dark underfur
     const m = new S({ name: 'fur', vertexColors: true, roughness: 0.95 });
     const p = positionLocal;
-    const n = nz(p.mul(vec3(60, 60, 60)));
-    const clump = fz(p.mul(9), 2);
-    m.colorNode = vertexColor().mul(n.mul(0.35).add(0.7)).mul(clump.mul(0.4).add(0.75));
-    m.normalNode = bumpMap(n.mul(0.6).add(clump.mul(0.4)), 2.5);
+    const tuft = nz(p.mul(210).add(nz(p.mul(45)).mul(5)));
+    const fine = nz(p.mul(vec3(90, 70, 90)));
+    const clump = fz(p.mul(24), 2);
+    const h = tuft.mul(0.6).add(fine.mul(0.4));
+    m.colorNode = vertexColor().mul(mix(float(0.3), float(1.55), smoothstep(0.3, 0.72, h))).mul(clump.mul(0.3).add(0.82));
+    m.normalNode = bumpMap(h.mul(0.85).add(clump.mul(0.25)), 7);
     m.envMapIntensity = 0.3;
     return m;
   })();
@@ -405,11 +412,12 @@ export function makeMats(maps, { winter = false } = {}) {
     return m;
   })();
   M.silver = (() => {
-    const m = new S({ name: 'silver', vertexColors: true, metalness: 1, roughness: 0.33 });
+    // уулаах көмүс: a soft, matte white metal; tarnish sits in fine patches (vertex colour carries the engraving)
+    const m = new S({ name: 'silver', vertexColors: true, metalness: 0.82, roughness: 0.42 });
     const p = positionLocal;
-    const tarn = smoothstep(0.5, 0.75, fz(p.mul(70), 2));
-    m.colorNode = mix(vec3(0.81, 0.79, 0.75), vec3(0.25, 0.24, 0.22), tarn.mul(0.6)).mul(vertexColor());
-    m.roughnessNode = mix(0.28, 0.55, tarn);
+    const tarn = smoothstep(0.45, 0.8, fz(p.mul(260), 2));
+    m.colorNode = mix(vec3(0.9, 0.89, 0.86), vec3(0.4, 0.38, 0.35), tarn.mul(0.6)).mul(vertexColor());
+    m.roughnessNode = mix(0.36, 0.62, tarn);
     m.envMapIntensity = 0.6;
     return m;
   })();
