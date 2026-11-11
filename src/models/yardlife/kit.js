@@ -592,8 +592,8 @@ export function fence(bucket, ground, pts, rng, mats, { rails = [0.42, 0.82, 1.2
       }
       // willow-bark lashings binding the pair under each rail
       for (const ry of rails) {
-        const ly = y + ry - 0.06;
-        B.add(new THREE.TorusGeometry(0.15, 0.012, 3, 8), mats.lash, mtx([x, ly, z], [Math.PI / 2, 0, Math.atan2(dz, dx)], [0.72, 1.62, 0.6]), jitterTint(rng, 0.15));
+        const ly = y + ry - 0.06, k = (ry - 0.06 + 0.15) / 1.7, across = 0.15 - 0.026 * k + 0.061 - 0.019 * k + 0.01; // round the pair's outer faces at this height
+        B.add(new THREE.TorusGeometry(0.15, 0.012, 3, 8), mats.lash, mtx([x, ly, z], [Math.PI / 2, 0, Math.atan2(dz, dx)], [0.7, across / 0.15, 0.6]), jitterTint(rng, 0.15));
       }
     }
     // rails between successive posts: the end on the lashing, the start over the end of the rail before; one bay is open where a gap lies
