@@ -62,20 +62,21 @@ const opaque = (m) => !m.transparent && !(m.alphaTest > 0) && !m.alphaMap && !m.
 const shown = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
 
 // The proxy's triangles simplified in a load worker (src/load/simplify.js: ~1.5 cm, under a shadow texel; the
-// shadow pass drew the models' full detail per cascade): a new geometry with the same position attribute, the
-// swap the watchdog's rebuild does too (no new shader). Resolves when done; none on the main thread.
+// shadow pass drew the models' full detail per cascade): a new geometry of the kept vertices, the swap the
+// watchdog's rebuild does too (no new shader). Resolves when done; none on the main thread.
 const SHADOW_ERROR = 0.015;
 function simplified(proxy) {
   if (KEYART || urlFlag('fullshadow')) return null; // ?keyart: exact shadows; ?fullshadow: A/B
   const g = proxy.geometry, pos = g.attributes.position.array, idx = Uint32Array.from(g.index.array);
   return work('simplify', { pos, idx, error: SHADOW_ERROR }, () => null).then((out) => {
-    if (!out || proxy.geometry !== g || out.length >= idx.length) return;
+    if (!out || proxy.geometry !== g || out.idx.length > idx.length) return;
     const s = new THREE.BufferGeometry();
-    s.setAttribute('position', g.attributes.position);
-    s.setIndex(new THREE.BufferAttribute(g.index.array instanceof Uint16Array ? Uint16Array.from(out) : out, 1));
+    s.setAttribute('position', new THREE.BufferAttribute(out.pos, 3));
+    s.setIndex(new THREE.BufferAttribute(out.idx, 1));
     s.boundingSphere = g.boundingSphere;
     proxy.geometry = s;
-    console.info(`${proxy.name}: shadow ${idx.length / 3} → ${out.length / 3} triangles`);
+    g.dispose();
+    console.info(`${proxy.name}: shadow ${idx.length / 3} → ${out.idx.length / 3} triangles, ${pos.length / 3} → ${out.pos.length / 3} vertices`);
   }).catch((e) => console.warn('shadow simplify', e));
 }
 
