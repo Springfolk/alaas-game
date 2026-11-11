@@ -1,9 +1,10 @@
 // Phone / tablet controls, no pointer lock: a stick fixed bottom left (a touch that starts on or near it
 // walks; push to the rim = run), a drag that starts anywhere else on the open view looks (a short tap on a
 // thing does its act, or shows its card when it has none; a tip says "look around" until the first look drag).
-// Glass buttons: the hand (the do input: held while the thumb stays down, and a drag that starts on it looks,
-// so a held tool can be aimed), the eye (inspect; shown when the thing in view has a card), put down (shown
-// while carrying), jump, crouch, journal, language, pause; none while an act asks for a choice (its own strips are tapped).
+// Buttons (no blur behind them: eight always-on blurs cost a phone frame time): the hand (the do input: held while
+// the thumb stays down, and a drag that starts on it looks, so a held tool can be aimed), the eye (inspect; shown
+// when the thing in view has a card), put down (shown while carrying), jump, crouch, journal, pause; over a card or
+// the journal: language, close; none while an act asks for a choice (its own strips are tapped).
 // Windows, toasts and buttons keep their touches.
 // Auto-enabled on coarse-pointer devices; `?touch` forces it, `?notouch` disables it.
 // Self-contained: every class is `tc-` prefixed and the stylesheet is injected here.
@@ -11,14 +12,13 @@ import { CONTROLS, tr } from './i18n.js';
 
 const CSS = `
 .tc-root{position:fixed;inset:0;z-index:15;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
-  font-family:"Segoe UI","Noto Sans",system-ui,sans-serif;--tc-glass:rgba(200,225,255,.16);--tc-edge:rgba(255,255,255,.55);--tc-glow:120,220,255}
+  font-family:"Segoe UI","Noto Sans",system-ui,sans-serif;--tc-glass:rgba(40,70,100,.34);--tc-edge:rgba(255,255,255,.55);--tc-glow:120,220,255}
 .tc-root[data-mode=off]>*{display:none!important}
 .tc-root:not([data-mode=play]) .tc-play,.tc-root:not([data-mode=play]) .tc-stick{display:none}
 .tc-root:not([data-mode=ui]) .tc-ui{display:none}
 .tc-stick{position:absolute;left:calc(36px + env(safe-area-inset-left));bottom:calc(48px + env(safe-area-inset-bottom));width:128px;height:128px;border-radius:50%;pointer-events:none;opacity:.55;transition:opacity .25s;
   background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.04) 52%,rgba(var(--tc-glow),.12) 70%,rgba(255,255,255,.08) 71%);
-  border:1px solid var(--tc-edge);box-shadow:inset 0 0 0 1px rgba(0,30,60,.35),inset 0 10px 24px rgba(255,255,255,.12),0 2px 14px rgba(0,0,0,.35);
-  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+  border:1px solid var(--tc-edge);box-shadow:inset 0 0 0 1px rgba(0,30,60,.35),inset 0 10px 24px rgba(255,255,255,.12),0 2px 14px rgba(0,0,0,.35);}
 .tc-stick.on{opacity:1}
 .tc-stick.run{box-shadow:inset 0 0 0 1px rgba(0,30,60,.35),inset 0 10px 24px rgba(255,255,255,.12),0 0 22px rgba(var(--tc-glow),.55)}
 .tc-knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
@@ -27,8 +27,7 @@ const CSS = `
 .tc-btn{position:absolute;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;border-radius:50%;
   color:#fff;font-weight:600;text-shadow:0 1px 3px rgba(0,20,50,.85);font-size:15px;letter-spacing:.02em;
   background:linear-gradient(180deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,.14) 49%,rgba(10,40,80,.22) 51%,rgba(110,170,230,.28) 100%),var(--tc-glass);
-  border:1px solid var(--tc-edge);box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -5px 10px rgba(var(--tc-glow),.25),0 2px 10px rgba(0,0,0,.35);
-  -webkit-backdrop-filter:blur(6px) saturate(1.4);backdrop-filter:blur(6px) saturate(1.4);transition:transform .08s,box-shadow .2s,opacity .2s}
+  border:1px solid var(--tc-edge);box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -5px 10px rgba(var(--tc-glow),.25),0 2px 10px rgba(0,0,0,.35);transition:transform .08s,box-shadow .2s,opacity .2s}
 .tc-btn.down{transform:scale(.92);box-shadow:inset 0 0 0 1px rgba(10,40,80,.6),inset 0 3px 10px rgba(0,20,50,.45),0 0 16px rgba(var(--tc-glow),.6)}
 .tc-btn svg{width:48%;height:48%;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px rgba(0,20,50,.8))}
 .tc-act{right:calc(18px + env(safe-area-inset-right));bottom:calc(112px + env(safe-area-inset-bottom));width:76px;height:76px;font-size:24px;opacity:.6}
@@ -37,8 +36,8 @@ const CSS = `
 .tc-eye{right:calc(104px + env(safe-area-inset-right));bottom:calc(126px + env(safe-area-inset-bottom));width:54px;height:54px}
 .tc-put{right:calc(29px + env(safe-area-inset-right));bottom:calc(202px + env(safe-area-inset-bottom));width:54px;height:54px}
 .tc-eye:not(.ready),.tc-put:not(.ready){opacity:0;pointer-events:none}
-.tc-jump{right:calc(104px + env(safe-area-inset-right));bottom:calc(34px + env(safe-area-inset-bottom));width:64px;height:64px}
-.tc-crouch{right:calc(24px + env(safe-area-inset-right));bottom:calc(30px + env(safe-area-inset-bottom));width:54px;height:54px}
+.tc-jump{right:calc(104px + env(safe-area-inset-right));bottom:calc(36px + env(safe-area-inset-bottom));width:52px;height:52px;opacity:.7}
+.tc-crouch{right:calc(30px + env(safe-area-inset-right));bottom:calc(32px + env(safe-area-inset-bottom));width:48px;height:48px;opacity:.7}
 .tc-crouch.on{box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -5px 12px rgba(var(--tc-glow),.6),0 0 14px rgba(var(--tc-glow),.6)}
 .tc-top{position:absolute;top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));display:flex;gap:10px}
 .tc-top .tc-btn{position:relative;width:46px;height:46px;border-radius:12px;font-size:13px}
@@ -47,7 +46,7 @@ const CSS = `
 @media (max-height:500px){.tc-stick{left:calc(32px + env(safe-area-inset-left));bottom:calc(26px + env(safe-area-inset-bottom))}}
 .tc-tip{position:absolute;left:50%;top:27%;transform:translateX(-50%);white-space:nowrap;display:flex;align-items:center;gap:8px;padding:7px 14px 7px 9px;
   border-radius:22px;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 3px rgba(0,20,50,.85);pointer-events:none;
-  background:var(--tc-glass);border:1px solid var(--tc-edge);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:opacity .8s}
+  background:rgba(8,18,30,.5);border:1px solid var(--tc-edge);transition:opacity .8s}
 .tc-tip.gone,.tc-tip.hid{opacity:0}
 .tc-tip svg{width:30px;height:30px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;animation:tc-drag 1.6s ease-in-out infinite}
 @keyframes tc-drag{0%,100%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
@@ -97,7 +96,7 @@ export class TouchControls {
       <div class="tc-btn tc-play tc-jump" data-b="jump">${ICON.jump}</div>
       <div class="tc-btn tc-play tc-crouch" data-b="crouch">${ICON.crouch}</div>
       <div class="tc-top tc-play">
-        <div class="tc-btn" data-b="lang">САХ</div><div class="tc-btn" data-b="journal">${ICON.journal}</div><div class="tc-btn" data-b="pause">${ICON.pause}</div>
+        <div class="tc-btn" data-b="journal">${ICON.journal}</div><div class="tc-btn" data-b="pause">${ICON.pause}</div>
       </div>
       <div class="tc-ui"><div class="tc-btn" data-b="lang">САХ</div><div class="tc-btn" data-b="close">${ICON.close}</div></div>`;
     document.body.appendChild(root);

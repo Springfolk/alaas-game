@@ -98,17 +98,15 @@
   #title h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(60px, 11vw, 138px); margin: 0; letter-spacing: .02em; line-height: 1.05;
     color: #fff; text-shadow: 0 0 28px rgba(var(--glow),.55), 0 0 2px rgba(255,255,255,.9), 0 3px 26px rgba(0,10,30,.55); animation: rise 1.4s var(--ease) both; }
   #title .sub { font-family: var(--serif); font-style: italic; color: var(--dim); font-size: clamp(15px, 2vw, 19px); margin: 2px 0 22px; text-shadow: 0 1px 8px rgba(0,10,30,.8); animation: rise 1.4s .15s var(--ease) both; }
-  #title .dock { width: min(720px, 100%); padding: 18px 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; cursor: pointer; animation: rise 1.2s .3s var(--ease) both; }
-  .load { width: min(420px, 100%); display: flex; flex-direction: column; gap: 7px; align-items: stretch; }
+  #title .dock { width: min(520px, 100%); display: flex; flex-direction: column; align-items: center; gap: 16px; cursor: pointer; animation: rise 1.2s .3s var(--ease) both; }
+  .load { width: min(300px, 100%); display: flex; flex-direction: column; gap: 7px; align-items: stretch; }
   #title.ready .load { display: none; }
-  .bar { height: 14px; border-radius: 3px; overflow: hidden; border: 1px solid #3a4b5c; background: linear-gradient(180deg, #e4e8ec, #f7f9fa 60%, #dfe5ea); box-shadow: inset 0 1px 2px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.25); }
-  .bar i { display: block; height: 100%; width: calc(var(--p, 0) * 100%); transition: width .35s linear; position: relative; overflow: hidden;
-    background: linear-gradient(180deg, #c9f5b0 0%, #6fd63c 45%, #3ba51a 55%, #5ccc2e 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
-  .bar i::after { content: ''; position: absolute; inset: 0; width: 60px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent); animation: sweep 1.9s linear infinite; }
-  #title.error .bar i { background: linear-gradient(180deg, #ffc4c0, #e0453a 50%, #b82418 51%, #d8473c); }
-  .load .status { font-size: 12px; letter-spacing: .04em; color: var(--dim); text-shadow: 0 1px 4px rgba(0,10,30,.8); min-height: 1.4em; }
+  .bar { height: 3px; border-radius: 2px; overflow: hidden; background: rgba(255,255,255,.28); } /* a hairline under the name */
+  .bar i { display: block; height: 100%; width: calc(var(--p, 0) * 100%); transition: width .35s linear; background: #fff; }
+  #title.error .bar i { background: #e0453a; }
+  .load .status { font-size: 12px; letter-spacing: .04em; color: var(--dim); text-shadow: 0 1px 4px rgba(0,10,30,.8); min-height: 1.4em; text-align: center; }
   #title.error .status { color: #ffd3cf; }
-  .start { display: none; align-items: center; gap: 10px; font-size: 16px; padding: 10px 28px 10px 18px; }
+  .start { display: none; align-items: center; gap: 10px; font-size: 17px; padding: 12px 32px 12px 20px; }
   #title.ready .start { display: inline-flex; animation: pop .6s var(--ease) both; }
   .start .orb { width: 18px; height: 18px; animation: breathe 2.6s ease-in-out infinite; }
   .seg { display: inline-flex; gap: 0; border-radius: 999px; box-shadow: 0 1px 2px rgba(0,20,50,.3); }
@@ -119,9 +117,6 @@
     background: linear-gradient(180deg, #8ccdf7 0%, #3d9ae3 48%, #1f78c8 52%, #3a9ae6 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -4px 10px rgba(var(--glow),.45); }
   .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 13px; color: var(--dim); text-align: left; align-items: center; }
   .keys kbd { justify-self: end; }
-  #title .keys { grid-template-columns: repeat(3, auto 1fr); column-gap: 10px; text-shadow: 0 1px 3px rgba(0,10,30,.8); padding-top: 12px; border-top: 1px solid rgba(255,255,255,.18); width: 100%; }
-  @media (max-width: 760px) { #title .keys { grid-template-columns: repeat(2, auto 1fr); } }
-  @media (max-width: 480px), (pointer: coarse) { #title .keys { display: none; } #title .dock { padding: 16px 14px 14px; } }
   /* studio mark (Springfolk brand: dark-background lockup, unaltered, on a soft dark corner) and the links row */
   #title::before { content: ''; position: absolute; left: 0; top: 0; width: 360px; height: 180px; pointer-events: none;
     background: radial-gradient(ellipse at 0 0, rgba(4,14,26,.55), rgba(4,14,26,0) 70%); }
@@ -161,13 +156,13 @@
   #choice .x { display: none; width: 44px; height: 44px; margin-top: 14px; border-radius: 50%; align-items: center; justify-content: center; color: #fff; font-size: 16px; background: rgba(200,225,255,.16); box-shadow: 0 0 0 1px rgba(255,255,255,.55); }
   @media (pointer: coarse) { #choice { gap: 10px; } #choice button { width: 72px; } #choice span { opacity: 1; } #choice .x { display: flex; } }
   #prompt { position: fixed; z-index: 4; left: 50%; top: calc(50% + 30px); display: flex; gap: 9px; align-items: center; font-size: 14px; pointer-events: none; white-space: nowrap;
-    padding: 6px 13px; border-radius: 999px; opacity: 0; transform: translate(-50%, 6px) scale(.96); transition: transform .3s var(--ease); max-width: calc(100vw - 32px); } /* it settles into place but does not fade: an opacity animation is one more surface for the compositor to build a shader for */
-  #prompt.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    opacity: 0; transform: translateX(-50%); max-width: calc(100vw - 32px); color: #fff; } /* type on the view, no pill (its blur cost ~0.8 ms a frame); shown and hidden at once: an animation is one more surface for the compositor to build a shader for */
+  #prompt.show { opacity: 1; }
   #prompt .key { font-size: 11.5px; padding: 0 7px; border-radius: 999px; background: #e9eef4; box-shadow: none; border: 0; padding: 1px 8px; } /* flat and borderless: its gradient, shadows and rounded border each cost a compositor shader at the pill's first fade (a frame 83–170 ms late, ?auto) */
   .mouse { width: 11px; height: 16px; flex: none; color: #fff; vertical-align: -3px; } /* (no filter, no opacity: each is one more kind of surface for the compositor to build a shader for at its first paint) */
   kbd .mouse { color: inherit; }
-  #prompt .what { font-weight: 600; font-size: 15px; text-shadow: 0 0 10px rgba(0,20,50,.9); overflow: hidden; text-overflow: ellipsis; }
-  #prompt .act { color: var(--live-l); font-size: 13px; text-shadow: 0 0 8px rgba(0,20,50,.9); }
+  #prompt .what { font-weight: 600; font-size: clamp(16px, 1.1vw, 24px); text-shadow: 0 1px 2px rgba(0,8,20,.95), 0 0 10px rgba(0,8,20,.9); overflow: hidden; text-overflow: ellipsis; }
+  #prompt .act { color: #d6efff; font-size: clamp(14px, .95vw, 21px); text-shadow: 0 1px 2px rgba(0,8,20,.95), 0 0 8px rgba(0,8,20,.9); }
 
   /* ---- the inspect stage (docs/ui.md): the thing is the live view (src/ui/stage.js); the type is set on the picture ---- */
   #dip { position: fixed; inset: 0; z-index: 9; background: #05090e; opacity: 0; pointer-events: none; transition: opacity .13s linear; }
@@ -179,7 +174,7 @@
     background: linear-gradient(270deg, rgba(var(--k),.84) 0, rgba(var(--k),.7) calc(var(--free-r) * .55), rgba(var(--k),.22) calc(var(--free-r) * 1.1), rgba(var(--k),0) calc(var(--free-r) * 1.5)); }
   .k-photo .st-orbit { background: rgba(var(--k),.95); cursor: default; }
   .st-hero { position: absolute; left: 0; top: 0; width: calc(100% - var(--free-r)); height: 100%; padding: 4vmin; object-fit: contain; cursor: zoom-in; }
-  .st-col { position: absolute; right: max(28px, 2.6vw); top: 24px; bottom: 24px; width: clamp(330px, 31vw, 620px); display: flex; flex-direction: column; justify-content: center; gap: 14px; color: var(--ink); pointer-events: none; }
+  .st-col { position: absolute; right: max(28px, 2.6vw); top: 24px; bottom: 24px; width: clamp(330px, 31vw, 720px); display: flex; flex-direction: column; justify-content: center; gap: 14px; color: var(--ink); pointer-events: none; }
   .st-col > * { pointer-events: auto; flex: none; }
   .stage .cat { display: flex; align-items: center; gap: 9px; font-size: 11.5px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--live-l); text-shadow: 0 1px 6px rgba(0,8,20,.9); }
   .stage h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 3.7vw, 84px); line-height: 1.08; margin: 4px 0 6px; color: #fff; text-shadow: 0 2px 18px rgba(0,8,20,.75); overflow-wrap: anywhere; }
@@ -222,7 +217,7 @@
   .st-mark i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; background: #2a8ae0; }
   .st-mark.vh, .st-mark:hover { color: var(--live-l); }
   @media (orientation: portrait) {
-    .st-orbit { background: linear-gradient(0deg, rgba(var(--k),.9) 0, rgba(var(--k),.74) calc(var(--free-b) * .6), rgba(var(--k),.2) calc(var(--free-b) * 1.05), rgba(var(--k),0) calc(var(--free-b) * 1.3)); }
+    .st-orbit { background: linear-gradient(0deg, rgba(var(--k),.9) 0, rgba(var(--k),.74) calc(var(--free-b) * .6), rgba(var(--k),.16) calc(var(--free-b) * 1), rgba(var(--k),0) calc(var(--free-b) * 1.14)); }
     .st-hero { width: 100%; height: calc(100% - var(--free-b)); padding: 64px 12px 8px; }
     .st-col { left: 16px; right: 16px; top: auto; bottom: calc(14px + env(safe-area-inset-bottom)); width: auto; max-height: 66vh; justify-content: flex-end; gap: 11px; }
     .stage h2 { font-size: clamp(30px, 9.6vw, 50px); }
@@ -239,6 +234,7 @@
     .st-read .client { max-height: 50vh; }
     .st-fig .hero img { max-height: 38vh; }
   }
+  @media (pointer: coarse) and (orientation: landscape) { .st-col { top: 62px; justify-content: flex-start; } .st-fig .hero img { max-height: 30vh; } } /* under the touch close and language buttons */
   /* the Vista caption close button */
   .win-close { position: absolute; top: 0; right: 6px; width: 43px; height: 19px; padding: 0; z-index: 2; cursor: pointer; border: 1px solid rgba(60,0,0,.75); border-top: 0; border-radius: 0 0 5px 5px;
     background: linear-gradient(180deg, #e9a99a 0%, #d0533b 45%, #b5280f 52%, #d24c2c 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 0 0 1px rgba(255,255,255,.18), 0 1px 3px rgba(0,0,0,.35); transition: box-shadow .2s, background .2s; }
@@ -345,15 +341,15 @@
   @keyframes gpulse { 50% { opacity: .55; } }
   @keyframes gring { from { transform: scale(.6); opacity: .9; } to { transform: scale(1.9); opacity: 0; } }
 
-  /* ---- toasts: Messenger-style pop-ups, bottom right ---- */
-  #toasts { position: fixed; z-index: 25; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; align-items: flex-end; pointer-events: none; }
-  .toast { width: 270px; padding: 0 5px 5px; animation: toastin .55s var(--ease) both; transition: opacity .7s, transform .7s var(--ease); }
-  .toast .t-head { display: flex; align-items: center; gap: 7px; padding: 6px 6px 5px; font-size: 11.5px; font-weight: 600; color: #fff; text-shadow: 0 0 8px rgba(0,20,50,.9); }
-  .toast .t-body { display: flex; flex-direction: column; padding: 8px 12px 9px; border-radius: 4px; border: 1px solid rgba(10,30,60,.4);
-    background: linear-gradient(180deg, #ffffff, #e9f3fc); color: var(--c-ink); }
-  .toast small { font-size: 11.5px; color: var(--c-dim); }
-  .toast b { font-family: var(--serif); font-weight: 400; font-size: 18px; color: var(--c-head); line-height: 1.3; }
-  .toast.out { opacity: 0; transform: translateY(24px); }
+  /* ---- beats (docs/ui.md): a found thing's picture and name by the journal's corner; a saying as a caption ---- */
+  #toasts { position: fixed; z-index: 25; right: calc(18px + env(safe-area-inset-right)); top: calc(16px + env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+  .toast { display: flex; align-items: center; gap: 10px; color: #fff; transition: opacity .6s; }
+  .toast img { width: 46px; height: 46px; flex: none; border-radius: 50%; object-fit: cover; border: 2px solid #ffd77a; background: #16222e; }
+  .toast b { font: 400 clamp(18px, 1.3vw, 28px)/1.2 var(--serif); text-shadow: 0 1px 2px rgba(0,8,20,.95), 0 0 10px rgba(0,8,20,.9); }
+  .toast small { font-size: 12.5px; color: var(--dim); text-shadow: 0 1px 2px rgba(0,8,20,.95); }
+  .toast.say { position: fixed; left: 50%; bottom: 17%; width: min(600px, 92vw); margin-left: max(-300px, -46vw); flex-direction: column; gap: 4px; text-align: center; }
+  .toast.say b { font-style: italic; font-size: clamp(17px, 1.5vw, 22px); line-height: 1.35; }
+  .toast.out { opacity: 0; }
 
   /* ---- pause menu ---- */
   #pause { z-index: 20; flex-direction: column; align-items: center; justify-content: center; background: rgba(4,12,22,.38); cursor: pointer; gap: 16px; padding: 16px; animation: fadein .25s both; }
@@ -395,11 +391,11 @@
   #resume, #exit { font-size: 15px; padding: 9px 30px; min-height: 40px; }
 
   /* ---- on-screen controls, F3 meter ---- */
-  #hints { position: fixed; z-index: 5; left: calc(14px + env(safe-area-inset-left)); bottom: calc(14px + env(safe-area-inset-bottom)); margin: 0; font-size: 12px; padding: 10px 13px; border-radius: 8px; transition: opacity .6s, transform .6s var(--ease); pointer-events: none; gap: 5px 10px; color: var(--ink); text-shadow: 0 1px 3px rgba(0,10,30,.8); }
+  #hints { position: fixed; z-index: 5; left: calc(14px + env(safe-area-inset-left)); bottom: calc(14px + env(safe-area-inset-bottom)); margin: 0; font-size: 12px; padding: 10px 13px; border-radius: 6px; background: rgba(5,11,18,.5); transition: opacity .6s, transform .6s var(--ease); pointer-events: none; gap: 5px 10px; color: var(--ink); text-shadow: 0 1px 3px rgba(0,10,30,.8); }
   #hints kbd { font-size: 10.5px; }
   #hints.off { opacity: 0; transform: translateY(10px); }
   #card.show ~ #hints, #journal.show ~ #hints { opacity: 0; } /* a card or the journal is up: no walking hints */
-  #fps { position: fixed; z-index: 26; left: calc(10px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); font: 11px/1.45 ui-monospace, Menlo, monospace; color: #e8f6ff; display: none; pointer-events: none; white-space: pre; padding: 6px 10px; border-radius: 7px; text-shadow: 0 1px 2px #000; }
+  #fps { position: fixed; z-index: 26; left: calc(10px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); font: 11px/1.45 ui-monospace, Menlo, monospace; color: #e8f6ff; display: none; pointer-events: none; white-space: pre; padding: 6px 10px; border-radius: 6px; background: rgba(5,11,18,.6); text-shadow: 0 1px 2px #000; }
   #fps.on { display: block; animation: fadein .2s both; }
 
   /* ---- loading key art: the game's own render over the world until it is complete, then a cross-fade (docs/loading.md) ---- */
@@ -424,12 +420,11 @@
   @keyframes pop { from { opacity: 0; transform: scale(.94); } }
   @keyframes fadein { from { opacity: 0; } }
   @keyframes slidein { from { opacity: 0; transform: translateX(28px) scale(.98); } }
-  @keyframes toastin { from { opacity: 0; transform: translateY(110%); } }
-  @keyframes toastdown { from { opacity: 0; transform: translateY(-40px); } }
-  @keyframes sweep { from { transform: translateX(-70px); } to { transform: translateX(440px); } }
 
   /* touch: thumb-sized targets, no keyboard hints */
   @media (pointer: coarse) {
+    #toasts { top: calc(68px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); }
+    .toast.say { bottom: auto; top: calc(126px + env(safe-area-inset-top)); } /* clear of the thumbs, the prompt and the corner buttons */
     .btn, .chip, .seg button, .tabs button, .qnote button, .settings select { min-height: 44px; }
     .settings label { min-height: 46px; }
     input[type=range] { height: 44px; }
@@ -439,9 +434,6 @@
   }
   @media (max-width: 640px) {
     #pause { padding: calc(10px + env(safe-area-inset-top)) 8px calc(10px + env(safe-area-inset-bottom)); }
-    #toasts { left: 8px; right: 8px; align-items: center; bottom: auto; top: calc(66px + env(safe-area-inset-top)); }
-    .toast { width: min(300px, 100%); animation-name: toastdown; }
-    .toast.out { transform: translateY(-24px); }
     input[type=range] { width: 120px; }
     .settings select { min-width: 0; }
   }
@@ -451,7 +443,7 @@
 <body>
 <canvas id="game"></canvas>
 <div id="dot"></div>
-<div id="prompt" class="glass"></div>
+<div id="prompt"></div>
 <div id="choice"></div>
 <div id="toasts"></div>
 <div id="card" class="layer"></div>
@@ -461,7 +453,7 @@
   <div class="menu win glass" onclick="event.stopPropagation()">
     <div class="win-head"><span class="orb"></span><h2 data-t="paused">Тохтобул</h2></div>
     <div class="client">
-      <div class="tabs"><button data-tab="settings" class="on" data-t="settings"></button><button data-tab="controls" data-t="controls"></button><button data-tab="about" data-t="about"></button></div>
+      <div class="tabs"><button data-tab="settings" class="on" data-t="settings"></button><button data-tab="controls" class="kb" data-t="controls"></button><button data-tab="about" data-t="about"></button></div>
       <div class="tab on" id="tab-settings">
         <div class="settings">
           <label><span data-t="language"></span><select id="s-lang"><option value="sah">Сахалыы</option><option value="en">English</option><option value="ru">Русский</option></select></label>
@@ -507,11 +499,10 @@
 <div id="title" class="layer show">
   <h1>Алаас</h1>
   <div class="sub" data-t="subtitle"></div>
-  <div class="dock glass">
+  <div class="dock">
     <div class="load"><div class="bar"><i id="loadbar"></i></div><div class="status" id="go">· · ·</div></div>
     <button class="btn primary start" id="startbtn"><span class="orb"></span><span id="startlbl"></span></button>
     <div class="seg" id="title-langs" onclick="event.stopPropagation()"></div>
-    <div class="keys" id="keys-title"></div>
   </div>
   <nav class="links" onclick="event.stopPropagation()">
     <span class="ver"></span>
@@ -521,8 +512,8 @@
   </nav>
   <a class="studio" href="https://springfolk.co" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="/assets/ui/springfolk-logo.svg" alt="Springfolk"></a>
 </div>
-<div id="hints" class="keys glass"></div>
-<div id="fps" class="glass"></div>
+<div id="hints" class="keys"></div>
+<div id="fps"></div>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

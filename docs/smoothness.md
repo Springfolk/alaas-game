@@ -30,6 +30,8 @@ Late = a drawn frame that came a display refresh late or more. Headless Chrome a
 | 11 | Interface states new with the actions rework: the prompt's E chip (gradient, shadows, rounded border) at the pill's end, and the dot animating between dot and ring | a frame 67–200 ms late shortly after a prompt or dot change, in a quarter to three quarters of loads on `?auto` (none seen on the player's load path); found one cell at a time against the build before (`balagan turn`: 0 of 12 loads) | the chip is flat and borderless, the prompt does not fade, the dot's states switch at once: 0 of 16 loads |
 | 12 | A model gained a mesh and the impostor atlas was not rebaked: its key no longer matched, so the atlas was baked at load, into play | 44–108 shaders built on a walk, in some runs only | `npm run bake-impostors` after any model change; `walkcheck` names an unnamed mesh's parents |
 
+- Always-on blur removed with the UI rethink (2026-11-11): the prompt pill, the controls list, the F3 meter and every touch button and the stick had a backdrop blur; none has one now. The inspect stage and the journal add no blur, target or shader (`docs/ui.md`): 0 late frames, 0 builds while inspecting near, far and from the journal (medium, phone tier, the player's load path).
+
 ## Before → after
 Headless on a MacBook Pro M3 Max, production builds, before and after in alternating runs: 18 areas × stand/walk/run/turn, 2 s each (`x4` = CPU ×4, `retina` = 1728×1117 at 2×, `gl` = WebGL2, `wk` = Playwright WebKit).
 

@@ -22,11 +22,11 @@
 | `src/audio/audio.js` | `AudioScape`: ambience beds, 3D one-shots, footsteps, named action sounds |
 | `src/ui/stage.js` | The inspect stage's camera: the game's own view goes to the thing (`docs/ui.md`); views per entry in `src/data/views.json` |
 | `src/ui/ui.js` · `src/ui/i18n.js` | Prompt, the stage's type and photographs (`src/data/images.json`), journal, toasts, title loading bar (title also: Springfolk mark top-left, links row with version, GitHub, credits and the "open a ticket" call; pause: About tab with the same links and the licence line) · interface strings and the controls list; Sakha/English/Russian (L cycles) |
-| `index.html` · `public/assets/ui/` | All interface styles (Vista/Live-Messenger Aero look: `.glass` frame + light `.client`, glossy `.btn`) · self-hosted Open Sans + Noto Serif (`fonts.css`) |
+| `index.html` · `public/assets/ui/` | All interface styles (`docs/ui.md`; the Aero `.glass` frame only on the pause menu, light `.client`, glossy `.btn`) · self-hosted Open Sans + Noto Serif (`fonts.css`) |
 | `src/data/entries.json` | Explainer entries (Sakha + English) with sources and confidence |
 | `src/player.js` · `src/input.js` | Body: momentum walk 10:00/run (Shift) 5:30 min/km/crouch (C), jump (Space) with gather + landing spring, vault over 0.3–1.3 m obstacles (rays onto the contact collider's midline), wall sliding, footfall-synced bob/sway/roll, strafe lean, run FOV kick · keys/mouse, or touch (`active` = locked or touch live) |
 | `src/util.js` | Shared helpers: seeded random (`mulberry32`, `hash2`), value noise/`fbm`, `clamp`/`lerp`/`smooth`/`ease`/`damp`, yaw vectors, `urlFlag` (debug query switches) |
-| `src/ui/touch.js` | Phone controls (auto on coarse pointers; `?touch` / `?notouch`): stick fixed bottom left (safe-area insets; its place in the CSS), driven only by a touch starting ≤100 px from its middle (rim = run); a touch starting anywhere else on the view (the canvas: not windows, toasts or buttons) looks, short tap = do (or the card) on the thing in focus; one walk + one look touch at once; "Look around" tip until the first look drag (hidden under a card); glass buttons hand (held; drags look) / eye / put down / jump / crouch / journal / language / pause, 1·2·3 while an act runs; `tc-` scoped CSS |
+| `src/ui/touch.js` | Phone controls (auto on coarse pointers; `?touch` / `?notouch`): stick fixed bottom left (safe-area insets; its place in the CSS), driven only by a touch starting ≤100 px from its middle (rim = run); a touch starting anywhere else on the view (the canvas: not windows, toasts or buttons) looks, short tap = do (or the card) on the thing in focus; one walk + one look touch at once; "Look around" tip until the first look drag (hidden under a card); buttons (no blur) hand (held; drags look) / eye / put down / jump / crouch / journal / pause, over a card or the journal language / close; `tc-` scoped CSS |
 
 - North is −Z, east +X; models face east (+X) locally — Sakha doors face east.
 - Eye adaptation (`Engine.update`): `closeLook` = full adaptation up to 24× (a thing held up to the eye in a dark corner), `adaptFast` (s) = at once (after a cut of the view); both set by the stage.
@@ -66,6 +66,6 @@
 ## UI API (`game.ui`)
 - `showEntry(id, { mode: 'peek'|'full', kind })` — the stage's interface (`docs/ui.md`; `game.read` opens stage and card together); `close()`; `open` = `'card'|'journal'|null`, `isOpen`, `modal`, `mode`, `current`.
 - `scroll(dy)`; `setImage(i)` a photograph beside the thing; `enlarge()`; `layout()` → `stage.area`; `frame()` moves the names on the stage.
-- `toast(html, ms)` — Messenger-style pop-up, body = `<small>` + `<b>`; `discovered(id)`; `setPrompt(label, action, { act, read })`.
+- `toast(html, ms)` — a saying as a caption (`<b>` + `<small>`); `discovered(id)` — the found thing's picture and name by the corner; `setPrompt(label, action, { act, read })`.
 - Title bar progress is read from `#go`'s text (`N%` build → `… N%` warm-up); `#title.ready` once `game.ready`.
 - Settings ids → `save.settings`: `s-motion` `motion`, `s-smooth` `smooth`, `s-battery` `batterySaver`, `s-q` `quality` (auto/high/medium/low/mobile).

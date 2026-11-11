@@ -30,9 +30,11 @@ export async function prewarmUI(game) {
     off('#hints', 'off');
     if (touch) touch.show = 'play';
     ui.setPrompt('Алаас', 'Алаас', { act: true, read: true }); // with every part it can have: its fade-in is a surface of its own
-    ui.toast('<small>Алаас</small><b>Алаас</b>', 1e9);
+    ui.toast('<b>Алаас</b><small>Алаас</small>', 1e9);
+    ui.discovered(id);
     await frames(3);
     on('#dot', 'on'); on('.tc-btn', 'down'); on('.tc-stick', 'on');
+    on('.toast', 'out'); // a beat fading: a layer of its own
     await frames();
     on('#dot', 'do');
     const choice = document.getElementById('choice'); // the ribbon choice (yard/bits.js)
