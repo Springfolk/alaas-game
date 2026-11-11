@@ -84,8 +84,17 @@ export function buildInterior({ B, M, rng, winter, root }) {
   }
   // pillows on the best bench and the family bed
   if (!winter) for (const [x, z] of [[-3.1, 1.3], [-3.15, -1.2], [-3.05, -0.5]]) {
-    const g = new THREE.SphereGeometry(0.2, 12, 8);
-    xf(g, { p: [x, BT + 0.08, z], s: [0.7, 0.3, 1.05] });
+    // a stuffed cushion: squared corners, a seam ridge round the middle, a dent where a head has lain
+    const g = new THREE.SphereGeometry(0.2, 20, 12), P = g.attributes.position;
+    for (let i = 0; i < P.count; i++) {
+      const sq = (v) => Math.sign(v) * Math.abs(v / 0.2) ** 0.55 * 0.2;
+      const px = sq(P.getX(i)), pz = sq(P.getZ(i)), py = P.getY(i);
+      const seam = Math.exp(-((py / 0.2) ** 2) * 60) * 0.012, dent = py > 0 ? -0.05 * Math.exp(-(px * px + pz * pz) / 0.012) : 0;
+      const k = 1 + seam / 0.2;
+      P.setXYZ(i, px * k, py + dent, pz * k);
+    }
+    g.computeVertexNormals();
+    xf(g, { p: [x, BT + 0.07, z], s: [0.7, 0.3, 1.05] });
     B.add(M.leather, g, { color: [0.85, 0.7, 0.55] });
   }
 
@@ -124,20 +133,16 @@ export function buildInterior({ B, M, rng, winter, root }) {
     if (!winter) {
       // carved horse head: neck block, head, muzzle, ears
       const yaw = Math.atan2(-inDir.z, inDir.x);
-      const parts = [
-        [new THREE.SphereGeometry(0.05, 10, 8), [0, 0, 0], [1.6, 1.0, 0.9]],
-        [new THREE.SphereGeometry(0.035, 10, 8), [0.08, -0.03, 0], [1.4, 0.9, 0.85]],
-        [new THREE.ConeGeometry(0.012, 0.04, 6), [-0.03, 0.05, 0.018], [1, 1, 1]],
-        [new THREE.ConeGeometry(0.012, 0.04, 6), [-0.03, 0.05, -0.018], [1, 1, 1]],
-        [new THREE.BoxGeometry(0.08, 0.1, 0.07), [-0.06, -0.04, 0], [1, 1, 1]],
-      ];
-      for (const [g, p, s] of parts) {
-        xf(g, { s });
-        xf(g, { p });
-        xf(g, { r: [0, yaw, 0] });
-        xf(g, { p: [fx, fy, fz] });
-        B.add(M.oiled, g, { color: [0.38, 0.3, 0.24] });
-      }
+      // the head cut from a thick board, in profile: neck, jaw, muzzle, forehead, a pricked ear, the crest
+      const O = [[-0.1, -0.1], [-0.03, -0.1], [-0.008, -0.05], [0.03, -0.052], [0.085, -0.064], [0.116, -0.056], [0.126, -0.036], [0.117, -0.014], [0.064, 0.012],
+        [0.024, 0.034], [0.006, 0.042], [0.0, 0.088], [-0.03, 0.044], [-0.062, 0.03], [-0.09, -0.004], [-0.104, -0.05]];
+      const g = new THREE.ExtrudeGeometry(new THREE.Shape(O.map(([x, y]) => new THREE.Vector2(x, y))), { depth: 0.036, bevelEnabled: true, bevelThickness: 0.009, bevelSize: 0.008, bevelSegments: 3, curveSegments: 1 });
+      g.translate(0, 0, -0.018);
+      g.setIndex([...Array(g.attributes.position.count).keys()]);
+      xf(g, { p: [0.03, 0, 0] });
+      xf(g, { r: [0, yaw - 0.8, 0] }); // turned along the south wall: the room sees it in profile
+      xf(g, { p: [fx, fy, fz] });
+      B.add(M.oiled, g, { color: [0.38, 0.3, 0.24] });
       // horsehair tufts, white and black, tied below the head
       for (const [k, col] of [[-1, [0.88, 0.86, 0.8]], [1, [0.05, 0.045, 0.04]]]) {
         const side = new THREE.Vector3(-inDir.z, 0, inDir.x).multiplyScalar(k * 0.05);
