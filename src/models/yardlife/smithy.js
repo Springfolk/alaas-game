@@ -17,6 +17,7 @@ export function smithy(K, x, z, yaw) {
   const Wy = (lx, y, lz) => { const [wx, wz] = F.tw(lx, lz); return [wx, y, wz]; };
   const y0 = g(0, 0);
 
+  K.lows.push({ ...F.col({ x: 1.85, z: 0, hw: 0.3, hd: 2.0 }), h: y0 + 1.5 }); // the back eave (1.6 m): the player stoops under it (behaviour: outside the baked piece)
   geoPiece(K, () => {
     // ground blackened by charcoal and ash under the roof, trodden in front
     K.b.add(patchGeo(g, 0, 0, 2.3, 2.1, 0, 18).applyMatrix4(F.F), decalMat('burned_ground_01', { scale: 1.4, tint: 0x8d8780 }));
@@ -58,7 +59,6 @@ export function smithy(K, x, z, yaw) {
       addLog(K.b, W(wx, -1.62, -0.25), Wy(wx, top - rng() * 0.15, -1.62), 0.05, 0.04, rng, M.wood, M.end, { seg: 7, step: 0.35 });
     }
     K.colliders.push(F.col({ x: 0.45, z: -1.62, hw: 1.0, hd: 0.08 }));
-    K.lows.push({ ...F.col({ x: 1.85, z: 0, hw: 0.3, hd: 2.0 }), h: BH - 0.1 }); // the back eave: the player stoops under it
   });
 
   // ---- the forge: log crib, clay hearth bench 60 cm high, trench 70 × 9 × 8 cm ----
