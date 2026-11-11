@@ -128,7 +128,7 @@ class Game {
     bootDone(); // the boot guard's mark (src/engine/tier.js): this load was not killed
     mark('ready');
     document.getElementById('fade').classList.add('clear');
-    this.reveal(() => { go.textContent = this.tt(T.clickToWalk); });
+    this.reveal(() => { go.textContent = this.startLabel(); });
     document.getElementById('title').addEventListener('click', () => this.start());
     document.getElementById('pause').addEventListener('click', () => this.resume());
     for (const b of document.querySelectorAll('#pause [data-page]')) b.onclick = () => this.pausePage(b.dataset.page);
@@ -260,6 +260,7 @@ class Game {
   }
 
   tt(o) { return tr(o, this.state.lang); }
+  startLabel() { return this.tt(this.touch ? T.tapToWalk : T.clickToWalk); }
 
   // Every static interface string, the controls lists and the language buttons, in the current language.
   applyStatic() {
@@ -277,7 +278,7 @@ class Game {
     this.fillQuality?.();
     this.teach?.show(null);
     const go = document.getElementById('go');
-    if (this.ready && this.title) go.textContent = this.tt(T.clickToWalk);
+    if (this.ready && this.title) go.textContent = this.startLabel();
   }
   setLang(lang) {
     this.state.lang = lang;

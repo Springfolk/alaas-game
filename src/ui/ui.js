@@ -133,6 +133,7 @@ export class UI {
   // larger by as much; phones stay at 1.
   fit() {
     const k = matchMedia('(pointer: coarse)').matches ? 1 : Math.max(1, Math.min(2.4, innerWidth / 1600, innerHeight / 900));
+    this.scale = k;
     document.documentElement.style.setProperty('--ui', k.toFixed(3));
   }
 

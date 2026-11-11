@@ -7,7 +7,7 @@ import { BY_ID } from './ui.js';
 
 const NEAR = 7; // m: the shimmer shows inside this
 const ARRIVE = 3; // m: a place or a found thing is reached
-const EDGE = 44; // px: the edge marker's inset
+const INSET = 44; // px: the edge marker's inset
 
 export class Guide {
   constructor(game) {
@@ -77,7 +77,7 @@ export class Guide {
     this.dist.textContent = d < 10 ? `${d.toFixed(1)} m` : `${Math.round(d)} m`;
     // camera space: in front when z < 0
     const v = this.v.copy(this.target).applyMatrix4(cam.matrixWorldInverse);
-    const W = innerWidth, H = innerHeight;
+    const W = innerWidth, H = innerHeight, EDGE = INSET * (g.ui.scale || 1);
     let x, y, inView = false;
     if (v.z < -0.1) {
       v.applyMatrix4(cam.projectionMatrix);

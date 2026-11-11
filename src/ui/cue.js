@@ -8,7 +8,7 @@ import * as THREE from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { LAKE } from '../world/terrain.js';
 
-const EDGE = 46; // px: the edge arrow's inset
+const INSET = 46; // px: the edge arrow's inset
 const _v = new THREE.Vector3(), _b = new THREE.Box3(), _m = new THREE.Matrix4();
 
 export class Cues {
@@ -170,7 +170,7 @@ export class Cues {
     const on = !!this.cur;
     if (on !== this.on) { this.on = on; this.el.classList.toggle('on', on); }
     if (!on) return;
-    const cam = g.engine.camera, W = innerWidth, H = innerHeight;
+    const cam = g.engine.camera, W = innerWidth, H = innerHeight, EDGE = INSET * (g.ui.scale || 1);
     const v = _v.copy(this.at).applyMatrix4(cam.matrixWorldInverse);
     let x, y, inView = false;
     if (v.z < -0.1) {
