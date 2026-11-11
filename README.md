@@ -42,11 +42,12 @@ first, then English and Russian, picked from your browser's language. You walk, 
 ## Features
 - **52 explainer cards** in Sakha, English and Russian, with sources and 72 reference images. Look at a
   thing, press E for a short note, E again for the full read; the journal collects what you have found and hints at where the rest are.
-- **Hands-on acts** done with respect: feed the fire, tie a ribbon on the serge, carry water, lay
-  firewood, sit on the орон, pick дьэдьэн. Sacred rites are only explained: the museum never has you perform them.
+- **Hands-on acts** done with respect, with the mouse buttons (or a hand button on a phone), apart from
+  reading: feed the fire, tie a ribbon on the serge, sprinkle and drink kymys as a guest, carry water, lay
+  firewood, sit on the орон, pick дьэдьэн, play the khomus. Sacred rites are only explained: the museum never has you perform them.
 - **Work with your hands**: take the axe from the block and split larch rounds along their cracks, then
   carry the billets by the armful to the woodpile or a fire; set the wicker туу in the lake weir and come
-  back for the мунду; mow the meadow with the old Sakha scythe; keep the beat at the kymys sack; blow the bellows and forge a knife blank at the smithy; warm, fold and peg a birch-bark тордуйа and
+  back for the мунду; mow the meadow with the old Sakha scythe; work the dasher in the kymys sack; blow the bellows and forge a knife blank at the smithy; warm, fold and peg a birch-bark тордуйа and
   fill it with дьэдьэн; bring dry wood from the forest.
 - **A living alaas**: procedural larch, birch and pine taiga, wind in the grass, birds, insects, a lake
   with reflections, a physical sky with drifting cloud shadows, and real field recordings.
