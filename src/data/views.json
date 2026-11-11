@@ -203,11 +203,12 @@
  },
  "dyedyen": {
   "dir": [
-   0,
-   34
+   200,
+   22
   ],
+  "fix": true,
   "free": true,
-  "dist": 0.6
+  "dist": 0.5
  },
  "munkha": {
   "dir": [

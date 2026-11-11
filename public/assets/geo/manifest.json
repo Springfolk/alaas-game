@@ -5,7 +5,7 @@
   "model:ampaar": "4b7c05913e43",
   "model:balagan": "acf9a53b6b66",
   "model:barkwork": "355efd6ab42d",
-  "model:chores": "183df0e7103c",
+  "model:chores": "11623c32eee7",
   "model:drywood": "8c598419a573",
   "model:fishery": "61e07eab340b",
   "model:hayfield": "21384b2c31d6",
@@ -53,7 +53,12 @@
    "raw": 3625996,
    "lazy": true
   },
-  "job:mask#019bc7a4": {
+  "job:mask#95e83961": {
+   "group": "jobs",
+   "key": "*",
+   "empty": true
+  },
+  "job:mask#f402c0c2": {
    "group": "jobs",
    "key": "*",
    "empty": true
@@ -91,7 +96,7 @@
   },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "183df0e7103c",
+   "key": "11623c32eee7",
    "file": "chores-753cb87c.bin",
    "bytes": 114404,
    "raw": 341036
