@@ -180,9 +180,9 @@ export default async function build(ctx, placement) {
   order.forEach((kind, i) => {
     const at = hangAt(i), o = outAt(at);
     const dir = [o.x * 0.3, -1, o.z * 0.3]; // falling clear of the bark
-    if (kind === 'tuft') hairParts.push(...tuft(rng, at.toArray(), { len: 0.15, locks: 12, color: [0.86, 0.84, 0.78], dir }));
-    if (kind === 'ribbonW') clothParts.push(ribbon(rng, at.toArray(), { len: 0.2, width: 0.025, color: [0.84, 0.83, 0.78], dir }));
-    if (kind === 'ribbonB') clothParts.push(ribbon(rng, at.toArray(), { len: 0.2, width: 0.025, color: [0.5, 0.64, 0.78], dir }));
+    if (kind === 'tuft') hairParts.push(...tuft(rng, at.toArray(), { len: 0.26, locks: 30, spread: 0.02, width: 0.005, color: [0.9, 0.88, 0.8], dir }));
+    if (kind === 'ribbonW') clothParts.push(ribbon(rng, at.toArray(), { len: 0.32, width: 0.036, color: [0.84, 0.83, 0.78], dir }));
+    if (kind === 'ribbonB') clothParts.push(ribbon(rng, at.toArray(), { len: 0.32, width: 0.036, color: [0.36, 0.55, 0.76], dir }));
     if (kind === 'horse' || kind === 'feather') thread.push({ at, kind });
   });
   const hairMesh = new THREE.Mesh(merge(hairParts), hair('salama-hair', 0.02));
