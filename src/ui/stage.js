@@ -30,6 +30,21 @@ export function boundsOf(world, it) {
   const box = _box.setFromObject(it.target).clone(), s = box.getSize(_v);
   return { c: box.getCenter(new THREE.Vector3()), r: Math.max(0.09, s.length() * 0.41), box };
 }
+const PAD = 0.16; // m: the eye keeps this far from a wall
+// Is the point within `pad` of the wall collider `k` ({ x, z, hw, hd, c, s, y0?, y1? }: src/world/world.js)?
+function inWall(k, x, y, z, pad) {
+  if (k.y0 !== undefined && (y < k.y0 || y > k.y1)) return false;
+  const ox = x - k.x, oz = z - k.z;
+  return Math.abs(ox * k.c - oz * k.s) < k.hw + pad && Math.abs(ox * k.s + oz * k.c) < k.hd + pad;
+}
+// How far from `c` along the unit `dir` the eye may go, up to D, before it comes to a wall.
+function reach(walls, c, dir, D) {
+  for (let t = 0.1; t < D; t += 0.1) {
+    const x = c.x + dir.x * t, y = c.y + dir.y * t, z = c.z + dir.z * t;
+    for (const k of walls) if (inWall(k, x, y, z, PAD)) return t - 0.1;
+  }
+  return D;
+}
 const dirOf = (yaw, el, out) => out.set(Math.sin(yaw) * Math.cos(el), Math.sin(el), Math.cos(yaw) * Math.cos(el)); // from the thing to the eye
 
 export class Stage {
@@ -81,6 +96,9 @@ export class Stage {
       }
       if (s.mode === 'out') { s.elMin = 3 * D2R; s.elMax = 55 * D2R; }
     }
+    // a small thing indoors: the walls the eye must stay within (thin long colliders; not one the thing itself is on)
+    if (s.mode === 'near') s.walls = world.colliders.filter((k) => k.kind === 'box' && Math.min(k.hw, k.hd) <= 0.2 && Math.max(k.hw, k.hd) >= 0.5
+      && Math.hypot(k.x - s.c.x, k.z - s.c.z) < 12 && !inWall(k, s.c.x, s.c.y, s.c.z, s.r + PAD));
     if (wasOn && this.s?.mode !== 'photo') s.cut = s.cut || s.mode !== 'near';
     this.s = s; this.on = true; this.closing = false;
     g.engine.closeLook = s.mode === 'near';
@@ -139,9 +157,13 @@ export class Stage {
       const now = Math.min(a.w * aspect, a.h) * tv, fit = (s.fit ||= now) / clamp(s.fit / now, 1, 1.5);
       const D0 = s.r * 1.3 / Math.sin(Math.atan(fit)) * (s.k || 1);
       const D = (s.maxD ? Math.min(D0, s.maxD) : D0) * s.zoom;
-      dirOf(s.yaw + s.oy + sway, el, this.pos).multiplyScalar(Math.max(D, s.r + 0.12)).add(s.c);
-      const floor = this.game.world.groundAt(this.pos.x, this.pos.z) + 0.25; // never under the ground
-      if (s.mode === 'out' && this.pos.y < floor) this.pos.y = floor;
+      dirOf(s.yaw + s.oy + sway, el, this.pos);
+      // not through a wall: the eye stops short of it (at once), and goes back out as the way clears (eased)
+      const free = s.walls?.length ? reach(s.walls, s.c, this.pos, D) : D;
+      s.d = s.d === undefined || free < s.d ? free : s.d + (free - s.d) * (1 - Math.exp(-6 * dt));
+      this.pos.multiplyScalar(Math.max(s.d, s.r + 0.12)).add(s.c);
+      const floor = this.game.world.groundAt(this.pos.x, this.pos.z) + (s.mode === 'out' ? 0.25 : 0.08); // never under the ground
+      if (this.pos.y < floor) this.pos.y = floor;
       this.quat.setFromRotationMatrix(_m.lookAt(this.pos, s.c, UP));
       this.quat.multiply(_q.setFromEuler(_e.set(-Math.atan(this.ay * tv), Math.atan(this.ax * tv * aspect), 0, 'YXZ')));
     }

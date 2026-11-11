@@ -396,6 +396,7 @@
   .gmark { display: inline-block; width: 10px; height: 10px; flex: none; transform: rotate(45deg); background: var(--gold); border: 1px solid #a8741c; }
   #guide { position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none; display: none; will-change: transform; }
   #guide.on { display: block; }
+  #guide > * { zoom: var(--ui); }
   #guide .pin { position: absolute; left: -9px; top: -9px; width: 16px; height: 16px; transform: rotate(45deg); background: rgba(255,215,120,.9); border: 1px solid rgba(120,80,20,.8); box-shadow: 0 0 10px rgba(255,200,90,.85); animation: gpulse 2.4s ease-in-out infinite; }
   #guide .arrow { display: none; position: absolute; left: -9px; top: -9px; width: 0; height: 0; border-left: 17px solid #ffd77a; border-top: 9px solid transparent; border-bottom: 9px solid transparent; transform-origin: 9px 9px; transform: rotate(var(--a)) translateX(19px); }
   #guide.edge .arrow { display: block; }

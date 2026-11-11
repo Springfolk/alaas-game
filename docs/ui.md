@@ -6,7 +6,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 - Aero glass, drawn: `.glass` (window frame: tint, gloss band, streaks, bright edge), `.pane` (small glass on the view), `.client` (light reading sheet), glossy `.btn`, key caps, the red caption close (`.win-close`). No backdrop blur anywhere.
 - Colours: blue = looking closer (inspect), green = the hands (do, and the next thing for them), gold = a place to go to.
 - Glyphs: `src/ui/icons.js` (`icon`, `actIcon(act)` = an act's own tool, `actHeld(act)`, `glyph(control, touch)`, `MOUSE`).
-- Scale: `--ui` (`UI.fit`): 1 up to 1600×900 and on phones, then with the screen (2560×1440: 1.6); every surface has `zoom: var(--ui)`.
+- Scale: `--ui` (`UI.fit`): 1 up to 1600×900 and on phones, then with the screen (2560×1440: 1.6); every surface has `zoom: var(--ui)` (the finder marker and the cue: their parts).
 - Select (`src/ui/select.js`, `.sel[data-sel]`): the current choice on a button, the list drops from it, the current one ticked. Language (`lang`: title, pause, stage, journal) and quality (`q`).
 - Every surface and state is painted while loading (`src/ui/prewarm.js`); a new one must be added there.
 
@@ -45,6 +45,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 - The view leaves the body and goes to the thing in the live world; no copy, render target or shader.
 - Glass pane beside the thing (landscape: right; portrait: below): category, Sakha name, one line, the entry's saying (`say` in `views.json`), reference photographs as a strip (a tap puts one in the pane, again: full screen), `E` / "Read more" (the reading sheet: title, text, facts, related, sources), the language select, the close button. Names of found things round it on the view (a tap goes there).
 - Turning: drag (mouse under the drawn cursor, finger, ← →), wheel = nearer / further, a slow turn of its own unless camera motion is low.
+- Round a small thing the eye stops short of walls (thin long colliders, 16 cm clear) and of the ground.
 - `ui.layout()` gives the stage the part of the screen the pane leaves free; the pane's text scrolls inside it, its buttons stay in view.
 
 | Kind (`Stage.open` → `s.mode`) | When | The view |
