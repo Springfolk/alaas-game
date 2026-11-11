@@ -22,7 +22,7 @@ export default async function build(ctx, placement) {
 - Collider `y0`/`y1` compare with the player's world feet height: add `placement.y`.
 - Indoors: raise `game.engine.exposureTarget` (base 0.62) while the player is inside, back to 0.62 outside.
 - Materials: `pbr(id, { repeat, tint, normalScale })` from `public/assets/tex/<id>/`; new sets go in `tools/fetch-assets.mjs`, then `npm run fetch-assets`. TSL procedural detail welcome. Real-world metres.
-- Forged iron (`yardlife/forged.js`): flat-shaded bars and blocks, wear and scale in vertex colours, no rng draws; a tool's haft takes `grainAlong` or `haftGeo` (the plank texture's grain along it).
+- Forged iron (`yardlife/forged.js`): flat-shaded bars and blocks, wear and scale in vertex colours, no rng draws; thin plank-textured wood (hafts, laths) takes `grainAlong`, `haftGeo` or `addLog` `grain: true` (the grain along it, else it reads as ringed bamboo).
 - Shadows: meshes receive by default and cast only with `castShadow = true` (not on tiny parts and ground cover). Static casters merge into one shadow proxy per model (`merge.js`): mark a part that moves or hides later `userData.dynamic = true` (act/take targets are kept out already).
 - Log ends: `turned(…, { endGrain: true })` flags the caps (blue vertex colour); `larch` and `barkPole` draw rings, heart and checks there.
 - Alpha-tested materials carry alpha in `colorNode` (vec4): the shadow pass reads `colorNode.a`, so a vec3 casts no shadow.

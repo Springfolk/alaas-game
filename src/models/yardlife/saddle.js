@@ -2,7 +2,8 @@
 // Saddle tree: two birch side boards, front and rear bows after Sieroszewski's Rys. 76 clad in silver, a hair-stuffed
 // leather seat, a saddle cloth (кычым) after REM 437-49, a woven horsehair girth and forged round-arched stirrups.
 import * as THREE from 'three/webgpu';
-import { addLog, blob, boxUV, frame, geoPiece, jitterTint, mtx, sheetGeo } from './kit.js';
+import { addLog, blob, boxUV, frame, geoPiece, jitterTint, mtx, sheetGeo, tube } from './kit.js';
+import { barGeo } from './forged.js';
 
 // Bow outlines, half (x ≥ 0), [x, y] metres from the base, top to bottom; the opening from its top down.
 // Front: Sieroszewski 1902, Rys. 76 «Szkielet jakuckiego siodła. Łęk» (1/8 natural size, measured at 600 dpi);
@@ -162,6 +163,23 @@ export function saddle(K, x, z, yaw) {
       const c = new Float32Array(p.count * 3).fill(0.06);
       gb.setAttribute('color', new THREE.Float32BufferAttribute(c, 3));
       F.add(gb, M.cloth, mtx([-0.215, top - 0.06, -0.06], [0, 0, 0.05]));
+    }
+    // a working bridle (үүн) hung by its crown on a peg in the front post: plain leather cheeks, brow and nose
+    // bands, a throat strap, a jointed iron bit on two rings, the reins hanging in a loop (no silver: a festive
+    // bridle's plaques have no source here)
+    {
+      const at = [-0.8, y0 + 1.5, 0.85], L = (st, side, tint = [1.25, 1.15, 1.05]) => F.add(barGeo(st, side), M.leather, mtx(at), tint);
+      F.add(boxUV(new THREE.CylinderGeometry(0.012, 0.014, 0.2, 6).rotateZ(Math.PI / 2), 4), M.wood, mtx([at[0] - 0.02, at[1] - 0.012, at[2]]), [0.8, 0.72, 0.62]);
+      for (const sd of [-1, 1]) {
+        L([[0, 0.003, 0, 0.018, 0.003], [0, -0.004, sd * 0.016, 0.018, 0.003], [0, -0.03, sd * 0.03, 0.018, 0.003], [0, -0.2, sd * 0.055, 0.018, 0.003], [0, -0.42, sd * 0.068, 0.018, 0.003], [0, -0.5, sd * 0.07, 0.016, 0.003]], [1, 0, 0]);
+        F.add(new THREE.TorusGeometry(0.022, 0.003, 5, 14), M.iron, mtx([at[0], at[1] - 0.522, at[2] + sd * 0.07]), [0.8, 0.8, 0.84]);
+        F.add(tube([[0, -0.53, sd * 0.07], [0, -0.538, sd * 0.035], [0, -0.536, sd * 0.004]], 0.0042, 5, false, 4), M.iron, mtx(at), [0.75, 0.75, 0.8]); // one half of the jointed mouthpiece
+      }
+      F.add(new THREE.TorusGeometry(0.007, 0.0028, 4, 8), M.iron, mtx([at[0], at[1] - 0.536, at[2]], [0, Math.PI / 2, 0]), [0.75, 0.75, 0.8]); // the joint
+      L([[0, -0.1, -0.043, 0.015, 0.003], [0.03, -0.1, -0.032, 0.015, 0.003], [0.046, -0.1, 0, 0.015, 0.003], [0.03, -0.1, 0.032, 0.015, 0.003], [0, -0.1, 0.043, 0.015, 0.003]], [0, 1, 0]); // brow band
+      L([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((k) => { const a = k / 10 * Math.PI * 2; return [Math.sin(a) * (Math.sin(a) > 0 ? 0.06 : 0.045), -0.38 + 0.01 * Math.cos(a * 2), -Math.cos(a) * 0.066, 0.017, 0.003]; }), [0, 1, 0]); // nose band
+      L([[0, -0.06, -0.036, 0.01, 0.0025], [-0.02, -0.2, -0.032, 0.01, 0.0025], [-0.03, -0.31, 0, 0.01, 0.0025], [-0.02, -0.2, 0.032, 0.01, 0.0025], [0, -0.06, 0.036, 0.01, 0.0025]], [1, 0, 0]); // throat strap
+      L([[0, -0.544, -0.07, 0.014, 0.003], [0.004, -0.76, -0.06, 0.014, 0.003], [0.008, -0.95, -0.034, 0.014, 0.003], [0.01, -1.0, 0, 0.014, 0.003], [0.008, -0.95, 0.034, 0.014, 0.003], [0.004, -0.76, 0.06, 0.014, 0.003], [0, -0.544, 0.07, 0.014, 0.003]], [1, 0, 0], [1.1, 1.0, 0.92]); // reins (тэһиин)
     }
     return top;
   });

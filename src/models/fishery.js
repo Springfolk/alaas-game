@@ -3,6 +3,7 @@
 // bark carrier (тымтай) for the catch. Local frame: origin at the water's edge, the water lies south (+z).
 // Sources: docs/content.md (`tuu`).
 import { Bucket, addLog, lathe, mtx, tube, TAU } from './yardlife/kit.js';
+import { grainAlong } from './yardlife/forged.js';
 import { yardMats } from './yardlife/mats.js';
 import { LAKE } from '../world/terrain.js';
 
@@ -42,11 +43,11 @@ export default async function build(ctx, placement) {
   }
   for (const [a, b] of [[-0.75, GAP[0]], [GAP[1], 6.5]]) {
     for (const h of [0.42, 0.18, -0.08]) for (const s of [-1, 1]) {
-      addLog(B, P(s * 0.035, waterY + h, a - 0.1), P(s * 0.035, waterY + h + (rng() - 0.5) * 0.04, b + 0.1), 0.014, 0.011, rng, M.willow, M.willow, { seg: 5, step: 0.6, bend: 0.01 }, [0.62, 0.56, 0.48]);
+      addLog(B, P(s * 0.035, waterY + h, a - 0.1), P(s * 0.035, waterY + h + (rng() - 0.5) * 0.04, b + 0.1), 0.014, 0.011, rng, M.willow, M.willow, { seg: 5, step: 0.6, bend: 0.01, grain: true }, [0.62, 0.56, 0.48]);
     }
     for (let z = a; z < b; z += 0.062) {
       const gy = Math.min(ground(0, z), waterY - 0.02);
-      addLog(B, P((rng() - 0.5) * 0.012, gy - 0.05, z), P((rng() - 0.5) * 0.012, top - rng() * 0.07, z + (rng() - 0.5) * 0.01), 0.008, 0.007, rng, M.fresh, M.fresh, { seg: 4, step: 0.6, bend: 0.004 }, [0.6 + rng() * 0.12, 0.55 + rng() * 0.1, 0.47 + rng() * 0.08]);
+      addLog(B, P((rng() - 0.5) * 0.012, gy - 0.05, z), P((rng() - 0.5) * 0.012, top - rng() * 0.07, z + (rng() - 0.5) * 0.01), 0.008, 0.007, rng, M.fresh, M.fresh, { seg: 4, step: 0.6, bend: 0.004, grain: true }, [0.6 + rng() * 0.12, 0.55 + rng() * 0.1, 0.47 + rng() * 0.08]);
     }
     colliders.push({ x: 0, z: z0 + (a + b) / 2, hw: 0.12, hd: (b - a) / 2 });
   }
@@ -66,7 +67,7 @@ export default async function build(ctx, placement) {
     const N = 30;
     for (let i = 0; i < N; i++) {
       const a = i / N * TAU + (rng() - 0.5) * 0.03;
-      Bt.add(tube(prof.map(([r, y]) => [Math.cos(a) * r, y, Math.sin(a) * r]), 0.0045, 4, false, 10), M.fresh, null, [0.66 + rng() * 0.14, 0.58 + rng() * 0.12, 0.46 + rng() * 0.1]);
+      Bt.add(grainAlong(tube(prof.map(([r, y]) => [Math.cos(a) * r, y, Math.sin(a) * r]), 0.0045, 4, false, 10)), M.fresh, null, [0.66 + rng() * 0.14, 0.58 + rng() * 0.12, 0.46 + rng() * 0.1]);
     }
     for (const y of [0.012, 0.32, 0.62, 0.9]) {
       Bt.add(new T.TorusGeometry(rAt(y) + 0.006, 0.0075, 5, 26).rotateX(Math.PI / 2), M.willow, mtx([0, y, 0]), [0.55, 0.48, 0.4]);
@@ -75,7 +76,7 @@ export default async function build(ctx, placement) {
     // the inner funnel: fish find their way in, not out
     for (let i = 0; i < 16; i++) {
       const a = i / 16 * TAU;
-      Bt.add(tube([[Math.cos(a) * (TUU.r - 0.012), 0.005, Math.sin(a) * (TUU.r - 0.012)], [Math.cos(a) * 0.12, 0.17, Math.sin(a) * 0.12], [Math.cos(a) * 0.05, 0.34, Math.sin(a) * 0.05]], 0.004, 4, false, 6), M.fresh, null, [0.6, 0.54, 0.44]);
+      Bt.add(grainAlong(tube([[Math.cos(a) * (TUU.r - 0.012), 0.005, Math.sin(a) * (TUU.r - 0.012)], [Math.cos(a) * 0.12, 0.17, Math.sin(a) * 0.12], [Math.cos(a) * 0.05, 0.34, Math.sin(a) * 0.05]], 0.004, 4, false, 6)), M.fresh, null, [0.6, 0.54, 0.44]);
     }
     Bt.add(new T.TorusGeometry(0.052, 0.004, 4, 14).rotateX(Math.PI / 2), M.lash, mtx([0, 0.34, 0]));
     // the tail clamp (тылбыы)
