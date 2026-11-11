@@ -5,7 +5,7 @@
   "model:ampaar": "ca7327d470d8",
   "model:balagan": "9e2b541ec4fc",
   "model:barkwork": "17f228ee4709",
-  "model:chores": "02684262a0fe",
+  "model:chores": "e13418e9d24d",
   "model:drywood": "92f37a583694",
   "model:fishery": "62a1dd857c92",
   "model:hayfield": "a6b880a68563",
@@ -53,7 +53,7 @@
    "raw": 3625996,
    "lazy": true
   },
-  "job:mask#6d0795da": {
+  "job:mask#019bc7a4": {
    "group": "jobs",
    "key": "*",
    "empty": true
@@ -91,7 +91,7 @@
   },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "02684262a0fe",
+   "key": "e13418e9d24d",
    "file": "chores-753cb87c.bin",
    "bytes": 11650,
    "raw": 47444
