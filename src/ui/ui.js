@@ -4,7 +4,9 @@
 import ENTRIES from '../data/entries.json';
 import HINTS from '../data/hints.json';
 import { versioned } from '../load/assetv.js';
-import { T, MOUSE } from './i18n.js';
+import { T, LANGS, LANG_NAMES } from './i18n.js';
+import { icon, actIcon, actHeld, MOUSE } from './icons.js';
+import { selectHTML } from './select.js';
 import { VirtualCursor } from './cursor.js';
 import { WORKS } from '../interact/work/list.js';
 import { VIEWS } from './stage.js';
@@ -22,7 +24,6 @@ const CATS = {
   belief: { sah: 'Итэҕэл', en: 'Belief', ru: 'Верования' }, rite: { sah: 'Сиэр-туом', en: 'Rites', ru: 'Обряды' },
   calendar: { sah: 'Дьыл кэмнэрэ', en: 'The year', ru: 'Годовой круг' },
 };
-const NEXT = { sah: 'English', en: 'Русский', ru: 'Сахалыы' };
 const JOB_PICS = { split: 'work-split', hay: 'work-hay', tuos: 'work-tuos', gather: 'work-gather' }; // a job's own picture; the others show their entry's
 const L = {
   journal: { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' }, found: { sah: 'булулунна', en: 'found', ru: 'найдено' },
@@ -52,6 +53,10 @@ export class UI {
   constructor(state) {
     this.state = state; // { lang, found: Set }
     this.prompt = $('#prompt');
+    this.pName = $('#prompt .p-name'); this.pTool = $('#prompt .tool'); this.pVerb = $('#prompt .verb'); this.pKey = $('#prompt .p-act .p-key');
+    $('#prompt .lens').innerHTML = icon('eye');
+    this.putHint = $('#puthint');
+    this.fit(); addEventListener('resize', () => this.fit());
     this.card = $('#card');
     this.journal = $('#journal');
     this.lightbox = $('#lightbox');
@@ -71,6 +76,7 @@ export class UI {
       return !!a;
     };
     this.card.addEventListener('click', (e) => {
+      if (e.target.closest('.sel')) return;
       const act = e.target.closest('[data-act]')?.dataset.act;
       if (act) { this.onAction?.(act); return; }
       const t = e.target.closest('[data-entry],[data-img],[data-mark],.hero,.st-hero');
@@ -104,7 +110,7 @@ export class UI {
       (img.closest('.st-strip button') || img).remove();
     }, true);
     this.journal.addEventListener('click', (e) => {
-      if (winAct(e)) return;
+      if (e.target.closest('.sel') || winAct(e)) return;
       const job = e.target.closest('[data-job]');
       if (job) { const j = WORKS.find((x) => x.id === job.dataset.job); this.keepScroll(() => this.showJournal(j.done(this.state.work || {}) ? j.stat(this.state.work) : j.where)); return; } // where a job waits, in words, only when asked
       const r = e.target.closest('[data-entry]');
@@ -140,12 +146,29 @@ export class UI {
   keepScroll(fn) { const top = this.client()?.scrollTop; fn(); const c = this.client(); if (c && top) c.scrollTop = top; }
   scroll(dy, smooth = true) { this.client()?.scrollBy({ top: dy, behavior: smooth ? 'smooth' : 'auto' }); }
 
-  // The look prompt: the thing's name; with `act` the hands' glyph and what they would do; with `read` the E chip
-  // (it has a card). Touch shows no glyphs: its hand and eye buttons light up instead.
-  setPrompt(label, action, { act = false, read = false } = {}) {
-    if (!label) { this.prompt.classList.remove('show'); return; }
-    this.prompt.innerHTML = `<span class="what">${esc(label)}</span>${act ? `${MOUSE.left}${action ? `<span class="act">${esc(action)}</span>` : ''}` : ''}${read ? '<span class="key kb">E</span>' : ''}`;
-    this.prompt.classList.add('show');
+  // The interface's scale on a big screen (`--ui`, index.html): a desktop larger than 1600×900 gets everything
+  // larger by as much; phones stay at 1.
+  fit() {
+    const k = matchMedia('(pointer: coarse)').matches ? 1 : Math.max(1, Math.min(2.4, innerWidth / 1600, innerHeight / 900));
+    document.documentElement.style.setProperty('--ui', k.toFixed(3));
+  }
+
+  // The look prompt (index.html `#prompt`): the thing's name under the dot; to the dot's left the blue lens (E) when
+  // it can be looked at closer; to its right the green plate with the tool and the verb of what the hands would do
+  // now (`act`; a bar by the mouse glyph: the motion lasts while held). `put`: what is carried can be put down.
+  // Its parts stay in the page and only change their content: the touch controls take touches on them.
+  setPrompt(label, { act = null, read = false, put = null } = {}) {
+    const on = !!(label || act);
+    this.prompt.className = `${on ? 'show' : ''}${act ? ' has-act' : ''}${read ? ' has-read' : ''}${actHeld(act) ? ' held' : ''}`;
+    if (on) {
+      this.pName.textContent = label || '';
+      const k = act ? actIcon(act) : '';
+      if (k !== this.pIcon) { this.pIcon = k; this.pTool.innerHTML = k ? icon(k) : ''; }
+      this.pVerb.textContent = act ? this.t(act.label) : '';
+      if (!this.pKey.firstChild) this.pKey.innerHTML = `${MOUSE.left}<i class="hold"></i>`;
+    }
+    const pk = put ? actIcon(put) : '';
+    if (pk !== this.putIcon) { this.putIcon = pk; this.putHint.innerHTML = pk ? `${icon(pk)}<span class="p-key">${MOUSE.right}</span>` : ''; this.putHint.classList.toggle('show', !!pk); }
   }
 
   // The inspect stage's interface (docs/ui.md): the thing itself fills the view (src/ui/stage.js moves the eye
@@ -172,14 +195,14 @@ export class UI {
     this.card.innerHTML = `
       <div class="st-orbit" data-orbit>${photo && imgs.length ? '<img class="st-hero" alt="">' : ''}</div>
       <div class="st-marks"></div>
-      <button class="st-x" data-act="close" title="${esc(this.t(L.close))}" aria-label="${esc(this.t(L.close))}"></button>
-      <div class="st-col">
-        <div class="st-head">
+      <div class="st-col"><div class="st-pane glass win">
+        <button class="win-close" data-act="close" title="${esc(this.t(L.close))}" aria-label="${esc(this.t(L.close))}"></button>
+        <div class="st-head win-head">
           <div class="cat">${this.fresh ? '<i class="gmark"></i>' : ''}${esc(this.t(CATS[e.category]) || e.category)}</div>
           <h2>${esc(head(e))}</h2>
           <div class="sub">${rest ? `<span class="more">${esc(rest)}</span> ` : ''}${esc(e.translit || '')}${e.ru ? ` · <span class="ru">${esc(e.ru)}</span>` : ''}</div>
         </div>
-        <div class="st-show">
+        <div class="st-body st-show">
           <figure class="st-fig"></figure>
           <p class="lead">${esc(this.t(e.short))}</p>
           ${say ? `<p class="say">${esc(this.t(say))}</p>` : ''}
@@ -196,9 +219,9 @@ export class UI {
         </div></div>
         <div class="st-go">
           <button class="btn primary" data-act="more">${kb('E')} ${esc(this.t(full ? L.close : T.readMore))}</button>
-          ${this.langButton()}
+          ${this.langSelect()}
         </div>
-      </div>`;
+      </div></div>`;
     this.card.className = `layer stage show k-${kind || 'near'}${full ? ' read' : ''}${again ? ' again' : ''}`;
     document.documentElement.classList.add('carded');
     this.open = 'card';
@@ -209,8 +232,8 @@ export class UI {
     this.layout();
     this.cursor.sync();
   }
-  closeButton() { return `<button class="win-close" data-act="close" title="${esc(this.t(L.close))}" aria-label="${esc(this.t(L.close))}"></button>`; }
-  langButton() { return `<button class="win-lang" data-act="lang"><kbd>L</kbd> ${esc(NEXT[this.state.lang])}</button>`; }
+  // the language as a select: the three by their own names, the current one ticked (src/ui/select.js)
+  langSelect(up = true) { return `<span class="sel${up ? ' up' : ''}" data-sel="lang" title="${esc(this.t(T.language))}">${selectHTML(LANGS.map((l) => [l, LANG_NAMES[l]]), this.state.lang)}</span>`; }
 
   // The reference photograph `i` beside the thing (`show`: opened; a second pick of the same one puts it away).
   setImage(i, show = true) {
@@ -312,7 +335,8 @@ export class UI {
     this.journal.innerHTML = `<div class="jr">
       <div class="jr-head"><h2>${esc(this.t(L.journal))}</h2>
         <div class="count"><div class="bar"><i style="--p:${n / ENTRIES.length}"></i></div><span><b>${n}</b> / ${ENTRIES.length}</span></div>
-        ${this.langButton()}<button class="st-x" data-act="close" title="${esc(this.t(L.close))}" aria-label="${esc(this.t(L.close))}"></button></div>
+        ${this.langSelect(false)}</div>
+      <button class="win-close" data-act="close" title="${esc(this.t(L.close))}" aria-label="${esc(this.t(L.close))}"></button>
       <div class="jr-main">
         <div class="jr-map"><img src="${pic('map')}" alt="">${pins.join('')}</div>
         <div class="jr-scroll">${rows}</div>
@@ -350,7 +374,7 @@ export class UI {
   // and a <small> by-line.
   toast(html, ms = 3600, cls = 'say') {
     const d = document.createElement('div');
-    d.className = 'toast ' + cls;
+    d.className = 'toast pane ' + cls;
     d.innerHTML = html;
     this.toasts.appendChild(d);
     while (this.toasts.children.length > 4) this.toasts.firstChild.remove();

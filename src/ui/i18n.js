@@ -24,7 +24,6 @@ export const T = {
   qReload: { sah: 'Саҥалыы киирдэххэ үлэлиир', en: 'Applies after reload', ru: 'Применится после перезагрузки' },
   reload: { sah: 'Саҥалыы киир', en: 'Reload', ru: 'Перезагрузить' },
   invertY: { sah: 'Үөһэ-аллара тиэрт', en: 'Invert Y', ru: 'Инверсия по вертикали' },
-  showHints: { sah: 'Салайыыны көрдөр', en: 'Show controls on screen', ru: 'Подсказки на экране' },
   resume: { sah: 'Салгыы', en: 'Continue', ru: 'Продолжить' },
   exit: { sah: 'Таҕыс', en: 'Exit', ru: 'Выйти' },
   gView: { sah: 'Көрүү', en: 'View', ru: 'Обзор' },
@@ -50,26 +49,23 @@ export const T = {
   },
 };
 
-// the mouse with one button lit (the prompt, the controls list)
-const mouse = (d) => `<svg class="mouse kb" viewBox="0 0 14 20" aria-hidden="true"><rect x="1" y="1" width="12" height="18" rx="6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="${d}" fill="currentColor"/></svg>`;
-export const MOUSE = { left: mouse('M7 1.2A5.8 5.8 0 0 0 1.2 7v2.2H7z'), right: mouse('M7 1.2A5.8 5.8 0 0 1 12.8 7v2.2H7z') };
-
-// [keys (text, or the mouse glyph's html), label]
+// what each control does: `keys` on a keyboard and mouse, `touch` the phone control (drawn by `glyph`, src/ui/icons.js)
 export const CONTROLS = [
-  ['W A S D', { sah: 'Хаамыы', en: 'Walk', ru: 'Ходьба' }],
-  [{ sah: 'Мышь', en: 'Mouse', ru: 'Мышь' }, { sah: 'Эргиччи көрүү', en: 'Look around', ru: 'Осмотреться' }],
-  ['Shift', { sah: 'Сүүрүү', en: 'Run', ru: 'Бег' }],
-  ['Space', { sah: 'Ыстаныы', en: 'Jump / vault', ru: 'Прыжок / перелезть' }],
-  ['C', { sah: 'Бөкчөйүү', en: 'Crouch', ru: 'Присесть' }],
-  [MOUSE.left, { sah: 'Оҥор', en: 'Do, use (hold where the work asks)', ru: 'Сделать, применить' }],
-  [MOUSE.right, { sah: 'Уур', en: 'Set down, put back', ru: 'Положить, убрать' }],
-  ['E', { sah: 'Чугастык көр', en: 'Look closer', ru: 'Рассмотреть' }],
-  ['J', { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' }],
-  ['L', { sah: 'Тыл', en: 'Language', ru: 'Язык' }],
-  ['H', { sah: 'Салайыы', en: 'Controls', ru: 'Управление' }],
-  ['F3', { sah: 'Кадр түргэнэ', en: 'Frame rate', ru: 'Частота кадров' }],
-  ['P', { sah: 'Тохтобул', en: 'Pause / settings', ru: 'Пауза / настройки' }], // Esc pauses too, but drops the pointer lock (main.js)
+  { id: 'walk', keys: ['W', 'A', 'S', 'D'], touch: 'stick', label: { sah: 'Хаамыы', en: 'Walk', ru: 'Ходьба' } },
+  { id: 'look', keys: ['mouse'], touch: 'drag', label: { sah: 'Эргиччи көрүү', en: 'Look around', ru: 'Осмотреться' } },
+  { id: 'run', keys: ['Shift'], touch: 'rim', label: { sah: 'Сүүрүү', en: 'Run', ru: 'Бег' } },
+  { id: 'jump', keys: ['Space'], touch: 'jump', label: { sah: 'Ыстаныы', en: 'Jump / vault', ru: 'Прыжок / перелезть' } },
+  { id: 'crouch', keys: ['C'], touch: 'crouch', label: { sah: 'Бөкчөйүү', en: 'Crouch', ru: 'Присесть' } },
+  { id: 'do', keys: ['mouseL'], touch: 'hand', label: { sah: 'Оҥор', en: 'Do, use (hold where the work asks)', ru: 'Сделать, применить' } },
+  { id: 'put', keys: ['mouseR'], touch: 'put', label: { sah: 'Уур', en: 'Set down, put back', ru: 'Положить, убрать' } },
+  { id: 'read', keys: ['E'], touch: 'eye', label: { sah: 'Чугастык көр', en: 'Look closer', ru: 'Рассмотреть' } },
+  { id: 'journal', keys: ['J'], touch: 'book', label: { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' } },
+  { id: 'lang', keys: ['L'], label: { sah: 'Тыл', en: 'Language', ru: 'Язык' } },
+  { id: 'hints', keys: ['H'], label: { sah: 'Салайыы', en: 'Controls', ru: 'Управление' } },
+  { id: 'fps', keys: ['F3'], label: { sah: 'Кадр түргэнэ', en: 'Frame rate', ru: 'Частота кадров' } },
+  { id: 'pause', keys: ['P'], touch: 'pause', label: { sah: 'Тохтобул', en: 'Pause / settings', ru: 'Пауза / настройки' } }, // Esc pauses too, but drops the pointer lock (main.js)
 ];
+export const control = (id) => CONTROLS.find((c) => c.id === id);
 
 export const tr = (o, lang) => o?.[lang] || o?.en || '';
 

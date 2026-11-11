@@ -29,7 +29,7 @@ export async function prewarmUI(game) {
     on('#fps', 'on'); on('#vcursor', 'on');
     off('#hints', 'off');
     if (touch) touch.show = 'play';
-    ui.setPrompt('Алаас', 'Алаас', { act: true, read: true }); // with every part it can have: its fade-in is a surface of its own
+    ui.setPrompt('Алаас', { act: { id: 'strike', label: { en: 'Алаас' } }, read: true, put: { id: 'down' } }); // with every part it can have
     ui.toast('<b>Алаас</b><small>Алаас</small>', 1e9);
     ui.discovered(id);
     await frames(3);
@@ -53,6 +53,7 @@ export async function prewarmUI(game) {
     pictures(ui.card);
     await frames(3);
     ui.showEntry(id, { mode: 'full', kind: 'near' });
+    on('#card .sel', 'open');
     await frames(3);
     ui.showEntry(id, { mode: 'peek', kind: 'photo' });
     pictures(ui.card);
@@ -68,7 +69,10 @@ export async function prewarmUI(game) {
     ui.guided = null;
     ui.close();
     on('#pause', 'show');
-    for (const tab of document.querySelectorAll('#pause .tab')) { on(`#${tab.id}`, 'on'); await frames(); }
+    await frames();
+    on('#pause .sel', 'open'); // the selects' lists
+    await frames();
+    for (const tab of document.querySelectorAll('#pause .tab')) { on('#pause .menu', 'paged'); on(`#${tab.id}`, 'on'); await frames(); }
     document.getElementById('pause').classList.remove('show');
     // what is made once the world is built: the journal's finder marker
     for (const t = performance.now(); !game.guide && performance.now() - t < 60000;) await frames(6);

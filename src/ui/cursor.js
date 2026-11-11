@@ -4,7 +4,7 @@
 // moves this cursor instead of the view, and presses, clicks, scrollbar drags and the wheel are
 // delivered to the DOM element under it (elementFromPoint). Without pointer lock (touch, a free
 // pointer) it stays hidden and the real pointer works as usual.
-const CLICKABLE = 'button, a, summary, label, select, input, [data-entry], [data-img], [data-act], .st-hero';
+const CLICKABLE = 'button, a, summary, label, input, [data-entry], [data-img], [data-act], .st-hero';
 const ARROW = '<svg width="20" height="24" viewBox="0 0 20 24"><path d="M1.5 1.5v18l4.6-4.3 3 7 3.2-1.4-3-6.8h6.4z" fill="#fff" stroke="#0b1520" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 const HAND = '<svg width="22" height="24" viewBox="0 0 22 24"><path d="M7 11V3.2a1.6 1.6 0 0 1 3.2 0V10l.1-1.6a1.6 1.6 0 0 1 3.1.2v1.3a1.6 1.6 0 0 1 3.1.1v1.2a1.6 1.6 0 0 1 3 .6v4.7c0 3.7-2.4 6.3-6 6.3h-1.6c-2.2 0-3.6-.9-4.9-2.6L2.4 14.4a1.6 1.6 0 0 1 2.5-2z" fill="#fff" stroke="#0b1520" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 
@@ -56,9 +56,6 @@ export class VirtualCursor {
     if (hand !== this.hand) { this.hand = hand; this.el.innerHTML = hand ? HAND : ARROW; this.el.classList.toggle('hand', hand); }
   }
   click(t) {
-    // a synthetic click can't open a <select>: it steps to the next option instead
-    const sel = t.closest('select') || t.closest('label')?.querySelector('select');
-    if (sel) { sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length; sel.dispatchEvent(new Event('change', { bubbles: true })); return; }
     t.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: this.x, clientY: this.y, button: 0 }));
   }
 

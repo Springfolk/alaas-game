@@ -20,6 +20,8 @@ import { T, CONTROLS, LANGS, LANG_NAMES, tr, detectLang } from './ui/i18n.js';
 import { Guide } from './ui/guide.js';
 import { Stage } from './ui/stage.js';
 import { prewarmUI } from './ui/prewarm.js';
+import { icon, glyph } from './ui/icons.js';
+import { fillSelects, watchSelects } from './ui/select.js';
 import { version } from '../package.json';
 import { instrument, event } from './load/prof.js';
 
@@ -126,10 +128,9 @@ class Game {
     this.reveal(() => { go.textContent = this.tt(T.clickToWalk); });
     document.getElementById('title').addEventListener('click', () => this.start());
     document.getElementById('pause').addEventListener('click', () => this.resume());
-    for (const b of document.querySelectorAll('.tabs button')) b.onclick = () => {
-      for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x === b);
-      for (const t of document.querySelectorAll('.tab')) t.classList.toggle('on', t.id === 'tab-' + b.dataset.tab);
-    };
+    for (const b of document.querySelectorAll('#pause [data-page]')) b.onclick = () => this.pausePage(b.dataset.page);
+    document.getElementById('pause-x').onclick = () => this.resume();
+    document.getElementById('resume').onclick = () => this.resume();
     document.getElementById('reload').onclick = () => { this.persist(); location.reload(); };
     document.getElementById('exit').onclick = (e) => { e.stopPropagation(); this.exit(); }; // (a click on #pause resumes)
     this.input.onLockChange = (locked) => {
@@ -137,19 +138,22 @@ class Game {
       if (locked) { this.unpause(); return; }
       if (this.title) return;
       this.closeCard(); this.ui.close(); // Esc closes the card or journal (and, as pointer lock goes, pauses)
-      document.getElementById('pause').classList.add('show');
+      this.showPause();
     };
     addEventListener('keydown', (e) => this.key(e));
     this.input.onDo = (down) => { if (down && this.playing) this.act(this.focus); }; // the hands: left button, F, the touch hand button
     this.input.onPut = () => this.put();
     this.ui.onAction = (a, id, it, back) => { // window buttons, journal tiles, card links, the names on the stage
-      if (a === 'lang') this.key({ code: 'KeyL' });
-      else if (a === 'learn') this.discover(id, true);
+      if (a === 'learn') this.discover(id, true);
       else if (a === 'guide') this.setGuide(id);
       else if (a === 'more') this.inspect(null);
       else if (a === 'open') { if (back) this.ui.close(); this.read(id, it, back); }
       else this.closeUI();
     };
+    watchSelects((name, v) => {
+      if (name === 'lang') this.setLang(v);
+      else if (name === 'q') { this.save.settings.quality = v; this.persist(); this.applySettings(); }
+    });
     if (params.has('auto')) this.start(true);
 
     this.clock = new THREE.Timer();
@@ -260,17 +264,17 @@ class Game {
     document.documentElement.lang = lang;
     for (const el of document.querySelectorAll('[data-t]')) el.textContent = this.tt(T[el.dataset.t]);
     for (const el of document.querySelectorAll('.ver')) el.textContent = 'v' + version;
-    const keys = (mini) => CONTROLS.filter((c) => !mini || !['F3', 'L'].includes(c[0]))
-      .map(([k, l]) => `<kbd>${typeof k === 'string' ? k : this.tt(k)}</kbd><span>${this.tt(l)}</span>`).join('');
+    for (const el of document.querySelectorAll('[data-ic]')) if (!el.firstChild) { el.innerHTML = icon(el.dataset.ic, el.className); el.className = ''; el.style.display = 'contents'; }
+    // the controls, drawn: on a phone its own (stick, drag, buttons), else the keys and the mouse
+    const touch = !!this.touch;
+    const keys = (mini) => CONTROLS.filter((c) => (touch ? c.touch : !mini || !['fps', 'lang'].includes(c.id)))
+      .map((c) => `<span>${glyph(c, touch)}</span><span>${this.tt(c.label)}</span>`).join('');
     document.getElementById('keys-pause').innerHTML = keys(false);
     document.getElementById('hints').innerHTML = keys(true);
-    const langs = document.getElementById('title-langs');
-    langs.innerHTML = LANGS.map((l) => `<button data-lang="${l}" class="${l === lang ? 'on' : ''}">${LANG_NAMES[l]}</button>`).join('');
-    langs.onclick = (e) => { const b = e.target.closest('[data-lang]'); if (b) this.setLang(b.dataset.lang); };
+    fillSelects('lang', LANGS.map((l) => [l, LANG_NAMES[l]]), lang);
+    this.fillQuality?.();
     const go = document.getElementById('go');
     if (this.ready && this.title) go.textContent = this.tt(T.clickToWalk);
-    const sl = document.getElementById('s-lang');
-    if (sl) sl.value = lang;
     this.showHints();
   }
   setLang(lang) {
@@ -302,8 +306,25 @@ class Game {
   get paused() { return document.getElementById('pause').classList.contains('show'); }
   pause() {
     this.closeCard(); this.ui.close();
-    document.getElementById('pause').classList.add('show');
+    this.showPause();
     this.ui.setMenu(true);
+  }
+  // the pause window; on a phone it opens on its list of what can be done
+  showPause() {
+    document.querySelector('#pause .menu').classList.remove('paged');
+    document.getElementById('pause').classList.add('show');
+  }
+  // one of its pages (settings, controls, about); none: back to the list (a phone)
+  pausePage(id) {
+    document.querySelector('#pause .menu').classList.toggle('paged', !!id);
+    if (!id) return;
+    for (const b of document.querySelectorAll('#pause .pz-nav [data-page]')) b.classList.toggle('on', b.dataset.page === id);
+    for (const t of document.querySelectorAll('#pause .tab')) t.classList.toggle('on', t.id === 'tab-' + id);
+  }
+  fillQuality() {
+    const q = this.save.settings.quality;
+    fillSelects('q', ['auto', 'high', 'medium', 'low', 'mobile'].map((v) => [v, this.tt(T['q' + v[0].toUpperCase() + v.slice(1)])]), q);
+    document.getElementById('qnote').hidden = q === this.bootQuality;
   }
   unpause() {
     document.getElementById('pause').classList.remove('show');
@@ -348,20 +369,11 @@ class Game {
     };
     bind('s-sens', 'sens'); bind('s-fov', 'fov'); bind('s-vol', 'vol');
     bind('s-inv', 'invertY', Boolean, 'checked');
-    bind('s-hints', 'hints', Boolean, 'checked');
     for (const k of ['motion', 'smooth']) if (document.getElementById('s-' + k)) bind('s-' + k, k); // sliders 0..1, if the UI has them
     bind('s-battery', 'batterySaver', Boolean, 'checked'); // read by the perf code (save.settings.batterySaver)
     if (s.batterySaver == null && this.engine) document.getElementById('s-battery').checked = !!this.engine.autoSaver; // auto until toggled
-    const q = document.getElementById('s-q');
-    for (const [v, en] of [['auto', 'Auto'], ['mobile', 'Phone']]) if (!q.querySelector(`option[value="${v}"]`)) { // device tiers (perf)
-      const o = document.createElement('option'); o.value = v; o.textContent = en; v === 'auto' ? q.prepend(o) : q.append(o);
-    }
-    q.value = s.quality;
-    q.onchange = () => { s.quality = q.value; this.persist(); document.getElementById('qnote').hidden = q.value === this.bootQuality; };
-    document.getElementById('fovv').textContent = s.fov + '°';
-    const lang = document.getElementById('s-lang');
-    lang.value = this.state.lang;
-    lang.onchange = () => this.setLang(lang.value);
+    this.fillQuality();
+    document.getElementById('fovv')?.replaceChildren(s.fov + '°');
     if (this.ui) this.showHints();
   }
 
@@ -379,7 +391,7 @@ class Game {
     if (e.code === 'F3') { e.preventDefault(); document.getElementById('fps').classList.toggle('on'); return; }
     if (e.code === 'KeyP' && this.input.locked) { if (this.paused) this.resume(); else this.pause(); return; }
     if (this.paused) return;
-    if (e.code === 'KeyH' && !ui.open) { this.firstKeys = false; this.save.settings.hints = !this.save.settings.hints; document.getElementById('s-hints').checked = this.save.settings.hints; this.showHints(); this.persist(); return; }
+    if (e.code === 'KeyH' && !ui.open) { this.firstKeys = false; this.save.settings.hints = !this.save.settings.hints; this.showHints(); this.persist(); return; }
     // a card or the journal is up: E goes on (the thing → its text → closed), Esc / J / a step away close; the
     // pointer lock is kept throughout
     if (ui.modal) {
@@ -536,17 +548,18 @@ class Game {
       const act = !live || this.acting ? null : f ? this.actOf(f) : this.interact?.idleAct();
       const e = f && BY_ID[f.entry];
       const what = f ? (f.label ? this.ui.t(f.label) : e ? e.sah.split(/[;(]/)[0].trim() : f.entry) : null;
-      const actText = f && act ? this.ui.t(act.label) : null;
-      this.doReady = !!act && act.id !== 'none';
+      const can = !!act && act.id !== 'none';
+      const put = live && !this.acting ? this.interact?.putAct() || null : null;
+      this.doReady = can; this.doAct = can ? act : null; // (the touch hand button draws this act's tool)
       this.readReady = !!e;
-      this.putReady = live && !this.acting && !!this.interact?.putAct();
-      const key = `${what}|${actText}|${this.doReady}|${!!e}`;
+      this.putReady = !!put; this.putAct = put;
+      const key = `${what}|${can ? act.id + this.ui.t(act.label) : ''}|${!!e}|${put?.id}`;
       if (key !== this.promptKey) {
         this.promptKey = key;
         const dot = document.getElementById('dot');
-        dot.classList.toggle('on', !!(f || this.doReady));
-        dot.classList.toggle('do', this.doReady);
-        this.ui.setPrompt(what, actText, { act: this.doReady, read: !!e });
+        dot.classList.toggle('on', !!(f || can));
+        dot.classList.toggle('do', can);
+        this.ui.setPrompt(what, { act: this.doAct, read: !!e, put });
       }
     }
     const ctx = { dt, time: this.clock.getElapsed(), camera: this.engine.camera, player: this.player, game: this };
