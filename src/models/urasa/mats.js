@@ -377,24 +377,37 @@ export function makeMats() {
     M.leather = m;
   }
 
-  // ---- carved birch (chorons, ladle, stirrer, collar): honey patina, darker in the cuts.
-  // Lathe uv: uv.y = profile fraction; uv.x around. uv.x ≥ 5 → plain (no carving bands).
+  // ---- carved birch (chorons, ladle, stirrer, collar): birch darkened by fat and smoke, worn pale on what the hands
+  // and the lips rub, dark in the cuts. Lathe uv: uv.y = profile fraction; uv.x around. uv.x ≥ 5 → plain (no carving
+  // bands); uv.y ≥ 2 → the inside of a bowl (uv.y − 2 = height): a dried film of kymys under the rim.
   {
     const m = std({ name: 'birch-carved' });
     const t0 = uv();
     const plain = t0.x.greaterThan(5);
-    const u = fract(t0.x), v = t0.y;
+    const inside = t0.y.greaterThan(1.5);
+    const u = fract(t0.x), v = inside.select(t0.y.sub(2), t0.y);
     const g = n3(vec3(u.mul(12), v.mul(60), 0.5)).mul(0.5).add(n3(vec3(u.mul(3), v.mul(8), 4.0)).mul(0.5));
+    // turned across the grain: the year rings come out as long loops round the body, fine pores along them
+    const ring = n3(vec3(u.mul(4), v.mul(2.2), 9.0)).mul(9).add(v.mul(5));
+    const grain = abs(fract(ring).sub(0.5)).mul(2).pow(1.6);
+    const pore = n3(vec3(u.mul(240), v.mul(34), 2.0));
     // traced carving (tools/make-carving.mjs, docs/patterns.md): uv.x 0..1 goblet chorons (red, Sieroszewski Rys. 112),
     // uv.x 2..3 the three-legged choron (green, REM 12175-2); uv.x ≥ 5 plain
     const mk = texture(carve, vec2(u, v));
-    const cutAll = select(t0.x.greaterThan(1.5), mk.g, mk.r).mul(plain.select(0, 1));
-    let c = mix(vec3(0.56, 0.36, 0.17), vec3(0.38, 0.22, 0.1), g);
-    c = mix(c, vec3(0.16, 0.08, 0.03), cutAll.mul(0.75));
+    const cutAll = select(t0.x.greaterThan(1.5), mk.g, mk.r).mul(plain.select(0, 1)).mul(inside.select(0, 1));
+    // patina gathers under the rings and in the hollows of the profile; the raised turns are rubbed pale
+    const worn = smoothstep(0.35, 0.8, n3(vec3(u.mul(7), v.mul(5), 21.0))).mul(float(1).sub(cutAll));
+    let c = mix(vec3(0.37, 0.205, 0.085), vec3(0.23, 0.12, 0.05), g);
+    c = c.mul(mix(float(0.9), float(1.05), grain)).mul(pore.mul(0.16).add(0.92));
+    c = mix(c, vec3(0.5, 0.31, 0.15), worn.mul(0.4));
+    c = mix(c, vec3(0.07, 0.035, 0.015), cutAll.mul(0.85));
+    const film = smoothstep(0.93, 0.8, v).mul(smoothstep(0.3, 0.7, n3(vec3(u.mul(9), v.mul(14), 3.0)).add(smoothstep(0.75, 0.4, v).mul(0.5))));
+    c = inside.select(mix(c.mul(0.8), vec3(0.78, 0.74, 0.66), film.mul(0.55)), c);
     m.colorNode = c;
-    m.roughnessNode = mix(float(0.42), float(0.75), cutAll);
-    m.aoNode = occ(p).mul(float(1).sub(cutAll.mul(0.4)));
-    m.normalNode = bump(cutAll.mul(-0.0018).add(g.mul(0.0002)));
+    m.roughnessNode = inside.select(mix(float(0.5), float(0.8), film), mix(float(0.36), float(0.8), cutAll).add(grain.mul(0.1)).sub(worn.mul(0.08)));
+    m.aoNode = occ(p).mul(float(1).sub(cutAll.mul(0.45)));
+    m.emissiveNode = c.mul(vec3(1.0, 0.8, 0.58)).mul(0.035); // the fire's glow off the bark all round: a cup held against the fire is not a black shape
+    m.normalNode = bump(cutAll.mul(-0.0022).add(g.mul(0.0002)).add(grain.mul(0.00012)));
     M.birch = m;
   }
 
@@ -415,19 +428,27 @@ export function makeMats() {
     M.hair = m;
   }
 
-  // ---- kymys in the chorons: milk-white with a faint cool cast, froth gathered in patches and round the rim
+  // ---- kymys in the chorons: white, a froth of fine bubbles round the wall and in drifting patches, thin (the wood
+  // showing through) at the very edge. uv.x: 0 in the middle of the surface, 1 at the wall.
   {
     const m = std({ name: 'kymys' });
     const q = positionLocal;
-    const cell = mx_worley_noise_float(q.mul(260));                         // bubbles
-    const patch = smoothstep(0.42, 0.68, n3(q.mul(46)).mul(0.6).add(n3(q.mul(110)).mul(0.4)));
-    const froth = patch.mul(smoothstep(0.05, 0.4, cell).mul(0.55).add(0.45));
-    const c = mix(vec3(0.8, 0.8, 0.77), vec3(0.97, 0.96, 0.92), froth);
+    const rim = uv().x;
+    const cell = mx_worley_noise_float(q.mul(330));                         // bubbles
+    const fine = mx_worley_noise_float(q.mul(900).add(7.0));
+    const drift = n3(q.mul(46)).mul(0.6).add(n3(q.mul(110)).mul(0.4));
+    const patch = max(smoothstep(0.46, 0.7, drift), smoothstep(0.5, 0.82, rim.add(drift.sub(0.5).mul(0.5))));
+    const bubble = smoothstep(0.04, 0.34, cell).mul(0.4).add(smoothstep(0.05, 0.4, fine).mul(0.2)).add(0.4);
+    const froth = patch.mul(bubble);
+    const thin = smoothstep(0.955, 1.0, rim);
+    let c = mix(vec3(0.8, 0.8, 0.76), vec3(1.0, 0.99, 0.95), froth);
+    c = mix(c, vec3(0.8, 0.66, 0.48), thin.mul(0.6));
     m.colorNode = c;
-    m.emissiveNode = c.mul(0.07);   // firelight scattered inside the milk: it reads pale even facing away from the fire
-    m.roughnessNode = mix(float(0.22), float(0.7), patch);
-    m.aoNode = occ(positionLocal).mul(mix(float(1), cell.mul(0.5).add(0.6), patch));
-    m.normalNode = bump(froth.mul(0.0012));
+    // the fire's light scattered inside the milk: it stays white, and warm, even facing away from the fire
+    m.emissiveNode = c.mul(vec3(1.0, 0.84, 0.66)).mul(mix(float(0.085), float(0.13), froth)).mul(float(1).sub(thin.mul(0.5)));
+    m.roughnessNode = mix(float(0.18), float(0.75), patch);
+    m.aoNode = occ(positionLocal).mul(mix(float(1), cell.mul(0.45).add(0.62), patch));
+    m.normalNode = bump(froth.mul(0.0014));
     M.kymys = m;
   }
 
