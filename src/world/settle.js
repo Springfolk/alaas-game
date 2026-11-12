@@ -37,7 +37,8 @@ export async function settle(world) {
 
 // the surface under (x, z) for the rests overlapping a box (world xz)
 function surfaceIn(world, box) {
-  const rs = world.rests.filter((f) => {
+  const rs = world.rests.filter((f) => { // (`loose` rests, a mat lying on a floor, only take things set down in play)
+    if (f.loose) return false;
     const R = f.r ?? Math.hypot(f.hw, f.hd);
     return f.x + R > box.min.x && f.x - R < box.max.x && f.z + R > box.min.z && f.z - R < box.max.z;
   });

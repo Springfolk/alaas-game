@@ -148,7 +148,7 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
   const groundY = (x, z) => { for (const i of ggrid.get(key(cell(x), cell(z))) || []) { const y = bary(gtris[i], x, z); if (y !== null) return y; } return w.terrain.height(x, z); };
 
   // the models' rests (earth floors, mats drawn over the ground; world/settle.js): their height, or -Infinity
-  const restAt = (x, z) => { let h = -Infinity; for (const f of w.rests) { const inside = f.r !== undefined ? Math.hypot(x - f.x, z - f.z) < f.r : (() => { const dx = x - f.x, dz = z - f.z; return Math.abs(dx * f.c - dz * f.s) < f.hw && Math.abs(dx * f.s + dz * f.c) < f.hd; })(); if (inside) h = Math.max(h, f.y ? f.y(x, z) : f.h); } return h; };
+  const restAt = (x, z) => { let h = -Infinity; for (const f of w.rests) { if (f.loose) continue; const inside = f.r !== undefined ? Math.hypot(x - f.x, z - f.z) < f.r : (() => { const dx = x - f.x, dz = z - f.z; return Math.abs(dx * f.c - dz * f.s) < f.hw && Math.abs(dx * f.s + dz * f.c) < f.hd; })(); if (inside) h = Math.max(h, f.y ? f.y(x, z) : f.h); } return h; };
 
   // closest point on triangle (Ericson), returns squared distance and the point
   const cp = (p, t) => {

@@ -11,7 +11,7 @@ export default async function build(ctx, placement) {
     object,          // THREE.Group, origin = ground centre, +Y up, front/door faces +X (east)
     colliders,       // [{ x, z, hw, hd, rot?, y0?, y1? }] boxes or [{ x, z, r }] circles, local metres
     floors,          // [{ x, z, hw, hd, rot?, h }] walkable surfaces above ground (local h)
-    rests,           // optional [{ x, z, r | hw, hd, rot?, h, y? }] surfaces drawn over the ground that set-down and resting things sit on (earth floors; y(lx, lz) = exact height)
+    rests,           // optional [{ x, z, r | hw, hd, rot?, h, y?, loose? }] surfaces drawn over the ground that set-down and resting things sit on (earth floors; y(lx, lz) = exact height; loose: set-down things only)
     lows,            // [{ x, z, hw, hd, rot?, h }] low lintels: clear height; the player stoops under them
     interactables,   // [{ entry, target?, zone?: { x, z, r }, label?: { sah, en }, act? }]
     update,          // optional (dt, { time, camera, player, game }) => void

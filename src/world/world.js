@@ -161,7 +161,7 @@ export class World {
     for (const f of res.rests || []) { // surfaces drawn over the ground that loose things rest on (an earth floor): circles or boxes, `y(lx, lz)` = its exact height
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
       const y = f.y && ((x, z) => { const dx = x - p.x, dz = z - p.z; return p.y + f.y(dx * c - dz * s, dx * s + dz * c); });
-      this.rests.push(f.r !== undefined ? { ...w, r: f.r, h: p.y + f.h, y } : { ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h, y });
+      this.rests.push(f.r !== undefined ? { ...w, r: f.r, h: p.y + f.h, y, loose: f.loose } : { ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h, y, loose: f.loose });
     }
     for (const f of res.lows || []) {
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
