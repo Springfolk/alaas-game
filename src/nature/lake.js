@@ -74,8 +74,8 @@ export default async function build(ctx, world) {
         parts.push({ o, x: sp.center.x, y: sp.center.y, z: sp.center.z, r: sp.radius, lo });
       });
     };
-    const hidden = [];
-    let standIns = null;
+    const hidden = [], unseen = [], eye = { x: 1e9, y: 0, z: 0, k: 0 };
+    let standIns = null, coarseMesh;
     base.updateBefore = (frame) => {
       // the mirror's camera must neither redraw the shadow maps nor use up a pending redraw (Engine.lazyShadows)
       const sh = engine.sun.shadow, auto = sh.autoUpdate, pend = sh.needsUpdate;
@@ -101,12 +101,17 @@ export default async function build(ctx, world) {
       if (!standIns && world.optimized?.impostors) standIns = world.optimized.mirrored();
       for (const o of standIns || []) if (o.visible) { o.visible = false; hidden.push(o); }
       mirror.value = 1;
-      for (const p of parts) {
-        if (all || !p.o.visible) continue;
-        if (2 * p.r < Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z) * k || !seen(p)) { p.o.visible = false; hidden.push(p.o); }
+      // the parts it can't show, chosen again once the eye has moved 0.25 m (or the FOV or size changed)
+      if (!all && (Math.abs(e.x - eye.x) + Math.abs(e.y - eye.y) + Math.abs(e.z - eye.z) > 0.25 || k !== eye.k)) {
+        eye.x = e.x; eye.y = e.y; eye.z = e.z; eye.k = k; unseen.length = 0;
+        for (const p of parts) {
+          const dx = p.x - e.x, dy = p.y - e.y, dz = p.z - e.z;
+          if (4 * p.r * p.r < (dx * dx + dy * dy + dz * dz) * k * k || !seen(p)) unseen.push(p.o);
+        }
       }
+      if (!all) for (const o of unseen) if (o.visible) { o.visible = false; hidden.push(o); }
       // the reflection gets the coarse ground (ground.js): the fine grid's tiles draw nothing for this pass
-      const tiles = ground?.userData.tiles || [], coarse = ground?.getObjectByName('ground-coarse');
+      const tiles = ground?.userData.tiles || [], coarse = ground && (coarseMesh ??= ground.getObjectByName('ground-coarse') || false);
       if (coarse) { for (const t of tiles) t.visible = false; coarse.visible = true; }
       try { return render(frame); } finally {
         if (coarse) { for (const t of tiles) t.visible = true; coarse.visible = false; }

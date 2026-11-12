@@ -8,7 +8,7 @@
 | `src/engine/engine.js` | `Engine`: WebGPURenderer, `SunLight` cascades with cloud shadows (512² `cloudMap`, re-rendered 4×/s or on a texel move), sun by air mass, PMREM sky light, aerial haze (`scene.fogNode`), metered eye adaptation |
 | `src/engine/sky.js` | Perez/Preetham clear sky (turbidity 1.9), cumulus at 1.8 km (`cloudField`, also the cloud shadows), `updateSky` haze colours |
 | `src/engine/tier.js` · `pacing.js` | tiers, boot guard (`docs/performance.md`) · frame pacing, dynamic quality (`docs/smoothness.md`) |
-| `src/engine/merge.js` · `lod.js` | after the homestead (`?nomerge` off): a depth-only shadow proxy per model (layer 2); impostors per cluster (8 azimuths, one instanced draw, also in the lake mirror); parts under ~2.5 px → layer 30 |
+| `src/engine/merge.js` · `lod.js` | after the homestead (`?nomerge` off): a depth-only shadow proxy per model (layer 2); impostors per cluster (8 azimuths, one instanced draw, also in the lake mirror); parts under ~2.5 px → layer 30 (moving ones sized where they are); casters under 6 px cast no shadow |
 | `src/engine/post.js` | [GTAO, high] → TRAA (phones: FXAA at the end) → sharpen → glare → AgX look → vignette, grain; 64×36 luminance meter every 0.15 s |
 | `src/engine/interiors.js` | sky occlusion inside urasa, balagan (+ khoton), ampaar, from `layout.js` placements |
 | `src/engine/materials.js` · `master.js` · `leanenv.js` | `pbr(id)`/`maps(id)`/`tex()` for `public/assets/tex/<id>/` (diff, nor, arm) · master materials, homestead light set (`docs/materials.md`) · low/mobile sky light |
