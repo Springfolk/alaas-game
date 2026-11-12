@@ -2,7 +2,7 @@
  "version": 1,
  "keys": {
   "jobs": "6857c960dae1",
-  "model:ampaar": "ea35cfbe5e9e",
+  "model:ampaar": "a81766e27c41",
   "model:balagan": "ea16e583da0c",
   "model:barkwork": "9efe22d65e57",
   "model:chores": "27047501630b",
@@ -71,10 +71,10 @@
   },
   "model:ampaar#890beb7e": {
    "group": "model:ampaar",
-   "key": "ea35cfbe5e9e",
+   "key": "a81766e27c41",
    "file": "ampaar-890beb7e.bin",
-   "bytes": 141118,
-   "raw": 738484
+   "bytes": 141129,
+   "raw": 738528
   },
   "model:balagan#782a55bb": {
    "group": "model:balagan",
