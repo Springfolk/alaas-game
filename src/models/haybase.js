@@ -1,8 +1,9 @@
 // The hay crew's base by the winter place (кыстык), at the edge of its hay meadows: a fire ring of stones with
-// cold ashes and charred ends, the soot-black tea kettle (чаанньык) on its hook pole, a log to sit on, the wooden
+// cold ashes and charred ends, its hook pole, the sooty tea kettle (чаанньык) put down by it, a log to sit on, the wooden
 // hay forks (атырдьах) and rakes (кыраабыл) leaning on a rail between two forked stakes, and the long poles for the stacks
 // laid on two sleepers. The scythe post stands beside it (src/models/hayfield.js). Local frame: +X east.
 import { Bucket, addLog, logGeo, lathe, tube, blob, mtx, along, patchGeo, decalMat, jitterTint } from './yardlife/kit.js';
+import { kettle } from './yardlife/kettle.js';
 import { grainAlong } from './yardlife/forged.js';
 import { yardMats } from './yardlife/mats.js';
 
@@ -14,7 +15,7 @@ export default async function build(ctx, placement) {
   const object = new T.Group();
   object.name = 'haybase';
   const interactables = [], colliders = [];
-  const B = new Bucket(ground);
+  const B = new Bucket(ground, { drape: true });
 
   // ── the fire ring: nine stones round cold ashes, the ends of the last fire charred black ──
   const FX = 0, FZ = 0, g0 = ground(FX, FZ);
@@ -42,21 +43,11 @@ export default async function build(ctx, placement) {
   }
   colliders.push({ x: FX, z: FZ, r: 0.5 });
 
-  // ── the kettle (чаанньык): squat, soot-black below, a domed lid with a knob, a spout and a wire bail; on the
-  //    stones at the fire's edge, put down cold after the last tea ──
-  const kettle = (x, z, yaw) => {
-    const y = ground(x, z) + 0.035;
-    const body = lathe([[0, 0], [0.085, 0.004], [0.1, 0.03], [0.104, 0.075], [0.096, 0.12], [0.07, 0.145], [0.055, 0.152], [0.054, 0.158]], 22);
-    B.add(body, M.soot, mtx([x, y, z], [0, yaw, 0]), [1, 1, 1]);
-    B.add(lathe([[0.056, 0], [0.05, 0.012], [0.03, 0.022], [0.012, 0.026], [0.012, 0.04], [0, 0.042]], 16), M.iron, mtx([x, y + 0.155, z], [0, yaw, 0]), [0.55, 0.52, 0.5]);
-    const c = Math.cos(yaw), s = Math.sin(yaw), P = (lx, ly, lz) => [x + lx * c + lz * s, y + ly, z - lx * s + lz * c];
-    B.add(tube([P(0.09, 0.05, 0), P(0.14, 0.08, 0), P(0.175, 0.13, 0), P(0.19, 0.155, 0)], 0.014, 7, false, 10), M.soot, null, [1, 1, 1]);
-    const bail = [];
-    for (let k = 0; k <= 12; k++) { const a = Math.PI * (k / 12); bail.push(P(0, 0.15 + Math.sin(a) * 0.11, Math.cos(a) * 0.098)); }
-    B.add(tube(bail, 0.003, 4, false, 18), M.iron, null, [0.6, 0.58, 0.55]);
-  };
-  kettle(FX + 0.4, FZ - 0.3, 0.6);
-  const kettleT = proxy(T, object, 0.32, 0.26, 0.28, [FX + 0.42, ground(FX + 0.4, FZ - 0.3) + 0.12, FZ - 0.3]);
+  // ── the kettle (чаанньык): a trade kettle of tinned sheet iron, put down cold on the trodden ground by the ring
+  //    after the last tea (yardlife/kettle.js) ──
+  const KX = FX + 0.62, KZ = FZ - 0.42;
+  kettle(T, B, M, mtx([KX, ground(KX, KZ), KZ], [0, 2.4, 0]));
+  const kettleT = proxy(T, object, 0.34, 0.3, 0.3, [KX, ground(KX, KZ) + 0.14, KZ]);
 
   // ── a log to sit on, and two birch-bark cups on it ──
   addLog(B, [FX - 0.9, ground(FX - 0.9, FZ + 0.85) + 0.13, FZ + 0.85], [FX + 0.7, ground(FX + 0.7, FZ + 1.0) + 0.13, FZ + 1.0], 0.15, 0.13, rng, M.wood, M.end, { seg: 10, step: 0.3 });
