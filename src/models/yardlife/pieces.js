@@ -2,7 +2,7 @@
 // and the birch-bark craft spot outside the uraha.
 import * as THREE from 'three/webgpu';
 import {
-  addLog, blob, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, rollGeo, sheetGeo, splitGeo, tube, TAU,
+  addLog, along, blob, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, rollGeo, sheetGeo, splitGeo, tube, TAU,
 } from './kit.js';
 import { makeSmoke } from './smoke.js';
 import { geoMats } from '../../load/geocache.js';
@@ -169,24 +169,34 @@ export function craft(K, x, z, yaw = 0) {
   const g = F.ground;
   const bark = K.barkCraft; // prepared bark: warmer, boiled
   const top = (lx, lz) => { const [wx, wz] = F.tw(lx, lz); return K.drawnTop(wx, wz); };
+  const HT = 0.2; // the hide's turn on the spot
   geoPiece(K, () => {
     // a hide spread on the grass to work on
     {
-      const HT = 0.2, hide = sheetGeo(1.15, 0.8, rng, { curl: 0.0, warp: 0.02, res: 12 });
+      const hide = sheetGeo(1.15, 0.8, rng, { curl: 0.0, warp: 0.02, res: 12 });
       // ...over the ground as drawn (its grid is linear between samples a metre apart)
       const p = hide.attributes.position;
       for (let i = 0; i < p.count; i++) {
         const hx = p.getX(i), hz = p.getZ(i);
         // irregular outline: pull the corners in
         const k = 1 - 0.18 * Math.abs(Math.sin(Math.atan2(hz, hx) * 2 + 0.7));
-        // the ground under this vertex once the hide is turned by HT; a soft ripple 0.7–1.7 cm over it
+        // the ground under this vertex once the hide is turned by HT; a soft ripple 1.0–1.4 cm over it
         const lx = hx * k * Math.cos(HT) + hz * k * Math.sin(HT), lz = -hx * k * Math.sin(HT) + hz * k * Math.cos(HT);
-        p.setXYZ(i, hx * k, 0.012 + 0.25 * p.getY(i) + top(lx, lz) - g(0, 0), hz * k);
+        p.setXYZ(i, hx * k, 0.012 + 0.1 * p.getY(i) + top(lx, lz) - g(0, 0), hz * k);
       }
       hide.computeVertexNormals();
       F.add(hide, M.hide, mtx([0, g(0, 0), 0], [0, HT, 0]));
     }
-    const hy = (lx, lz) => top(lx, lz) + 0.02; // the hide's top under a thing set on it
+    // lying on the plane of the surface under it (radius r): `base` the ground or the hide's top; its lowest point `lift`
+    // over it; `rot` its own turn (Euler YXZ)
+    const hideTop = (lx, lz) => top(lx, lz) + 0.014;
+    const lie = (lx, lz, r, lift, rot = [0, 0, 0], base = top) => {
+      const gx = (base(lx + r, lz) - base(lx - r, lz)) / (2 * r), gz = (base(lx, lz + r) - base(lx, lz - r)) / (2 * r);
+      const y = Math.max(...[[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].map(([a, b]) => base(lx + a, lz + b) - (gx * a + gz * b)));
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(-gx, 1, -gz).normalize()).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot, 'YXZ')));
+      return new THREE.Matrix4().compose(new THREE.Vector3(lx, y + lift, lz), q, new THREE.Vector3(1, 1, 1));
+    };
+    const hy = (lx, lz, r = 0) => Math.max(...[[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].map(([a, b]) => top(lx + a, lz + b))) + 0.015; // the hide's top under a thing of radius r set on it
     // the half-sewn milking pail (ыаҕас): wall wrapped and stitched halfway up the seam
     {
       const R0 = 0.11, R1 = 0.12, H = 0.24, over = 0.35, seg = 34;
@@ -208,10 +218,10 @@ export function craft(K, x, z, yaw = 0) {
       wall.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       wall.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       wall.setIndex(idx); wall.computeVertexNormals();
-      const y0 = hy(0.12, 0.05), m = mtx([0.12, y0, 0.05], [0, 0.4, 0]);
+      const m = lie(0.12, 0.05, 0.12, 0.001, [0, 0.4, 0], hideTop), y0 = m.elements[13];
       F.add(wall, bark, m);
-      F.add(lathe([[0, 0.012], [0.108, 0.012], [0.11, 0.004]], 20), K.M.birchIn, m);
-      F.add(new THREE.TorusGeometry(0.113, 0.0055, 5, 32), M.willow, m.clone().multiply(mtx([0, 0.025, 0], [Math.PI / 2, 0, 0])));
+      F.add(lathe([[0, 0.012], [0.105, 0.012], [0.107, 0.004]], 20), K.M.birchIn, m); // inside the wall
+      F.add(new THREE.TorusGeometry(0.104, 0.0055, 5, 32), M.willow, m.clone().multiply(mtx([0, 0.025, 0], [Math.PI / 2, 0, 0]))); // inside the wall
       // horsehair stitches up the seam, stopping halfway
       const sa = TAU - over / 2 + 0.06;
       for (let k = 0; k < 15; k++) {
@@ -220,37 +230,45 @@ export function craft(K, x, z, yaw = 0) {
         F.add(st, M.hair, m.clone().multiply(mtx([Math.cos(sa) * 0.118, y, -Math.sin(sa) * 0.118], [0, sa + (k % 2 ? 0.5 : -0.5), 0])));
       }
       // the rim hoop, made but not yet sewn on, lying beside it
-      F.add(new THREE.TorusGeometry(0.122, 0.006, 5, 32), M.willow, mtx([0.42, hy(0.42, 0.18) + 0.006, 0.18], [Math.PI / 2, 0, 0]));
+      F.add(new THREE.TorusGeometry(0.122, 0.006, 5, 32), M.willow, lie(0.42, 0.18, 0.125, 0.006, [Math.PI / 2, 0, 0], hideTop));
       // a long strand of horsehair cord coming off the seam
       F.add(tube([[0.12 + Math.cos(0.4) * 0.03, y0 + 0.14, 0.05], [0.3, hy(0.3, 0.12) + 0.06, 0.12], [0.38, hy(0.38, 0) + 0.01, 0.0], [0.33, hy(0.33, -0.12) + 0.005, -0.12]], 0.0015, 4), M.hair);
     }
     // awl with a bone handle on the hide
     {
-      const m = mtx([-0.12, hy(-0.12, 0.18) + 0.012, 0.18], [0, 0.9, Math.PI / 2]);
+      const m = lie(-0.12, 0.18, 0.08, 0.012, [0, 0.9, Math.PI / 2], hideTop);
       const h = logGeo(0.09, 0.012, 0.01, rng, { seg: 7, caps: true, step: 0.03 });
       F.add(h.side, M.bone, m); F.add(h.caps, M.bone, m);
       F.add(new THREE.ConeGeometry(0.003, 0.07, 6).translate(0, 0.125, 0), M.iron, m);
     }
     // coil of dark horsehair cord
-    for (let k = 0; k < 5; k++) F.add(new THREE.TorusGeometry(0.075 + k * 0.004, 0.0035, 4, 24), M.hair, mtx([-0.32 + k * 0.003, hy(-0.32, -0.18) + 0.005 + k * 0.006, -0.18], [Math.PI / 2 + (rng() - 0.5) * 0.2, 0, rng()]));
+    for (let k = 0; k < 5; k++) F.add(new THREE.TorusGeometry(0.075 + k * 0.004, 0.0035, 4, 24), M.hair, lie(-0.32 + k * 0.003, -0.18, 0.09, 0.0035 + k * 0.006, [Math.PI / 2 + (rng() - 0.5) * 0.2, 0, rng()], hideTop));
     // bark rolls tied with a strip, one lying, one standing
-    const roll = (p, r, tied = true) => {
-      const h = 0.55 + rng() * 0.1;
+    const roll = (place, tied = true) => {
+      const h = 0.55 + rng() * 0.1, M4 = place(h);
       const gg = rollGeo(h, 0.035, 3.2, 0.012);
-      F.add(gg, bark, mtx(p, r));
-      if (tied) for (const ty of [0.15, h - 0.15]) F.add(new THREE.TorusGeometry(0.078, 0.004, 4, 20), M.lash, mtx(p, r).multiply(mtx([0, ty, 0], [Math.PI / 2, 0, 0])));
+      F.add(gg, bark, M4);
+      if (tied) for (const ty of [0.15, h - 0.15]) F.add(new THREE.TorusGeometry(0.078, 0.004, 4, 20), M.lash, M4.clone().multiply(mtx([0, ty, 0], [Math.PI / 2, 0, 0])));
     };
-    roll([-0.95, g(-0.95, 0.45) + 0.075, 0.45], [0, 0.3, Math.PI / 2]);
-    roll([-0.75, g(-0.75, 0.75) + 0.075, 0.7], [0, -0.2, Math.PI / 2 + 0.05]);
-    roll([0.95, g(0.95, -0.45), -0.45], [0.06, 0, 0.04]);
+    // lying along the ground's slope, its ties (8.2 cm from the axis) on it; side by side, not across each other
+    const lying = (x, z, yaw) => (h) => {
+      const dx = -Math.cos(yaw) * h, dz = Math.sin(yaw) * h, R = 0.083;
+      let lift = 0; const y0 = top(x, z) + R, y1 = top(x + dx, z + dz) + R;
+      for (let t = 0.25; t < 1; t += 0.25) lift = Math.max(lift, top(x + dx * t, z + dz * t) + R - (y0 + (y1 - y0) * t));
+      return along([x, y0 + lift, z], [x + dx, y1 + lift, z + dz]);
+    };
+    roll(lying(-0.95, 0.45, 0.3));
+    roll(lying(-0.8, 0.74, 0.26));
+    roll(() => mtx([0.95, top(0.95, -0.45), -0.45], [0.06, 0, 0.04]));
     // flat sheets pressed under a stone
     {
-      let yy = g(0.85, 0.6) + 0.01;
+      // flat, each 5 mm over the one under it, the lowest over the ground's highest point beneath them
+      let yy = Math.max(...[[0, 0], [0.36, 0], [-0.36, 0], [0, 0.26], [0, -0.26], [0.3, 0.2], [-0.3, 0.2], [0.3, -0.2], [-0.3, -0.2]].map(([a, b]) => top(0.85 + a, 0.6 + b))) + 0.004;
       for (let k = 0; k < 5; k++) {
-        F.add(sheetGeo(0.62, 0.4, rng, { curl: 0.05 - k * 0.012, warp: 0.006 }), bark, mtx([0.85 + (rng() - 0.5) * 0.06, yy, 0.6 + (rng() - 0.5) * 0.06], [0, 0.3 + (rng() - 0.5) * 0.3, 0]));
-        yy += 0.006;
+        F.add(sheetGeo(0.62, 0.4, rng, { curl: 0, warp: 0.0015 }), bark, mtx([0.85 + (rng() - 0.5) * 0.06, yy, 0.6 + (rng() - 0.5) * 0.06], [0, 0.3 + (rng() - 0.5) * 0.3, 0]));
+        yy += 0.005;
       }
-      F.add(blob(0.16, 0.11, 0.13, rng, { detail: 2, rough: 0.12 }), M.stone, mtx([0.85, yy - 0.01, 0.6], [0, rng() * TAU, 0]));
+      F.add(blob(0.16, 0.11, 0.13, rng, { detail: 2, rough: 0.12 }), M.stone, mtx([0.85, yy + 0.01, 0.6], [0, rng() * TAU, 0])); // resting on the top sheet (a blob's origin is its flat bottom)
     }
     // a small soot-black cauldron on three stones over a cold fire, softening bark
     {
@@ -270,7 +288,7 @@ export function craft(K, x, z, yaw = 0) {
       F.add(pot, M.soot, mtx([cx, gy + 0.11, cz]));
       F.add(surf, water, mtx([cx, gy + 0.11, cz]));
       // a strip of bark softening: its foot 4 cm under the water, leaning on the rim's inner lip, the end out over it
-      F.add(sheetGeo(0.32, 0.07, rng, { curl: 0, warp: 0.002, res: 6 }), bark, mtx([cx + 0.073 * Math.cos(0.5), gy + 0.11 + 0.187, cz - 0.073 * Math.sin(0.5)], [0, 0.5, 0.3]));
+      F.add(sheetGeo(0.32, 0.07, rng, { curl: 0, warp: 0.002, res: 6 }), bark, mtx([cx + 0.073 * Math.cos(0.5), gy + 0.11 + 0.19, cz - 0.073 * Math.sin(0.5)], [0, 0.5, 0.3]));
       F.add(blob(0.12, 0.08, 0.1, rng), M.stone, mtx([cx + 0.17, gy, cz - 0.17]), [0.4, 0.38, 0.36]);
       K.colliders.push(F.col({ x: cx, z: cz, r: 0.3 }));
     }
@@ -296,8 +314,12 @@ export function craft(K, x, z, yaw = 0) {
     }
     // scraps of bark trimmed off
     for (let k = 0; k < 10; k++) {
-      const lx = (rng() - 0.5) * 1.8, lz = (rng() - 0.5) * 1.4;
-      F.add(sheetGeo(0.06 + rng() * 0.12, 0.03 + rng() * 0.05, rng, { curl: 0.02 + rng() * 0.03, res: 3 }), bark, mtx([lx, g(lx, lz) + 0.012, lz], [0, rng() * TAU, rng() < 0.4 ? Math.PI : 0]));
+      const lx = (rng() - 0.5) * 1.8, lz = (rng() - 0.5) * 1.4, w = 0.06 + rng() * 0.12, d = 0.03 + rng() * 0.05, curl = 0.02 + rng() * 0.03;
+      const sg = sheetGeo(w, d, rng, { curl, warp: 0.002, res: 3 }), ry = rng() * TAU, flip = rng() < 0.4;
+      // on the ground's highest point under it; turned over, it stands on its curled ends
+      // on the hide where it fell on it
+      const hx = lx * Math.cos(HT) - lz * Math.sin(HT), hz = lx * Math.sin(HT) + lz * Math.cos(HT), onHide = Math.abs(hx) < 0.6 && Math.abs(hz) < 0.45;
+      F.add(sg, bark, lie(lx, lz, Math.max(0.03, w / 2), 0.002 + (flip ? curl : 0), [0, ry, flip ? Math.PI : 0], onHide ? hideTop : top));
     }
   });
   const [tx, tz] = F.tw(0, 0.1);

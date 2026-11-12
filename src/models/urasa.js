@@ -326,5 +326,5 @@ export default async function build(ctx) {
   root.userData.paths = [{ w: 2.6, pts: ring }];
   root.userData.bare = [{ x: 0, z: 0, r: R0 }];
 
-  return { object: root, colliders, floors: [], interactables, update };
+  return { object: root, colliders, floors: [], rests: inside.rests, interactables, update };
 }

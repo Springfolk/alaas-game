@@ -8,7 +8,7 @@ import { yardMats } from './yardlife/mats.js';
 import { drawnHeight } from '../world/ground-data.js';
 
 const BASE = [0.2, 0.12], WALL = 0.07, UP = 1.36; // base (x, z), wall height, how far a wall is raised (rad)
-const AT = [0.42, -7.95, 0.25]; // on the craft spot's hide (yardlife PLACES.craft + its yaw)
+const AT = [0.75, -7.81, 0.25]; // on the craft spot's hide, clear of the pail and the coil (yardlife PLACES.craft + its yaw)
 const BERRIES = 42;
 
 export default async function build(ctx, placement) {
@@ -78,8 +78,12 @@ export default async function build(ctx, placement) {
   berries.userData.show = (n) => { for (let i = 0; i < BERRIES; i++) berries.setMatrixAt(i, i < n ? full[i] : zero); berries.instanceMatrix.needsUpdate = true; };
   vessel.add(berries);
 
-  vessel.position.set(AT[0], Math.max(...[640, 512, 320].map((N) => drawnHeight(terrain, px + AT[0], pz + AT[1], N))) - py + 0.021, AT[1]); // on the hide (0.7–1.7 cm over the drawn ground)
-  vessel.rotation.y = AT[2] + 0.5;
+  // on the hide (1.0–1.4 cm over the ground as drawn on desktop), tipped to the ground's plane under the sheet
+  const hg = (a, b) => Math.max(drawnHeight(terrain, px + AT[0] + a, pz + AT[1] + b, 640), drawnHeight(terrain, px + AT[0] + a, pz + AT[1] + b, 512)) - py;
+  const sx = (hg(0.18, 0) - hg(-0.18, 0)) / 0.36, sz = (hg(0, 0.15) - hg(0, -0.15)) / 0.3;
+  const lift = Math.max(0, ...[[0.18, 0.15], [-0.18, 0.15], [0.18, -0.15], [-0.18, -0.15]].map(([a, b]) => hg(a, b) - (hg(0, 0) + sx * a + sz * b)));
+  vessel.position.set(AT[0], hg(0, 0) + lift + 0.016, AT[1]);
+  vessel.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(-sx, 1, -sz).normalize()).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), AT[2] + 0.5));
   vessel.userData.dynamic = true;
   object.add(vessel);
   const interactables = [{ target: vessel, bark: true, entry: 'birch-bark', label: { sah: 'туос', en: 'a sheet of birch bark (туос)', ru: 'лист бересты (туос)' } }];

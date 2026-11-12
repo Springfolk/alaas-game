@@ -71,18 +71,25 @@ export function restSpot(world, obj, q, x, z, others = [], { avoid = null, feet 
     return Math.abs(ox * k.c - oz * k.s) < k.hw + 0.03 && Math.abs(ox * k.s + oz * k.c) < k.hd + 0.03;
   });
   const a0 = away ? Math.atan2(z - away.z, x - away.x) : 0;
+  const grid = (h) => { const n = Math.max(1, Math.ceil(h / 0.1)), out = []; for (let i = -n; i <= n; i++) out.push(h * i / n); return out; }; // −h…h, ≤ 10 cm apart
+  let tall = 0; for (const v of hullOf(obj)) { _v.copy(v).applyQuaternion(q); tall = Math.max(tall, _v.y); }
+  { let lo = Infinity; for (const v of hullOf(obj)) lo = Math.min(lo, _v.copy(v).applyQuaternion(q).y); tall -= lo; }
   for (let r = 0; r <= max; r += 0.06) {
     const n = r === 0 ? 1 : Math.max(6, Math.round(r * 40));
     for (let m = 0; m < n; m++) {
       const i = m % 2 ? (m + 1) / 2 : -m / 2, a = a0 + i / n * Math.PI * 2, sx = x + Math.cos(a) * r, sz = z + Math.sin(a) * r;
       const f = { ...f0, x: f0.x + sx, z: f0.z + sz };
       if (avoid?.(f) || others.some((o) => overlaps(f, o))) continue;
-      let hit = false; // the footprint's corners and middle clear of walls and posts, and out of the water
-      for (const [s, t] of [[0, 0], [1, 1], [1, -1], [-1, 1], [-1, -1], [1, 0], [-1, 0]]) {
-        const px = f.x + f.ux * f.a * s - f.uz * f.b * t, pz = f.z + f.uz * f.a * s + f.ux * f.b * t;
-        if (inCol(px, pz)) { hit = true; break; }
-        const gy = world.terrain.height(px, pz), wy = world.terrain.water(px, pz, gy);
-        if (wy !== null && wy - gy > 0.03) { hit = true; break; }
+      let hit = false; // the whole footprint (every 10 cm) clear of walls and posts, under no eave lower than the thing, out of the water
+      for (const s of grid(f.a)) {
+        for (const t of grid(f.b)) {
+          const px = f.x + f.ux * s - f.uz * t, pz = f.z + f.uz * s + f.ux * t;
+          if (inCol(px, pz)) { hit = true; break; }
+          const gy = world.terrain.height(px, pz), wy = world.terrain.water(px, pz, gy);
+          if (wy !== null && wy - gy > 0.03) { hit = true; break; }
+          if (world.headroomAt(px, pz) < world.groundAt(px, pz) + tall + 0.03) { hit = true; break; }
+        }
+        if (hit) break;
       }
       if (hit) continue;
       return lay(world, obj, q, sx, sz, f);

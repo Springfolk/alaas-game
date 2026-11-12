@@ -307,7 +307,7 @@ export function smithy(K, x, z, yaw) {
   const [ax, az] = F.tw(-0.5, 0.95), anvilY = K.b.ground(ax, az) + 0.39 + 0.075;
   const SPOT = {
     fire: { p: new THREE.Vector3(...Wy(FX, fy + FTOP - 0.012, 0.08)), yaw: yaw + Math.PI / 2 + 0.2 },
-    anvil: { p: new THREE.Vector3(ax, anvilY, az), yaw: yaw + 1.1 },
+    anvil: { p: new THREE.Vector3(ax, anvilY + 0.008, az), yaw: yaw + 1.1 }, // the bar (1.3 cm thick) on the anvil's face
     tub: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.19, -0.85)), yaw: yaw + 0.4 },
   };
   // steam off the quench tub: white puffs that rise fast and are gone in a breath, only while hot iron is in the water
@@ -428,7 +428,7 @@ export function smithy(K, x, z, yaw) {
         const x = new THREE.Vector3(0, -1, 0), z = new THREE.Vector3().crossVectors(x, H.d);
         H.q0 = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, H.d, z));
         H.axis = new THREE.Vector3().crossVectors(H.d, _ty).normalize();
-        H.p0 = new THREE.Vector3(ax, anvilY + 0.0065 + 0.0525, az).addScaledVector(H.d, -0.3); // the face on the blank's top
+        H.p0 = new THREE.Vector3(ax, anvilY + 0.0145 + 0.0525, az).addScaledVector(H.d, -0.3); // the face on the blank's top
       }
       hammer.position.copy(H.p0);
       hammer.quaternion.setFromAxisAngle(H.axis, H.up * 1.1).multiply(H.q0);
