@@ -7,7 +7,7 @@
 | Field | What |
 |---|---|
 | `id`, `category`, `related[]` | key, journal group (`CATS` in `src/ui/ui.js`), cross-links |
-| `sah`, `translit`, `ru` | the term in Sakha, Latin (BGN/PCGN, below), Russian |
+| `sah`, `translit`, `ru` | the term in Sakha, Latin (scheme below), Russian |
 | `name` | `{sah, en, ru}`: the thing's name where the title's head is not one |
 | `title`, `short`, `body` | `{en, sah, ru}`: heading, one-liner, full text |
 | `facts` | `{en: [], sah: [], ru: []}`: same count and order in every language |
@@ -15,8 +15,10 @@
 
 ## Names (`src/ui/names.js`)
 - A thing's name in a language: the head of `title.<lang>` (up to " — "), else `name`; a label's: its own text less a bracketed Sakha word.
-- English: the English name, else the Sakha word in BGN/PCGN 2012 Yakut romanisation (ҕ gh, ҥ ng, һ h, ө ö, ү ü, дь dj, нь ny, х kh, ч ch, ы y, й y, э e); never Cyrillic.
+- English: the English name, else the Sakha word in Latin (`translit`); never Cyrillic.
+- Sakha in English text, everywhere: ү u, ө o, ҥ ng, ҕ gh, һ h, дь dj, нь ny, х kh, ч ch, ы y, й y, э e, the rest as usual, long vowels doubled; proper names capitalised (Urung Aar Toyon, Yhyakh).
 - Russian: the Russian name, else the Sakha word as written («Балаҕан», not «Балаган»).
+- Sakha words in Russian text, everywhere, keep Sakha spelling with Russian endings («в балаҕане», «ураһы», «чороона»); real Russian words stay (кумыс, амбар, камелёк); place names keep their official forms (Мюрю, Ус Хатын, Сунтар).
 - Shown Sakha first, then fading into the chosen language; with Sakha chosen, Sakha only.
 
 ## Language and voice
@@ -25,7 +27,7 @@
 - No in-text citations (Wikipedia, Jochelson, Seroshevsky…): sources live in `sources[]`. Beliefs and living customs are stated as held, in the present.
 - Russian tone: a museum guide, no English calques («стороны дома называют», not «читать дом»; cm, not feet); questions to the player impersonal («Какую ленточку повязать?»).
 - Орон: never «нары»; first use «орон — широкая лавка-лежанка», then «орон» (орона, на ороне, ороны) or «лежанка»/«лавка» in labels.
-- Балаган is «балаган», not «якутская юрта» or «изба»; хотон is «хотон (хлев)». No «инородцы», «туземцы», «примитивный»; a shaman is «шаман» (ойуун).
+- Балаҕан is «балаҕан», not «якутская юрта» or «изба»; хотон is «хотон (хлев)». No «инородцы», «туземцы», «примитивный»; a shaman is «шаман» (ойуун).
 - Russian glosses «восток», «святцы», «строганина», «чернь» stay Russian on purpose.
 - Муус устар = April (sah.wikipedia «Муус устар»).
 - `dyedyen` = small hand-picked wild strawberry (Fragaria vesca / F. viridis) gathered into a birch-bark тууйас; verb дьэдьэннээ=. `mas-yagas` = the carried wooden water pail; `ygas-bucket` = the birch-bark milk bucket. Rain idiom «ыаҕастаах уунан кутар» (sakhatyla).
