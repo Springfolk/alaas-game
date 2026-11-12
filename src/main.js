@@ -333,14 +333,17 @@ class Game {
       const phone = this.engine?.tier === 'mobile' || isPhone();
       adv.innerHTML = VIDEO.filter((o) => !(o.desktop && phone)).map(({ key, values }) => {
         const label = `<span class="vl"><span data-t="v${cap(key)}"></span><small data-t="v${cap(key)}Hint"></small></span>`;
-        return typeof values[0] === 'boolean' ? `<label class="row">${label}<input type="checkbox" id="v-${key}"></label>` : `<div class="row">${label}<span class="sel up" data-sel="v-${key}"></span></div>`;
+        return typeof values[0] === 'boolean' ? `<label class="row" data-v="${key}">${label}<input type="checkbox" id="v-${key}"></label>` : `<div class="row" data-v="${key}">${label}<span class="sel up" data-sel="v-${key}"></span></div>`;
       }).join('');
       for (const el of adv.querySelectorAll('input')) el.onchange = () => this.setVideo(el.id.slice(2), el.checked);
       document.getElementById('v-more').onclick = () => document.querySelector('#tab-settings .settings').classList.toggle('adv');
     }
     for (const el of adv.querySelectorAll('[data-t]')) el.textContent = this.tt(T[el.dataset.t]);
     const word = (o, x, i) => (o.fmt ? o.fmt(x) : o.metres ? `${x} ${this.tt(T.vMetres)}` : this.tt(T[o.words[i]]));
+    const base = q === 'custom' ? s.videoBase : PRESETS[q] ? q : this.engine.tier;
     for (const o of VIDEO) {
+      const row = adv.querySelector(`[data-v="${o.key}"]`);
+      if (row) row.hidden = !!o.ok && !o.ok(base);
       const el = document.getElementById('v-' + o.key);
       if (el) el.checked = !!v[o.key];
       else fillSelects('v-' + o.key, o.values.map((x, i) => [String(x), word(o, x, i)]), String(v[o.key]));

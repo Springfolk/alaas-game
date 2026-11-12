@@ -6,14 +6,14 @@ import { PRESETS } from './tier.js';
 
 const DPR = typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1;
 const pct = (v) => Math.round(v * 100) + '%';
-// key → values (in order) · fmt: label of a value (else a T key per value: `v<Key><Value>` or on/off) · desktop: not on phones
+// key → values (in order) · fmt / words: labels of the values (booleans: a switch) · desktop: not on phones · ok(base): offered on that preset
 export const VIDEO = [
   { key: 'res', values: [0.5, 0.67, 0.75, 1], fmt: pct, live: true },
   { key: 'dynres', values: [true, false], live: true },
   { key: 'fps', values: [30, 60], fmt: String, live: true, desktop: true },
   { key: 'shadow', values: [512, 1024, 2048], words: ['qLow', 'qMedium', 'qHigh'] },
   { key: 'shadowFar', values: [45, 55, 70, 110, 150], metres: true, live: true },
-  { key: 'ao', values: [false, true] },
+  { key: 'ao', values: [false, true], ok: (base) => !PRESETS[base]?.leanEnv }, // the lean sky light's maps + AO: over 16 textures in the ground's shader
   { key: 'aa', values: ['taa', 'fxaa', 'none'], words: ['vAaTaa', 'vAaFxaa', 'vOff'] },
   { key: 'grass', values: [0.3, 0.45, 0.6, 1], fmt: pct },
   { key: 'distance', values: [0.55, 0.7, 0.8, 1], words: ['vNear', 'qMedium', 'vFar', 'vFull'] },
@@ -44,7 +44,7 @@ export function toOpts(v, base) {
   const p = PRESETS[base] || PRESETS.medium, dpr = v.res * DPR;
   const o = {
     dpr, resMin: v.dynres ? Math.min(p.resMin ?? 0, dpr) : dpr, resStart: v.dynres ? p.resStart ?? 1 : 1,
-    shadows: v.shadow, shadowFar: v.shadowFar, ao: v.ao, aa: v.aa, grassDensity: v.grass, forest: v.distance, bloom: v.glow, reflection: v.mirror,
+    shadows: v.shadow, shadowFar: v.shadowFar, ao: v.ao && !p.leanEnv, aa: v.aa, grassDensity: v.grass, forest: v.distance, bloom: v.glow, reflection: v.mirror,
   };
   if (base !== 'mobile') o.fps = v.fps; // phones keep their 30 fps cap
   return o;
