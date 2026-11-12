@@ -3,7 +3,7 @@
 Targets: desktop 60 fps, phones 30. Priorities in order: no late frame, then a shorter frame and input-to-picture time. Never a higher average at the cost of a steady frame.
 
 ## Pacing and dynamic quality (`src/engine/pacing.js`)
-- `Game.tick` → `Engine.pace`: a steady 60 everywhere (title, menus, cards, idle), 30 with the battery saver; no frames once the pause menu has settled. `frame(now)` steps time by the rAF timestamp.
+- `Game.tick` → `Engine.pace`: a steady 60 everywhere (title, menus, cards, idle), 30 with the battery saver and always on phones; no frames once the pause menu has settled. `frame(now)` steps time by the rAF timestamp.
 - `pace` draws every n-th display refresh (120 Hz: every 2nd; 75/90 Hz every one, 144 Hz every 2nd), counted on the display's clock from the last drawn frame (interval from 31 rAF deltas): jitter and late callbacks do not shift the beat.
 - `pace` holds a frame back while the GPU still has three (Chrome queues 3–4 before it slows rAF).
 - `govern` (every ~0.5 s of frames) reads late frames, the frame's JS time and when the GPU finished each frame (`Engine.frameDone`: WebGPU queue promise, WebGL2 fence). Where the first 30 fences cost over 1 ms each (Safari's WebGL2) it uses late frames alone.

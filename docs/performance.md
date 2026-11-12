@@ -30,7 +30,8 @@
 - Read the tier from `engine.tier` or `TIER` (set before the world builds: `grassDensity`, `forest`, `ground`, `texMax`, `lite` …); `engine.opts.quality` is `high|medium|low` (mobile → `low`).
 - Lazy shadows (phones; desktop as the last dynamic-quality knob): the sun's maps re-render on a 1.5 m move or 8° turn (≤8/s), else every 2 s; the warm-up forces them each round; `?nolazy` off.
 - Model impostors from max(110 m, 6× size); phones max(45 m, 3× size), the homestead atlas at full size.
-- Battery saver (30 fps): default on phones and on a battery ≤20% unplugged (Battery Status API); the setting overrides.
+- Phones (`mobile` tier or `isPhone()`, any preset or setting): 30 fps; the battery saver and frame-rate options are hidden there.
+- Battery saver (30 fps, desktops): default on a battery ≤20% unplugged (Battery Status API); the setting overrides.
 
 ## Phone memory
 - iOS kills a tab past ~1–1.5 GB: memory is decided at boot (tier, `LITE`) and cannot be handed back.

@@ -330,7 +330,7 @@ class Game {
     if (!this.bootVideo) return; // (the engine not up yet)
     const v = this.shownVideo(), adv = document.getElementById('v-adv');
     if (!adv.firstChild) {
-      const phone = this.engine?.tier === 'mobile' || isPhone();
+      const phone = this.engine?.phone ?? isPhone();
       adv.innerHTML = VIDEO.filter((o) => !(o.desktop && phone)).map(({ key, values }) => {
         const label = `<span class="vl"><span data-t="v${cap(key)}"></span><small data-t="v${cap(key)}Hint"></small></span>`;
         return typeof values[0] === 'boolean' ? `<label class="row" data-v="${key}">${label}<input type="checkbox" id="v-${key}"></label>` : `<div class="row" data-v="${key}">${label}<span class="sel up" data-sel="v-${key}"></span></div>`;
@@ -410,6 +410,7 @@ class Game {
     for (const k of ['motion', 'smooth']) if (document.getElementById('s-' + k)) bind('s-' + k, k); // sliders 0..1, if the UI has them
     bind('s-battery', 'batterySaver', Boolean, 'checked'); // read by the perf code (save.settings.batterySaver)
     if (s.batterySaver == null && this.engine) document.getElementById('s-battery').checked = !!this.engine.autoSaver; // auto until toggled
+    document.getElementById('s-battery').closest('.row').style.display = this.engine?.phone ? 'none' : ''; // phones stay at 30
     this.fillQuality();
     document.getElementById('fovv')?.replaceChildren(s.fov + '°');
   }
@@ -678,7 +679,7 @@ new Game().boot().catch(fail);
 // display refreshes, so a 120 Hz screen draws exactly every other one.
 Game.prototype.tick = function (now) {
   const e = this.engine, s = this.save.settings;
-  e.fpsCap = (s.batterySaver ?? e.autoSaver) ? 30 : e.opts.fps;
+  e.fpsCap = e.phone || (s.batterySaver ?? e.autoSaver) ? 30 : e.opts.fps; // phones: always 30
   const paused = document.getElementById('pause')?.classList.contains('show');
   this.pausedFrames = paused ? (this.pausedFrames || 0) + 1 : 0;
   if (e.pace(now, this.pausedFrames > 45 ? 0 : e.fpsCap)) this.frame(now);

@@ -7,7 +7,7 @@ import {
 import { buildPost } from './post.js';
 import { fastPMREM } from '../load/pmrem.js';
 import { leanEnvironment } from './leanenv.js';
-import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, restoreLost, webgpuAdapter, gpuBroken } from './tier.js';
+import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, restoreLost, webgpuAdapter, gpuBroken, isPhone } from './tier.js';
 import { setTextureMax } from './materials.js';
 import { makeSky, updateSky, cloudField, cloudCover, CLOUD_Y } from './sky.js';
 import { sunMask } from './master.js';
@@ -77,7 +77,8 @@ export class Engine {
     this.resScale = this.opts.resStart ?? 1; // phones start low and climb (dynamicResolution)
     // battery saver (30 fps) by default on phones (at 60 an iPhone heated within a minute, dimmed its screen and
     // throttled to ~10 fps) and on a battery running low (≤20%, unplugged) where the Battery Status API reports it
-    // (Chromium; Safari has none). The setting overrides it.
+    // (Chromium; Safari has none). The setting overrides it, except on a phone: 30 there whatever the tier or setting.
+    this.phone = this.tier === 'mobile' || isPhone();
     this.autoSaver = this.tier === 'mobile';
     navigator.getBattery?.().then((b) => {
       const upd = () => { this.autoSaver = this.tier === 'mobile' || (!b.charging && b.level <= 0.2); };
