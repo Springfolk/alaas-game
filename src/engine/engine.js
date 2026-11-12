@@ -107,10 +107,10 @@ export class Engine {
     const attributes = r._attributes, upload = r.backend.updateAttribute.bind(r.backend);
     if (attributes && !urlFlag('reupload')) r.backend.updateAttribute = (a) => { if (attributes.get(a).version < (a.isInterleavedBufferAttribute ? a.data : a).version) upload(a); }; // ?reupload: A/B
     // Indices go up 16-bit where they address under 65536 vertices: three's WebGPU upload widens every 16-bit array
-    // that is not `normalized` to 32-bit, indices too (meant for vertex formats; an index ignores the flag), and a
+    // that is not `normalized` to 32-bit, indices too (meant for vertex formats; an index's upload ignores the flag), and a
     // static 32-bit index under 65536 vertices is narrowed first. No shader or pipeline sees the index format. ?wideindex: A/B
     const mkIndex = r.backend.createIndexAttribute.bind(r.backend);
-    if (!urlFlag('wideindex')) r.backend.createIndexAttribute = (a) => { narrowIndex(a); if (a.array instanceof Uint16Array) a.normalized = true; mkIndex(a); };
+    if (!urlFlag('wideindex')) r.backend.createIndexAttribute = (a) => { narrowIndex(a); const n = a.normalized; if (a.array instanceof Uint16Array) a.normalized = true; try { mkIndex(a); } finally { a.normalized = n; } }; // (only while it uploads: getX() would read a normalized index as fractions)
     // Safari can break a WebGPU device without losing it (mid-load, or after the page was hidden): every
     // createCommandEncoder then throws and the canvas freezes. Treated as a loss at the first throw.
     const dev = r.backend.device;
