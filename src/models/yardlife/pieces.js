@@ -296,14 +296,16 @@ export function craft(K, x, z, yaw = 0) {
     {
       const [ax, az] = F.tw(-1.25, -0.45), [bx, bz] = F.tw(0.15, -0.95);
       const d = [bx - ax, bz - az], l = Math.hypot(...d), nx = -d[1] / l, nz = d[0] / l;
+      const ya = K.drawnTop(ax, az), yb = K.drawnTop(bx, bz); // straight rods: over the ground's highest point along them
+      let lift = 0; for (let t = 0.1; t < 1; t += 0.1) lift = Math.max(lift, K.drawnTop(ax + d[0] * t, az + d[1] * t) - (ya + (yb - ya) * t));
       for (let k = 0; k < 18; k++) {
         const o = (rng() - 0.5) * 0.09, oy = rng() * 0.05, sl = (rng() - 0.5) * 0.25;
-        addLog(K.b, [ax + nx * o + d[0] / l * sl, K.b.ground(ax, az) + 0.01 + oy, az + nz * o + d[1] / l * sl],
-          [bx + nx * o * 2.6, K.b.ground(bx, bz) + 0.01 + oy * 0.5, bz + nz * o * 2.6], 0.009, 0.005, rng, M.willow, M.willow, { seg: 4, step: 0.35, bend: 0.01 });
+        addLog(K.b, [ax + nx * o + d[0] / l * sl, ya + lift + 0.01 + oy, az + nz * o + d[1] / l * sl],
+          [bx + nx * o * 2.6, yb + lift + 0.01 + oy * 0.5, bz + nz * o * 2.6], 0.009, 0.005, rng, M.willow, M.willow, { seg: 4, step: 0.35, bend: 0.01 });
       }
       for (const t of [0.3, 0.65]) {
         const px = ax + d[0] * t, pz = az + d[1] * t;
-        K.b.add(new THREE.TorusGeometry(0.04, 0.005, 4, 12), M.lash, mtx([px, K.b.ground(px, pz) + 0.035, pz], [0, -Math.atan2(d[1], d[0]), 0]).multiply(mtx([0, 0, 0], [0, Math.PI / 2, 0])));
+        K.b.add(new THREE.TorusGeometry(0.04, 0.005, 4, 12), M.lash, mtx([px, ya + (yb - ya) * t + lift + 0.035, pz], [0, -Math.atan2(d[1], d[0]), 0]).multiply(mtx([0, 0, 0], [0, Math.PI / 2, 0])));
       }
     }
     // a log to sit on

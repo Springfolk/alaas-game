@@ -13,7 +13,9 @@ import { hayMeadow } from './yardlife/hay.js';
 import { DOOR } from './urasa/frame.js';
 import { PLACEMENTS } from '../world/layout.js';
 import { HOME } from '../world/terrain.js';
-import { drawnHeight } from '../world/ground-data.js';
+import { drawnHeight, drawnBy } from '../world/ground-data.js';
+import { TIER } from '../engine/tier.js';
+import { smooth } from '../util.js';
 
 // prevailing summer breeze: the smudge smoke drifts north-east over the pen (m/s, x/z)
 const WIND = [0.55, -0.42];
@@ -91,7 +93,8 @@ export default async function build(ctx, placement) {
   for (const t of hay.targets) interactables.push({ entry: 'hay-making', target: t });
   interactables.push({ entry: 'homestead-layout', zone: { x: PLACES.yard[0], z: PLACES.yard[1], r: 3.2 } });
 
-  yardB.build(group);
+  const yardMeshes = yardB.build(group);
+  if (terrain.heightFast) { const d6 = drawnBy(terrain, 640), d5 = drawnBy(terrain, 512); followGround(yardMeshes, ...PLACES.craft, drawnBy(terrain, TIER.ground), (x, z) => Math.max(d6(x, z), d5(x, z)), px, py, pz); }
   const meadow = new T.Group();
   meadow.name = 'hay-meadow';
   meadowB.build(meadow);
@@ -108,4 +111,24 @@ export default async function build(ctx, placement) {
     interactables,
     update: (dt, c) => { for (const u of ups) u(dt, c); },
   };
+}
+
+// The craft spot's hide and what lies on and around it are shaped over the desktop's drawn ground (`drawnTop`); at load
+// they are moved onto the ground as this tier draws it (phones' coarser grid differs there by up to 8 cm). Vertices
+// within 1.6 m of the spot and 0.4 m of the ground move fully, fading out to 1.9 m and 0.8 m.
+function followGround(meshes, cx, cz, drawn, top, px, py, pz) {
+  for (const m of meshes) {
+    const p = m.geometry.attributes.position, bs = m.geometry.boundingSphere;
+    if (bs && Math.hypot(bs.center.x - cx, bs.center.z - cz) > bs.radius + 1.9) continue;
+    let moved = false;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), z = p.getZ(i), d = Math.hypot(x - cx, z - cz);
+      if (d > 1.9) continue;
+      const wx = px + x, wz = pz + z, t = top(wx, wz), h = p.getY(i) + py - t;
+      if (h > 0.8) continue;
+      const w = (1 - smooth(1.6, 1.9, d)) * (1 - smooth(0.4, 0.8, h));
+      if (w > 0) { p.setY(i, p.getY(i) + w * (drawn(wx, wz) - t)); moved = true; }
+    }
+    if (moved) { p.needsUpdate = true; m.geometry.computeBoundingSphere(); m.geometry.boundingBox = null; }
+  }
 }

@@ -23,6 +23,11 @@ export function drawnHeight(terrain, x, z, N, at = (i, j) => Math.round(terrain.
   const hd = at(i + 1, j + 1); return hd + (1 - u) * (hc - hd) + (1 - v) * (hb - hd);
 }
 export const gridNode = (i, j, N) => [gridX(i, N), gridZ(j, N)];
+// drawnHeight for many points: the node samples memoised
+export function drawnBy(terrain, N) {
+  const c = new Map(), at = (i, j) => { const k = j * N + i; let y = c.get(k); if (y === undefined) c.set(k, (y = Math.round(terrain.height(gridX(i, N), gridZ(j, N)) * 1000) / 1000)); return y; };
+  return (x, z) => drawnHeight(terrain, x, z, N, at);
+}
 
 export function groundSamples(terrain, N) {
   const h = new Int32Array(N * N), nor = new Int16Array(N * N * 3), spl = new Uint8Array(N * N * 4), n = [0, 1, 0];
