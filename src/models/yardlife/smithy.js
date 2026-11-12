@@ -286,7 +286,7 @@ export function smithy(K, x, z, yaw) {
   const heatU = uniform(0);
   const hot = new THREE.MeshStandardNodeMaterial({ color: 0x4a4744, roughness: 0.5, metalness: 0.6 }); // catches the light, cold too
   hot.name = 'hot-iron';
-  hot.emissiveNode = mix(color(0.5, 0.02, 0.0), color(1.0, 0.55, 0.12), heatU.smoothstep(0.35, 1)).mul(heatU.smoothstep(0.18, 0.9).pow(1.6)).mul(3.2);
+  hot.emissiveNode = mix(color(0.75, 0.05, 0.0), color(1.0, 0.5, 0.1), heatU.smoothstep(0.5, 1)).mul(heatU.smoothstep(0.08, 0.7).pow(1.2)).mul(2.2); // vivid through the whole forging range
   // the blank's four shapes along +X: bar, pointed, flattened, blade (straight spine, the edge drawn thin)
   const blank = new THREE.Group(); blank.name = 'knife-blank';
   const shape = (len, thick, wide, f) => {
@@ -317,7 +317,7 @@ export function smithy(K, x, z, yaw) {
   let steamT = 0; // seconds of hiss left
   K.ups.push((dt, c) => { steamT = Math.max(0, steamT - dt); steam.ctl.rate = steamT > 0 ? 6 + 16 * Math.min(1, steamT / 1.2) : 0; if (c.camera) steam.update(dt, c.camera); });
   blank.position.copy(SPOT.fire.p); blank.rotation.y = SPOT.fire.yaw;
-  blank.userData.dynamic = true;
+  blank.userData.dynamic = true; blank.scale.setScalar(1.5); // plain to see from the bellows and the anvil
   K.group.add(blank);
   // the hammer (өтүйэ): a small heavy head on a short haft, lying on the stump; it rises and falls by itself with each blow
   const hammer = new THREE.Group(); hammer.name = 'hammer';
@@ -390,7 +390,7 @@ export function smithy(K, x, z, yaw) {
     light.intensity = 0.15 + energy * 9;
     // the blank: heats in the coals with the blast, cools in the air
     if (Wk.at === 'fire' && !Wk.fly) Wk.heat = Math.max(0, Wk.heat - dt * 0.004); // the coals keep it hot
-    else Wk.heat = Math.max(0, Wk.heat - dt * (Wk.at === 'tub' ? 2.5 : 0.018));
+    else Wk.heat = Math.max(0, Wk.heat - dt * (Wk.at === 'tub' ? 2.5 : 0.01));
     heatU.value = Wk.heat;
     if (Wk.fly) {
       const f = Wk.fly; f.k = Math.min(1, f.k + dt / f.dur);
@@ -468,7 +468,7 @@ export function smithy(K, x, z, yaw) {
     (hot && sound(game, 'anvil', SPOT.anvil.p)) || sound(game, 'chop-stuck', SPOT.anvil.p); // dark iron only rings dull
     game.player.springV -= 0.15 + 0.5 * H.top;
     if (hot) {
-      Wk.heat -= 0.02;
+      Wk.heat -= 0.012;
       Wk.blows += full ? 1 : 0.5;
       spark();
       if (Wk.blows >= BLOWS) { Wk.blows = 0; shapes[Wk.stage].scale.setScalar(1); Wk.stage++; setShape(Wk.stage); } else grow();

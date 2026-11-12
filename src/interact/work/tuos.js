@@ -25,6 +25,7 @@ function basisQ(y, xHint, out = new THREE.Quaternion()) {
 }
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const CARRY = { p: [0.2, -0.36, -0.5], q: basisQ(V(0, 0.92, 0.38), V(1, 0, 0)) }; // held level, a little tipped to the eye
+const WORK = { p: V(0, -0.3, -0.66), q: basisQ(V(0, 0.68, 0.73), V(1, 0, 0)) }; // being made: out before the eye, its inside turned up to it
 const TOFIRE = { p: V(0.05, -0.3, -0.62), q: basisQ(V(0, 0.55, 0.83), V(1, 0, 0)) }; // its inner side turned to the heat
 const PASSES = 3, KEEP = 300; // passes over the fire that make it soft; s the softness lasts
 
@@ -47,7 +48,7 @@ export class Tuos {
     this.n = 0;         // berries in it
     this.pose = null; this.folding = -1;
     const own = hands.pose;
-    hands.pose = (dt, cam) => (hands.held === this.thing ? this.pose : own?.(dt, cam));
+    hands.pose = (dt, cam) => (hands.held === this.thing ? this.pose || (this.made ? null : WORK) : own?.(dt, cam));
     this.thing.onDown = () => { this.onHide = this.thing.obj.position.distanceTo(this.rest.p) < 0.9; };
   }
   get held() { return this.hands.held === this.thing; }
@@ -62,6 +63,7 @@ export class Tuos {
     }
     if (this.held && !this.made && this.warm <= 0 && it.fireplace && !this.busy) return this.warmAct;
     if (this.held && !this.made && it.entry === 'birch-bark' && !this.busy && this.game.player.pos.distanceTo(this.rest.p) < 4) return this.layAct; // the craft spot
+    if (it.entry === 'birch-bark' && !this.hands.held && this.onHide && it !== this.thing.it) { const a = this.actFor(this.thing.it); return a === this.hands.takeAct ? (this.takeSheet ||= { ...a, run: (game) => a.run(game, this.thing.it) }) : a; } // the craft spot: what the sheet on it would do
     return undefined;
   }
   // in the hands: soft, the next fold anywhere; stiff, a pass over any hearth fire within a few steps
@@ -89,7 +91,7 @@ export class Tuos {
     if (!this.held || this.busy || this.warm > 0) return;
     const g = this.game;
     this.busy = true;
-    const from = { p: V(...CARRY.p), q: CARRY.q.clone() }, P = this.pose = { p: from.p.clone(), q: from.q.clone() };
+    const from = { p: WORK.p.clone(), q: WORK.q.clone() }, P = this.pose = { p: from.p.clone(), q: from.q.clone() };
     const h0 = Math.floor(this.heat + 1e-3);
     await this.tween(0.85, (k) => {
       const e = Math.sin(k * Math.PI); // out and back

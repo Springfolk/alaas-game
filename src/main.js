@@ -26,6 +26,7 @@ import { icon, glyph } from './ui/icons.js';
 import { fillSelects, watchSelects } from './ui/select.js';
 import { version } from '../package.json';
 import { instrument, event } from './load/prof.js';
+const _gen = new THREE.Vector3(); // (pickFocus)
 
 const KEY = 'alaas-v1';
 const params = new URLSearchParams(location.search);
@@ -504,6 +505,19 @@ class Game {
       while (o && !o.userData.interactable) o = o.parent;
       const r = o?.userData.sphere?.radius ?? Infinity;
       if (o && (!best || r < bestR)) { bestR = r; best = o.userData.interactable; bestD = h.distance; this.focusHit = { ...h, it: best }; }
+    }
+    if (!best) {
+      // nothing hit: a small thing the look passes close to (a thin tool, a sheet): no pixel-hunting
+      const ray = this.ray.ray;
+      let bk = 1;
+      for (const t of targets) {
+        const sp = t.userData.sphere, it = t.userData.interactable;
+        if (!sp || !it || sp.radius > 1.2) continue;
+        const along = _gen.copy(sp.center).sub(cp).dot(ray.direction);
+        if (along < 0 || along > this.ray.far + sp.radius) continue;
+        const k = ray.distanceToPoint(sp.center) / Math.max(0.3, sp.radius * 0.8);
+        if (k < bk) { bk = k; best = it; }
+      }
     }
     if (!best) {
       const p = this.player.pos;
