@@ -188,7 +188,8 @@ export class Hints {
     if ((this.t -= dt) <= 0) {
       this.t = 0.2;
       const live = !g.title && !g.paused && !g.ui.modal && !g.stage?.on;
-      const c = live ? this.next() : null;
+      let c = null;
+      try { c = live ? this.next() : null; } catch (e) { if (!this.warned) { this.warned = true; console.warn('hints: a rule no longer fits its job', e); } } // a job reworked under the table never stops the frame
       if (c?.kind !== this.cur?.kind) { this.beat = c?.kind === 'fire' ? 0.6 : 0.3; this.call = 0; }
       this.cur = c;
       if (c) this.at.copy(c.at);
