@@ -246,7 +246,7 @@ export class Engine {
     const sh = this.sun.shadow, c = this.camera, s = (this._lazy ||= { p: new THREE.Vector3(1e9, 0, 0), d: new THREE.Vector3(), f: new THREE.Vector3(), t: 9, n: 0 });
     sh.autoUpdate = false;
     s.t += dt;
-    if ((s.watch = this.opts.lazyShadows === 'watch')) return;
+    if ((s.watch = this.opts.lazyShadows === 'watch')) return; // (lazyKnob there: watchShadows)
     c.getWorldDirection(s.f);
     if (s.t > 0.125 && (s.t > 2 || c.position.distanceToSquared(s.p) > 2.25 || s.f.dot(s.d) < 0.99)) {
       sh.needsUpdate = true; s.t = 0; s.p.copy(c.position); s.d.copy(s.f); s.n++;
@@ -259,6 +259,9 @@ export class Engine {
   watchShadows() {
     const s = this._lazy, c = this.camera;
     c.updateMatrixWorld();
+    const moving = moved(c.matrixWorld.elements, (s.prev ||= new Float64Array(16)));
+    s.prev.set(c.matrixWorld.elements);
+    if (this.lazyKnob && moving && s.t < 0.125) return; // dynamic quality (pacing.js): ≤8/s while the view moves, a still view at once
     let dirty = s.t > 2 || !s.list || moved(c.matrixWorld.elements, s.cam);
     for (let i = 0; !dirty && i < s.list.length; i++) {
       const w = s.list[i], o = w.o;
