@@ -267,12 +267,13 @@ export function smithy(K, x, z, yaw) {
   K.group.add(light);
 
   // ---- animation: idle smoulder; pumping alternates the bags and the coals flare ----
-  // ---- the forge work (docs/interactions.md): the helper's part. A bag is pressed for as long as the do input is
-  // held on the bellows (a full press gives the most air; the bags take turns) and the blast builds; the blank in
-  // the coals takes heat from it and shows it in its colour. Glowing, it is carried to the anvil with the tongs
-  // and forged in three passes: the hammer rises while held and falls when let go, a full blow on bright iron
-  // counts whole and throws sparks, a light one half; on dark iron it only rings. Back to the coals when it
-  // cools, then quenched in the tub. Nothing is told in words: the coals, the iron's colour and the blow's ring say it.
+  // ---- the forge work (docs/actions.md): the helper's part, every step a tap from anywhere in the lean-to. Each
+  // tap presses a bag of the bellows (they take turns): the coals flare and the blank in them takes a step of heat,
+  // glowing after three. A tap carries it in the tongs to the anvil; there each tap is a blow (taps in rhythm: one
+  // before the hammer is back is lighter and counts half), and the blank grows longer and flatter with each blow on
+  // bright iron, three blows a pass, three passes (point, flatten, edge); dark iron only rings, and a tap takes it
+  // back to the coals. Last, a tap quenches it in the tub. Nothing is told in words: the coals, the iron's colour,
+  // its shape and the blow's ring say it.
   const L3 = (sah, en, ru) => ({ sah, en, ru });
   const TXT = {
     toAnvil: L3('кытаҕаһынан кыстыкка уур', 'carry it to the anvil with the tongs', 'перенести клещами на наковальню'),
@@ -283,7 +284,7 @@ export function smithy(K, x, z, yaw) {
     passes: [L3('уһугун тарт', 'draw out the point', 'оттянуть остриё'), L3('хаптат', 'flatten it', 'расплющить'), L3('биитин таптай', 'forge the edge', 'проковать лезвие')],
   };
   const heatU = uniform(0);
-  const hot = new THREE.MeshStandardNodeMaterial({ color: 0x3a3836, roughness: 0.7, metalness: 0.6 });
+  const hot = new THREE.MeshStandardNodeMaterial({ color: 0x4a4744, roughness: 0.5, metalness: 0.6 }); // catches the light, cold too
   hot.name = 'hot-iron';
   hot.emissiveNode = mix(color(0.5, 0.02, 0.0), color(1.0, 0.55, 0.12), heatU.smoothstep(0.35, 1)).mul(heatU.smoothstep(0.18, 0.9).pow(1.6)).mul(3.2);
   // the blank's four shapes along +X: bar, pointed, flattened, blade (straight spine, the edge drawn thin)
@@ -305,7 +306,7 @@ export function smithy(K, x, z, yaw) {
   shapes[0].visible = true;
   const [ax, az] = F.tw(-0.5, 0.95), anvilY = K.b.ground(ax, az) + 0.39 + 0.075;
   const SPOT = {
-    fire: { p: new THREE.Vector3(...Wy(FX, fy + FTOP - 0.035, 0.08)), yaw: yaw + Math.PI / 2 + 0.2 },
+    fire: { p: new THREE.Vector3(...Wy(FX, fy + FTOP - 0.012, 0.08)), yaw: yaw + Math.PI / 2 + 0.2 },
     anvil: { p: new THREE.Vector3(ax, anvilY, az), yaw: yaw + 1.1 },
     tub: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.19, -0.85)), yaw: yaw + 0.4 },
   };
@@ -356,7 +357,7 @@ export function smithy(K, x, z, yaw) {
   const _tj = new THREE.Vector3(), _th = new THREE.Vector3(), _ty = new THREE.Vector3(0, 1, 0);
 
   const Wk = { at: 'fire', heat: 0, stage: 0, blows: 0, blast: 0, side: 0, fly: null, busy: false, press: [0, 0], pressing: false, pressT: 0, ham: { phase: null, up: 0, top: 0, t: 0, k: 0 } };
-  const NEED = 0.58, BLOWS = 5; // forging heat; full blows a pass
+  const NEED = 0.58, DARK = 0.3, BLOWS = 3; // forging heat; below it, too dark to forge; full blows a pass
   // sparks off the anvil: specks of the glowing iron's own material
   const sparks = [];
   { const sg = new THREE.IcosahedronGeometry(0.004, 0); for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(sg, hot); m.visible = false; m.userData.dynamic = true; K.group.add(m); sparks.push({ o: m, v: new THREE.Vector3(), t: 0 }); } }
@@ -367,13 +368,13 @@ export function smithy(K, x, z, yaw) {
   const move = (to, dur = 0.7) => new Promise((res) => { Wk.fly = { from: blank.position.clone(), to: SPOT[to].p, y0: blank.rotation.y, y1: SPOT[to].yaw, k: 0, dur, res }; Wk.at = to; });
   let energy = 0;
   K.ups.push((dt, c) => {
-    const game = c?.game, doing = !!game?.input.doing;
     // the bags: the one under the hands empties for as long as it is pressed and gives its air to the fire; let go, it fills again
     if (Wk.pressing) {
       Wk.pressT += dt;
-      if (doing || Wk.pressT < 0.12) {
-        const d = Math.min(1 - Wk.press[Wk.side], dt / 0.4);
-        Wk.press[Wk.side] += d; Wk.blast = Math.min(1, Wk.blast + d * 0.15);
+      if (Wk.pressT < 0.32) {
+        const d = Math.min(1 - Wk.press[Wk.side], dt / 0.3);
+        Wk.press[Wk.side] += d; Wk.blast = Math.min(1, Wk.blast + d * 0.3);
+        if (Wk.at === 'fire') Wk.heat = Math.min(1, Wk.heat + d * Wk.step); // a step of heat a press
       } else { Wk.pressing = false; Wk.pressDone?.(); }
     }
     for (let i = 0; i < 2; i++) if (!(Wk.pressing && i === Wk.side)) Wk.press[i] = Math.max(0, Wk.press[i] - dt / 0.5);
@@ -388,9 +389,8 @@ export function smithy(K, x, z, yaw) {
     K.M.glow.value = 0.22 + energy * 2.6 + (Wk.pressing ? 0.45 : 0);
     light.intensity = 0.15 + energy * 9;
     // the blank: heats in the coals with the blast, cools in the air
-    if (Wk.at === 'fire' && !Wk.fly) {
-      Wk.heat += (Wk.blast * 1.12 - Wk.heat) * (1 - Math.exp(-0.6 * dt));
-    } else Wk.heat = Math.max(0, Wk.heat - dt * (Wk.at === 'tub' ? 2.5 : 0.045));
+    if (Wk.at === 'fire' && !Wk.fly) Wk.heat = Math.max(0, Wk.heat - dt * 0.004); // the coals keep it hot
+    else Wk.heat = Math.max(0, Wk.heat - dt * (Wk.at === 'tub' ? 2.5 : 0.018));
     heatU.value = Wk.heat;
     if (Wk.fly) {
       const f = Wk.fly; f.k = Math.min(1, f.k + dt / f.dur);
@@ -409,11 +409,11 @@ export function smithy(K, x, z, yaw) {
       tongsRest.k = Math.min(1, tongsRest.k + dt / 0.45); const e = tongsRest.k * tongsRest.k * (3 - 2 * tongsRest.k);
       tongs.position.lerpVectors(tongsRest.from.p, tongsRest.p, e); tongs.quaternion.slerpQuaternions(tongsRest.from.q, tongsRest.q, e);
     }
-    // the hammer: up while the do input is held, down when it is let go
+    // the hammer: up as high as the beat allows, then down
     const H = Wk.ham;
     if (H.phase === 'raise') {
-      H.t += dt; H.up = Math.min(1, H.up + dt / 0.32);
-      if (!doing && H.t > 0.06) { H.phase = 'fall'; H.top = H.up; H.k = 0; }
+      H.t += dt; H.up = Math.min(H.to, H.up + dt / 0.28);
+      if (H.up >= H.to) { H.phase = 'fall'; H.top = H.up; H.k = 0; }
     } else if (H.phase === 'fall') {
       H.k = Math.min(1, H.k + dt / (0.05 + 0.07 * H.top));
       H.up = H.top * (1 - H.k * H.k);
@@ -448,35 +448,40 @@ export function smithy(K, x, z, yaw) {
     run: async (game) => {
       if (Wk.pressing) return;
       if (Wk.at === 'rest') { Wk.at = 'fire'; Wk.stage = 0; Wk.blows = 0; setShape(0); blank.position.copy(SPOT.fire.p); blank.rotation.y = SPOT.fire.yaw; blank.userData.sphere = undefined; } // a new blank
+      Wk.step = Wk.heat < NEED ? Math.max(0.2, (NEED + 0.12 - Wk.heat) / 3) : 0.1; // three presses from cold to forging heat
       Wk.side = 1 - Wk.side; Wk.pressing = true; Wk.pressT = 0;
       sound(game, 'bellows', pos);
       await new Promise((res) => { Wk.pressDone = res; });
+      game.promptKey = null;
     },
   };
   // the blank's own act follows where it lies and how hot it is
-  const strike = async (game) => {
-    if (Wk.busy) return;
+  // each blow on bright iron draws the blank out a little: longer, thinner, wider, until the pass gives the next shape
+  const grow = () => { const k = Wk.blows / BLOWS, m = shapes[Wk.stage]; m.scale.set(1 + 0.07 * k, 1 - 0.22 * k, 1 + 0.12 * k); };
+  const strike = async (game, top = 1) => {
+    if (Wk.busy) { Wk.next = 0.5; return; } // a tap before the hammer is back: a lighter blow after it
     Wk.busy = true;
     const H = Wk.ham;
-    H.phase = 'raise'; H.up = 0; H.t = 0;
+    H.phase = 'raise'; H.up = 0; H.t = 0; H.to = top;
     await new Promise((res) => { H.done = res; });
-    const full = H.top > 0.55, hot = Wk.heat > 0.34;
+    const full = H.top > 0.7, hot = Wk.heat > DARK;
     (hot && sound(game, 'anvil', SPOT.anvil.p)) || sound(game, 'chop-stuck', SPOT.anvil.p); // dark iron only rings dull
     game.player.springV -= 0.15 + 0.5 * H.top;
     if (hot) {
-      Wk.heat -= 0.035;
+      Wk.heat -= 0.02;
       Wk.blows += full ? 1 : 0.5;
-      if (full && Wk.heat > 0.5) spark();
-      if (Wk.blows >= BLOWS) { Wk.blows = 0; Wk.stage++; setShape(Wk.stage); }
+      spark();
+      if (Wk.blows >= BLOWS) { Wk.blows = 0; shapes[Wk.stage].scale.setScalar(1); Wk.stage++; setShape(Wk.stage); } else grow();
       game.work?.count('hammer');
     }
-    await sleep(120);
+    await sleep(100);
     Wk.busy = false; game.promptKey = null;
+    if (Wk.next) { const t = Wk.next; Wk.next = 0; if (Wk.at === 'anvil' && Wk.stage < 3) strike(game, t); }
   };
   const acts = {
     toAnvil: { id: 'to-anvil', label: TXT.toAnvil, run: async (game) => { await move('anvil'); sound(game, 'wood-lay-2', SPOT.anvil.p); game.promptKey = null; } },
     toFire: { id: 'to-fire', label: TXT.toFire, run: async (game) => { await move('fire'); game.promptKey = null; } },
-    strike: TXT.passes.map((label, i) => ({ id: 'hammer-' + i, label, run: strike })),
+    strike: TXT.passes.map((label, i) => ({ id: 'hammer-' + i, label, run: (game) => strike(game), tap: () => { Wk.next = 0.5; } })),
     quench: {
       id: 'quench', label: TXT.quench,
       run: async (game) => {
@@ -492,14 +497,14 @@ export function smithy(K, x, z, yaw) {
     },
   };
   blank.userData.forge = Wk; // (tools: the work's state)
-  const blankIt = {
-    target: blank, label: TXT.blank, entry: 'knife',
-    live: () => { // (src/interact/index.js asks it for the act of the moment)
-      if (Wk.fly || Wk.busy || Wk.at === 'tub' || Wk.at === 'rest') return null;
-      if (Wk.at === 'fire') return Wk.heat >= NEED ? acts.toAnvil : null; // not glowing yet: nothing to do with it
-      if (Wk.stage >= 3) return acts.quench;
-      return Wk.heat > 0.34 ? acts.strike[Wk.stage] : acts.toFire;
-    },
+  // the act of the moment, for the forge, the blank and anywhere in the lean-to (src/interact/index.js asks `live`)
+  const live = () => {
+    if (Wk.fly || Wk.at === 'tub') return null;
+    if (Wk.at === 'rest' || Wk.at === 'fire') return Wk.at === 'fire' && Wk.heat >= NEED && !Wk.pressing ? acts.toAnvil : act; // glowing: to the anvil, else the bellows
+    if (Wk.stage >= 3) return Wk.busy ? null : acts.quench;
+    return Wk.heat > DARK ? acts.strike[Wk.stage] : Wk.busy ? null : acts.toFire;
   };
-  return { target, act, extra: [blankIt] };
+  const around = { r: 3.4, at: () => world(SPOT.anvil.p) }; // anywhere in the lean-to
+  const blankIt = { target: blank, label: TXT.blank, entry: 'knife', live, around };
+  return { target, act, live, extra: [blankIt] };
 }

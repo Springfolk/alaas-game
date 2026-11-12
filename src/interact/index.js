@@ -45,7 +45,17 @@ export class Interactions {
   idleAct() {
     if (this.seat.on) return this.seat.standAct;
     for (const r of this.rites) { const a = r.idleAct(); if (a) return a; }
-    return this.work.idleAct() || this.hands?.idleAct() || null;
+    return this.work.idleAct() || this.hands?.idleAct() || this.aroundAct();
+  }
+  // empty hands within a work place's reach (`it.around` = { at(), r }): its act of the moment (`it.live`)
+  aroundAct() {
+    if (this.hands?.held) return null;
+    const p = this.game.player.pos;
+    for (const it of (this.arounds ||= this.game.world.interactables.filter((i) => i.around && i.live))) {
+      const c = it.around.at();
+      if (Math.hypot(c.x - p.x, c.z - p.z) < it.around.r) return it.live();
+    }
+    return null;
   }
   // putting down what is carried (src/interact/hands.js)
   putAct() { return this.seat.on ? null : this.hands?.putAct() || null; }

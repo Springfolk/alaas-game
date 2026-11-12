@@ -182,7 +182,7 @@ export class Split {
 
   // The blow: up over the shoulder and down along the crack. Its height is the beat: a tap while the axe is still
   // coming back from the last blow gives a lower one (`sw.next`, taken when it is back).
-  strikeAct = { id: 'strike', label: TXT.strike, run: (game) => this.strike() };
+  strikeAct = { id: 'strike', label: TXT.strike, run: () => this.strike(), tap: () => { if (this.sw) this.sw.next ??= 0.45; } }; // a tap mid-blow: the next, low
   async strike() {
     const c = this.onBlock, g = this.game;
     if (!c || c.state !== 'block' || !this.axeHeld) return;

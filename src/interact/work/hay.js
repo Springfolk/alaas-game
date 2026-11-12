@@ -67,7 +67,7 @@ export class Hay {
     return !this.sw || this.sw.phase === 'back' ? this.mowAct : this.noAct;
   }
   noAct = { id: 'none', label: L('', '', ''), run: async () => {} };
-  mowAct = { id: 'mow', label: TXT.mow, run: () => this.strike() };
+  mowAct = { id: 'mow', label: TXT.mow, run: () => this.strike(), tap: () => { if (this.sw) this.sw.next ??= 0.45; } }; // a tap mid-blow: the next, low
   hangAct = {
     id: 'hang-scythe', label: TXT.hang,
     run: async (game) => {

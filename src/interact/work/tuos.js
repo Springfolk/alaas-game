@@ -1,10 +1,9 @@
-// Туос үлэтэ: a тордуйа, the birch-bark vessel made without sewing. Take the sheet from the craft spot's hide and
-// hold it to a hearth fire (the do input held): as it takes the heat its long edges begin to lift, which is the
-// sign that it will bend without cracking; held on too long it curls up tight, dries hard and must be warmed
-// again. Lay it back on the hide while it is soft and fold up its four walls: a wall rises for as long as it is
-// held and stays once it is nearly up (let go sooner, it springs back; stiff bark gives a finger's width and no
-// more). The ends are pinned with pegs as they come up. The finished vessel is carried, and wild strawberries
-// picked while it is in the hands go into it. Nothing is told in words: the bark's own bend says it.
+// Туос үлэтэ: a тордуйа, the birch-bark vessel folded from one sheet and pegged at its corners. Take the sheet
+// from the craft spot's hide and pass it over a hearth fire: each tap is one pass, and its long edges lift a little
+// more each time; after three it is soft (the edges stand up, it steams) and stays so for KEEP s. Then each tap
+// folds the next wall, in the hands or laid on the hide: the two long sides, then each end with its corner flaps
+// and its peg. Seven taps: a vessel, carried, and wild strawberries picked while it is in the hands go into it.
+// Stiff bark does not fold: a tap on it at the hide takes it up. Nothing is told in words: the bark's bend says it.
 // Props: src/models/barkwork.js. Softening by warming at the fire is attested; boiling is not (docs/content.md).
 import * as THREE from 'three/webgpu';
 import { ease } from '../../util.js';
@@ -27,7 +26,7 @@ function basisQ(y, xHint, out = new THREE.Quaternion()) {
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const CARRY = { p: [0.2, -0.36, -0.5], q: basisQ(V(0, 0.92, 0.38), V(1, 0, 0)) }; // held level, a little tipped to the eye
 const TOFIRE = { p: V(0.05, -0.3, -0.62), q: basisQ(V(0, 0.55, 0.83), V(1, 0, 0)) }; // its inner side turned to the heat
-const SOFT = [0.4, 0.92], KEEP = 150; // the heat (0…1 over 3.2 s at the fire) between which it comes away soft; s the softness lasts
+const PASSES = 3, KEEP = 300; // passes over the fire that make it soft; s the softness lasts
 
 export class Tuos {
   constructor(work, parts, find) {
@@ -43,8 +42,7 @@ export class Tuos {
     this.fold = [0, 0, 0, 0];
     this.step = 0;      // folds done (4: a vessel)
     this.warm = 0;      // s of softness left
-    this.heat = 0;      // what it has taken from the fire, falling again away from it
-    this.curl = 0;      // scorched: curled up tight for a moment
+    this.heat = 0;      // passes over the fire (of PASSES), slowly lost away from it
     this.onHide = true; // lying on the work hide (it can be folded there)
     this.n = 0;         // berries in it
     this.pose = null; this.folding = -1;
@@ -60,46 +58,57 @@ export class Tuos {
     if (it.bark) {
       if (h || this.busy) return null;
       if (this.made || !this.onHide) return this.hands.takeAct;
-      return this.warm > 0 ? (this.step < 2 ? this.foldAct : this.pinAct) : this.tryAct; // stiff: a tap takes it (to the fire), a hold tries a fold
+      return this.warm > 0 ? this.foldOf() : this.hands.takeAct; // stiff: taken up (to the fire)
     }
-    if (this.held && !this.made && it.fireplace && !this.busy) return this.warmAct;
+    if (this.held && !this.made && this.warm <= 0 && it.fireplace && !this.busy) return this.warmAct;
     if (this.held && !this.made && it.entry === 'birch-bark' && !this.busy && this.game.player.pos.distanceTo(this.rest.p) < 4) return this.layAct; // the craft spot
     return undefined;
   }
-  idleAct() { return this.busy && this.held ? this.noAct : null; }
+  // in the hands: soft, the next fold anywhere; stiff, a pass over any hearth fire within a few steps
+  idleAct() {
+    if (!this.held || this.made) return null;
+    if (this.busy) return this.noAct;
+    if (this.warm > 0) return this.foldOf();
+    return this.nearFire() ? this.warmAct : null;
+  }
+  foldOf() { return this.step < 2 ? this.foldAct : this.pinAct; }
+  nearFire() {
+    const pl = this.game.player.pos;
+    for (const i of this.game.world.interactables) {
+      if (!i.fireplace) continue;
+      const f = i.fireplace.pos();
+      if (Math.hypot(f.x - pl.x, f.z - pl.z) < 3.2) return i;
+    }
+    return null;
+  }
   noAct = { id: 'none', label: L('', '', ''), run: async () => {} };
 
   warmAct = { id: 'warm-bark', label: TXT.warm, run: () => this.warmIt() };
-  // held to the fire for as long as the do input is down: it takes heat, and its edges show how much
+  // one pass over the fire: out to the heat, turned, back; the long edges lift a step
   async warmIt() {
-    if (!this.held || this.busy) return;
-    const g = this.game, inp = g.input;
+    if (!this.held || this.busy || this.warm > 0) return;
+    const g = this.game;
     this.busy = true;
     const from = { p: V(...CARRY.p), q: CARRY.q.clone() }, P = this.pose = { p: from.p.clone(), q: from.q.clone() };
-    let t = 0, k = 0;
-    await new Promise((res) => {
-      this.tick = (dt) => {
-        t += dt;
-        const on = (inp.doing || t < 0.25) && this.heat < 1.2;
-        k = Math.max(0, Math.min(1, k + (on ? dt / 0.4 : -dt / 0.3)));
-        if (on && k > 0.6) this.heat += dt / 3.2;
-        P.p.lerpVectors(from.p, TOFIRE.p, ease(k)); P.q.slerpQuaternions(from.q, TOFIRE.q, ease(k));
-        if (!on && k <= 0) res();
-      };
+    const h0 = Math.floor(this.heat + 1e-3);
+    await this.tween(0.85, (k) => {
+      const e = Math.sin(k * Math.PI); // out and back
+      P.p.lerpVectors(from.p, TOFIRE.p, e); P.q.slerpQuaternions(from.q, TOFIRE.q, e);
+      P.p.x += Math.sin(k * Math.PI * 2) * 0.06 * e; // passed through the heat
+      this.heat = h0 + k;
     });
-    this.tick = null; this.pose = null; this.busy = false;
-    if (this.heat > SOFT[1]) { this.heat = 0; this.warm = 0; this.curl = 1; g.audio?.play('wood-take', this.thing.obj.position); } // scorched: it curls, dries hard
-    else if (this.heat >= SOFT[0]) this.warm = KEEP;
+    this.pose = null; this.busy = false;
+    this.heat = h0 + 1;
+    g.audio?.play('fire-feed', this.thing.obj.position) || g.audio?.play('ribbon', this.thing.obj.position);
+    if (this.heat >= PASSES) { this.heat = 0; this.warm = KEEP; g.audio?.play('ribbon', this.thing.obj.position); } // soft
     g.promptKey = null;
   }
-  // How the unfolded long walls stand by themselves: lifting as the sheet takes heat, a little up while it stays
-  // soft, curled tight for a moment when scorched, flat when stiff.
-  bend(dt) {
+  tween(dur, step) { return new Promise((res) => { let k = 0; this.tick = (dt) => { k = Math.min(1, k + dt / dur); step(k); if (k >= 1) { this.tick = null; res(); } }; }); }
+  // How the unfolded long walls stand by themselves: a step up with each pass, standing while it stays soft, flat
+  // when stiff.
+  bend() {
     if (this.made || this.step >= 2) return;
-    this.curl = Math.max(0, this.curl - dt / 1.4);
-    const h = this.heat, soft = this.warm > 0 ? 0.08 + 0.12 * this.warm / KEEP : 0;
-    const hot = h < SOFT[0] ? 0.08 * h / SOFT[0] : h <= SOFT[1] ? 0.08 + 0.17 * (h - SOFT[0]) / (SOFT[1] - SOFT[0]) : 0.25 + (h - SOFT[1]) * 1.6;
-    const d = Math.max(soft, hot, 0.5 * ease(this.curl));
+    const d = this.warm > 0 ? 0.28 : 0.25 * this.heat / PASSES;
     let changed = false;
     for (let i = this.step; i < 2; i++) if (i !== this.folding && Math.abs(this.fold[i] - d) > 1e-3) { this.fold[i] = d; changed = true; }
     if (changed) this.parts.setFold(this.fold);
@@ -119,29 +128,16 @@ export class Tuos {
   };
   foldAct = { id: 'fold-bark', label: TXT.fold, run: () => this.foldNext() };
   pinAct = { id: 'pin-bark', label: TXT.pin, run: () => this.foldNext() };
-  tryAct = { id: 'try-bark', label: TXT.take, run: (game, it) => this.foldNext(it) };
-  // A wall comes up for as long as the do input is held on the sheet; nearly up, it stays (the ends take their
-  // pegs). Let go sooner and it springs back. Stiff bark gives a little and no more; a tap on it takes it up instead.
-  async foldNext(it) {
-    if (this.busy || this.made) return;
-    const g = this.game, inp = g.input, i = this.step, soft = this.warm > 0, lim = soft ? 1 : 0.16;
+  // a tap: the next wall comes up and stays (the ends take their pegs)
+  async foldNext() {
+    if (this.busy || this.made || this.warm <= 0) return;
+    const g = this.game, i = this.step;
     this.busy = true; this.folding = i;
     const f0 = this.fold[i];
-    let k = f0, t = 0, creaked = false;
-    await new Promise((res) => {
-      this.tick = (dt) => {
-        t += dt;
-        const push = inp.doing || (soft && (t < 0.15 || k >= 0.75)); // nearly up: it goes the rest of the way
-        k = push ? Math.min(lim, k + dt / 0.55) : Math.max(f0, k - dt / 0.22);
-        if (push && !creaked && t > 0.12) { creaked = true; g.audio?.play(soft ? 'ribbon' : 'wood-take', this.thing.obj.position); }
-        this.fold[i] = k; this.parts.setFold(this.fold);
-        if (k >= 1 || (!push && k <= f0)) res();
-      };
-    });
-    this.tick = null; this.folding = -1; this.busy = false;
-    if (!soft && t < 0.22 && it) { await g.run(this.hands.takeAct, it); return; } // a tap on stiff bark: taken up
-    if (k < 1) { g.promptKey = null; return; }
-    if (i >= 2) g.audio?.play('wood-take', this.thing.obj.position); // the pegs go in
+    g.audio?.play('ribbon', this.thing.obj.position);
+    await this.tween(0.5, (k) => { this.fold[i] = f0 + (1 - f0) * ease(k); this.parts.setFold(this.fold); });
+    this.folding = -1; this.busy = false;
+    if (i >= 2) g.audio?.play('wood-take', this.thing.obj.position); // the peg goes in
     this.step++;
     if (this.made) {
       this.thing.name = TXT.vessel; this.thing.it.label = { sah: 'тордуйа', en: 'pegged bark vessel', ru: 'берестяной сосуд на колышках' };
@@ -162,8 +158,8 @@ export class Tuos {
 
   update(dt) {
     this.tick?.(dt);
-    if (!this.tick) this.heat = Math.max(0, this.heat - dt / 9); // away from the fire it gives the heat up again
+    if (!this.tick && this.heat > 0 && !this.nearFire()) this.heat = Math.max(0, this.heat - dt / 40); // away from the fire it slowly gives the heat up
     if (this.warm > 0 && !this.made && (this.warm -= dt) <= 0) this.game.promptKey = null;
-    this.bend(dt);
+    this.bend();
   }
 }

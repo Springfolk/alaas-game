@@ -73,7 +73,7 @@ const OF = {
   choron: 'cup', drink: 'cup', 'fill-choron': 'ladle', milk: 'drop', play: 'khomus',
   strike: 'axe', 'strike-again': 'axe', 'free-axe': 'up', 'stick-axe': 'axe', 'place-round': 'round', 'stand-half': 'round',
   'set-tuu': 'trap', 'lift-tuu': 'up', 'pour-tuu': 'fish', mow: 'scythe', 'hang-scythe': 'back',
-  'warm-bark': 'flame', 'lay-bark': 'put', 'fold-bark': 'fold', 'pin-bark': 'peg', 'try-bark': 'hand',
+  'warm-bark': 'flame', 'lay-bark': 'put', 'fold-bark': 'fold', 'pin-bark': 'peg',
   bellows: 'bellows', 'to-anvil': 'tongs', 'to-fire': 'flame', quench: 'drop', churn: 'churn',
 };
 export const actIcon = (act) => (act ? act.icon || OF[act.id] || (/^hammer/.test(act.id) ? 'hammer' : 'hand') : 'hand');
