@@ -19,8 +19,8 @@
 | Tier | Pixel ratio (dynamic floor) | Sun shadows | Textures | Also |
 |---|---|---|---|---|
 | `high` | ≤2 (1) | 2048, 150 m | 4096 | GTAO pre-pass; never picked by Auto |
-| `medium` | ≤1.5 (0.7) | 2048, 110 m | 2048 | one scene pass (colour + velocity) |
-| `low` | 0.75 (0.5) | 1024, 70 m | 1024 | no lake mirror, `leanEnv`, no glare, grass 0.6 |
+| `medium` | ≤1.5 (0.7) | 2048, 110 m, watched | 2048 | one scene pass (colour + velocity) |
+| `low` | 0.75 (0.5) | 1024, 70 m, watched | 1024 | no lake mirror, `leanEnv`, no glare, grass 0.6 |
 | `mobile` | native, starts at 67% (67%) | 1024, 55 m, lazy | 512 | FXAA instead of TRAA, anisotropy ≤4, atlases 1024, ≤4 pipeline compiles in flight, `release`, grass 0.45, ground grid 320 |
 | `mobile` + `LITE` | as mobile | 512, 45 m | 256 | atlases 512, ≤2 compiles, grass 0.3 |
 
@@ -28,7 +28,8 @@
 - No tier renders under half the screen's own resolution (`MIN_RES`).
 - WebGPU wherever the browser gives an adapter, phones too; WebGL2 only with `?webgl`, without an adapter, or after 3 GPU losses within 2 min in the tab.
 - Read the tier from `engine.tier` or `TIER` (set before the world builds: `grassDensity`, `forest`, `ground`, `texMax`, `lite` …); `engine.opts.quality` is `high|medium|low` (mobile → `low`).
-- Lazy shadows (phones; desktop as a dynamic-quality knob before the slower beat): the sun's maps re-render on a 1.5 m move or 8° turn (≤8/s), else every 2 s; the warm-up forces them each round; `?nolazy` off.
+- Lazy shadows (phones; high as a dynamic-quality knob before the slower beat): the sun's maps re-render on a 1.5 m move or 8° turn (≤8/s), else every 2 s; the warm-up forces them each round; `?nolazy` off.
+- Watched shadows (medium, low): the maps re-render on any move or turn of the view or when a caster's world matrix, vertices, visibility, `castShadow` or layers change, else every 2 s; the lazy-shadow knob there caps them at 8/s, a view come to rest at once.
 - Model impostors from max(110 m, 6× size); phones max(45 m, 3× size), the homestead atlas at full size.
 - Phones (`mobile` tier or `isPhone()`, any preset or setting): 30 fps; the battery saver and frame-rate options are hidden there.
 - Battery saver (30 fps, desktops): default on a battery ≤20% unplugged (Battery Status API); the setting overrides.
