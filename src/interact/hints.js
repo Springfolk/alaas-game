@@ -52,7 +52,7 @@ export class Hints {
     this.eOp = uniform(0); this.eCol = uniform(new THREE.Color(1, 0.84, 0.62));
     this.edge = this.sprite(lightMaterial(this.eOp, this.eCol, uniform(0), uniform(0), true), home, 11);
     this.cur = null; this.t = 0; this.beat = 0.5; this.flash = -1; this.again = 0; this.left = 0; this.swell = -1;
-    this.at = new THREE.Vector3(); this.spot = new THREE.Vector3();
+    this.lit = null; this.spot = new THREE.Vector3();
     this.gain = { bloom: 2.5, shaft: 0.6, edge: 2 }; // the lights' strengths
   }
   sprite(m, at, order) {
@@ -164,7 +164,7 @@ export class Hints {
   // One beat of the hint `c`: what the world does now and then.
   pulse(c) {
     const g = this.game, a = g.audio, water = g.world.life?.water, L = LOOK[c.kind];
-    if (!this.cur) { this.cur = c; this.at.copy(c.at); } // (a job's own beat, outside the rule table)
+    this.lit = c; // (also a job's own beat, outside the rule table)
     if (L?.px) { this.flash = 0; this.place(c); this.left = (L.sparks || 1) - 1; this.again = 0.45; }
     if (L?.glow) this.swell = 0;
     switch (c.kind) {
@@ -219,12 +219,11 @@ export class Hints {
       try { c = live ? this.next() : null; } catch (e) { if (!this.warned) { this.warned = true; console.warn('hints: a rule no longer fits its job', e); } } // a job reworked under the table never stops the frame
       if (c?.kind !== this.cur?.kind) { this.beat = c?.kind === 'fire' ? 0.6 : 0.3; this.call = 0; this.left = 0; }
       this.cur = c;
-      if (c) this.at.copy(c.at);
     }
     const c = this.cur, cam = g.engine.camera, H = innerHeight;
     if (c && BEAT[c.kind] && (this.beat -= dt) <= 0) { const [lo, hi] = BEAT[c.kind]; this.beat = rand(lo, hi); this.pulse(c); }
-    if (c && this.left > 0 && (this.again -= dt) <= 0) { this.left--; this.again = rand(0.3, 0.6); this.flash = 0; this.place(c); }
-    const L = c && LOOK[c.kind];
+    const lit = this.lit, L = lit && LOOK[lit.kind];
+    if (lit && this.left > 0 && (this.again -= dt) <= 0) { this.left--; this.again = rand(0.3, 0.6); this.flash = 0; this.place(lit); }
     // the glint: a quick rise, a flicker and out (~0.5 s), on the thing's surface seen from here
     if (this.flash >= 0) {
       this.flash += dt;
@@ -242,8 +241,8 @@ export class Hints {
     if (this.swell >= 0) { this.swell += dt; const k = this.swell / SWELL; if (k >= 1 || !L?.glow) this.swell = -1; else env = Math.sin(Math.PI * Math.sqrt(k)) ** 2; }
     this.bloom.visible = this.edge.visible = false;
     if (env <= 0) return;
-    const G = L.glow, far = cam.position.distanceTo(this.at) > (L.near ?? NEAR), top = far && c.top;
-    const at = top || this.at, d = cam.position.distanceTo(at); // a hearth from afar: its light in the smoke over the roof
+    const G = L.glow, far = cam.position.distanceTo(lit.at) > (L.near ?? NEAR), top = far && lit.top;
+    const at = top || lit.at, d = cam.position.distanceTo(at); // a hearth from afar: its light in the smoke over the roof
     if (far && !top) { // a shaft of sunlight falling on it
       const w = Math.max(5, this.m(0.15 * H, d));
       _w.copy(g.engine.sun.position).transformDirection(cam.matrixWorldInverse); // the sun's side of the view
@@ -260,7 +259,7 @@ export class Hints {
     this.bCol.value.copy(G.col); this.bRing.value = G.ring || 0;
     this.bloom.visible = true;
     // out of view: sunlight flaring in at the edge of the view on its side
-    _v.copy(this.at).applyMatrix4(cam.matrixWorldInverse);
+    _v.copy(lit.at).applyMatrix4(cam.matrixWorldInverse);
     const tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), th = tv * cam.aspect;
     if (_v.z < 0 && Math.abs(_v.x / -_v.z) < th * 0.95 && Math.abs(_v.y / -_v.z) < tv * 0.95) return;
     let ex = _v.x / th, ey = _v.y * 0.35 / tv;

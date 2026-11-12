@@ -34,25 +34,29 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 - A job's movable parts are scene children marked `userData.dynamic`; after moving one, clear its `userData.sphere` (the look-at cache).
 
 ## Hints (`src/interact/hints.js` `next()`, `game.hints`)
-No sentence and no mark says the next step: the thing itself answers, as in life. One rule table, read from the jobs' own state; nothing while acting, sitting or choosing; it stops once the step is done.
+No sentence and no mark says the next step: light catches the thing, as in a photograph. One rule table, read from the jobs' own state; nothing while acting, sitting or choosing; it stops once the step is done. Sound only accompanies.
 
 | In the hands / state | The world's hint |
 |---|---|
-| empty pail | a fish rises in open water off the nearest shore |
-| billets | the nearer of: the woodpile (resin glints on the billet ends), a hearth (a log settles: a knock, the fire lifts, sparks) |
-| axe | the round on the block, else a fallen half, the heap of rounds, the loose billets: resin glints on it |
+| empty pail | a fish rises in open water off the nearest shore: sun glitter and a glare on the rings |
+| billets | the nearer of: the woodpile (resin glints and glares on the billet ends), a hearth (the fire lifts with a knock; its light swells round the hearth, from outside in the smoke over the roof) |
+| axe | the round on the block, else a fallen half, the heap of rounds, the loose billets: resin glints and glares on it |
 | nothing, ≤ 8 m from the block | a round stands ready: the sun glints on the axe's edge; a fallen half: resin glints |
-| fish trap | empty: fish rise and jump in the weir's gap, water laps there; with fish: the тымтай's bark glints |
-| nothing, trap set with ≥ 3 fish, ≤ 45 m | the catch splashes in the trap, water laps |
-| scythe, standing off the standing grass | insects buzz from the nearest standing grass |
-| bark sheet | cold: the nearest hearth's fire lifts; warm: a glint on the hide where it lies |
+| fish trap | empty: fish rise and jump in the weir's gap, sun glitter on the rings, water laps; with fish: the тымтай's bark glints |
+| nothing, trap set with ≥ 3 fish, ≤ 45 m | the catch splashes in the trap, sun glitter on the water |
+| scythe, standing off the standing grass | dew catches the sun on the nearest standing grass: a low sheen and sparkles |
+| bark sheet | cold: the nearest hearth's light swells; warm: a glint on the hide where it lies |
 | warm bark on the hide, nothing held | the sheet's satin glints |
-| тордуйа | the nearest full дьэдьэн patch ≤ 80 m: its berries glint, a thrush calls from there |
-| nothing, forge begun, ≤ 14 m | the blank spits an ember when it is ready for the hands, else the bellows glint |
-| the guest's choron | the nearest hearth's fire lifts |
+| тордуйа | the nearest full дьэдьэн patch ≤ 80 m: its berries glint and glare, a thrush calls from there |
+| nothing, forge begun, ≤ 14 m | the blank spits an ember and glows when it is ready for the hands, else the bellows glint |
+| the guest's choron | the nearest hearth's light swells |
 | the lake's milk | a fish rises off the shore by the stone |
 
-- Glints: one additive sprite (`glintMaterial`, `src/interact/glint.js`) made before the warm-up, ≤45 m, on a point of the thing's surface picked by a ray from the eye; a beat every 1.2–3.2 s (resin, bark, berries: two sparkles). Ripples are the lake's own (`world.life.water.ring`); the fire's lift is `fireplace.stir(k)`.
+- Lights: three additive sprites on layer 1 made before the warm-up (`glintMaterial`, `lightMaterial`, `src/interact/glint.js`); in play only uniforms, transforms and `visible` change. `LOOK` sets each hint's colours and sizes, `gain` the strengths.
+- Glint: a sun star ≤ 45 m on a point of the thing's surface picked by a ray from the eye (dew, water: round the spot), ≥ 5.5 % of the view's height; a beat every 1.1–3.6 s, some kinds 2–4 sparkles.
+- Bloom: swells and fades over 1.8 s each beat: ≤ 14 m (hearth 7 m) a glare at the thing (hearth: a faint halo; water, dew: flat), farther a soft shaft of sunlight leaning from the sun's side (hearth: the glow in the smoke over the roof).
+- Edge glare: the thing out of view: the same swell flares in at the view's edge on its side (behind: the nearer shoulder).
+- Ripples are the lake's own (`world.life.water.ring`); the fire's lift is `fireplace.stir(k)`, its smoke top `fireplace.top()`.
 
 ## Finder (`src/ui/guide.js`, DOM only)
 - `game.guide.go({ key, id, at })` (the journal's map; `clear()`, `dest`): a gold diamond with the distance over the destination, at the screen edge with an arrow when out of view, a soft shimmer within 7 m. An entry (`id`): its nearest place, until found. A job or a spot (`at`): until within 3 m.
