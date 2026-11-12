@@ -289,7 +289,8 @@ export class Journal {
   demo() {
     const at = (x, y) => `style="left:${x}%;top:${y}%"`;
     this.pins = []; this.pinEls = [];
-    this.pinBox.innerHTML = `<button class="j-pin found" ${at(40, 40)}><span><span class="nm"><span class="nm-s">Алаас</span><span class="nm-l">Alaas</span></span></span></button><button class="j-pin q" ${at(45, 45)}>?</button><button class="j-pin job on" ${at(50, 50)}>${icon('axe')}</button>
+    const named = (lp, x, cls = '') => `<button class="j-pin found${cls}" data-lp="${lp}" ${at(x, 40)}><span><span class="nm"><span class="nm-s">Алаас</span><span class="nm-l">Alaas</span></span></span></button>`; // a name on each side, one with none (`label`)
+    this.pinBox.innerHTML = `${named('b', 40)}${named('t', 30)}${named('r', 20)}${named('l', 10)}${named('b', 5, ' nolab')}<button class="j-pin q" ${at(45, 45)}>?</button><button class="j-pin job on" ${at(50, 50)}>${icon('axe')}</button>
       <i class="j-pin dest on" ${at(55, 55)}></i><i class="j-pin me" ${at(60, 60)}></i>`;
     this.selBox.className = 'j-sel pane on';
     this.selBox.innerHTML = `<span class="j-thumb"></span><span class="j-name"><b><span class="nm"><span class="nm-s">Алаас</span><span class="nm-l">Alaas</span></span></b><small><span>${icon('log')}1</span></small></span><button class="j-do read">${icon('eye')}</button>
