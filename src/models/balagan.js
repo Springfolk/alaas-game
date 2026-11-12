@@ -15,7 +15,8 @@ import { buildWinterGear } from './balagan/winter.js';
 import { PlantBatch, sodRoof } from './balagan/plants.js';
 import { groundOf, troddenPatch, blob, leaf } from './yard/bits.js';
 import { trodden } from './yard/mat.js';
-import { offerFrom, offerPath, offerTime, ease } from '../util.js';
+import { offerFrom, offerPath, offerTime } from './yard/offer.js';
+import { ease } from '../util.js';
 import { FX, FZ, H, ZD, DW, DH, XD, ROOF, HEARTH, WIN, KH, inner } from './balagan/dims.js';
 
 const OUTSIDE_EXPOSURE = 0.62, INSIDE_EXPOSURE = 1.9;
@@ -232,7 +233,7 @@ export default async function build(ctx, placement) {
   const hearthIt = { entry: 'ohokh', target: hearthT };
   if (!winter) {
     hearthIt.act = {
-      // a pinch of butter from low by the hand, set down slowly in the hearth's mouth (src/util.js offerPath); the fire takes it
+      // a pinch of butter from low by the hand, set down slowly in the hearth's mouth (yard/offer.js); the fire takes it
       id: 'feed', empty: true, label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
       run: async (game) => {
         const to = world(fire.pos), sw = world(fire.pos.clone().add(new THREE.Vector3(-Math.SQRT1_2, 0, Math.SQRT1_2))).sub(to); // the mouth faces SW

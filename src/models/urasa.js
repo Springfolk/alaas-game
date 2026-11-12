@@ -14,7 +14,7 @@ import { makeMats, smoothstep, uDoorOpen } from './urasa/mats.js';
 import { merge, lathe } from './urasa/geom.js';
 import { section } from '../load/geocache.js';
 import { noSun, noLocalLights } from '../engine/master.js';
-import { offerFrom, offerPath, offerTime } from '../util.js';
+import { offerFrom, offerPath, offerTime } from './yard/offer.js';
 
 const EXPO_IN = 1.5, EXPO_OUT = 0.62;
 
@@ -166,7 +166,7 @@ export default async function build(ctx) {
     }
   };
   // An offering put into the fire: n drops come up from low by the player and are set down slowly on the embers
-  // (src/util.js offerPath): put, never thrown
+  // (yard/offer.js): put, never thrown
   const offer = (fromW, toW, n) => {
     const from = local(fromW), to = local(toW), put = drops.slice(0, n), p = new THREE.Vector3();
     put.forEach((d, i) => { d.held = true; d.o.visible = true; d.o.scale.setScalar(0.01); d.off = new THREE.Vector3((i - 1) * 0.012, 0, ((i * 7) % 3 - 1) * 0.01); });
