@@ -241,14 +241,38 @@ export class Engine {
   // opts.lazyShadows (phones): the sun's maps re-render only when the view moved 1.5 m or turned 8°, at most every
   // 1/8 s, else every 2 s; between, the last maps and their matrices keep (shadows of swaying leaves pause).
   // Both cascades every frame was the largest single cost on an iPhone on WebGL2 (frozen: 10 → 25 fps).
+  // 'watch' (medium, low): on any move or turn of the view, or when a caster moved, showed or hid: `watchShadows`.
   lazyShadows(dt) {
-    const sh = this.sun.shadow, c = this.camera, s = (this._lazy ||= { p: new THREE.Vector3(1e9, 0, 0), d: new THREE.Vector3(), f: new THREE.Vector3(), t: 9 });
+    const sh = this.sun.shadow, c = this.camera, s = (this._lazy ||= { p: new THREE.Vector3(1e9, 0, 0), d: new THREE.Vector3(), f: new THREE.Vector3(), t: 9, n: 0 });
     sh.autoUpdate = false;
     s.t += dt;
+    if ((s.watch = this.opts.lazyShadows === 'watch')) return;
     c.getWorldDirection(s.f);
     if (s.t > 0.125 && (s.t > 2 || c.position.distanceToSquared(s.p) > 2.25 || s.f.dot(s.d) < 0.99)) {
-      sh.needsUpdate = true; s.t = 0; s.p.copy(c.position); s.d.copy(s.f);
+      sh.needsUpdate = true; s.t = 0; s.p.copy(c.position); s.d.copy(s.f); s.n++;
     }
+  }
+
+  // After the frame's world matrices: the maps re-render when the view or any shadow caster (world matrix, vertices,
+  // shown or not, casting or not, layers) differs from the last render's, else every 2 s (swaying leaves; the caster
+  // list is gathered again then, made things join it).
+  watchShadows() {
+    const s = this._lazy, c = this.camera;
+    c.updateMatrixWorld();
+    let dirty = s.t > 2 || !s.list || moved(c.matrixWorld.elements, s.cam);
+    for (let i = 0; !dirty && i < s.list.length; i++) {
+      const w = s.list[i], o = w.o;
+      dirty = o.castShadow !== w.c || o.layers.mask !== w.l || shown(o) !== w.v || shape(o) !== w.g || moved(o.matrixWorld.elements, w.m);
+    }
+    if (!dirty) return;
+    this.sun.shadow.needsUpdate = true; s.n++;
+    if (s.t > 2 || !s.list) {
+      s.list = [];
+      this.scene.traverse((o) => { if (o.isMesh && (o.castShadow || o.userData.shadowCulled)) s.list.push({ o, m: new Float64Array(16) }); });
+    }
+    s.t = 0;
+    (s.cam ||= new Float64Array(16)).set(c.matrixWorld.elements);
+    for (const w of s.list) { const o = w.o; w.c = o.castShadow; w.l = o.layers.mask; w.v = shown(o); w.g = shape(o); w.m.set(o.matrixWorld.elements); }
   }
 
   // Frame pacing and dynamic quality: src/engine/pacing.js (tools override `pace` and `dynamicResolution`).
@@ -299,6 +323,7 @@ export class Engine {
     this.beforeMatrices?.();
     s.updateMatrixWorld();
     s.matrixWorldAutoUpdate = false;
+    if (this._lazy?.watch && !this.sun.shadow.autoUpdate) this.watchShadows(); // (Engine.lazyShadows)
     try {
       // high: the AO (and the pre-pass it reads) render here, first: left to three, they ran inside whichever render
       // first met them that frame (the scene pass, or the sun's shadows within it), and every change of that nesting
@@ -308,6 +333,19 @@ export class Engine {
       else this.renderer.render(s, this.camera);
     } finally { s.matrixWorldAutoUpdate = true; }
   }
+}
+
+// (Engine.watchShadows) a world matrix off its copy by over 0.1 mm or ~0.006°; shown = it and every parent visible
+function moved(e, m) {
+  for (let i = 0; i < 16; i++) if (Math.abs(e[i] - m[i]) > 1e-4) return true;
+  return false;
+}
+function shown(o) {
+  for (let p = o; p; p = p.parent) if (!p.visible) return false;
+  return true;
+}
+function shape(o) { // a new geometry or rewritten vertices or instances
+  return o.geometry.id * 1e6 + (o.geometry.attributes.position?.version || 0) + (o.instanceMatrix?.version || 0);
 }
 
 function narrowIndex(a) {
