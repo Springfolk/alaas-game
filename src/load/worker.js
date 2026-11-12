@@ -1,7 +1,7 @@
 // Load-time worker: pure-CPU generation off the main thread. Messages { id, type, ...args } → { id, result }
 // (typed arrays and bitmaps transferred). Types: 'ground' (grid samples), 'pack' (a ground splat set's texels),
 // 'field' / 'mask' (grass.js's meadow field and homestead mask texels), 'scatter' (the taiga's trees), 'geo' (a pack), 'bitmap' (a texture image),
-// 'simplify' (a shadow proxy's triangles).
+// 'simplify' (a shadow proxy's triangles), 'settle' (meshes onto the drawn ground: src/world/settle-data.js).
 import { Terrain } from '../world/terrain.js';
 import { groundSamples, packSet } from '../world/ground-data.js';
 import { fieldTexels, maskTexels } from '../nature/grass/field.js';
@@ -9,6 +9,7 @@ import { scatterTrees } from '../nature/trees/scatter.js';
 import { fetchPack } from './geocodec.js';
 import { loadBitmap } from './bitmap.js';
 import { simplifyShadow } from './simplify.js';
+import { settleMeshes } from '../world/settle-data.js';
 
 const buffers = (o, out = []) => {
   if (ArrayBuffer.isView(o)) out.push(o.buffer);
@@ -27,6 +28,7 @@ const JOBS = {
   geo: ({ url }) => fetchPack(url), // a baked geometry pack (src/load/geocache.js)
   bitmap: ({ url, max, flip }) => loadBitmap(url, max, 3, flip), // a texture image (src/load/bitmap.js)
   simplify: (args) => simplifyShadow(args), // a shadow proxy (src/load/simplify.js)
+  settle: (args) => ({ meshes: settleMeshes(args), pos: args.meshes.map((m) => m.pos) }), // moved positions back (src/world/settle.js)
 };
 
 self.onmessage = async ({ data: { id, type, assetV, ...args } }) => {

@@ -18,7 +18,8 @@ const ROUTE = [[62, -211, 1.69], [30, -212, 1.5], [9, -214, 1.2], [4, -205, -1.4
 let res;
 for (let attempt = 1; ; attempt++) try { // Vite reloads the page when files change: retry
   await page.goto(`http://127.0.0.1:${port}/?auto&${query}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction((early) => (early ? window.game?.ready : window.game?.complete || (window.game?.ready && !window.game.finish)), !!process.env.EARLY, { timeout: 300000 });
+  // (from `ready`: between `complete` and `ready` the loading view still draws, not game.frame)
+  await page.waitForFunction((early) => window.game?.ready && (early || window.game.complete || !window.game.finish), !!process.env.EARLY, { timeout: 300000 });
   res = await page.evaluate(async (ROUTE) => {
     const g = window.game, r = g.engine.renderer, built = [], pipes = [];
     const cnb = r.backend.createNodeBuilder.bind(r.backend);
