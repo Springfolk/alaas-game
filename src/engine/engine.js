@@ -106,6 +106,11 @@ export class Engine {
     // (Attributes.update): recheck on upgrade.
     const attributes = r._attributes, upload = r.backend.updateAttribute.bind(r.backend);
     if (attributes && !urlFlag('reupload')) r.backend.updateAttribute = (a) => { if (attributes.get(a).version < (a.isInterleavedBufferAttribute ? a.data : a).version) upload(a); }; // ?reupload: A/B
+    // Indices go up 16-bit where they address under 65536 vertices: three's WebGPU upload widens every 16-bit array
+    // that is not `normalized` to 32-bit, indices too (meant for vertex formats; an index ignores the flag), and a
+    // static 32-bit index under 65536 vertices is narrowed first. No shader or pipeline sees the index format. ?wideindex: A/B
+    const mkIndex = r.backend.createIndexAttribute.bind(r.backend);
+    if (!urlFlag('wideindex')) r.backend.createIndexAttribute = (a) => { narrowIndex(a); if (a.array instanceof Uint16Array) a.normalized = true; mkIndex(a); };
     // Safari can break a WebGPU device without losing it (mid-load, or after the page was hidden): every
     // createCommandEncoder then throws and the canvas freezes. Treated as a loss at the first throw.
     const dev = r.backend.device;
@@ -300,6 +305,13 @@ export class Engine {
       else this.renderer.render(s, this.camera);
     } finally { s.matrixWorldAutoUpdate = true; }
   }
+}
+
+function narrowIndex(a) {
+  const ix = a.array;
+  if (!(ix instanceof Uint32Array) || a.usage !== THREE.StaticDrawUsage || a.isInterleavedBufferAttribute) return;
+  for (let i = 0; i < ix.length; i++) if (ix[i] > 65535) return;
+  a.array = Uint16Array.from(ix);
 }
 
 // No tier or dynamic resolution renders under half the screen's own resolution (per axis).
