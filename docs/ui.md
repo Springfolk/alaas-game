@@ -59,7 +59,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 - The body waits where it stood (`stage.body`); WASD, Esc, the close button return to it.
 
 ## Journal (`src/ui/journal.js`, `ui.showJournal(tab, here)`, `ui.j`)
-- A glass window with three leaves: map, finds, work; found / total; language select; close.
+- A glass window with three leaves (tabs centred): map, finds, work; found / total; language select; close.
 - Map: the alaas drawn from above, north up (`map.webp`, 2048 px for 820 m), the houses, pens and posts drawn from the placed models' bounds. Drag moves it, pinch / wheel / + − zoom (nearly the whole alaas to 10 cm a pixel), the arrow button centres on the player; opened in play it comes up round the player.
 - Markers: red arrow = the player and where they face; blue dot = a found thing (a house or place with its name); gold "?" = one that waits; green square with its tool = a job; gold diamond = the destination. Markers that would overlap give way to the more important one until zoomed in.
 - A marker chosen: a pane with its picture and name (a job: what the hands have made), the eye (found: that thing on the stage, closing returns here) and the gold walk button = be led there (`game.guide.go`, again: off). A tap on the bare map puts the destination there.
