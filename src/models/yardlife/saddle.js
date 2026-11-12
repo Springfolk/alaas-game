@@ -65,7 +65,7 @@ export function saddle(K, x, z, yaw) {
       addLog(K.b, Wy(0.42, g(0.42, lz) - 0.05, lz + 0.03), Wy(-0.17, TY + 0.12, lz), 0.045, 0.04, rng, M.wood, M.end, { seg: 7 });
       F.add(new THREE.TorusGeometry(0.06, 0.008, 4, 10), M.lash, mtx([0, TY - 0.1, lz], [0, 0, 0]));
     }
-    addLog(K.b, Wy(0, TY, -0.75), Wy(0, TY + 0.01, 0.75), TR, TR * 0.92, rng, M.wood, M.end, { seg: 10 });
+    addLog(K.b, Wy(0, TY, -0.75), Wy(0, TY + 0.01, 0.75), TR, TR * 0.92, rng, M.wood, M.end, { seg: 10, bend: 0, wob: 0.03 }); // straight and true: the cloth lies on it
     K.colliders.push(F.col({ x: 0, z: 0, hw: 0.45, hd: 0.78 }));
 
     // ---- the saddle, spine along z (front = +z) ----
@@ -84,7 +84,7 @@ export function saddle(K, x, z, yaw) {
         if (as < arc) { const a = s / R; px = Math.sin(a) * R; py = Math.cos(a) * R - R; }
         else { const d = as - arc; px = Math.sign(s) * (R + d * 0.12); py = -R - d; }
         px += Math.sign(s) * Math.max(0, as - arc) * 0.08 * Math.sin(zz * 30 + s * 4); // soft folds in the hanging part
-        return [px, py + TR + 0.004];
+        return [px, py + TR + 0.012]; // 1.2 cm over the log's crown (its bark wobbles 3 %)
       };
       const tone = (s, zz) => { // colour from the photo's regions
         const x = 345 - Math.abs(s) / P, y = 215 + zz / P;
@@ -136,14 +136,14 @@ export function saddle(K, x, z, yaw) {
       const p = b.attributes.position;
       for (let k = 0; k < p.count; k++) { const zz = p.getZ(k); p.setY(k, p.getY(k) + 0.012 * (zz / 0.22) ** 2); }
       b.computeVertexNormals();
-      F.add(b, M.wood, mtx([sd * 0.085, top - 0.02, 0], [0, 0, -sd * 0.72]), [0.75, 0.62, 0.48]);
+      F.add(b, M.wood, mtx([sd * 0.085, top - 0.012, 0], [0, 0, -sd * 0.72]), [0.75, 0.62, 0.48]);
     }
     // bows after Rys. 76: the front one 32 cm tall, its plate engraved with the drawing's frame lines (bowplate), the
     // rear one 15 cm, plain silver (its engraving is not legible in the drawing)
-    F.add(bowGeo(BOW_F, 0.025), M.bowplate, mtx([0, top - 0.02, 0.19], [0.17, 0, 0]));
-    F.add(bowGeo(BOW_R, 0.025), M.silver, mtx([0, top - 0.02, -0.19], [-0.17, 0, 0]));
+    F.add(bowGeo(BOW_F, 0.025), M.bowplate, mtx([0, top - 0.012, 0.19], [0.17, 0, 0]));
+    F.add(bowGeo(BOW_R, 0.025), M.silver, mtx([0, top - 0.012, -0.19], [-0.17, 0, 0]));
     // iron hook on the front bow
-    F.add(new THREE.TorusGeometry(0.02, 0.003, 4, 10, Math.PI * 1.2), M.iron, mtx([0, top + 0.19, 0.27], [0, Math.PI / 2, 0]));
+    F.add(new THREE.TorusGeometry(0.02, 0.003, 4, 10, Math.PI * 1.2), M.iron, mtx([0, top + 0.198, 0.27], [0, Math.PI / 2, 0]));
     // seat: leather cushion stuffed with hair
     F.add(blob(0.105, 0.075, 0.16, rng, { detail: 2, rough: 0.05 }), M.leather, mtx([0, top + 0.005, 0]), [1.5, 1.25, 1.05]);
     // stirrups hanging on leathers, a horsehair girth hanging down one side

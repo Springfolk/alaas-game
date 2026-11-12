@@ -7,6 +7,7 @@
 // drive the held thing's pose (`pose`).
 import * as THREE from 'three/webgpu';
 import { fwdX, fwdZ, clamp, ease, damp, angleDiff } from '../util.js';
+import { footprint, hullOf, restSpot } from './rest.js';
 
 const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _e2 = new THREE.Vector3();
 
@@ -62,7 +63,24 @@ export class Hands {
   // a new kind of thing to carry: its hold pose and how it lies when set down
   addKind(kind, hold, lie) { HOLD[kind] = hold; LIE[kind] = lie; }
   // a movable thing: { kind, obj, it, name } (a billet also joins `logs`)
-  addThing(t) { this.game.engine.scene.attach(t.obj); if (t.kind === 'log') this.logs.push(t); return t; }
+  addThing(t) { this.game.engine.scene.attach(t.obj); hullOf(t.obj); if (t.kind === 'log') this.logs.push(t); (this.things ||= []).push(t); return t; }
+  // footprints of what lies set down on the ground (and what other code reports through `feetFrom`), but `but`
+  lyingFeet(but) {
+    const out = [];
+    for (const t of [...this.logs, ...(this.things || []), this.pail]) {
+      if (t === but || out.some((f) => f.t === t) || !t.obj.visible || this.held === t || this.more.includes(t) || this.moves.some((m) => m.t === t)) continue;
+      if (!(t.down || (t.kind === 'log' && t.state === 'ground'))) continue;
+      // kept while it lies where it was measured
+      if (!t.foot || !t.foot.p.equals(t.obj.position)) {
+        const f = t.foot = footprint(t.obj, t.obj.quaternion, t.obj.position.x, t.obj.position.z); f.t = t; f.p = t.obj.position.clone();
+        let y0 = Infinity, y1 = -Infinity; for (const v of hullOf(t.obj)) { const y = _v.copy(v).applyQuaternion(t.obj.quaternion).y + t.obj.position.y; y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+        f.y0 = y0; f.y1 = y1;
+      }
+      out.push(t.foot);
+    }
+    for (const f of this.feetFrom || []) out.push(...f());
+    return out;
+  }
   // A thing with a place of its own (a cup on its stone, the guest's choron on its board): put down, it goes back
   // there from wherever it is carried (from far away unseen), never onto the ground. `t.onHome()` when it is back.
   homed(t) {
@@ -295,7 +313,7 @@ export class Hands {
     this.grab(t);
   }
   grab(t) {
-    t.it.off = true;
+    t.it.off = true; t.down = false;
     t.obj.visible = true;
     t.blend = 0;
     t.from = { p: t.obj.position.clone(), q: t.obj.quaternion.clone() };
@@ -320,7 +338,7 @@ export class Hands {
     if (!this.held) return;
     const lie = LIE[(this.more[this.more.length - 1] || this.held).kind], at = this.dropSpot(lie.r);
     if (!at) return;
-    const t = this.letGo(), q = lie.q(pl.yaw);
+    const t = this.letGo(), q = (t.lieQ || lie.q)(pl.yaw);
     let { x, z } = at;
     if (lie.pivot) for (let i = 0; i < 2; i++) { // a billet's ends too: clear of walls and posts
       const d = _v.set(0, 1, 0).applyQuaternion(q).setY(0).normalize();
@@ -328,10 +346,12 @@ export class Hands {
       for (const s of [lie.pivot, -lie.pivot]) { const ex = x + d.x * s, ez = z + d.z * s, c = g.world.collide(ex, ez, 0.12, pl.pos.y); mx += c.x - ex; mz += c.z - ez; }
       x += mx; z += mz;
     }
-    const y = g.world.groundAt(x, z);
-    const to = new THREE.Vector3(x, y + lie.lift, z);
-    if (lie.pivot) to.add(_v.set(0, lie.pivot, 0).applyQuaternion(q).setY(0)); // pivot is the billet's end
-    await this.fly(t, to, q, 0.45);
+    if (lie.pivot) { _v.set(0, lie.pivot, 0).applyQuaternion(q); x += _v.x; z += _v.z; } // pivot is the billet's end
+    // on the ground under its every point, clear of what lies there already
+    const spot = restSpot(g.world, t.obj, q, x, z, this.lyingFeet(t), { feet: pl.pos.y, max: 0.8 });
+    const to = new THREE.Vector3(spot.x, spot.y, spot.z);
+    await this.fly(t, to, spot.q, 0.45);
+    t.down = true;
     g.audio?.play(lie.sound || 'wood-lay', to);
     if (t.kind === 'log') { t.state = 'ground'; t.t = performance.now(); }
     t.it.off = false;

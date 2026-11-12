@@ -13,6 +13,7 @@ import { hayMeadow } from './yardlife/hay.js';
 import { DOOR } from './urasa/frame.js';
 import { PLACEMENTS } from '../world/layout.js';
 import { HOME } from '../world/terrain.js';
+import { drawnHeight } from '../world/ground-data.js';
 
 // prevailing summer breeze: the smudge smoke drifts north-east over the pen (m/s, x/z)
 const WIND = [0.55, -0.42];
@@ -55,6 +56,8 @@ export default async function build(ctx, placement) {
   const proxyMat = new T.MeshBasicMaterial({ visible: false });
   const K = {
     M, rng, group, colliders, lows, ups, b: yardB, bm: meadowB, wind: WIND, gate: PLACES.gate,
+    // the ground as drawn at its highest over the tiers' grids (yard frame): what a thing lying flat on it must clear
+    drawnTop: (x, z) => Math.max(terrain.height(px + x, pz + z), ...[640, 512, 320].map((N) => drawnHeight(terrain, px + x, pz + z, N))) - py,
     barkCraft: pmat('canvas:birch', { scale: 0.5, back: 'birchIn', double: true, dirt: 0.4, tint: 0xecd3a6 }),
     // an invisible box the player's ray can hit
     proxy(x, y, z, w, h, d, yaw = 0) {

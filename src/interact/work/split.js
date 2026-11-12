@@ -9,6 +9,7 @@
 // Props: src/models/work.js (two rounds of four mating quarters).
 import * as THREE from 'three/webgpu';
 import { ease, fwdX, fwdZ } from '../../util.js';
+import { footprint, hullOf, overlaps, restSpot } from '../rest.js';
 
 const L = (sah, en, ru) => ({ sah, en, ru });
 const TXT = {
@@ -64,8 +65,10 @@ export class Split {
       const it = find(p.obj);
       const t = hands.addThing({ kind: 'log', obj: p.obj, it, name: TXT.billet, state: 'pool', release: () => { t.chunk = null; } });
       t.i = i; t.round = p.round; t.k = p.k; t.R = p.R; t.len = p.len;
+      t.lieQ = (yaw) => this.lieQ(t, _v.set(fwdX(yaw + Math.PI / 2 + (Math.random() - 0.5) * 0.6), 0, fwdZ(yaw + Math.PI / 2 + (Math.random() - 0.5) * 0.6))); // set down: a split face on the ground
       return t;
     });
+    hands.feetFrom = [...(hands.feetFrom || []), () => this.chunks.filter((c) => c.state === 'rest').map((c) => (c.foot ||= this.foot((this.shape(c), c.body), c.quat, c.pos)))]; // the halves lying about
     this.chunks = []; // a whole round or a half: { pieces, n, pos, quat, state: 'to-block' | 'block' | 'fly' | 'settle' | 'rest', … }
     this.onBlock = null;
     this.sw = null; // the swing: { phase: 'raise' | 'swing' | 'stuck' | 'back', … }
@@ -112,9 +115,10 @@ export class Split {
     run: async (game, it) => {
       const r = this.freeRound();
       if (r === undefined || this.onBlock) return;
+      this.clearBlock(game);
       const ps = this.pieces.filter((p) => p.round === r);
       const from = it.target.getWorldPosition(new THREE.Vector3());
-      from.y = game.world.groundAt(from.x, from.z) + 0.16;
+      from.y = game.world.drawnAt(from.x, from.z) + 0.16;
       const c = { pieces: ps, n: 4, pos: from, quat: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random() * 6.28, Math.PI / 2)), com: new THREE.Vector3(0, ps[0].len / 2, 0) };
       for (const p of ps) { p.chunk = c; p.state = 'chunk'; p.obj.visible = true; p.obj.scale.setScalar(1); p.it.off = false; p.it.label = TXT.round; }
       this.chunks.push(c);
@@ -128,12 +132,17 @@ export class Split {
     run: async (game, it) => {
       const c = this.chunkOf(it);
       if (!c || this.onBlock || c.state !== 'rest') return;
+      this.clearBlock(game);
       this.toBlock(c);
       game.audio?.play('wood-take', c.pos);
     },
   };
+  // the axe bitten into the block comes out into the free hands before wood is stood there
+  clearBlock(game) {
+    if (!this.hands.held && this.axe.obj.position.distanceTo(this.axeHome.p) < 0.02) this.hands.takeAct.run(game, this.axe.it);
+  }
   toBlock(c) {
-    this.onBlock = c;
+    this.onBlock = c; c.foot = null;
     c.state = 'to-block';
     c.k = 0;
     c.from = { p: c.pos.clone(), q: c.quat.clone() };
@@ -330,64 +339,138 @@ export class Split {
         const e = ease(c.k);
         c.pos.lerpVectors(c.from.p, c.toP, e); c.pos.y += Math.sin(c.k * Math.PI) * 0.25;
         c.quat.slerpQuaternions(c.from.q, c.toQ, e);
+        if (c.k < 1) this.clear(c, world);
         if (c.k >= 1) { c.state = 'block'; g.audio?.play('wood-lay', c.pos); this.touch(c); }
       } else if (c.state === 'fly') this.fly(c, dt, world);
-      else if (c.state === 'settle') {
-        c.k = Math.min(1, c.k + dt / 0.22);
-        const e = ease(c.k);
-        c.pos.lerpVectors(c.from.p, c.toP, e);
-        c.quat.slerpQuaternions(c.from.q, c.toQ, e);
-        if (c.k >= 1) this.rest(c);
-      } else continue;
+      else if (c.state === 'settle') this.settle(c, dt, world);
+      else continue;
       for (const p of c.pieces) { p.obj.position.copy(c.pos); p.obj.quaternion.copy(c.quat); }
     }
     // a round riding a stuck axe
     if (sw?.phase === 'stuck') for (const p of sw.chunk.pieces) { p.obj.position.copy(sw.chunk.pos); p.obj.quaternion.copy(sw.chunk.quat); }
   }
 
-  // a falling part: gravity on its centre of mass, a spin, one or two dull bounces, then it lies down
+  // a part's shape: its pieces' points in its own frame (the pieces of a chunk share it), thinned for the flight
+  shape(c) {
+    if (!c.pts) { c.pts = c.pieces.flatMap((p) => hullOf(p.obj)); c.body = { userData: { hull: c.pts } }; }
+    return c.pts;
+  }
+  // what else lies about: the other parts at rest and the billets on the ground (footprints, with their height span)
+  lying(c) {
+    const out = [];
+    for (const o of this.chunks) if (o !== c && (o.state === 'rest' || o.state === 'settle')) out.push(o.foot ||= this.foot(o.body || (this.shape(o), o.body), o.state === 'settle' ? o.toQ : o.quat, o.state === 'settle' ? o.toP : o.pos));
+    for (const f of this.hands.lyingFeet()) if (!out.includes(f)) out.push(f); // the billets on the ground, and what was set down
+    return out;
+  }
+  // a footprint with the height it spans
+  foot(obj, q, p) {
+    const f = footprint(obj, q, p.x, p.z); let y0 = Infinity, y1 = -Infinity;
+    for (const v of hullOf(obj)) { const y = _w.copy(v).applyQuaternion(q).y + p.y; y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    f.y0 = y0; f.y1 = y1; return f;
+  }
+  // not on the heap of rounds nor the block
+  avoid(f) {
+    const hb = (this.heapBox ||= new THREE.Box3().setFromObject(this.heapIt.target).expandByScalar(0.12));
+    const r = Math.hypot(f.a, f.b);
+    if (f.x + r > hb.min.x && f.x - r < hb.max.x && f.z + r > hb.min.z && f.z - r < hb.max.z) {
+      // the rectangle's corners against the box
+      for (const [s, t] of [[1, 1], [1, -1], [-1, 1], [-1, -1], [0, 0]]) { const x = f.x + f.ux * f.a * s - f.uz * f.b * t, z = f.z + f.uz * f.a * s + f.ux * f.b * t; if (x > hb.min.x && x < hb.max.x && z > hb.min.z && z < hb.max.z) return true; }
+    }
+    // the block: its circle against the rectangle
+    const dx = this.block.x - f.x, dz = this.block.z - f.z, s = Math.max(-f.a, Math.min(f.a, dx * f.ux + dz * f.uz)), t = Math.max(-f.b, Math.min(f.b, -dx * f.uz + dz * f.ux));
+    return Math.hypot(dx * f.ux + dz * f.uz - s, -dx * f.uz + dz * f.ux - t) < this.parts.blockR + 0.03;
+  }
+
+  // a falling part: gravity on its centre of mass and a spin; its every point kept out of the block, the ground and
+  // what lies there; a dull bounce or two, then it lies down in a free spot nearby
   fly(c, dt, world) {
     c.vel.y -= 9.8 * dt;
     c.c.addScaledVector(c.vel, dt);
     const w = c.ang.length();
     if (w > 1e-4) c.quat.premultiply(_q.setFromAxisAngle(_v.copy(c.ang).divideScalar(w), w * dt));
-    // off the block's side
-    const dx = c.c.x - this.block.x, dz = c.c.z - this.block.z, d = Math.hypot(dx, dz), keep = this.parts.blockR + 0.09;
-    if (d < keep && c.c.y < this.block.y + 0.04 && d > 1e-4) { c.c.x = this.block.x + dx / d * keep; c.c.z = this.block.z + dz / d * keep; }
-    const gy = world.groundAt(c.c.x, c.c.z), rad = c.n === 2 ? 0.1 : 0.075;
-    if (c.c.y < gy + rad) {
-      c.c.y = gy + rad;
-      if (c.bounces++ === 0) this.game.audio?.play('wood-lay', c.c);
-      if (c.vel.y < -1.1 && c.bounces < 3) { c.vel.y *= -0.22; c.vel.x *= 0.55; c.vel.z *= 0.55; c.ang.multiplyScalar(0.5); } else {
-        // lie down: the axis level, the flat of a half (a face of a billet) on the ground
-        const axis = _v.set(0, 1, 0).applyQuaternion(c.quat).setY(0);
-        if (axis.lengthSq() < 0.01) axis.set(c.vel.x, 0, c.vel.z);
-        if (axis.lengthSq() < 1e-6) axis.set(1, 0, 0);
-        axis.normalize();
-        const p = c.pieces[0];
-        const upL = c.n === 2 ? c.up.clone() : new THREE.Vector3(-Math.sin(p.k * Math.PI / 2), 0, Math.cos(p.k * Math.PI / 2));
-        const e1 = upL, e2 = new THREE.Vector3(0, 1, 0), e3 = new THREE.Vector3().crossVectors(e1, e2);
-        const w1 = UP.clone(), w2 = axis.clone(), w3 = new THREE.Vector3().crossVectors(w1, w2);
-        const toQ = new THREE.Quaternion().setFromRotationMatrix(_m.makeBasis(w1, w2, w3).multiply(_m2.makeBasis(e1, e2, e3).transpose()));
-        const at = world.collide(c.c.x, c.c.z, 0.16, gy);
-        // not into the heap of rounds
-        const hb = (this.heapBox ||= new THREE.Box3().setFromObject(this.heapIt.target).expandByScalar(0.3));
-        if (at.x > hb.min.x && at.x < hb.max.x && at.z > hb.min.z && at.z < hb.max.z) {
-          const d = [at.x - hb.min.x, hb.max.x - at.x, at.z - hb.min.z, hb.max.z - at.z], m = Math.min(...d);
-          if (m === d[0]) at.x = hb.min.x; else if (m === d[1]) at.x = hb.max.x; else if (m === d[2]) at.z = hb.min.z; else at.z = hb.max.z;
-        }
-        // along the slope: both ends on the ground
-        const half = p.len / 2, g1 = world.groundAt(at.x - w2.x * half, at.z - w2.z * half), g2 = world.groundAt(at.x + w2.x * half, at.z + w2.z * half);
-        toQ.premultiply(_q.setFromAxisAngle(w3.clone().normalize(), -Math.atan2(g2 - g1, p.len)));
-        const mid = new THREE.Vector3(at.x, (g1 + g2) / 2 + 0.006, at.z);
-        c.state = 'settle'; c.k = 0;
-        c.from = { p: c.c.clone().sub(c.com.clone().applyQuaternion(c.quat)), q: c.quat.clone() };
-        c.toQ = toQ; c.toP = mid.sub(_w.set(0, c.com.y, 0).applyQuaternion(toQ));
-        c.pos.copy(c.from.p);
-        return;
+    c.pos.copy(c.c).sub(_w.copy(c.com).applyQuaternion(c.quat));
+    const pts = this.shape(c), B = this.block, BR = this.parts.blockR;
+    c.near ||= this.lying(c);
+    let low = Infinity, inB = 0, bx = 0, bz = 0, upB = 0, onOther = false;
+    for (const v of pts) {
+      _v.copy(v).applyQuaternion(c.quat).add(c.pos);
+      low = Math.min(low, _v.y - world.drawnAt(_v.x, _v.z));
+      const dx = _v.x - B.x, dz = _v.z - B.z, r = Math.hypot(dx, dz);
+      if (r < BR && _v.y < B.y && _v.y > B.y - 0.7) { // in the block: out over its top when that is nearer, else out of its side
+        if (B.y - _v.y < BR - r) upB = Math.max(upB, B.y - _v.y);
+        else if (BR - r > inB) { inB = BR - r; bx = dx / (r || 1); bz = dz / (r || 1); }
+      }
+      if (!onOther && c.vel.y < 0) for (const f of c.near) {
+        const ex = _v.x - f.x, ez = _v.z - f.z;
+        if (_v.y < f.y1 && _v.y > f.y0 && Math.abs(ex * f.ux + ez * f.uz) < f.a && Math.abs(-ex * f.uz + ez * f.ux) < f.b) { onOther = true; break; }
       }
     }
+    // into the block's side: out again, the inward speed spent
+    if (inB > 0) { c.c.x += bx * inB; c.c.z += bz * inB; const vin = c.vel.x * bx + c.vel.z * bz; if (vin < 0) { c.vel.x -= vin * bx * 1.3; c.vel.z -= vin * bz * 1.3; } }
+    if (upB > 0) { c.c.y += upB; if (c.vel.y < 0) c.vel.y = 0; } // sliding off the block's top
+    if (low < 0) c.c.y -= low; // never under the ground
     c.pos.copy(c.c).sub(_w.copy(c.com).applyQuaternion(c.quat));
+    if (low > 0.001 && !onOther) return;
+    if (c.bounces++ === 0) this.game.audio?.play('wood-lay', c.c);
+    if (!onOther && c.vel.y < -1.1 && c.bounces < 3) { c.vel.y *= -0.22; c.vel.x *= 0.55; c.vel.z *= 0.55; c.ang.multiplyScalar(0.5); return; }
+    // lie down: the axis level, the flat of a half (a face of a billet) on the ground
+    const axis = _v.set(0, 1, 0).applyQuaternion(c.quat).setY(0);
+    if (axis.lengthSq() < 0.01) axis.set(c.vel.x, 0, c.vel.z);
+    if (axis.lengthSq() < 1e-6) axis.set(1, 0, 0);
+    axis.normalize();
+    const p = c.pieces[0], toQ = this.lieQ(p, axis, c.n === 2 ? c.up : null);
+    // where it comes down: its middle under the centre of mass, along the slope
+    const mid = _w.copy(c.com).setX(0).setZ(0).applyQuaternion(toQ);
+    let x = c.c.x - mid.x, z = c.c.z - mid.z;
+    this.shape(c);
+    const at = restSpot(world, c.body, toQ, x, z, this.lying(c), { avoid: (f) => this.avoid(f), feet: this.block.y - 0.5, away: this.block });
+    c.state = 'settle'; c.k = 0; c.foot = null; c.near = this.lying(c);
+    c.from = { p: c.pos.clone(), q: c.quat.clone() };
+    c.toQ = at.q; c.toP = new THREE.Vector3(at.x, at.y, at.z);
+    c.dur = 0.22 + 0.5 * Math.hypot(at.x - x, at.z - z);
+  }
+  // a part on its way to the block: lifted out of the block's top and the ground
+  clear(c, world) {
+    const B = this.block, BR = this.parts.blockR;
+    let lift = 0;
+    for (const v of this.shape(c)) {
+      _v.copy(v).applyQuaternion(c.quat).add(c.pos);
+      lift = Math.max(lift, world.drawnAt(_v.x, _v.z) - _v.y);
+      if (Math.hypot(_v.x - B.x, _v.z - B.z) < BR + 0.005) lift = Math.max(lift, B.y - _v.y);
+    }
+    c.pos.y += lift;
+  }
+  // lying with its axis along `axis` (level): a half on its flat (`up` = its bark side, local), a billet on a split face
+  lieQ(p, axis, up = null) {
+    const e1 = up ? up.clone() : new THREE.Vector3(-Math.sin(p.k * Math.PI / 2), 0, Math.cos(p.k * Math.PI / 2));
+    const e2 = new THREE.Vector3(0, 1, 0), e3 = new THREE.Vector3().crossVectors(e1, e2);
+    const w1 = UP.clone(), w2 = axis.clone().setY(0).normalize(), w3 = new THREE.Vector3().crossVectors(w1, w2);
+    return new THREE.Quaternion().setFromRotationMatrix(_m.makeBasis(w1, w2, w3).multiply(_m2.makeBasis(e1, e2, e3).transpose()));
+  }
+  // settling: from where it struck to where it lies, never through the ground
+  settle(c, dt, world) {
+    c.k = Math.min(1, c.k + dt / (c.dur || 0.22));
+    const e = ease(c.k);
+    c.pos.lerpVectors(c.from.p, c.toP, e);
+    c.quat.slerpQuaternions(c.from.q, c.toQ, e);
+    // over the ground and over anything lying on the way
+    const B = this.block, BR = this.parts.blockR;
+    const ax = _w.set(0, 1, 0).applyQuaternion(c.quat).setY(0);
+    if (ax.lengthSq() < 1e-4) ax.set(1, 0, 0);
+    ax.normalize();
+    let lift = 0, s0 = Infinity, s1 = -Infinity, t0 = Infinity, t1 = -Infinity, y0 = Infinity;
+    for (const v of this.shape(c)) {
+      _v.copy(v).applyQuaternion(c.quat).add(c.pos);
+      lift = Math.max(lift, world.drawnAt(_v.x, _v.z) - _v.y);
+      if (Math.hypot(_v.x - B.x, _v.z - B.z) < BR + 0.005 && _v.y < B.y) lift = Math.max(lift, B.y - _v.y); // over the block's rim
+      const s = _v.x * ax.x + _v.z * ax.z, t = -_v.x * ax.z + _v.z * ax.x;
+      s0 = Math.min(s0, s); s1 = Math.max(s1, s); t0 = Math.min(t0, t); t1 = Math.max(t1, t); y0 = Math.min(y0, _v.y);
+    }
+    // over anything lying on the way: its whole width clears the top of what it passes over
+    const ms = (s0 + s1) / 2, mt = (t0 + t1) / 2, me = { x: ms * ax.x - mt * ax.z, z: ms * ax.z + mt * ax.x, ux: ax.x, uz: ax.z, a: (s1 - s0) / 2, b: (t1 - t0) / 2 };
+    for (const f of (c.near = this.lying(c))) if (y0 + lift < f.y1 && overlaps(me, f, -0.005)) lift = Math.max(lift, f.y1 - y0); // (what came to rest meanwhile too)
+    c.pos.y += lift;
+    if (c.k >= 1) { c.near = null; this.rest(c); }
   }
 
   // lying still: a half waits to be stood up again; billets go to the carrying code

@@ -6,7 +6,7 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 | | Keyboard and mouse | Touch |
 |---|---|---|
 | **Do**: the act of the thing in view; with nothing in view, what the carried thing does. Held where the motion lasts (`input.doing`) | left button, F | the hand button, held (a drag starting on it looks, so a held tool can be aimed); also the prompt's green plate. A touch on the view only looks |
-| **Put down**: the carried thing back to its place when within reach (`thing.put()`: axe → block, scythe → post, bark → hide), else onto dry ground ahead; of an armful, one billet | right button, Q | the put-down button (shown while carrying) |
+| **Put down**: the carried thing back to its place when within reach (`thing.put()`: axe → block, scythe → post, bark → hide), else onto dry ground ahead (tipped to its slope, clear of what lies there: `rest.js`); of an armful, one billet | right button, Q | the put-down button (shown while carrying) |
 | **Inspect**: the inspect stage (`docs/ui.md`), never an act | E | the eye button (shown when the thing has a card) |
 
 - The prompt (`docs/ui.md`): the thing's name under the dot; left of the dot the blue lens + E when it has a card; right of it the green plate with the act's own tool (`actIcon`, `src/ui/icons.js`), its verb and the mouse glyph (a bar beside it: the motion lasts while held, `actHeld`). The dot becomes a green ring when the hands can do something; with nothing in view the plate still shows what the carried thing would do. While carrying: a put-down hint low on the right.

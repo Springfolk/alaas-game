@@ -5,6 +5,7 @@ import * as TSL from 'three/tsl';
 import { lights } from 'three/tsl';
 import { Terrain } from './terrain.js';
 import { buildGround } from './ground.js';
+import { drawnHeight, gridNode } from './ground-data.js';
 import { PLACEMENTS } from './layout.js';
 import { pbr, maps, tex } from '../engine/materials.js';
 import { optimizePlaced } from '../engine/merge.js';
@@ -168,6 +169,24 @@ export class World {
   static local(b, x, z) {
     const dx = x - b.x, dz = z - b.z;
     return [dx * b.c - dz * b.s, dx * b.s + dz * b.c];
+  }
+
+  // the ground as it is drawn (its grid is linear between samples a metre or more apart), floors as groundAt: what a
+  // loose thing comes to rest on
+  drawnAt(x, z) {
+    const N = this.ground?.userData.N;
+    let h;
+    if (N) {
+      const c = (this._nodes ||= new Map()); // the grid's node samples met so far
+      if (c.size > 8192) c.clear();
+      this._at ||= (i, j) => { const k = j * N + i; let y = c.get(k); if (y === undefined) { const [gx, gz] = gridNode(i, j, N); c.set(k, (y = Math.round(this.terrain.height(gx, gz) * 1000) / 1000)); } return y; };
+      h = drawnHeight(this.terrain, x, z, N, this._at);
+    } else h = this.terrain.height(x, z);
+    for (const f of this.floors) {
+      const [lx, lz] = World.local(f, x, z);
+      if (Math.abs(lx) < f.hw && Math.abs(lz) < f.hd) h = Math.max(h, f.h);
+    }
+    return h;
   }
 
   groundAt(x, z) {

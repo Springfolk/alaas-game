@@ -25,7 +25,7 @@
 
 ## Conventions
 - North −Z, east +X; models face east (+X) locally (Sakha doors face east). Player yaw 0 looks −Z (`util.js` `fwd*`, `right*`, `yawTo`).
-- Ground height: `world.groundAt()` (knows floors), not `terrain.height()`.
+- Ground height: `world.groundAt()` (knows floors), not `terrain.height()`. The drawn ground is linear over grid cells (~1.5 m at the homestead; `ground-data.js` `drawnHeight`) and up to ~10 cm off it: loose things rest on `world.drawnAt()` (`src/interact/rest.js`), sheets lying flat clear the highest tier's (`yardlife` `K.drawnTop`).
 - Camera layers: 1 = near grass, flowers, near trees, life (the lake mirror and the shadow cascades skip it); 2 = shadow proxies; 30 = culled. The loader's `collect()` builds all of them.
 - Eye adaptation (`Engine.update`): `closeLook` = full adaptation up to 24×; `adaptFast` (s) = at once; both set by the stage. During `closeLook` inside the balagan its door fill light moves beside the eye (`balagan.js` `update`).
 - Player settings (`save.settings`): `sens`, `invertY`, `fov` (run adds ≤7.5°), `motion` 0–1 (bob, sway, roll, FOV kick; 0 = steady), `smooth` 0–1 (mouse look; touch always 0.3, let go on faster drags).
