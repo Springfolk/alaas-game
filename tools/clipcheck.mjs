@@ -3,12 +3,12 @@
 // another part), sunk into the ground, bottoms gaping over the ground, pairs of parts interpenetrating,
 // near-coplanar overlapping faces (z-fighting, also with the ground), walkable eye spots too near geometry, open sheets
 // (cloth, hide, bark) under the ground or passed through by a solid, and small parts resting with their weight off what holds
-// them or hovering just over it.
+// them or hovering just over it, and things resting on the drawn ground or a model's rest (world/settle.js) a little into or over it.
 // Usage: PORT=5195 node tools/clipcheck.mjs [out.json] (TOP=n rows per list) — env: MODEL=regex (placements to check; `loose/` =
 // things in the scene itself: carried, set down, work props, hands), NEAR=m (also load every other placement whose bounds come
 // within m of a checked one and report contacts with it), STATE=js (run in the page before the check, awaited: a door opened, an
 // action run to its end), VIEW=1 (what is near the eye: depth, cut by the near plane, share of the screen covered),
-// REGION=x0,z0,x1,z1 (only parts within it, world metres), SKIP=regex (meshes or materials left out; default ground cover), SIZE=WxH (viewport), CAMERA=0 (skip the eye sweep), QUERY=extra url flags.
+// REGION=x0,z0,x1,z1 (only parts within it, world metres), SKIP=regex (meshes or materials left out; default ground cover), SIZE=WxH (viewport), CAMERA=0 (skip the eye sweep), QUERY=extra url flags, Q=tier (default low).
 import { writeFileSync } from 'node:fs';
 import { launch, PORT } from './browser.mjs';
 
@@ -147,6 +147,9 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
   };
   const groundY = (x, z) => { for (const i of ggrid.get(key(cell(x), cell(z))) || []) { const y = bary(gtris[i], x, z); if (y !== null) return y; } return w.terrain.height(x, z); };
 
+  // the models' rests (earth floors, mats drawn over the ground; world/settle.js): their height, or -Infinity
+  const restAt = (x, z) => { let h = -Infinity; for (const f of w.rests) { if (f.loose) continue; const inside = f.r !== undefined ? Math.hypot(x - f.x, z - f.z) < f.r : (() => { const dx = x - f.x, dz = z - f.z; return Math.abs(dx * f.c - dz * f.s) < f.hw && Math.abs(dx * f.s + dz * f.c) < f.hd; })(); if (inside) h = Math.max(h, f.y ? f.y(x, z) : f.h); } return h; };
+
   // closest point on triangle (Ericson), returns squared distance and the point
   const cp = (p, t) => {
     const a = [t[0], t[1], t[2]], b = [t[3], t[4], t[5]], c = [t[6], t[7], t[8]];
@@ -182,10 +185,12 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
   const fmt = (v) => v.map((q) => +q.toFixed(2));
   const local = (c, v) => { const e = c.inv.elements; return fmt([e[0] * v[0] + e[4] * v[1] + e[8] * v[2] + e[12], e[1] * v[0] + e[5] * v[1] + e[9] * v[2] + e[13], e[2] * v[0] + e[6] * v[1] + e[10] * v[2] + e[14]]); };
   for (const A of comps) {
-    A.gmin = 1e9; A.low = null; A.bottomGap = 0;
+    A.gmin = 1e9; A.low = null; A.bottomGap = 0; A.smin = 1e9; A.slow = null;
     for (const v of A.vs) {
       const gy = groundY(v[0], v[2]), gd = v[1] - gy;
       if (gd < A.gmin) { A.gmin = gd; A.low = v; }
+      const sd = v[1] - Math.max(gy, restAt(v[0], v[2])); // over the surface a thing rests on: the drawn ground or a model's rest
+      if (sd < A.smin) { A.smin = sd; A.slow = v; }
       qn++;
       const best = new Map();
       const ix0 = cell(v[0]), iz0 = cell(v[2]);
@@ -412,6 +417,31 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
     if (out > 0.015) unsup.push({ label: name, off: +out.toFixed(3), contacts: cts.length, at: fmt(C), local: local(A0, C) });
   }
 
+  // ---- resting things: parts under 3 m joined where they touch (8 mm) into things; a thing whose lowest point is within
+  // 4 cm under to 10 cm over the surface it rests on (drawn ground, rests) sits on it: sunk past 4 mm, or hovering past
+  // 4 mm and held by nothing bigger
+  const small = (c) => Math.hypot(c.hi[0] - c.lo[0], c.hi[1] - c.lo[1], c.hi[2] - c.lo[2]) < 3;
+  const up = comps.map((_, i) => i), find = (i) => { while (up[i] !== i) i = up[i] = up[up[i]]; return i; };
+  const held = new Set();
+  for (const [k, e] of pair) {
+    if (e.d >= 0.008 && e.pen < 0.004) continue;
+    const [a, b] = k.split(',').map(Number), A = comps[a], B = comps[b];
+    if (small(A) && small(B)) up[find(a)] = find(b); else if (small(A)) held.add(a); else if (small(B)) held.add(b);
+  }
+  const things = new Map();
+  for (const c of comps) if (small(c) && c.slow) { const r = find(c.id); let t = things.get(r); if (!t) things.set(r, (t = { cs: [], focus: false })); t.cs.push(c); t.focus ||= c.focus; }
+  const restRows = [];
+  for (const t of things.values()) {
+    if (!t.focus) continue;
+    const lowest = t.cs.reduce((a, c) => (c.smin < a.smin ? c : a));
+    const g = lowest.smin;
+    if (g < -0.04 || g > 0.1 || Math.abs(g) <= 0.004) continue;
+    if (g > 0 && t.cs.some((c) => held.has(c.id))) continue;
+    const labels = [...new Set(t.cs.map((c) => c.label))];
+    restRows.push({ label: labels.slice(0, 3).join(' + ') + (labels.length > 3 ? ` +${labels.length - 3}` : ''), [g < 0 ? 'sink' : 'hover']: +Math.abs(g).toFixed(3), at: fmt(lowest.slow), local: local(lowest, lowest.slow) });
+  }
+  const resting = restRows.sort((a, b) => (b.sink ?? b.hover) - (a.sink ?? a.hover));
+
   // ---- summaries
   const P = (c) => ({ label: c.label, at: fmt(c.low), local: local(c, c.low) });
   const group = (rows, keyf, score) => {
@@ -438,13 +468,13 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
   const sheets = cross.filter((r) => r.sheet); // an open sheet and a solid through each other: a cloth on a log never crosses it
   const models = {}; for (const c of comps) if (c.focus) models[c.model] = (models[c.model] || 0) + 1;
   const sheetGround = group(sheetG, (r) => r.label, (r) => r.depth), unsupported = group(unsup, (r) => r.label, (r) => r.off), hovering = group(hover, (r) => r.label, (r) => r.gap);
-  return { models, view: viewRows, tol: TOL, parts: comps.length, triangles: tris.length, closed: comps.filter((c) => c.closed).length, islands: isl, unsupported, hovering, sunk, sheetGround, gaps, pen, cross, sheets, zfight, zground, eyes };
+  return { models, view: viewRows, tol: TOL, parts: comps.length, triangles: tris.length, closed: comps.filter((c) => c.closed).length, islands: isl, unsupported, hovering, resting, sunk, sheetGround, gaps, pen, cross, sheets, zfight, zground, eyes };
 };
 // print a report's lists
 export const print = (report, top = 25) => {
   const line = (o) => Object.entries(o).filter(([k, v]) => k !== 'n' && v !== undefined).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(',') : v}`).join(' ');
   console.log(`${report.parts} parts (${report.closed} closed), ${report.triangles} triangles; tolerances ${JSON.stringify(report.tol)}\nchecked: ${JSON.stringify(report.models)}`);
-  for (const k of [...(report.view.length ? ['view'] : []), 'islands', 'unsupported', 'hovering', 'sunk', 'sheetGround', 'gaps', 'pen', 'cross', 'sheets', 'zfight', 'zground', 'eyes']) {
+  for (const k of [...(report.view.length ? ['view'] : []), 'islands', 'unsupported', 'hovering', 'resting', 'sunk', 'sheetGround', 'gaps', 'pen', 'cross', 'sheets', 'zfight', 'zground', 'eyes']) {
     console.log(`\n## ${k}: ${report[k].length}`);
     for (const r of report[k].slice(0, top)) console.log(`${r.n ? `×${r.n} ` : ''}${line(r)}`);
   }
@@ -456,7 +486,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const [VW, VH] = (process.env.SIZE || '480x300').split('x').map(Number);
   const page = await browser.newPage({ viewport: { width: VW, height: VH } });
   page.on('pageerror', (e) => console.log('page error:', e.message));
-  await page.goto(`http://127.0.0.1:${PORT}/?auto&nogeo&keepgeo&nomerge&q=low${process.env.QUERY || ''}`);
+  await page.goto(`http://127.0.0.1:${PORT}/?auto&nogeo&keepgeo&nomerge&q=${process.env.Q || 'low'}${process.env.QUERY || ''}`);
   await page.waitForFunction(() => window.game?.complete, null, { timeout: 400000 });
   if (process.env.STATE) await page.evaluate(process.env.STATE);
   await page.waitForTimeout(500);

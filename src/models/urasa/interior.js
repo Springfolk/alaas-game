@@ -42,6 +42,23 @@ function sectorBox(a0, a1, r0, r1, y0, y1) {
   return g;
 }
 
+// the earth floor's height at (x, z): hard earth, slightly uneven, a shallow dip round the hearth
+const floorY = (x, z) => 0.012 + valueNoise(x * 2, z * 2, 21) * 0.008 - Math.exp(-(((Math.hypot(x, z) - 1.05) / 0.3) ** 2)) * 0.006;
+// the floor as drawn: its polar grid (FN × FR cells out to `rim`), linear over each cell's two triangles
+const FN = 72, FR = 16;
+let rim = 0;
+const nodes = new Float32Array((FN + 1) * (FR + 1)).fill(NaN);
+const fnode = (i, j) => { const k = j * (FN + 1) + i; let y = nodes[k]; if (y !== y) { const a = (i / FN) * TAU, r = 0.0001 + (j / FR) * rim; nodes[k] = y = floorY(Math.cos(a) * r, Math.sin(a) * r); } return y; };
+export function floorAt(x, z) {
+  rim ||= makeProfile().rAtY(0) + 0.05;
+  let a = Math.atan2(z, x); if (a < 0) a += TAU;
+  const fs = (a / TAU) * FN, ft = ((Math.hypot(x, z) - 0.0001) / rim) * FR;
+  const i = Math.min(FN - 1, Math.floor(fs)), j = Math.max(0, Math.min(FR - 1, Math.floor(ft))), s = fs - i, t = ft - j;
+  const hb = fnode(i + 1, j), hc = fnode(i, j + 1);
+  if (s + t <= 1) { const ha = fnode(i, j); return ha + s * (hb - ha) + t * (hc - ha); }
+  const hd = fnode(i + 1, j + 1); return hd + (1 - s) * (hc - hd) + (1 - t) * (hb - hd);
+}
+
 export function buildInterior(rng) {
   plankNo = 0;
   const G = { floor: [], plank: [], clay: [], poleIn: [], hide: [], hair: [] };
@@ -49,11 +66,10 @@ export function buildInterior(rng) {
 
   // ---- floor: a polar grid, hard earth with a slight dip round the hearth; its rim ends between the two bark
   // layers (inner at +0.042, outer from ~+0.054), so no earth lip shows outside the cover
-  G.floor.push(grid(72, 16, (u, v) => {
-    const a = u * TAU, r = 0.0001 + v * (makeProfile().rAtY(0) + 0.05);
-    const y = 0.012 + valueNoise(Math.cos(a) * r * 2, Math.sin(a) * r * 2, 21) * 0.008 - Math.exp(-(((r - 1.05) / 0.3) ** 2)) * 0.006;
-    return [Math.cos(a) * r, y, Math.sin(a) * r];
-  }, (u, v) => [u, v], true));
+  G.floor.push(grid(FN, FR, (u, v) => {
+    const a = u * TAU, r = 0.0001 + v * (makeProfile().rAtY(0) + 0.05), x = Math.cos(a) * r, z = Math.sin(a) * r;
+    return [x, floorY(x, z), z];
+  }, (u, v) => [u, v], true)); // FN × FR: floorAt
 
   // ---- hearth: two courses of notched logs, clay filling, four short posts and a crossbar for pots
   const h = HEARTH.half;
@@ -131,7 +147,7 @@ export function buildInterior(rng) {
   }
   const geoms = {};
   for (const [k, list] of Object.entries(G)) geoms[k] = merge(list, k === 'hide' ? ['aHide'] : []);
-  // what a thing set down rests on: the earth floor (0.4–2 cm, taken at 1.7), the horse-hide mat on it
-  const rests = [{ x: 0, z: 0, r: makeProfile().rAtY(0) - 0.1, h: 0.017 }, { x: -1.42, z: 0.05, hw: 0.33, hd: 0.56, h: 0.028 }];
+  // what a thing set down rests on: the earth floor as drawn, the horse-hide mat on it
+  const rests = [{ x: 0, z: 0, r: makeProfile().rAtY(0) - 0.1, h: 0.017, floor: true }, { x: -1.42, z: 0.05, hw: 0.33, hd: 0.56, h: 0.028, loose: true }];
   return { geoms, colliders, benchTargets, rests };
 }

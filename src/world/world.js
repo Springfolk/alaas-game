@@ -5,10 +5,12 @@ import * as TSL from 'three/tsl';
 import { lights } from 'three/tsl';
 import { Terrain } from './terrain.js';
 import { buildGround } from './ground.js';
-import { drawnHeight, gridNode } from './ground-data.js';
+import { drawnSampler } from './ground-data.js';
 import { PLACEMENTS } from './layout.js';
 import { pbr, maps, tex } from '../engine/materials.js';
 import { optimizePlaced } from '../engine/merge.js';
+import { TIER } from '../engine/tier.js';
+import { settle } from './settle.js';
 import { geoBuild } from '../load/geocache.js';
 import { homesteadLights, useLights, shareGraphs, materialsOf } from '../engine/master.js';
 import { mulberry32, strHash, urlFlag } from '../util.js';
@@ -86,6 +88,8 @@ export class World {
         await this.breathe();
       }
     }));
+    await groundBuilt; // its node heights: what the settling reads
+    if (!urlFlag('nosettle')) this.settled = await settle(this); // resting things onto the ground as this tier draws it (settle.js; ?nosettle: A/B)
     // One light set for the whole homestead: the sun and two local lights that each material takes from its
     // own model (a house its fire; src/engine/master.js), so builds don't split by light set. A model may set
     // its materials first (the urasa: no sun indoors, no fire outside).
@@ -154,9 +158,10 @@ export class World {
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
       this.floors.push({ ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h });
     }
-    for (const f of res.rests || []) { // surfaces drawn over the ground that loose things rest on (an earth floor): circles or boxes
+    for (const f of res.rests || []) { // surfaces drawn over the ground that loose things rest on (an earth floor): circles or boxes, `y(lx, lz)` = its exact height
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
-      this.rests.push(f.r !== undefined ? { ...w, r: f.r, h: p.y + f.h } : { ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h });
+      const y = f.y && ((x, z) => { const dx = x - p.x, dz = z - p.z; return p.y + f.y(dx * c - dz * s, dx * s + dz * c); });
+      this.rests.push(f.r !== undefined ? { ...w, r: f.r, h: p.y + f.h, y, loose: f.loose } : { ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h, y, loose: f.loose });
     }
     for (const f of res.lows || []) {
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
@@ -179,19 +184,17 @@ export class World {
 
   // the ground as it is drawn (its grid is linear between samples a metre or more apart), floors as groundAt: what a
   // loose thing comes to rest on
-  drawnAt(x, z) {
-    const N = this.ground?.userData.N;
+  // (`rests`, `floors`: the lists to take, null = none; the grid is this tier's before the ground mesh exists)
+  drawnAt(x, z, rests = this.rests, floors = this.floors) {
+    const N = this.ground?.userData.N ?? TIER.ground;
     let h;
-    if (N) {
-      const c = (this._nodes ||= new Map()); // the grid's node samples met so far
-      if (c.size > 8192) c.clear();
-      this._at ||= (i, j) => { const k = j * N + i; let y = c.get(k); if (y === undefined) { const [gx, gz] = gridNode(i, j, N); c.set(k, (y = Math.round(this.terrain.height(gx, gz) * 1000) / 1000)); } return y; };
-      h = drawnHeight(this.terrain, x, z, N, this._at);
-    } else h = this.terrain.height(x, z);
-    for (const f of this.rests) {
-      if (f.r !== undefined ? Math.hypot(x - f.x, z - f.z) < f.r : (([lx, lz]) => Math.abs(lx) < f.hw && Math.abs(lz) < f.hd)(World.local(f, x, z))) h = Math.max(h, f.h);
+    if (this.ground) h = (this._drawnG ||= drawnSampler(this.terrain, N, this.ground.userData.h))(x, z);
+    else if (N) h = (this._drawn ||= drawnSampler(this.terrain, N))(x, z);
+    else h = this.terrain.height(x, z);
+    for (const f of rests || []) {
+      if (f.r !== undefined ? Math.hypot(x - f.x, z - f.z) < f.r : (([lx, lz]) => Math.abs(lx) < f.hw && Math.abs(lz) < f.hd)(World.local(f, x, z))) h = Math.max(h, f.y ? f.y(x, z) : f.h);
     }
-    for (const f of this.floors) {
+    for (const f of floors || []) {
       const [lx, lz] = World.local(f, x, z);
       if (Math.abs(lx) < f.hw && Math.abs(lz) < f.hd) h = Math.max(h, f.h);
     }

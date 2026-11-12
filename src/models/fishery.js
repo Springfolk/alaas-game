@@ -27,7 +27,7 @@ export default async function build(ctx, placement) {
   const colliders = [], interactables = [];
   const hidden = new T.MeshBasicMaterial({ visible: false });
   const proxy = (w, h, d, x, y, z) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), hidden); m.position.set(x, y, z0 + z); m.castShadow = false; object.add(m); return m; };
-  const B = new Bucket((x, z) => ground(x, z - z0));
+  const B = new Bucket((x, z) => ground(x, z - z0), { drape: true });
   const P = (x, y, z) => [x, y, z0 + z];
 
   // ── the weir: paired stakes, three withy rails, lath mats down to the bed; one gap ──

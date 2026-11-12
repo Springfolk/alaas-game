@@ -9,9 +9,10 @@ import { TIER } from '../../engine/tier.js';
 import { CULL_LAYER } from '../../engine/merge.js';
 import { mulberry32 } from '../../util.js';
 
-// colonies: [x, z, radius]. Round the yard off the paths; the slope above the homestead; the forest's edge (north).
+// colonies: [x, z, radius]. Round the yard off the paths and out of the smudge fire's smoke; the slope above the
+// homestead; the forest's edge (north).
 export const COLONIES = [
-  [-9, 13, 1.2], [-4.5, 25, 1.4], [13.5, 27.5, 1.3], [-14, 20.5, 1.1], [19, 34, 1.6], [-1.5, 37, 1.4], [-14, -9, 1.2], [18.5, -14.5, 1.3],
+  [-9, 13, 1.2], [-4.5, 25, 1.4], [13.5, 27.5, 1.3], [-14, 20.5, 1.1], [19, 34, 1.6], [-1.5, 37, 1.4], [-14, -9, 1.2],
   [-3, -20, 1.7], [8, -27, 1.5], [-16, -30, 1.8], [-28, -16, 1.4], [-33, 6, 1.5], [34, 22, 1.4], [-8, -44, 2.0], [12, -52, 1.9],
   [-24, -58, 2.1], [3, -68, 2.3], [26, -66, 2.0], [-12, -80, 2.3], [16, -84, 2.2], [-36, -84, 2.0], [36, -88, 2.1], [0, -94, 2.4],
 ];
@@ -63,7 +64,7 @@ export function buildDyedyen(T, { ground, forest }) {
       if (spots.every(([a, b]) => Math.hypot(a - x, b - z) > CROWN * 2.3)) spots.push([x, z]);
     }
     for (const [x0, z0] of spots) {
-      const P = { cx: x0, cz: z0, R: CROWN, leaves: [], berries: [], bc: [], trusses: [], tc: [] };
+      const P = { cx: x0, cz: z0, R: CROWN, leaves: [], berries: [], bc: [], bs: [], heads: [], trusses: [], tc: [] };
       for (let j = 0; j < LEAVES; j++) {
         const r = CROWN * Math.pow(rng(), 0.6), a = rng() * Math.PI * 2, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r, k = 1.05 + rng() * 0.5;
         // a trefoil on its stalk (built down to y = -STALK), leaning out from the crown's middle
@@ -75,13 +76,14 @@ export function buildDyedyen(T, { ground, forest }) {
       for (let j = 0; j < PER;) {
         const ta = rng() * Math.PI * 2, tr = CROWN * (0.35 + rng() * 0.75), m = Math.min(PER - j, 3 + Math.floor(rng() * 3));
         const tx = x0 + Math.cos(ta) * tr, tz = z0 + Math.sin(ta) * tr, h = 0.115 + rng() * 0.06;
+        P.heads.push({ x: tx, z: tz, y: ground(tx, tz) + h, a: ta, m });
         for (let i = 0; i < m; i++, j++) {
           const a = ta + (rng() - 0.5) * 1.8, d = 0.014 + rng() * 0.034;
           const x = tx + Math.cos(a) * d, z = tz + Math.sin(a) * d;
           p.set(x, ground(x, z) + h - i * 0.011 + (rng() - 0.5) * 0.02, z);
           e.set((rng() - 0.5) * 0.5, -a + Math.PI, (rng() - 0.5) * 0.5, 'YXZ'); // the stalk runs back to the truss
           s.setScalar(0.8 + rng() * 0.4);
-          P.berries.push(mat4()); P.bc.push(p.x, p.y, p.z);
+          P.berries.push(mat4()); P.bc.push(p.x, p.y, p.z); P.bs.push(s.x);
         }
       }
       for (let j = 0; j < TRUSS; j++) {
@@ -91,7 +93,7 @@ export function buildDyedyen(T, { ground, forest }) {
         const m = mat4(), t = new T.Vector3(...TRUSS_TOP).applyMatrix4(m);
         P.trusses.push(m); P.tc.push(t.x, t.y, t.z);
       }
-      nearLayout(T, P, ground, rngN, PER);
+      nearLayout(T, P, ground, rngN);
       C.crowns.push(P); patches.push(P);
     }
     // runner plants between the crowns: tufts of two to four small trefoils
@@ -356,29 +358,29 @@ function truss(T) {
 const TAU = Math.PI * 2;
 const BERRY_TOP = 0.0115; // a close-up berry's calyx heart above its centre: its stalk starts here
 
-// Where a near crown's fruit hangs: trusses of 3–5 arch out from the crown's heart over the leaves and bend down,
-// the berries hanging on their own short stalks under the leaves. P.near: berry matrices, P.nc: their centres,
-// P.arches: stalk matrices (archNear, sheared from its start to its end).
-function nearLayout(T, P, ground, rng, PER) {
+// Where a near crown's fruit hangs: each far truss (P.heads) arches out from the crown's heart to a head just over
+// its berries, and every berry hangs from it on its own short stalk exactly where its far instance is, so nothing
+// moves when a crown swaps to its close-up. P.near: berry matrices, P.nc: their centres, P.arches: stalk matrices
+// (archNear, sheared from its start to its end).
+function nearLayout(T, P, ground, rng) {
   const q = new T.Quaternion(), e = new T.Euler(), p = new T.Vector3(), s = new T.Vector3();
   P.near = []; P.nc = []; P.arches = [];
   const arch = (a, b, side, lift, thick) => {
     const Z = new T.Vector3().subVectors(b, a), X = new T.Vector3(-side.z, 0, side.x).normalize().multiplyScalar(thick);
     P.arches.push(new T.Matrix4().makeBasis(X, new T.Vector3(0, lift, 0), Z).setPosition(a));
   };
-  for (let j = 0; j < PER;) {
-    const ta = rng() * TAU, tr = 0.1 + rng() * 0.16, m = Math.min(PER - j, 3 + Math.floor(rng() * 3));
-    const hx = P.cx + Math.cos(ta) * tr, hz = P.cz + Math.sin(ta) * tr;
-    const head = new T.Vector3(hx, ground(hx, hz) + 0.05 + rng() * 0.03, hz);
-    const foot = new T.Vector3(P.cx + Math.cos(ta) * 0.02, ground(P.cx, P.cz) - 0.004, P.cz + Math.sin(ta) * 0.02);
-    arch(foot, head, new T.Vector3(Math.cos(ta), 0, Math.sin(ta)), 0.8 + rng() * 0.45, 1);
-    for (let i = 0; i < m; i++, j++) {
-      const a = ta + (rng() - 0.5) * 2.4, d = 0.01 + rng() * 0.024;
-      p.set(hx + Math.cos(a) * d, head.y - 0.026 - rng() * 0.014 - i * 0.004, hz + Math.sin(a) * d);
-      e.set((rng() - 0.5) * 0.35, rng() * TAU, (rng() - 0.5) * 0.35, 'YXZ'); s.setScalar(0.8 + rng() * 0.4);
+  let j = 0;
+  for (const H of P.heads) {
+    const top0 = Math.max(...P.bc.slice(j * 3, (j + H.m) * 3).filter((_, k) => k % 3 === 1));
+    const head = new T.Vector3(H.x, top0 + 0.022, H.z);
+    const foot = new T.Vector3(P.cx + Math.cos(H.a) * 0.02, ground(P.cx, P.cz) - 0.004, P.cz + Math.sin(H.a) * 0.02);
+    arch(foot, head, new T.Vector3(Math.cos(H.a), 0, Math.sin(H.a)), 0.8 + rng() * 0.45, 1);
+    for (let i = 0; i < H.m; i++, j++) {
+      p.fromArray(P.bc, j * 3);
+      e.set((rng() - 0.5) * 0.35, rng() * TAU, (rng() - 0.5) * 0.35, 'YXZ'); s.setScalar(P.bs[j]);
       P.near.push(new T.Matrix4().compose(p, q.setFromEuler(e), s)); P.nc.push(p.x, p.y, p.z);
       const top = new T.Vector3(0, BERRY_TOP * s.x, 0).applyQuaternion(q).add(p);
-      arch(head, top, new T.Vector3(Math.cos(a), 0, Math.sin(a)), 0.12, 0.6);
+      arch(head, top, new T.Vector3(p.x - H.x, 0, p.z - H.z), 0.12, 0.6);
     }
   }
 }

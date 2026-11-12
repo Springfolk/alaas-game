@@ -7,7 +7,7 @@ import * as THREE from 'three/webgpu';
 import { uv, vec3, mix, fract, float, step, min, abs, faceDirection, mx_fractal_noise_float } from 'three/tsl';
 import { makeProfile, buildFrame, R_POST, POST_H, DOOR } from './urasa/frame.js';
 import { buildCover, buildCurtain, CURTAIN_W } from './urasa/cover.js';
-import { buildInterior, BENCH, HEARTH } from './urasa/interior.js';
+import { buildInterior, BENCH, HEARTH, floorAt } from './urasa/interior.js';
 import { buildKymys, KYMYS } from './urasa/kymys.js';
 import { buildFire } from './urasa/fire.js';
 import { makeMats, smoothstep, uDoorOpen } from './urasa/mats.js';
@@ -44,9 +44,10 @@ export default async function build(ctx) {
   mesh(merge([frame.geoms.hair, inside.geoms.hair]), M.hair, { cast: false });
   mesh(frame.geoms.timber, M.timber);
   mesh(inside.geoms.floor, M.floor, { cast: false });
-  mesh(inside.geoms.plank, M.plank);
+  // benches, firewood and hides stand on the earth floor (built on level 0; world/settle.js)
+  mesh(inside.geoms.plank, M.plank).userData.ground = 0;
   mesh(inside.geoms.clay, M.clay);
-  mesh(inside.geoms.hide, M.hide);
+  mesh(inside.geoms.hide, M.hide).userData.ground = 0;
 
   // ---- the door curtain: bark edged with leather (its embroidery is not drawn: no traceable source yet, docs/patterns.md)
   const curtain = buildCurtain();
@@ -79,6 +80,10 @@ export default async function build(ctx) {
   // ---- kymys corner and fire
   const ky = buildKymys(rng, M);
   root.add(ky.group);
+  // the kymys corner on the earth floor: the sack's platform and the chorons' board drop as one onto it, the
+  // buckets (and the corner's horsehair) follow it (world/settle.js)
+  ky.sackRoot.userData.rest = ky.boardRoot.userData.rest = true;
+  for (const m of [...ky.buckets.children, ky.hair]) m.userData.ground = 0;
   // the fire asks the cone's radius for every puff every frame: from a table (2 cm steps) instead of the profile's search
   const coneTab = Float32Array.from({ length: Math.ceil(holeY / 0.02) + 2 }, (_, i) => coneR(i * 0.02));
   const coneRFast = (y) => { const f = Math.min(coneTab.length - 1.001, Math.max(0, y / 0.02)), i = f | 0; return coneTab[i] + (coneTab[i + 1] - coneTab[i]) * (f - i); };
@@ -199,8 +204,9 @@ export default async function build(ctx) {
     const at = local(hero.getWorldPosition(new THREE.Vector3()));
     const homeL = { parent: ladle.parent, p: ladle.position.clone(), q: ladle.quaternion.clone(), rp: local(ladle.getWorldPosition(new THREE.Vector3())), rq: rootQi.clone().multiply(ladle.getWorldQuaternion(new THREE.Quaternion())) };
     root.attach(ladle);
+    const level = rootQi.clone().multiply(ky.sackRoot.getWorldQuaternion(new THREE.Quaternion())); // bowl upright, handle along the wall
     await flyTo(ladle, ladle.position.clone().add(new THREE.Vector3(0, 0.3, 0)), 0.4);
-    await flyTo(ladle, at.clone().add(new THREE.Vector3(-0.08, 0.37, 0)), 0.55);
+    await flyTo(ladle, at.clone().add(new THREE.Vector3(-0.08, 0.37, 0)), 0.55, level);
     sound(game, 'pour', hero);
     const q1 = ladle.quaternion.clone(), q2 = q1.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.9));
     await tween(0.35, (k) => ladle.quaternion.slerpQuaternions(q1, q2, ease(k)));
@@ -343,5 +349,6 @@ export default async function build(ctx) {
   root.userData.paths = [{ w: 2.6, pts: ring }];
   root.userData.bare = [{ x: 0, z: 0, r: R0 }];
 
-  return { object: root, colliders, floors: [], rests: inside.rests, interactables, update };
+  const rests = inside.rests.map((f) => (f.floor ? { ...f, y: floorAt } : f)); // the earth floor as drawn (a section bakes plain data only)
+  return { object: root, colliders, floors: [], rests, interactables, update };
 }
