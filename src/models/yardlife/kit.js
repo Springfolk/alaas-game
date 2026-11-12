@@ -128,9 +128,10 @@ export function decalMat(src, o = {}) {
 
 // ---------- buckets: merge by material, carrying grime (height above ground) ----------
 export class Bucket {
-  /** ground(x, z) → local ground height under a local point */
-  constructor(ground) {
+  /** ground(x, z) → local ground height under a local point; drape: its meshes follow the drawn ground (world/settle.js) */
+  constructor(ground, { drape = false } = {}) {
     this.ground = ground;
+    this.drape = drape;
     this.parts = new Map(); // material → geometries
   }
   /**
@@ -178,6 +179,7 @@ export class Bucket {
       mesh.name = mat.name;
       mesh.castShadow = shadows && !mat.transparent;
       mesh.receiveShadow = true;
+      if (this.drape) mesh.userData.ground = 'grime';
       group.add(mesh);
       out.push(mesh);
     }

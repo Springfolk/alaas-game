@@ -108,7 +108,7 @@ export default async function build(ctx, placement) {
     return across * 1.6 * ends;
   }, { step: 0.4 });
   const earth = new THREE.Mesh(tg, trodden(ctx, { key: 'trodden-sele', hoof: 1.5 }));
-  earth.castShadow = false; earth.renderOrder = -1;
+  earth.castShadow = false; earth.renderOrder = -1; earth.userData.ground = 'terrain'; // follows the drawn ground (world/settle.js)
   object.add(earth);
 
   const dung = [];
@@ -126,7 +126,7 @@ export default async function build(ctx, placement) {
     }
   }
   const dungMesh = new THREE.Mesh(merge(dung), plain('dung', { roughness: 0.88, bump: 0.003, bumpFreq: 30 }));
-  dungMesh.castShadow = false;
+  dungMesh.castShadow = false; dungMesh.userData.ground = 'terrain';
   object.add(dungMesh);
 
   // the halter (horsehair-and-leather): nose band and crown strap, crumpled in the grass, lead rope

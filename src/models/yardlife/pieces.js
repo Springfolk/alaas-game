@@ -168,7 +168,7 @@ export function craft(K, x, z, yaw = 0) {
   const F = frame(K.b, x, z, yaw);
   const g = F.ground;
   const bark = K.barkCraft; // prepared bark: warmer, boiled
-  const top = (lx, lz) => { const [wx, wz] = F.tw(lx, lz); return K.drawnTop(wx, wz); };
+  const top = (lx, lz) => { const [wx, wz] = F.tw(lx, lz); return K.ground(wx, wz); };
   const HT = 0.2; // the hide's turn on the spot
   geoPiece(K, () => {
     // a hide spread on the grass to work on
@@ -296,8 +296,8 @@ export function craft(K, x, z, yaw = 0) {
     {
       const [ax, az] = F.tw(-1.25, -0.45), [bx, bz] = F.tw(0.15, -0.95);
       const d = [bx - ax, bz - az], l = Math.hypot(...d), nx = -d[1] / l, nz = d[0] / l;
-      const ya = K.drawnTop(ax, az), yb = K.drawnTop(bx, bz); // straight rods: over the ground's highest point along them
-      let lift = 0; for (let t = 0.1; t < 1; t += 0.1) lift = Math.max(lift, K.drawnTop(ax + d[0] * t, az + d[1] * t) - (ya + (yb - ya) * t));
+      const ya = K.ground(ax, az), yb = K.ground(bx, bz); // straight rods: over the ground's highest point along them
+      let lift = 0; for (let t = 0.1; t < 1; t += 0.1) lift = Math.max(lift, K.ground(ax + d[0] * t, az + d[1] * t) - (ya + (yb - ya) * t));
       for (let k = 0; k < 18; k++) {
         const o = (rng() - 0.5) * 0.09, oy = rng() * 0.05, sl = (rng() - 0.5) * 0.25;
         addLog(K.b, [ax + nx * o + d[0] / l * sl, ya + lift + 0.01 + oy, az + nz * o + d[1] / l * sl],

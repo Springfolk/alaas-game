@@ -11,7 +11,7 @@ export default async function build(ctx, placement) {
     object,          // THREE.Group, origin = ground centre, +Y up, front/door faces +X (east)
     colliders,       // [{ x, z, hw, hd, rot?, y0?, y1? }] boxes or [{ x, z, r }] circles, local metres
     floors,          // [{ x, z, hw, hd, rot?, h }] walkable surfaces above ground (local h)
-    rests,           // optional [{ x, z, r | hw, hd, rot?, h }] surfaces drawn over the ground that set-down things rest on (earth floors)
+    rests,           // optional [{ x, z, r | hw, hd, rot?, h, y? }] surfaces drawn over the ground that set-down and resting things sit on (earth floors; y(lx, lz) = exact height)
     lows,            // [{ x, z, hw, hd, rot?, h }] low lintels: clear height; the player stoops under them
     interactables,   // [{ entry, target?, zone?: { x, z, r }, label?: { sah, en }, act? }]
     update,          // optional (dt, { time, camera, player, game }) => void
@@ -30,6 +30,7 @@ export default async function build(ctx, placement) {
 - `envMapIntensity` works only with `material.envMap` set; to dim sky light indoors assign `scene.environment` as `envMap` (`balagan/mats.js`).
 - Grass hints, local coords: `object.userData.paths = [{ w, pts: [[x, z], …] }]` (cut, a short sparse sward stays), `.mown = [{ x, z, rx, rz }]` (short), `.bare = [{ x, z, r } | { x, z, hw, hd }]` (earth floors: no blade or flower).
 - Scale: eye 1.62 m (stoop/crouch 1.05). Low doors on purpose (stoop via `lows`): balagan 0.86 × 1.55 m, ampaar ~1.4 m over its threshold.
+- Resting things (`docs/architecture.md`, ground contact): yard Buckets over the terrain take `{ drape: true }`; meshes standing on a level floor `userData.ground = level`; loose takeable things `userData.rest = true`. Build them touching the terrain or level; the load settles them on every tier.
 - Budget: ≤150k triangles and ≤40 draw calls per building (merge static parts by material); small objects ≤10k triangles.
 
 ## Buildings

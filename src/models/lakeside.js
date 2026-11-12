@@ -26,7 +26,7 @@ export default async function build(ctx, placement) {
   const group = new T.Group();
   group.name = 'lakeside';
   const M = yardMats();
-  const B = new Bucket(g);
+  const B = new Bucket(g, { drape: true });
   const colliders = [], interactables = [], ups = [];
   const proxyMat = new T.MeshBasicMaterial({ visible: false });
   const proxy = (x, y, z, w, h, d, yaw = 0) => {

@@ -23,6 +23,25 @@ export function drawnHeight(terrain, x, z, N, at = (i, j) => Math.round(terrain.
   const hd = at(i + 1, j + 1); return hd + (1 - u) * (hc - hd) + (1 - v) * (hb - hd);
 }
 export const gridNode = (i, j, N) => [gridX(i, N), gridZ(j, N)];
+// drawnHeight for many points, fast: the cell found by bisection over the grid's node lines, the node samples memoised
+// in a typed array, or read from the grid's own samples `mm` (groundSamples' h) (what World.drawnAt and the load's
+// settling use)
+export function drawnSampler(terrain, N, mm = null) {
+  const gx = new Float64Array(N), gz = new Float64Array(N), h = mm ? null : new Float32Array(N * N).fill(NaN);
+  for (let i = 0; i < N; i++) { gx[i] = gridX(i, N); gz[i] = gridZ(i, N); }
+  const cell = (a, v, last) => { // the last point's cell first: points come near each other
+    if (v >= a[last] && v < a[last + 1]) return last;
+    let lo = 0, hi = N - 2; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (a[m] <= v) lo = m; else hi = m - 1; } return lo;
+  };
+  let li = 0, lj = 0;
+  const at = mm ? (i, j) => mm[j * N + i] / 1000 : (i, j) => { const k = j * N + i; let y = h[k]; if (y !== y) h[k] = y = Math.round(terrain.height(gx[i], gz[j]) * 1000) / 1000; return y; };
+  return (x, z) => {
+    const i = (li = cell(gx, x, li)), j = (lj = cell(gz, z, lj)), u = (x - gx[i]) / (gx[i + 1] - gx[i]), v = (z - gz[j]) / (gz[j + 1] - gz[j]);
+    const hb = at(i + 1, j), hc = at(i, j + 1);
+    if (u + v <= 1) { const ha = at(i, j); return ha + u * (hb - ha) + v * (hc - ha); }
+    const hd = at(i + 1, j + 1); return hd + (1 - u) * (hc - hd) + (1 - v) * (hb - hd);
+  };
+}
 // drawnHeight for many points: the node samples memoised
 export function drawnBy(terrain, N) {
   const c = new Map(), at = (i, j) => { const k = j * N + i; let y = c.get(k); if (y === undefined) c.set(k, (y = Math.round(terrain.height(gridX(i, N), gridZ(j, N)) * 1000) / 1000)); return y; };

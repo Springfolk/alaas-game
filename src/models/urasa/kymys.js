@@ -392,5 +392,5 @@ export function buildKymys(rng, M) {
   colliders.push({ x: Math.cos(aB) * rB, z: Math.sin(aB) * rB, hw: 0.17, hd: 0.4, rot: -aB });
   colliders.push({ x: posA[0], z: posA[2], r: 0.15 }, { x: posB[0], z: posB[2], r: 0.15 });
 
-  return { group, sackRoot, sack, stirrer, ladle, chorons, hero, heroKymys: kymys[0], buckets, colliders, neckY, boardRoot };
+  return { group, sackRoot, sack, stirrer, ladle, chorons, hero, heroKymys: kymys[0], buckets, hair: hm, colliders, neckY, boardRoot };
 }

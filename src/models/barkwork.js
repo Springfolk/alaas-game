@@ -79,7 +79,7 @@ export default async function build(ctx, placement) {
   berries.userData.show = (n) => { for (let i = 0; i < BERRIES; i++) berries.setMatrixAt(i, i < n ? full[i] : zero); berries.instanceMatrix.needsUpdate = true; };
   vessel.add(berries);
 
-  // on the hide (1.0–1.4 cm over the ground as this tier draws it: yardlife.js followGround), tipped to the ground's plane under the sheet
+  // on the hide (1.0–1.4 cm over the ground as this tier draws it: world/settle.js), tipped to the ground's plane under the sheet
   const drawn = drawnBy(terrain, TIER.ground), hg = (a, b) => drawn(px + AT[0] + a, pz + AT[1] + b) - py;
   const sx = (hg(0.18, 0) - hg(-0.18, 0)) / 0.36, sz = (hg(0, 0.15) - hg(0, -0.15)) / 0.3;
   const lift = Math.max(0, ...[[0.18, 0.15], [-0.18, 0.15], [0.18, -0.15], [-0.18, -0.15]].map(([a, b]) => hg(a, b) - (hg(0, 0) + sx * a + sz * b)));

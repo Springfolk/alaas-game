@@ -44,9 +44,10 @@ export default async function build(ctx) {
   mesh(merge([frame.geoms.hair, inside.geoms.hair]), M.hair, { cast: false });
   mesh(frame.geoms.timber, M.timber);
   mesh(inside.geoms.floor, M.floor, { cast: false });
-  mesh(inside.geoms.plank, M.plank);
+  // benches, firewood and hides stand on the earth floor (built on level 0; world/settle.js)
+  mesh(inside.geoms.plank, M.plank).userData.ground = 0;
   mesh(inside.geoms.clay, M.clay);
-  mesh(inside.geoms.hide, M.hide);
+  mesh(inside.geoms.hide, M.hide).userData.ground = 0;
 
   // ---- the door curtain: bark edged with leather (its embroidery is not drawn: no traceable source yet, docs/patterns.md)
   const curtain = buildCurtain();
@@ -79,6 +80,10 @@ export default async function build(ctx) {
   // ---- kymys corner and fire
   const ky = buildKymys(rng, M);
   root.add(ky.group);
+  // the kymys corner on the earth floor: the sack's platform and the chorons' board drop as one onto it, the
+  // buckets (and the corner's horsehair) follow it (world/settle.js)
+  ky.sackRoot.userData.rest = ky.boardRoot.userData.rest = true;
+  for (const m of [...ky.buckets.children, ky.hair]) m.userData.ground = 0;
   // the fire asks the cone's radius for every puff every frame: from a table (2 cm steps) instead of the profile's search
   const coneTab = Float32Array.from({ length: Math.ceil(holeY / 0.02) + 2 }, (_, i) => coneR(i * 0.02));
   const coneRFast = (y) => { const f = Math.min(coneTab.length - 1.001, Math.max(0, y / 0.02)), i = f | 0; return coneTab[i] + (coneTab[i + 1] - coneTab[i]) * (f - i); };

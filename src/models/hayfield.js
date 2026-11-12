@@ -20,7 +20,7 @@ export default async function build(ctx, placement) {
   const interactables = [], colliders = [];
 
   // ── the post: a larch stake with a fork, its foot trodden bare ──
-  const B = new Bucket(ground);
+  const B = new Bucket(ground, { drape: true });
   const g0 = ground(0, 0);
   addLog(B, [0, g0 - 0.4, 0], [0.03, g0 + 1.5, 0.02], 0.055, 0.045, rng, M.wood, M.end, { seg: 8 });
   addLog(B, [0.02, g0 + 1.22, 0.01], [0.2, g0 + 1.52, 0.06], 0.03, 0.022, rng, M.wood, M.end, { seg: 6, step: 0.2 });

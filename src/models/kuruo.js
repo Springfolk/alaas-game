@@ -184,7 +184,8 @@ export default async function build(ctx, placement) {
   });
   const earth = add(yard.tg, trodden(ctx, { key: 'trodden-pen', hoof: 1.3 }), 'earth', false);
   earth.receiveShadow = true; earth.renderOrder = -1;
-  add(yard.pats, plain('dung', { roughness: 0.88, bump: 0.003, bumpFreq: 30 }), 'dung', false);
+  // the earth and the dung on it follow the drawn ground (world/settle.js)
+  earth.userData.ground = add(yard.pats, plain('dung', { roughness: 0.88, bump: 0.003, bumpFreq: 30 }), 'dung', false).userData.ground = 'terrain';
   add(yard.grass, grass(), 'grass', false);
 
   // ── colliders: the four sides as thin boxes, the west side split at the gate ──
