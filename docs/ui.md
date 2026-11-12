@@ -61,12 +61,12 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 
 ## Journal (`src/ui/journal.js`, `ui.showJournal(tab, here)`, `ui.j`)
 - A glass window with three leaves (tabs centred): map, finds, work; found / total; language select; close.
-- Map: the alaas drawn from above, north up (`map.webp`, 2048 px for 820 m), the houses, pens and posts drawn from the placed models' bounds. Drag moves it, pinch / wheel / + − zoom (nearly the whole alaas to 10 cm a pixel), the arrow button centres on the player; opened in play it comes up round the player.
+- Map: the alaas drawn from above, north up (`map.webp`, 2048 px for 820 m; closer than 0.3 m a device pixel, 256 px squares at 0.2 / 0.1 / 0.05 m drawn in a worker for what is in view, `src/ui/maptiles.js`; the layer is its own only while it moves, so it is drawn sharp at rest), the houses, pens and posts drawn from the placed models' bounds. Drag moves it, pinch / wheel / + − zoom (nearly the whole alaas to 10 cm a pixel), the arrow button centres on the player; opened in play it comes up round the player.
 - Markers: red arrow = the player and where they face; blue dot = a found thing (a house or place with its name); gold "?" = one that waits; green square with its tool = a job; gold diamond = the destination. Markers that would overlap give way to the more important one until zoomed in.
 - A marker chosen: a pane with its picture and name (a job: what the hands have made), the eye (found: that thing on the stage, closing returns here) and the gold walk button = be led there (`game.guide.go`, again: off). A tap on the bare map puts the destination there.
 - Finds: square pictures by kind (found: the thing as the stage shows it → the stage; not found: a dim blur with "?" → its marker on the map).
 - Work: a picture per job with glyphs and counts of what was made (`WORKS` in `work/list.js`) → its marker on the map.
-- Pictures: `public/assets/ui/journal/<id>.webp` (320 px), `<id>.s.webp` (20 px), `work-<job>.webp`: `npm run bake-journal`. `map.webp` + its extent in `src/data/journal.json`: `npm run bake-map` (after a change to the terrain).
+- Pictures: `public/assets/ui/journal/<id>.webp` (320 px), `<id>.s.webp` (20 px), `work-<job>.webp`: `npm run bake-journal`. `map.webp` + its extent in `src/data/journal.json`: `npm run bake-map` (after a change to the terrain; both it and the squares draw with `src/ui/mapdraw.js`).
 
 ## Title and loading
 - Key art, the name, a glass dock: the loading bar and its status, then the start button; under it the language select. Version (`package.json`, `.ver`), source, credits and the ticket call beneath.

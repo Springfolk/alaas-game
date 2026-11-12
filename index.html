@@ -336,10 +336,13 @@
   .jt.q i { position: absolute; inset: 0; display: grid; place-items: center; font: 400 28px var(--serif); color: rgba(255,255,255,.85); }
   .jt.job.q b { color: var(--dim); }
   .jt.vh, .jt:hover { border-color: #fff; box-shadow: 0 0 9px rgba(var(--glow),.9); }
-  /* the map: one layer dragged and scaled (`--k` = 1 / scale keeps markers and lines their size) */
+  /* the map: one layer dragged and scaled (`--k` = 1 / scale keeps markers and lines their size); a layer of its own only
+     while it moves, so at rest it is drawn sharp at its scale (src/ui/journal.js `settle`) */
   .j-map { touch-action: none; cursor: grab; overflow: hidden; background: #16324c; user-select: none; -webkit-user-select: none; }
-  .j-world { position: absolute; left: 0; top: 0; width: 1000px; height: 1000px; transform-origin: 0 0; will-change: transform; --k: 1; }
-  .j-world img, .j-world svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  .j-world { position: absolute; left: 0; top: 0; width: 1000px; height: 1000px; transform-origin: 0 0; --k: 1; }
+  .j-world.moving { will-change: transform; }
+  .j-world > img, .j-world svg, .j-tiles { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  .j-tiles { z-index: 0; } .j-tile { position: absolute; display: block; height: auto; }
   .m-house { fill: #fff6e2; stroke: #4a3a26; stroke-width: calc(2px * var(--k)); }
   .m-pen { fill: none; stroke: #4a3a26; stroke-width: calc(1.6px * var(--k)); stroke-dasharray: calc(5px * var(--k)) calc(4px * var(--k)); }
   .m-post, .m-dot { fill: #4a3a26; }

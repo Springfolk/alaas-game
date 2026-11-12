@@ -298,6 +298,7 @@ export class UI {
   setMenu(on) { this.menu = on; this.cursor.sync(); }
 
   close() {
+    if (this.open === 'journal') this.j.tiles.clear(); // (their pictures go)
     this.card.classList.remove('show');
     this.journal.classList.remove('show');
     this.lightbox.classList.remove('show');

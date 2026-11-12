@@ -11,6 +11,7 @@ import { WORKS } from '../interact/work/list.js';
 import { VIEWS } from './stage.js';
 import { icon } from './icons.js';
 import { nameHTML } from './names.js';
+import { MapTiles } from './maptiles.js';
 
 const BY_ID = Object.fromEntries(ENTRIES.map((e) => [e.id, e]));
 const M = JOURNAL.map; // { size, cx, cz, half }: the world square the picture covers
@@ -43,7 +44,7 @@ export class Journal {
       <nav class="j-tabs">${TABS.map(([id, ic]) => `<button data-tab="${id}">${icon(ic)}<span></span></button>`).join('')}</nav>
       <div class="j-body">
         <div class="j-leaf j-map" data-leaf="map" data-map>
-          <div class="j-world"><img alt="" draggable="false"><svg viewBox="0 0 ${U} ${U}"></svg><div class="j-pins"></div></div>
+          <div class="j-world"><img alt="" draggable="false"><div class="j-tiles"></div><svg viewBox="0 0 ${U} ${U}"></svg><div class="j-pins"></div></div>
           <div class="j-ctl"><button data-zoom="1">${icon('plus')}</button><button data-zoom="-1">${icon('minus')}</button><button data-zoom="0">${icon('me')}</button></div>
           <div class="j-sel pane"></div>
         </div>
@@ -54,6 +55,7 @@ export class Journal {
     const $ = (s) => this.el.querySelector(s);
     this.map = $('.j-map'); this.world = $('.j-world'); this.pinBox = $('.j-pins'); this.selBox = $('.j-sel'); this.svg = $('.j-world svg');
     $('.j-world img').src = src('assets/ui/journal/map.webp');
+    this.tiles = new MapTiles($('.j-tiles'), M); // close up: drawn squares over it
     this.wire();
   }
   t(o) { return this.ui.t(o); }
@@ -61,6 +63,7 @@ export class Journal {
   // Once the world stands: where everything is. `game.guide` gives the entries' places.
   init(game) {
     this.game = game;
+    this.tiles.init(game.world.terrain.pads);
     const its = game.world.interactables;
     this.places = {};
     for (const e of ENTRIES) { const p = game.guide.places(e.id)[0]; if (p) this.places[e.id] = p; }
@@ -96,6 +99,7 @@ export class Journal {
     $('.j-lang').innerHTML = ui.langSelect(false);
     TABS.forEach(([id, , label], k) => { const b = this.el.querySelectorAll('.j-tabs button')[k]; b.classList.toggle('on', id === tab); b.lastChild.textContent = this.t(label); });
     for (const l of this.el.querySelectorAll('.j-leaf')) l.classList.toggle('on', l.dataset.leaf === tab);
+    if (tab !== 'map') this.tiles.clear();
     if (tab === 'map') this.drawMap();
     else if (tab === 'finds') this.drawFinds($('[data-leaf=finds]'));
     else this.drawWork($('[data-leaf=work]'));
@@ -187,6 +191,19 @@ export class Journal {
     this.world.style.transform = `translate(${v.tx.toFixed(1)}px,${v.ty.toFixed(1)}px) scale(${v.sc.toFixed(4)})`;
     const step = Math.round(Math.log2(v.sc) * 4);
     if (step !== this.step || force) { this.step = step; this.world.style.setProperty('--k', (1 / v.sc).toFixed(4)); this.thin(); }
+    // a layer of its own while it moves (cheap to move, drawn at the scale it had); at rest drawn again at its own
+    // scale, and the close squares for what is in view
+    this.world.classList.add('moving');
+    clearTimeout(this.settleT);
+    this.settleT = setTimeout(() => this.settle(), 180);
+  }
+  settle() {
+    const v = this.view;
+    if (!v || this.ui.open !== 'journal' || this.tab !== 'map') return;
+    this.world.classList.remove('moving');
+    const { w, h } = this.size(), S = U * v.sc, span = 2 * M.half, m = (px) => px / S * span;
+    const dev = Math.min(2, devicePixelRatio || 1) / this.ratio(); // device px per local px
+    this.tiles.update(span / S / dev, { x0: m(-v.tx), x1: m(w - v.tx), z0: m(-v.ty), z1: m(h - v.ty) });
   }
   // Markers that would sit on one another: the more important one stays, the others wait for a closer look.
   thin() {
@@ -263,7 +280,7 @@ export class Journal {
     this.world.style.transform = 'translate(0px,0px) scale(.6)';
     this.world.style.setProperty('--k', '1.6667');
   }
-  reset() { this.view = null; this.sel = null; this.pins = []; this.pinEls = []; this.pinBox.innerHTML = ''; this.selBox.className = 'j-sel pane'; this.selBox.innerHTML = ''; this.tab = 'map'; }
+  reset() { this.tiles.clear(); this.view = null; this.sel = null; this.pins = []; this.pinEls = []; this.pinBox.innerHTML = ''; this.selBox.className = 'j-sel pane'; this.selBox.innerHTML = ''; this.tab = 'map'; }
 
   wire() {
     const ui = this.ui;
