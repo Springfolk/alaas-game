@@ -144,7 +144,7 @@ export class Tuos {
     if (i >= 2) g.audio?.play('wood-take', this.thing.obj.position); // the pegs go in
     this.step++;
     if (this.made) {
-      this.thing.name = TXT.vessel; this.thing.it.label = { sah: 'тордуйа', en: 'тордуйа (a pegged bark vessel)', ru: 'тордуйа (берестяной сосуд на колышках)' };
+      this.thing.name = TXT.vessel; this.thing.it.label = { sah: 'тордуйа', en: 'pegged bark vessel', ru: 'берестяной сосуд на колышках' };
       this.work.count('torduya');
     }
     g.promptKey = null;

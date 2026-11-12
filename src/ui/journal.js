@@ -10,12 +10,12 @@ import { versioned } from '../load/assetv.js';
 import { WORKS } from '../interact/work/list.js';
 import { VIEWS } from './stage.js';
 import { icon } from './icons.js';
+import { nameHTML } from './names.js';
 
 const BY_ID = Object.fromEntries(ENTRIES.map((e) => [e.id, e]));
 const M = JOURNAL.map; // { size, cx, cz, half }: the world square the picture covers
 const U = 1000; // the map layer's own size, px
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const head = (e) => e.sah.split(/[;(]/)[0].trim();
 const src = (s) => versioned(import.meta.env.BASE_URL + s);
 const pic = (name) => esc(src(`assets/ui/journal/${name}.webp`));
 const TABS = [
@@ -108,7 +108,7 @@ export class Journal {
   drawFinds(box) {
     const found = this.ui.state.found, groups = {};
     for (const e of ENTRIES) (groups[e.category] ||= []).push(e);
-    const tile = (e) => (found.has(e.id) ? `<button class="jt" data-entry="${e.id}">${this.thumb(e.id, true)}<b>${esc(head(e))}</b></button>`
+    const tile = (e) => (found.has(e.id) ? `<button class="jt" data-entry="${e.id}">${this.thumb(e.id, true)}<b>${nameHTML(e, this.ui.state.lang)}</b></button>`
       : `<button class="jt q" data-entry="${e.id}" aria-label="?">${this.thumb(e.id, false)}<i>?</i></button>`);
     const top = box.scrollTop;
     box.innerHTML = Object.keys(this.cats).filter((c) => groups[c]).map((c) => `<h4>${esc(this.t(this.cats[c]))}</h4><div class="jg">${groups[c].map(tile).join('')}</div>`).join('');
@@ -142,7 +142,7 @@ export class Journal {
     const dest = g?.guide.dest;
     this.pinBox.innerHTML = this.pins.map((m, k) => {
       const [u, v] = toMap(m.p.x, m.p.z);
-      const name = m.kind === 'found' && m.rank === 2 ? `<span>${esc(head(BY_ID[m.id]))}</span>` : ''; // a found house or place is named
+      const name = m.kind === 'found' && m.rank === 2 ? `<span>${nameHTML(BY_ID[m.id], this.ui.state.lang)}</span>` : ''; // a found house or place is named
       return `<button class="j-pin ${m.kind}" data-pin="${k}" style="left:${(u * 100).toFixed(3)}%;top:${(v * 100).toFixed(3)}%">${m.kind === 'job' ? icon(m.icon) : m.kind === 'q' ? '?' : ''}${name}</button>`;
     }).join('') + '<i class="j-pin dest"></i><i class="j-pin me"></i>';
     this.pinEls = [...this.pinBox.children];
@@ -213,7 +213,7 @@ export class Journal {
       img = `<img src="${pic(done ? JOB_PICS[j.id] || j.entry : (JOB_PICS[j.id] || j.entry) + '.s')}" alt="">`;
     } else {
       const e = BY_ID[m.id], k = m.kind === 'found';
-      name = k ? `<b>${esc(head(e))}</b><small>${esc(this.t(this.cats[e.category]))}</small>` : '<b>?</b>';
+      name = k ? `<b>${nameHTML(e, this.ui.state.lang)}</b><small>${esc(this.t(this.cats[e.category]))}</small>` : '<b>?</b>';
       img = this.thumb(m.id, k);
       if (k) read = `<button class="j-do read" data-open="${m.id}">${icon('eye')}</button>`;
     }
@@ -254,10 +254,10 @@ export class Journal {
   demo() {
     const at = (x, y) => `style="left:${x}%;top:${y}%"`;
     this.pins = []; this.pinEls = [];
-    this.pinBox.innerHTML = `<button class="j-pin found" ${at(40, 40)}><span>Алаас</span></button><button class="j-pin q" ${at(45, 45)}>?</button><button class="j-pin job on" ${at(50, 50)}>${icon('axe')}</button>
+    this.pinBox.innerHTML = `<button class="j-pin found" ${at(40, 40)}><span><span class="nm"><span class="nm-s">Алаас</span><span class="nm-l">Alaas</span></span></span></button><button class="j-pin q" ${at(45, 45)}>?</button><button class="j-pin job on" ${at(50, 50)}>${icon('axe')}</button>
       <i class="j-pin dest on" ${at(55, 55)}></i><i class="j-pin me" ${at(60, 60)}></i>`;
     this.selBox.className = 'j-sel pane on';
-    this.selBox.innerHTML = `<span class="j-thumb"></span><span class="j-name"><b>Алаас</b><small><span>${icon('log')}1</span></small></span><button class="j-do read">${icon('eye')}</button>
+    this.selBox.innerHTML = `<span class="j-thumb"></span><span class="j-name"><b><span class="nm"><span class="nm-s">Алаас</span><span class="nm-l">Alaas</span></span></b><small><span>${icon('log')}1</span></small></span><button class="j-do read">${icon('eye')}</button>
       <button class="j-do go"><i class="gmark"></i>${icon('walk')}</button><button class="j-do go on"><i class="gmark"></i>${icon('walk')}</button>`;
     this.view = { sc: 0.6, tx: 0, ty: 0 };
     this.world.style.transform = 'translate(0px,0px) scale(.6)';
