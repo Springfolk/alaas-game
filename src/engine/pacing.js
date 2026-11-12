@@ -74,8 +74,9 @@ const q = (v, f) => v[Math.min(v.length - 1, Math.floor(v.length * f))];
 //   over  two frames came a refresh late (or the average interval is 10% over), or the GPU is two frames behind in a tenth
 //         of the frames, or takes > 1.6 intervals. The second window running (a hitch looks the same for one, and
 //         a change is not free; far over: at once): fewer pixels, by how far over (5–20% a step), down to the
-//         tier's floor. At the floor, or when the frame's JS alone is the limit (over 0.8 of the interval:
-//         resolution can't help), one of KNOBS; a slower beat after twice as many windows.
+//         tier's floor. At the floor, or when the frame's JS alone is the limit (over 0.75 of the interval:
+//         resolution can't help), one of KNOBS; a slower beat after twice as many windows. JS over 0.75 with 2
+//         late frames in the last 6 windows (a device at the budget, never 2 in one window) steps a knob at once.
 //   room  no late frame, the GPU finishes a quarter of the frames within 0.8 of the interval and the JS takes
 //         under 0.6 of it, twice in a row: 4–8% more resolution, by the room measured (not up to a scale the GPU
 //         fell behind at in the last 15 s, doubled ≤ 2 min each time the climb back fails). At full resolution a
@@ -98,10 +99,14 @@ export function govern(e, dt, now = performance.now()) {
   if (e.gpuTimes) e.gpuTimes.length = 0;
   g.n = g.t = g.late = g.deep = g.js = 0;
   if (g.settle) { g.settle = false; return; } // the window after a change still holds frames queued before it
-  const over = late >= 2 || avg > iv * 1.1 || (timed && (deep > 0.1 || gpu > iv * 1.6));
+  // the JS sits at the budget: a late frame every few windows, never two in one (the last 3 s)
+  const lates = g.lates ||= []; lates.push(late); if (lates.length > 6) lates.shift();
+  const edge = js > iv * 0.75 && lates.reduce((a, b) => a + b, 0) >= 2;
+  const over = late >= 2 || avg > iv * 1.1 || (timed && (deep > 0.1 || gpu > iv * 1.6)) || edge;
   // the JS is the limit: fewer pixels can't help, and the GPU's reports reach a busy main thread late (they then
   // read as a queue)
-  const cpu = over && js > iv * 0.8;
+  const cpu = over && js > iv * 0.75;
+  if (over) lates.length = 0;
   const room = !over && late === 0 && (timed ? quick < iv * 0.8 && js < iv * 0.6 : avg < iv * 1.02);
   g.over = over ? g.over + 1 : 0; g.room = room ? g.room + 1 : 0;
   e.gpuMs = gpu; // (the F3 meter)
@@ -127,7 +132,7 @@ export function govern(e, dt, now = performance.now()) {
         e.resScale = Math.max(floor, e.resScale * Math.min(0.95, Math.max(0.8, Math.sqrt(0.9 / ratio))));
         g.over = 0;
       }
-    } else if (g.over >= need && knob(e, -1, now, cpu, g.over < need * 2)) g.over = 0; // (a slower beat: after twice as many windows)
+    } else if ((g.over >= need || edge) && knob(e, -1, now, cpu, g.over < need * 2 && !edge)) g.over = 0; // (a slower beat: after twice as many windows)
   } else if (room && g.room >= 2) {
     g.room = 0;
     const on = e.knobs, top = on?.[on.length - 1];
@@ -185,6 +190,6 @@ const slower = (name) => ({
 export const KNOBS = [
   { name: 'shadow range ×0.7', cpu: true, ok: () => true, set: (e, d) => { e.sun.shadow.camera.far = e.opts.shadowFar * (d ? 0.7 : 1); } }, // fewer casters per cascade
   { name: 'lake mirror ×0.6', ok: (e) => !!e.reflector, set: (e, d) => { e.reflector.resolutionScale = e.opts.reflection * (d ? 0.6 : 1); } },
-  slower('slower beat'), slower('slower beat 2'),
   { name: 'lazy shadows', cpu: true, ok: (e) => !e.opts.lazyShadows, set: (e, d) => { e.lazyKnob = d; if (!d) e.sun.shadow.autoUpdate = true; } }, // the maps on a move or turn (Engine.lazyShadows)
+  slower('slower beat'), slower('slower beat 2'),
 ];
