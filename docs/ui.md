@@ -36,6 +36,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 | `turn` | the stage is open | dragging the thing |
 | `do` | the hands can do something (its own tool drawn) | doing it |
 | `put` | carrying for 2.5 s | putting down |
+| `back` | 2.5 s into a framed work view (there only `do` and `back`) | leaving it |
 | `journal` | something is found after a first `read` or `do`, nothing in view | opening it |
 | `pause` | after `journal` | shown 9 s, once |
 

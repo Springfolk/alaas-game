@@ -1,9 +1,9 @@
 // Туос үлэтэ: a тордуйа, the birch-bark vessel folded from one sheet and pegged at its corners. Take the sheet
-// from the craft spot's hide and pass it over a hearth fire: each tap is one pass, and its long edges lift a little
-// more each time; after three it is soft (the edges stand up, it steams) and stays so for KEEP s. Then each tap
-// folds the next wall, in the hands or laid on the hide: the two long sides, then each end with its corner flaps
-// and its peg. Seven taps: a vessel, carried, and wild strawberries picked while it is in the hands go into it.
-// Stiff bark does not fold: a tap on it at the hide takes it up. Nothing is told in words: the bark's bend says it.
+// from the craft spot's hide and carry it to a hearth; there one tap and it is made by the fire as the player
+// watches (a framed view, src/interact/framed.js): three passes through the heat, the long edges lifting a little
+// more each time until the bark is soft, then the two long walls folded up, then each end with its corner flaps
+// and its peg; the vessel close up, then carried, and wild strawberries picked while it is in the hands go into it.
+// The sheet is posed from a worker's eye by the fire (`hands.eye`). Leaving stops it at the next step.
 // Props: src/models/barkwork.js. Softening by warming at the fire is attested; boiling is not (docs/content.md).
 import * as THREE from 'three/webgpu';
 import { ease } from '../../util.js';
@@ -12,11 +12,8 @@ const L = (sah, en, ru) => ({ sah, en, ru });
 const TXT = {
   sheet: L('туос', 'birch bark', 'береста'),
   vessel: L('тордуйа', 'torduya', 'тордуйа'),
-  take: L('ыл', 'take it', 'взять'),
-  warm: L('туоһу уокка сылыт', 'warm the bark at the fire', 'согреть бересту у огня'),
+  make: L('тордуйа оҥор', 'make a torduya by the fire', 'сделать тордуйу у огня'),
   lay: L('тириигэ тэлгээ', 'lay it on the hide', 'расстелить на шкуре'),
-  fold: L('кытыытын бүк', 'fold a side up', 'загнуть стенку'),
-  pin: L('муннугун тоһоҕоһунан хатаа', 'fold the end and pin its corners', 'загнуть торец и сколоть углы'),
 };
 const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
 function basisQ(y, xHint, out = new THREE.Quaternion()) {
@@ -26,7 +23,6 @@ function basisQ(y, xHint, out = new THREE.Quaternion()) {
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const CARRY = { p: [0.2, -0.36, -0.5], q: basisQ(V(0, 0.92, 0.38), V(1, 0, 0)) }; // held level, a little tipped to the eye
 const WORK = { p: V(0, -0.3, -0.66), q: basisQ(V(0, 0.68, 0.73), V(1, 0, 0)) }; // being made: out before the eye, its inside turned up to it
-const TOFIRE = { p: V(0.05, -0.3, -0.62), q: basisQ(V(0, 0.55, 0.83), V(1, 0, 0)) }; // its inner side turned to the heat
 const PASSES = 3, KEEP = 300; // passes over the fire that make it soft; s the softness lasts
 
 export class Tuos {
@@ -44,7 +40,7 @@ export class Tuos {
     this.step = 0;      // folds done (4: a vessel)
     this.warm = 0;      // s of softness left
     this.heat = 0;      // passes over the fire (of PASSES), slowly lost away from it
-    this.onHide = true; // lying on the work hide (it can be folded there)
+    this.onHide = true; // lying on the work hide
     this.n = 0;         // berries in it
     this.pose = null; this.folding = -1;
     const own = hands.pose;
@@ -56,24 +52,18 @@ export class Tuos {
 
   actFor(it) {
     const h = this.hands.held;
-    if (it.bark) {
-      if (h || this.busy) return null;
-      if (this.made || !this.onHide) return this.hands.takeAct;
-      return this.warm > 0 ? this.foldOf() : this.hands.takeAct; // stiff: taken up (to the fire)
-    }
-    if (this.held && !this.made && it.fireplace) return this.busy ? this.noAct : this.warm > 0 ? this.foldOf() : this.warmAct; // (the sheet in the hands: never the fire's own feeding)
+    if (it.bark) return h || this.busy ? null : this.hands.takeAct;
+    if (this.held && !this.made && it.fireplace) return this.busy ? this.noAct : this.makeAct; // (the sheet in the hands: never the fire's own feeding)
     if (this.held && !this.made && it.entry === 'birch-bark' && !this.busy && this.game.player.pos.distanceTo(this.rest.p) < 4) return this.layAct; // the craft spot
-    if (it.entry === 'birch-bark' && !this.hands.held && this.onHide && it !== this.thing.it) { const a = this.actFor(this.thing.it); return a === this.hands.takeAct ? (this.takeSheet ||= { ...a, run: (game) => a.run(game, this.thing.it) }) : a; } // the craft spot: what the sheet on it would do
+    if (it.entry === 'birch-bark' && !h && this.onHide && it !== this.thing.it) return (this.takeSheet ||= { ...this.hands.takeAct, run: (game) => this.hands.takeAct.run(game, this.thing.it) }); // the craft spot: the sheet on it
     return undefined;
   }
-  // in the hands: soft, the next fold anywhere; stiff, a pass over any hearth fire within a few steps
+  // in the hands, by any hearth fire within a few steps: made there
   idleAct() {
     if (!this.held || this.made) return null;
     if (this.busy) return this.noAct;
-    if (this.warm > 0) return this.foldOf();
-    return this.nearFire() ? this.warmAct : null;
+    return this.nearFire() ? this.makeAct : null;
   }
-  foldOf() { return this.step < 2 ? this.foldAct : this.pinAct; }
   nearFire() {
     const pl = this.game.player.pos;
     for (const i of this.game.world.interactables) {
@@ -85,27 +75,51 @@ export class Tuos {
   }
   noAct = { id: 'none', label: L('', '', ''), run: async () => {} };
 
-  warmAct = { id: 'warm-bark', label: TXT.warm, run: () => this.warmIt() };
-  // one pass over the fire: out to the heat, turned, back; the long edges lift a step
-  async warmIt() {
-    if (!this.held || this.busy || this.warm > 0) return;
-    const g = this.game;
+  makeAct = { id: 'make-bark', label: TXT.make, run: () => this.make() };
+  // Watched by the fire: held over the hearth's rim, its face to the viewer (world poses: `hands.pose`, with a
+  // worker's eye there so it stays in the picture); the view frames it and the fire.
+  async make() {
+    const fire = this.nearFire();
+    if (!fire || !this.held || this.busy || this.made) return;
+    const g = this.game, F = g.framed, h = this.hands, fp = fire.fireplace.pos(), pl = g.player.pos;
+    const away = Math.atan2(pl.x - fp.x, pl.z - fp.z), a = V(Math.sin(away), 0, Math.cos(away)), side = V(a.z, 0, -a.x); // from the fire towards the player; across
+    const pose = (d, y, tilt) => ({ p: fp.clone().addScaledVector(a, d).add(V(0, y, 0)), q: basisQ(V(0, 1, 0).multiplyScalar(1 - tilt).addScaledVector(a, tilt), side), world: true });
+    this.at = { work: pose(0.62, 0.32, 0.55), heat: pose(0.38, 0.42, 0.75) };
     this.busy = true;
-    const from = { p: WORK.p.clone(), q: WORK.q.clone() }, P = this.pose = { p: from.p.clone(), q: from.q.clone() };
-    const h0 = Math.floor(this.heat + 1e-3);
-    await this.tween(0.85, (k) => {
+    h.eye = { position: fp.clone().addScaledVector(a, 1).setY(fp.y + 0.7), quaternion: new THREE.Quaternion(), aspect: 1.6 }; // (keeps it in the picture)
+    this.thing.blend = 0; this.thing.from = { p: this.thing.obj.position.clone(), q: this.thing.obj.quaternion.clone() }; // from the body's hands to the fire
+    this.pose = { p: this.at.work.p.clone(), q: this.at.work.q.clone(), world: true };
+    const work = this.at.work.p;
+    if (await F.open({ c: work.clone().lerp(fp, 0.4).add(V(0, 0.08, 0)), r: 0.55, yaw: away + 0.6, el: 0.45, fov: 40 })) {
+      await this.wait(0.5);
+      while (F.on && this.warm <= 0) await this.warmIt(); // three passes: soft
+      if (F.on) await this.wait(0.5); // the edges stand, it is soft
+      F.aim({ c: work.clone().add(V(0, 0.03, 0)), r: 0.32, el: 0.7 });
+      while (F.on && !this.made) { await this.foldNext(); await this.wait(0.25); }
+      if (this.made) { F.aim({ r: 0.24 }); await this.wait(1.6); } // the vessel, close up
+      await F.close();
+    }
+    h.eye = null; this.pose = null; this.at = null;
+    if (this.held) h.grab(this.thing); // back into the body's hands (eased)
+    this.busy = false;
+    g.promptKey = null;
+  }
+  wait(s) { return this.tween(s, () => {}); }
+  // one pass through the heat: out over the fire's edge, along it, back; the long edges lift a step
+  async warmIt() {
+    const g = this.game, A = this.at, P = this.pose;
+    const h0 = Math.floor(this.heat + 1e-3), side = V(0, 0, 0);
+    side.set(1, 0, 0).applyQuaternion(A.heat.q);
+    await this.tween(1.3, (k) => {
       const e = Math.sin(k * Math.PI); // out and back
-      P.p.lerpVectors(from.p, TOFIRE.p, e); P.q.slerpQuaternions(from.q, TOFIRE.q, e);
-      P.p.x += Math.sin(k * Math.PI * 2) * 0.06 * e; // passed through the heat
+      P.p.lerpVectors(A.work.p, A.heat.p, e).addScaledVector(side, Math.sin(k * Math.PI * 2) * 0.1 * e); // along the heat
+      P.q.slerpQuaternions(A.work.q, A.heat.q, e);
       this.heat = h0 + k;
     });
-    this.pose = null; this.busy = false;
     this.heat = h0 + 1;
     g.audio?.play('fire-feed', this.thing.obj.position) || g.audio?.play('ribbon', this.thing.obj.position);
     if (this.heat >= PASSES) { this.heat = 0; this.warm = KEEP; g.audio?.play('ribbon', this.thing.obj.position); } // soft
-    g.promptKey = null;
   }
-  tween(dur, step) { return new Promise((res) => { let k = 0; this.tick = (dt) => { k = Math.min(1, k + dt / dur); step(k); if (k >= 1) { this.tick = null; res(); } }; }); }
   // How the unfolded long walls stand by themselves: a step up with each pass, standing while it stays soft, flat
   // when stiff.
   bend() {
@@ -128,24 +142,32 @@ export class Tuos {
       game.promptKey = null;
     },
   };
-  foldAct = { id: 'fold-bark', label: TXT.fold, run: () => this.foldNext() };
-  pinAct = { id: 'pin-bark', label: TXT.pin, run: () => this.foldNext() };
-  // a tap: the next wall comes up and stays (the ends take their pegs)
+  // the next wall comes up and stays (the ends take their pegs)
   async foldNext() {
-    if (this.busy || this.made || this.warm <= 0) return;
+    if (this.made || this.warm <= 0) return;
     const g = this.game, i = this.step;
-    this.busy = true; this.folding = i;
+    this.folding = i;
     const f0 = this.fold[i];
     g.audio?.play('ribbon', this.thing.obj.position);
-    await this.tween(0.5, (k) => { this.fold[i] = f0 + (1 - f0) * ease(k); this.parts.setFold(this.fold); });
-    this.folding = -1; this.busy = false;
+    await this.tween(0.7, (k) => { this.fold[i] = f0 + (1 - f0) * ease(k); this.parts.setFold(this.fold); });
+    this.folding = -1;
     if (i >= 2) g.audio?.play('wood-take', this.thing.obj.position); // the peg goes in
     this.step++;
     if (this.made) {
       this.thing.name = TXT.vessel; this.thing.it.label = { sah: 'тордуйа', en: 'pegged bark vessel', ru: 'берестяной сосуд на колышках' };
       this.work.count('torduya');
     }
-    g.promptKey = null;
+  }
+
+  tween(dur, step) { return new Promise((res) => { let k = 0; this.tick = (dt) => { k = Math.min(1, k + dt / dur); step(k); if (k >= 1) { this.tick = null; res(); } }; }); }
+  // How the unfolded long walls stand by themselves: a step up with each pass, standing while it stays soft, flat
+  // when stiff.
+  bend() {
+    if (this.made || this.step >= 2) return;
+    const d = this.warm > 0 ? 0.28 : 0.25 * this.heat / PASSES;
+    let changed = false;
+    for (let i = this.step; i < 2; i++) if (i !== this.folding && Math.abs(this.fold[i] - d) > 1e-3) { this.fold[i] = d; changed = true; }
+    if (changed) this.parts.setFold(this.fold);
   }
 
   // called by the berry picking (src/interact/index.js): each berry into the vessel, if it is in the hands;

@@ -22,6 +22,7 @@ import { Guide } from './ui/guide.js';
 import { Stage } from './ui/stage.js';
 import { Teach } from './ui/teach.js';
 import { Hints } from './interact/hints.js';
+import { Framed } from './interact/framed.js';
 import { prewarmUI } from './ui/prewarm.js';
 import { icon, glyph } from './ui/icons.js';
 import { fillSelects, watchSelects } from './ui/select.js';
@@ -115,6 +116,7 @@ class Game {
     this.hints = new Hints(this); // the next thing to do, told by the world (src/interact/hints.js); its sprites exist before the warm-up
     this.guide = new Guide(this); // the journal's finder (DOM only)
     this.stage = this.ui.stage = new Stage(this); // the inspect stage: the view goes to the thing (src/ui/stage.js)
+    this.framed = new Framed(this); // a job's framed work view (src/interact/framed.js)
     this.ui.placed = new Set(this.world.interactables.map((i) => i.entry).filter(Boolean));
     this.ui.j.init(this); // the journal's map: where everything is
     if (params.has('sun')) { const [e, a] = params.get('sun').split(',').map(Number); this.engine.setSun(e, a ?? this.engine.sunAz); }
@@ -460,6 +462,7 @@ class Game {
   closeCard() {
     const r = this.reading;
     this.reading = null;
+    if (this.framed?.on) { this.framed.leave(); return; }
     if (!this.cardOpen() && !this.stage?.on) return;
     if (this.cardOpen()) this.ui.close();
     this.stage.close();
@@ -513,6 +516,7 @@ class Game {
   // Putting down (right button, Q, the touch button): what you carry goes back to its place when that is
   // within reach, else onto the ground before you.
   put() {
+    if (this.framed?.on) { this.framed.leave(); return; }
     if (!this.playing || this.acting) return;
     const act = this.interact?.putAct();
     if (act) this.teach.note('put');
@@ -594,6 +598,7 @@ class Game {
     if (!this.title && !this.ui.modal && !paused && !staged) this.stepPlayer(dt);
     else if (this.title) { this.player.update(0); }
     if (staged) this.stage.update(dt);
+    this.framed?.update();
     // tag interactable roots once
     for (const it of this.world.interactables) if (it.target && !it.target.userData.interactable) { it.target.userData.interactable = it; quickRaycast(it.target); }
     this.pickTick = (this.pickTick || 0) + 1;
@@ -604,11 +609,12 @@ class Game {
     if (pick || this.promptKey == null) {
       // the prompt names the thing in view, what the hands would do with it and whether it has a card; with
       // nothing in view the dot alone turns into a ring when the carried thing can be used
-      const act = !live || this.acting ? null : (f && this.actOf(f)) || this.interact?.idleAct();
+      const fr = this.framed?.on ? this.framed.v : null; // a framed work view: its own act of the moment, and "back"
+      const act = fr ? fr.act?.() || null : !live || this.acting ? null : (f && this.actOf(f)) || this.interact?.idleAct();
       const e = f && BY_ID[f.entry];
-      const what = f ? f.label || e || f.entry : null; // (src/ui/names.js)
+      const what = fr ? null : f ? f.label || e || f.entry : null; // (src/ui/names.js)
       const can = !!act && act.id !== 'none';
-      const put = live && !this.acting ? this.interact?.putAct() || null : null;
+      const put = fr ? this.framed.backAct : live && !this.acting ? this.interact?.putAct() || null : null;
       this.doReady = can; this.doAct = can ? act : null; // (the touch hand button draws this act's tool)
       this.readReady = !!e;
       this.putReady = !!put; this.putAct = put;
@@ -616,7 +622,7 @@ class Game {
       if (key !== this.promptKey) {
         this.promptKey = key;
         const dot = document.getElementById('dot');
-        dot.classList.toggle('on', !!(f || can));
+        dot.classList.toggle('on', !fr && !!(f || can));
         dot.classList.toggle('do', can);
         this.ui.setPrompt(what, { act: this.doAct, read: !!e, put });
       }

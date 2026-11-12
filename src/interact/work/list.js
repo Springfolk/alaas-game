@@ -36,7 +36,7 @@ export const WORKS = [
   },
   {
     id: 'forge', name: L('Уус кыһата', 'At the forge', 'У горна'), entry: 'blacksmith',
-    find: (i) => i.act?.id === 'bellows', icon: 'hammer',
+    find: (i) => i.act?.id === 'forge', icon: 'hammer',
     done: (w) => w.hammer > 0,
     made: (w) => [['hammer', w.hammer || 0], ['check', w.blades || 0]],
   },

@@ -106,13 +106,26 @@ export class Stage {
     if (s.cut) { s.hold = true; this.cut(() => { s.t = 1; s.hold = false; }); } // (the view stays put until the dip hides the cut)
     return s.mode;
   }
+  // A framed work view (src/interact/framed.js): the view glides from where it is to `v` = { c (what is watched),
+  // r (m it must show round c), yaw (rad, from c to the eye), el (rad), fov (°) }; `v.c` may move (the view
+  // follows it, eased). Never through a wall, never under the ground.
+  work(v) {
+    const cam = this.cam, wasOn = this.on;
+    if (!wasOn) this.body = { position: cam.position.clone(), quaternion: cam.quaternion.clone(), aspect: cam.aspect, fov: cam.fov };
+    const c = v.c.clone();
+    const s = { mode: 'work', v, c, r: v.r, t: 0, oy: 0, op: 0, zoom: 1, idle: 0, time: 0, from: { pos: cam.position.clone(), quat: cam.quaternion.clone(), fov: cam.fov } };
+    s.walls = this.game.world.colliders.filter((k) => k.kind === 'box' && Math.min(k.hw, k.hd) <= 0.2 && Math.max(k.hw, k.hd) >= 0.5
+      && Math.hypot(k.x - c.x, k.z - c.z) < 12 && !inWall(k, c.x, c.y, c.z, 0.3 + PAD));
+    this.s = s; this.on = true; this.closing = false;
+    return s;
+  }
   // back to the body; `then` once the view is there
   close(then) {
     const s = this.s;
     if (!this.on) { then?.(); return; }
     const end = () => { this.on = false; this.s = null; this.body = null; this.closing = false; this.game.engine.closeLook = false; this.game.player.update(0); then?.(); };
     if (!s || s.mode === 'photo') { end(); return; }
-    if (s.cut || s.mode !== 'near') { this.cut(end); return; }
+    if (s.cut || (s.mode !== 'near' && s.mode !== 'work')) { this.cut(end); return; }
     this.closing = end; // glides back (update)
   }
   // a cut hidden by a short dip to dark
@@ -145,9 +158,10 @@ export class Stage {
     // the thing's place on screen follows the layout (a reading sheet moves it up or aside)
     const a = this.area, k = s.time < 0.05 ? 1 : 1 - Math.exp(-7 * dt);
     this.ax += (a.x - this.ax) * k; this.ay += (a.y - this.ay) * k;
-    const fov = s.fov, tv = Math.tan(fov * D2R / 2), aspect = cam.aspect;
+    const f0 = s.fov, tv = Math.tan(f0 * D2R / 2), aspect = cam.aspect;
     const sway = this.still || s.idle < 1.5 ? 0 : Math.sin((s.idle - 1.5) * 0.35) * Math.min(1, (s.idle - 1.5) / 3) * (s.mode === 'here' ? 2.5 : 7) * D2R; // a slow turn of its own
-    if (s.mode === 'here') {
+    if (s.mode === 'work') this.workView(s, dt);
+    else if (s.mode === 'here') {
       this.pos.copy(s.eye);
       const el = clamp(s.el + s.op, -80 * D2R, 80 * D2R);
       this.quat.setFromEuler(_e.set(el, s.yaw + s.oy + sway, 0, 'YXZ'));
@@ -169,7 +183,7 @@ export class Stage {
       this.quat.setFromRotationMatrix(_m.lookAt(this.pos, s.c, UP));
       this.quat.multiply(_q.setFromEuler(_e.set(-Math.atan(this.ay * tv), Math.atan(this.ax * tv * aspect), 0, 'YXZ')));
     }
-    const e = ease(clamp(s.t, 0, 1));
+    const e = ease(clamp(s.t, 0, 1)), fov = s.mode === 'work' ? s.fov : f0;
     cam.position.lerpVectors(s.from.pos, this.pos, e);
     cam.quaternion.slerpQuaternions(s.from.quat, this.quat, e);
     const f = s.from.fov + (fov - s.from.fov) * e;
@@ -177,6 +191,27 @@ export class Stage {
     cam.updateMatrixWorld();
   }
 
+  // the framed work view: `v.r` round the watched point fits the narrower side of the screen, the eye along (yaw, el) from it
+  workView(s, dt) {
+    const v = s.v, cam = this.cam;
+    const k = s.time < 0.05 ? 1 : 1 - Math.exp(-3.5 * dt); // a new aim: the view moves on, eased
+    s.c.lerp(v.c, k);
+    s.yaw = s.yaw === undefined ? v.yaw : s.yaw + Math.atan2(Math.sin(v.yaw - s.yaw), Math.cos(v.yaw - s.yaw)) * k;
+    s.el = s.el === undefined ? v.el : s.el + (v.el - s.el) * k;
+    s.r += (v.r - s.r) * k;
+    const portrait = this.portrait; // a phone upright: as near as on a wide screen, `r` a little cropped at the sides, more above and below
+    s.fov = v.fov * (portrait ? 1.45 : 1);
+    const tv = Math.tan(s.fov * D2R / 2), fit = Math.min(cam.aspect, 1) * tv;
+    const D = s.r * (portrait ? 0.75 : 1) / Math.sin(Math.atan(fit));
+    dirOf(s.yaw, s.el, this.pos);
+    const free = s.walls.length ? reach(s.walls, s.c, this.pos, D) : D;
+    s.d = s.d === undefined || free < s.d ? free : s.d + (free - s.d) * (1 - Math.exp(-6 * dt));
+    this.pos.multiplyScalar(Math.max(s.d, 0.3)).add(s.c);
+    const floor = this.game.world.groundAt(this.pos.x, this.pos.z) + 0.25;
+    if (this.pos.y < floor) this.pos.y = floor;
+    this.quat.setFromRotationMatrix(_m.lookAt(this.pos, s.c, UP));
+    if (v.lift) this.quat.multiply(_q.setFromEuler(_e.set(v.lift * tv, 0, 0))); // the watched point lower on screen
+  }
   // a world point on screen (px), or null behind the eye
   project(p, out = {}) {
     const v = _v.copy(p).applyMatrix4(this.cam.matrixWorldInverse);

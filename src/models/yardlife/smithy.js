@@ -1,7 +1,7 @@
 // The smith's lean-to (кыһа): pole frame under larch-bark slabs, open to the yard; a clay trench forge
 // on a log crib, twin leather bag-bellows with a Y nozzle, the anvil iron set in a larch stump,
 // tongs, hammer, a knife blank, the quench tub, a basket of charcoal, ore and slag by the door.
-// The smith is away. Pumping the bellows (the act) makes the coals flare.
+// The smith is away. One tap and a knife is made here as the player watches (`make`).
 import * as THREE from 'three/webgpu';
 import { addLog, along, blob, boxUV, Bucket, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, sheetGeo, sleep, TAU } from './kit.js';
 import { anvilGeo, fileGeo, grainAlong, haftGeo, hammerHeadGeo, tongsGeo } from './forged.js';
@@ -282,22 +282,11 @@ export function smithy(K, x, z, yaw) {
   K.group.add(light);
 
   // ---- animation: idle smoulder; pumping alternates the bags and the coals flare ----
-  // ---- the forge work (docs/actions.md): the helper's part, every step a tap from anywhere in the lean-to. Each
-  // tap presses a bag of the bellows (they take turns): the coals flare and the blank in them takes a step of heat,
-  // glowing after three. A tap carries it in the tongs to the anvil; there each tap is a blow (taps in rhythm: one
-  // before the hammer is back is lighter and counts half), and the blank grows longer and flatter with each blow on
-  // bright iron, three blows a pass, three passes (point, flatten, edge); dark iron only rings, and a tap takes it
-  // back to the coals. Last, a tap quenches it in the tub. Nothing is told in words: the coals, the iron's colour,
-  // its shape and the blow's ring say it.
+  // ---- the forge work (docs/actions.md): watched, one tap (`make` below); the bellows, the blank's heat in its
+  // colour, the hammer, sparks, the tongs and the steam are driven here every frame.
   const L3 = (sah, en, ru) => ({ sah, en, ru });
-  const TXT = {
-    toAnvil: L3('кытаҕаһынан кыстыкка уур', 'carry it to the anvil with the tongs', 'перенести клещами на наковальню'),
-    toFire: L3('уокка төттөрү уур', 'back into the coals', 'вернуть в угли'),
-    quench: L3('ууга уг', 'quench it in the tub', 'опустить в воду'),
-    blank: L3('быһах тимирэ', 'knife blank', 'заготовка ножа'),
-    // the three passes, as what the hammer does now
-    passes: [L3('уһугун тарт', 'draw out the point', 'оттянуть остриё'), L3('хаптат', 'flatten it', 'расплющить'), L3('биитин таптай', 'forge the edge', 'проковать лезвие')],
-  };
+  const TXT = { blank: L3('быһах тимирэ', 'knife blank', 'заготовка ножа') };
+
   const heatU = uniform(0);
   const hot = new THREE.MeshStandardNodeMaterial({ color: 0x4a4744, roughness: 0.5, metalness: 0.6 }); // catches the light, cold too
   hot.name = 'hot-iron';
@@ -323,10 +312,11 @@ export function smithy(K, x, z, yaw) {
   const SPOT = {
     fire: { p: new THREE.Vector3(...Wy(FX, fy + FTOP - 0.012, 0.08)), yaw: yaw + Math.PI / 2 + 0.2 },
     anvil: { p: new THREE.Vector3(ax, anvilY + 0.008, az), yaw: yaw + 1.1 }, // the bar (1.3 cm thick) on the anvil's face
-    tub: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.19, -0.85)), yaw: yaw + 0.4 },
+    over: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.36, -0.85)), yaw: yaw + 0.4 }, // held over the quench tub
+    tub: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.207, -0.85)), yaw: yaw + 0.4 }, // in the water, its top at the surface
   };
   // steam off the quench tub: white puffs that rise fast and are gone in a breath, only while hot iron is in the water
-  const steam = makeSmoke(SPOT.tub.p.toArray(), [K.wind[0] * 0.5, K.wind[1] * 0.5], { count: 22, rate: 0, idle: true, life: 2.8, size: [0.14, 0.95], rise: 0.85, tint: 0xf6f6f2, shade: 0xc9cbcc, alpha: 0.6, spread: 0.16, seed: 31 });
+  const steam = makeSmoke(SPOT.tub.p.toArray(), [K.wind[0] * 0.15, K.wind[1] * 0.15], { count: 22, rate: 0, idle: true, life: 2.8, size: [0.14, 0.95], rise: 0.85, tint: 0xf6f6f2, shade: 0xc9cbcc, alpha: 0.6, spread: 0.16, seed: 31 });
   steam.mesh.name = 'steam';
   K.group.add(steam.mesh);
   let steamT = 0; // seconds of hiss left
@@ -401,8 +391,8 @@ export function smithy(K, x, z, yaw) {
       b.bag.scale.set(1, sc, 0.85 + 0.15 * sc);
       b.upper.position.y = 0.035 + 0.13 * sc;
     });
-    K.M.glow.value = 0.22 + energy * 2.6 + (Wk.pressing ? 0.45 : 0);
-    light.intensity = 0.15 + energy * 9;
+    K.M.glow.value = 0.22 + energy * 1.2 + (Wk.pressing ? 0.25 : 0);
+    light.intensity = 0.15 + energy * 2.5; // the coals keep their colour as they flare
     // the blank: heats in the coals with the blast, cools in the air
     if (Wk.at === 'fire' && !Wk.fly) Wk.heat = Math.max(0, Wk.heat - dt * 0.004); // the coals keep it hot
     else Wk.heat = Math.max(0, Wk.heat - dt * (Wk.at === 'tub' ? 2.5 : 0.01));
@@ -435,11 +425,10 @@ export function smithy(K, x, z, yaw) {
       if (H.k >= 1) { H.phase = 'rest'; H.t = 0; H.done?.(); }
     } else if (H.phase === 'rest' && (H.t += dt) > 0.3) { H.phase = null; H.d = null; hammer.position.copy(hamRest.p); hammer.quaternion.copy(hamRest.q); }
     if (H.phase) {
-      // the blow comes from the player's side: the haft level and its face square on the blank at the bottom, swung
+      // the blow comes from the smith's place: the haft level and its face square on the blank at the bottom, swung
       // up about the haft's end (head local: haft +Y, face +X)
       if (!H.d) {
-        H.d = new THREE.Vector3(0, 0, -1);
-        if (c?.camera) { K.group.worldToLocal(_th.copy(c.camera.position)); H.d.set(ax - _th.x, 0, az - _th.z); if (H.d.lengthSq() < 1e-4) H.d.set(0, 0, -1); H.d.normalize(); }
+        H.d = new THREE.Vector3(...Wy(0.45, 0, 0.9)).sub(new THREE.Vector3(...Wy(0, 0, 0))).setY(0).normalize(); // the smith stands on the forge's side of the anvil
         const x = new THREE.Vector3(0, -1, 0), z = new THREE.Vector3().crossVectors(x, H.d);
         H.q0 = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, H.d, z));
         H.axis = new THREE.Vector3().crossVectors(H.d, _ty).normalize();
@@ -457,69 +446,90 @@ export function smithy(K, x, z, yaw) {
 
   const target = K.proxy(...Wy(0.1, fy + 0.4, 0), 1.9, 0.85, 1.5, yaw);
   const pos = new THREE.Vector3(...Wy(-0.6, fy + 0.3, 0));
-  const act = {
-    id: 'bellows',
-    label: { sah: 'Күөрдү үр', en: 'Pump the bellows', ru: 'Покачать мехи' },
-    run: async (game) => {
-      if (Wk.pressing) return;
-      if (Wk.at === 'rest') { Wk.at = 'fire'; Wk.stage = 0; Wk.blows = 0; setShape(0); blank.position.copy(SPOT.fire.p); blank.rotation.y = SPOT.fire.yaw; blank.userData.sphere = undefined; } // a new blank
-      Wk.step = Wk.heat < NEED ? Math.max(0.2, (NEED + 0.12 - Wk.heat) / 3) : 0.1; // three presses from cold to forging heat
-      Wk.side = 1 - Wk.side; Wk.pressing = true; Wk.pressT = 0;
-      sound(game, 'bellows', pos);
-      await new Promise((res) => { Wk.pressDone = res; });
-      game.promptKey = null;
-    },
+  // one press of a bag (they take turns): the coals flare, the blank in them takes a step of heat
+  const press = async (game) => {
+    Wk.step = Wk.heat < NEED ? Math.max(0.2, (NEED + 0.12 - Wk.heat) / 3) : 0.1;
+    Wk.side = 1 - Wk.side; Wk.pressing = true; Wk.pressT = 0;
+    sound(game, 'bellows', pos);
+    await new Promise((res) => { Wk.pressDone = res; });
   };
-  // the blank's own act follows where it lies and how hot it is
   // each blow on bright iron draws the blank out a little: longer, thinner, wider, until the pass gives the next shape
   const grow = () => { const k = Wk.blows / BLOWS, m = shapes[Wk.stage]; m.scale.set(1 + 0.07 * k, 1 - 0.22 * k, 1 + 0.12 * k); };
-  const strike = async (game, top = 1) => {
-    if (Wk.busy) { Wk.next = 0.5; return; } // a tap before the hammer is back: a lighter blow after it
+  const strike = async (game) => {
     Wk.busy = true;
     const H = Wk.ham;
-    H.phase = 'raise'; H.up = 0; H.t = 0; H.to = top;
+    H.phase = 'raise'; H.up = 0; H.t = 0; H.to = 1; H.d = null;
     await new Promise((res) => { H.done = res; });
-    const full = H.top > 0.7, hot = Wk.heat > DARK;
-    (hot && sound(game, 'anvil', SPOT.anvil.p)) || sound(game, 'chop-stuck', SPOT.anvil.p); // dark iron only rings dull
-    game.player.springV -= 0.15 + 0.5 * H.top;
-    if (hot) {
-      Wk.heat -= 0.012;
-      Wk.blows += full ? 1 : 0.5;
-      spark();
-      if (Wk.blows >= BLOWS) { Wk.blows = 0; shapes[Wk.stage].scale.setScalar(1); Wk.stage++; setShape(Wk.stage); } else grow();
-      game.work?.count('hammer');
+    sound(game, 'anvil', SPOT.anvil.p);
+    Wk.heat -= 0.06; // the iron cools under the hammer: yellow to red, then a dull glow that wants the coals again
+    Wk.blows++;
+    spark();
+    if (Wk.blows >= BLOWS) { Wk.blows = 0; shapes[Wk.stage].scale.setScalar(1); Wk.stage++; setShape(Wk.stage); } else grow();
+    game.work?.count('hammer');
+    Wk.busy = false;
+  };
+  const quench = async (game) => {
+    await move('over', 0.7);
+    await sleep(250);
+    await move('tub', 0.3);
+    sound(game, 'quench', SPOT.tub.p) || sound(game, 'water-pour', SPOT.tub.p);
+    steamT = 1.6;
+    await sleep(1400);
+    await move('over', 0.4);
+    await sleep(250);
+    await move('anvil', 0.7);
+    Wk.at = 'rest';
+    game.work?.count('blades');
+  };
+  // Watched, in a framed view of the lean-to (src/interact/framed.js): the bellows bring the blank to a glow, the
+  // tongs carry it to the anvil, three passes of three blows draw it into a knife (point, flatten, edge) with a
+  // return to the coals when the iron dulls, the quench in steam, the knife close up. Leaving stops it at the next
+  // step; the next tap goes on from there.
+  // the views (src/interact/framed.js), by the lean-to's own directions: [local x, z] from the watched point to the eye
+  const dirYaw = (lx, lz) => { const d = world(new THREE.Vector3(...Wy(lx, 0, lz))).sub(world(new THREE.Vector3(...Wy(0, 0, 0)))); return Math.atan2(d.x, d.z); };
+  const at = (lx, lz, y) => world(new THREE.Vector3(...Wy(lx, y, lz)));
+  const VIEW = {
+    fire: () => ({ c: at(-0.1, 0, fy + 0.45), r: 0.72, yaw: dirYaw(-0.45, -1), el: 0.78 }), // the bags and the coals, side on
+    anvil: () => ({ c: world(SPOT.anvil.p).add(new THREE.Vector3(0, 0.1, 0)), r: 0.32, yaw: dirYaw(-1, 0.5), el: 0.42 }), // the hammer's arc in profile
+    tub: () => ({ c: world(SPOT.tub.p).add(new THREE.Vector3(0, 0.25, 0)), r: 0.5, yaw: dirYaw(-1, -0.5), el: 0.4 }), // the steam rises in frame
+    knife: () => ({ c: world(SPOT.anvil.p), r: 0.2, yaw: dirYaw(-1, 0.5), el: 0.95 }),
+  };
+  const view = (k) => ({ ...VIEW[k](), fov: 40 });
+  const make = async (game) => {
+    const F = game.framed;
+    if (Wk.at === 'rest') { Wk.at = 'fire'; Wk.stage = 0; Wk.blows = 0; Wk.heat = 0; setShape(0); blank.position.copy(SPOT.fire.p); blank.rotation.y = SPOT.fire.yaw; blank.userData.sphere = undefined; } // a new blank
+    if (!(await F.open(view(Wk.at === 'fire' ? 'fire' : 'anvil')))) return;
+    await sleep(350);
+    while (F.on) {
+      if (Wk.at === 'fire') {
+        F.aim(view('fire'));
+        while (F.on && Wk.heat < NEED + 0.17) { await press(game); await sleep(140); }
+        if (!F.on) break;
+        await sleep(450); // the glow, a breath
+        F.aim(view('anvil'));
+        await move('anvil');
+        sound(game, 'wood-lay-2', SPOT.anvil.p);
+        await sleep(300);
+      } else if (Wk.stage < 3) {
+        if (Wk.heat <= DARK + 0.12) { await sleep(250); F.aim(view('fire')); await move('fire'); await sleep(200); continue; }
+        const pass = Wk.blows === 0;
+        if (pass && Wk.stage) await sleep(380); // the iron turned for the next pass
+        await strike(game);
+        await sleep(130);
+      } else {
+        F.aim(view('tub'));
+        await quench(game);
+        F.aim(view('knife'));
+        await sleep(2200); // the knife, close up
+        break;
+      }
     }
-    await sleep(100);
-    Wk.busy = false; game.promptKey = null;
-    if (Wk.next) { const t = Wk.next; Wk.next = 0; if (Wk.at === 'anvil' && Wk.stage < 3) strike(game, t); }
+    await F.close();
   };
-  const acts = {
-    toAnvil: { id: 'to-anvil', label: TXT.toAnvil, run: async (game) => { await move('anvil'); sound(game, 'wood-lay-2', SPOT.anvil.p); game.promptKey = null; } },
-    toFire: { id: 'to-fire', label: TXT.toFire, run: async (game) => { await move('fire'); game.promptKey = null; } },
-    strike: TXT.passes.map((label, i) => ({ id: 'hammer-' + i, label, run: (game) => strike(game), tap: () => { Wk.next = 0.5; } })),
-    quench: {
-      id: 'quench', label: TXT.quench,
-      run: async (game) => {
-        await move('tub', 0.8);
-        sound(game, 'quench', SPOT.tub.p) || sound(game, 'water-pour', SPOT.tub.p);
-        steamT = 1.6;
-        await sleep(1500);
-        await move('anvil', 0.8);
-        Wk.at = 'rest';
-        game.work?.count('blades');
-        game.promptKey = null;
-      },
-    },
-  };
-  blank.userData.forge = Wk; // (tools: the work's state)
-  // the act of the moment, for the forge, the blank and anywhere in the lean-to (src/interact/index.js asks `live`)
-  const live = () => {
-    if (Wk.fly || Wk.at === 'tub') return null;
-    if (Wk.at === 'rest' || Wk.at === 'fire') return Wk.at === 'fire' && Wk.heat >= NEED && !Wk.pressing ? acts.toAnvil : act; // glowing: to the anvil, else the bellows
-    if (Wk.stage >= 3) return Wk.busy ? null : acts.quench;
-    return Wk.heat > DARK ? acts.strike[Wk.stage] : Wk.busy ? null : acts.toFire;
-  };
-  const around = { r: 3.4, at: () => world(SPOT.anvil.p) }; // anywhere in the lean-to
+  const act = { id: 'forge', label: L3('быһах оҥор', 'forge a knife', 'выковать нож'), run: (game) => make(game) };
+  blank.userData.forge = Wk; Wk.view = view; Wk.dirYaw = dirYaw; // (tools: the work's state, its views)
+  const live = () => act; // from anywhere in the lean-to (src/interact/index.js asks `live`)
+  const around = { r: 3.4, at: () => world(SPOT.anvil.p) };
   const blankIt = { target: blank, label: TXT.blank, entry: 'knife', live, around };
   return { target, act, live, extra: [blankIt] };
 }

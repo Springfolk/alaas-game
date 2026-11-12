@@ -27,13 +27,13 @@ const ARM = [[0, 0, 0], [0.015, 0, -0.11], [-0.01, 0.095, -0.055], [0.01, 0.19, 
 const L = (sah, en, ru) => ({ sah, en, ru });
 const ACT = {
   take: L('ыл', 'pick it up', 'взять'),
-  takeLog: L('хардаҕас ыл', 'take a billet', 'взять полено'),
+  takeLog: L('хардаҕас ыл', 'take an armful of billets', 'взять охапку поленьев'),
   down: L('уур', 'set it down', 'поставить'),
   stack: L('кыстаа', 'stack it on the pile', 'сложить в поленницу'),
   fill: L('уу ыл', 'scoop up water', 'зачерпнуть воды'),
   pour: L('ууну кут', 'pour the water out', 'вылить воду'),
   back: L('төттөрү уур', 'put it back', 'вернуть на место'),
-  lay: L('уокка хардаҕас уур', 'lay the billet on the fire', 'положить полено в огонь'),
+  lay: L('уокка хардаҕас уур', 'lay the billets on the fire', 'положить поленья в огонь'),
 };
 
 export class Hands {
@@ -178,15 +178,13 @@ export class Hands {
       game.audio?.play('wood-take', t.obj.position); // the pail is wood too: a handle knock
     },
   };
-  // billets off the woodpile: one a tap; taps that follow in rhythm add one each, up to an armful
+  // billets off the woodpile: a tap takes an armful, one after another
   takeLogAct = {
     id: 'take-log', label: ACT.takeLog,
-    tap: () => { this.more_ = true; },
     run: async (game) => {
       if (this.held) return;
       this.busy = true;
       for (let n = 0; n < ARMFUL; n++) {
-        this.more_ = false;
         // a billet from the pool, or the one set down longest ago
         let t = this.logs.find((l) => l.pool && l.state === 'pool');
         if (!t) t = this.logs.filter((l) => l.pool && l.state === 'ground').sort((a, b) => a.t - b.t)[0];
@@ -201,20 +199,19 @@ export class Hands {
         game.audio?.play('wood-take', o.position);
         this.weigh(0.25);
         let w = 0;
-        await this.until((dt) => (w += dt) > 0.3 && (this.more_ || w > 0.9));
-        if (!this.more_) break;
+        await this.until((dt) => (w += dt) > 0.32);
       }
       this.busy = false;
     },
   };
   downAct = { id: 'down', label: ACT.down, run: () => this.setDown() };
-  // back onto the woodpile: a billet a tap
+  // back onto the woodpile: a tap stacks them all
   stackAct = {
     id: 'stack', label: ACT.stack,
     run: async (game) => {
       if (this.held?.kind !== 'log' || this.busy) return;
       this.busy = true;
-      await this.stackOne();
+      while (this.held) await this.stackOne();
       this.busy = false;
       game.promptKey = null;
     },
@@ -239,7 +236,7 @@ export class Hands {
     this.stacked++;
     g.work?.count('stacked');
   }
-  // A tap dips the pail: it comes up half full, a second dip fills it.
+  // A tap dips the pail: it comes up full.
   fillAct = {
     id: 'fill', label: ACT.fill,
     run: async (game) => {
@@ -250,9 +247,9 @@ export class Hands {
       const yaw = game.player.yaw;
       await this.fly(t, w.clone().add(_v.set(0, -0.2, 0)), new THREE.Quaternion().setFromEuler(_e.set(0.5, yaw, 0, 'YXZ')), 0.42);
       game.audio?.play('water-pour', w);
-      const to = Math.min(1, t.level + 0.5);
+      const to = 1;
       await this.until((dt) => {
-        this.setLevel(Math.min(to, t.level + dt / 0.6));
+        this.setLevel(Math.min(to, t.level + dt / 1.1));
         t.obj.quaternion.setFromEuler(_e.set(0.5 * (1 - t.level), yaw, 0, 'YXZ')); // it rights itself as it grows heavy
         return t.level >= to;
       });
@@ -261,7 +258,7 @@ export class Hands {
       this.busy = false;
     },
   };
-  // a tap tips it forward: a third of a pail runs out, and what is left stays in
+  // a tap tips it forward until it is empty
   pourAct = {
     id: 'pour', label: ACT.pour,
     run: async (game) => {
@@ -270,13 +267,13 @@ export class Hands {
       this.busy = true;
       const pl = game.player, at = this.waterAhead() || _v.set(pl.pos.x + fwdX(pl.yaw) * 0.8, pl.pos.y, pl.pos.z + fwdZ(pl.yaw) * 0.8).clone();
       let s = 0, sounded = false;
-      const to = Math.max(0, t.level - 0.34);
+      const to = 0;
       await this.until((dt) => {
         s += dt;
         this.dip = -ease(Math.min(1, s / 0.35));
         if (this.dip < -0.75) {
           if (!sounded) { sounded = true; game.audio?.play('water-pour-2', at); }
-          this.setLevel(Math.max(to, t.level - dt / 1.1));
+          this.setLevel(Math.max(to, t.level - dt / 1.6));
           this.pourFrom(t.obj, at.y);
         }
         return t.level <= to;
@@ -287,8 +284,16 @@ export class Hands {
       this.busy = false;
     },
   };
+  // a tap lays every billet in the hands into the fire, one after another
   layAct = {
     id: 'lay', label: ACT.lay,
+    run: async (game, it) => {
+      this.busy = true;
+      while (this.held?.kind === 'log') await this.layOne(game, it);
+      this.busy = false;
+    },
+  };
+  layOneAct = {
     run: async (game, it) => {
       const fp = it.fireplace;
       if (this.held?.kind !== 'log') return;
@@ -320,6 +325,7 @@ export class Hands {
       this.burning.push({ log: t, t: 0, upright: fp.upright, base: to.clone() });
     },
   };
+  layOne(game, it) { return this.layOneAct.run(game, it); }
 
   hold(t) {
     this.held = t;
@@ -399,7 +405,10 @@ export class Hands {
   weigh(k) { this.game.player.springV -= k; }
 
   update(dt) {
-    const cam = this.game.stage?.body || this.game.engine.camera; // (the body's eye while the view is away: src/ui/stage.js)
+    const cam = this.eye || this.game.stage?.body || this.game.engine.camera; // (a job's worker eye: `eye`; the body's eye while the view is away: src/ui/stage.js)
+    // in a framed work view what the body carries is out of the picture
+    const away = !!this.game.framed?.on && !this.eye;
+    if (away !== !!this.away) { this.away = away; for (const t of [this.held, ...this.more]) if (t) t.obj.visible = !away; }
     for (const m of [...this.moves]) {
       if (m.until) { if (m.until(dt)) { this.moves.splice(this.moves.indexOf(m), 1); m.res(); } continue; }
       m.k = Math.min(1, m.k + dt / m.dur);
