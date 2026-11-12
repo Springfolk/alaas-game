@@ -50,9 +50,9 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 
 | Kind (`Stage.open` → `s.mode`) | When | The view |
 |---|---|---|
-| `near` | a thing ≤ 1.5 m in radius | glides up to it along the line it was seen on (0.55 s); orbit ±50°; `engine.closeLook`: the eye adapts fully |
+| `near` | a thing ≤ 1.5 m in radius | glides up to it along the line it was seen on (0.55 s); orbit ±50°; over the eye: seen from below, orbit ±30°; `engine.closeLook`: the eye adapts fully |
 | `out` | a house, tree, fence, seen from outside | cut (dip to dark 0.4 s) to the baked side (`dir`), framed whole; orbit all round where `free` |
-| `here` | inside the thing, or an entry with a `cam` | stays (or cuts to `cam`) and looks round |
+| `here` | inside the thing, or an entry with a `cam` (in person too when the thing is over the eye) | stays (or cuts to `cam`, its aim in the free part of the screen) and looks round |
 | `photo` | an idea with no place (`photo`) | the view stays; its photograph fills the free part |
 
 - From the journal or a related link the view goes to the entry's own thing (`pickThing`: `it` = index or a piece of its English label; `as` = another entry's thing); closing returns to the journal.
