@@ -186,4 +186,5 @@ export const KNOBS = [
   { name: 'shadow range ×0.7', cpu: true, ok: () => true, set: (e, d) => { e.sun.shadow.camera.far = e.opts.shadowFar * (d ? 0.7 : 1); } }, // fewer casters per cascade
   { name: 'lake mirror ×0.6', ok: (e) => !!e.reflector, set: (e, d) => { e.reflector.resolutionScale = e.opts.reflection * (d ? 0.6 : 1); } },
   slower('slower beat'), slower('slower beat 2'),
+  { name: 'lazy shadows', cpu: true, ok: (e) => !e.opts.lazyShadows, set: (e, d) => { e.lazyKnob = d; if (!d) e.sun.shadow.autoUpdate = true; } }, // the maps on a move or turn (Engine.lazyShadows)
 ];

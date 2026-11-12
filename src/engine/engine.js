@@ -221,7 +221,7 @@ export class Engine {
   // towards light than towards dark. Without the meter, the houses' exposureTarget hints drive it.
   update(dt) {
     this.dynamicResolution(dt);
-    if (this.opts.lazyShadows && !KEYART && !urlFlag('nolazy')) this.lazyShadows(dt); // ?nolazy: A/B
+    if ((this.opts.lazyShadows || this.lazyKnob) && !KEYART && !urlFlag('nolazy')) this.lazyShadows(dt); // ?nolazy: A/B; lazyKnob: dynamic quality (pacing.js)
     this.cloudMap?.render(this.renderer, this.camera, this.sky.sunPosition.value);
     this.syncInteriors?.();
     this.meterDt = dt;

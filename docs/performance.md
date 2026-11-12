@@ -27,7 +27,7 @@
 - No tier renders under half the screen's own resolution (`MIN_RES`).
 - WebGPU wherever the browser gives an adapter, phones too; WebGL2 only with `?webgl`, without an adapter, or after 3 GPU losses within 2 min in the tab.
 - Read the tier from `engine.tier` or `TIER` (set before the world builds: `grassDensity`, `forest`, `ground`, `texMax`, `lite` …); `engine.opts.quality` is `high|medium|low` (mobile → `low`).
-- Lazy shadows: the sun's maps re-render on a 1.5 m move or 8° turn (≤8/s), else every 2 s; the warm-up forces them each round; `?nolazy` off.
+- Lazy shadows (phones; desktop as the last dynamic-quality knob): the sun's maps re-render on a 1.5 m move or 8° turn (≤8/s), else every 2 s; the warm-up forces them each round; `?nolazy` off.
 - Model impostors from max(110 m, 6× size); phones max(45 m, 3× size), the homestead atlas at full size.
 - Battery saver (30 fps): default on phones and on a battery ≤20% unplugged (Battery Status API); the setting overrides.
 
