@@ -1,7 +1,7 @@
 # Content: explainer entries
 
-- `src/data/entries.json`: 52 entries, one per thing or idea the player can look at.
-- `src/data/images.json`: reference images for 42 entries (72 images): `src` (`public/assets/ref/<id>-<n>.webp`, ≤1200 px), `w`, `h`, `caption{sah,en,ru}`, `credit`, `license`, `url`; credits in `docs/credits.md`. None yet: baay-bayanay, mas-yagas, mogol-urasa, munkha, muus-tunnuk, ottuk-mas, sacred-birch, salama, tupte, tuu.
+- `src/data/entries.json`: 58 entries, one per thing or idea the player can look at.
+- `src/data/images.json`: reference images for 47 entries (78 images): `src` (`public/assets/ref/<id>-<n>.webp`, ≤1200 px), `w`, `h`, `caption{sah,en,ru}`, `credit`, `license`, `url`; credits in `docs/credits.md`. None yet: baay-bayanay, mas-yagas, mogol-urasa, munkha, muus-tunnuk, ottuk-mas, sacred-birch, salama, syarga, tupte, tuu.
 - An entry's saying on the stage: `say` in `src/data/views.json` (`docs/ui.md`).
 
 | Field | What |

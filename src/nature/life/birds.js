@@ -214,9 +214,11 @@ class Bird {
 
 export function buildBirds(ctx, world, { tier, W, onWater }) {
   const T = world.terrain;
-  const counts = { kite: 3, eagle: 1, crane: 2, duck: tier === 'low' ? 5 : 8, swallow: tier === 'low' ? 5 : tier === 'high' ? 12 : 9, crow: 3 };
+  // the barn swallows nesting in the shut winter balagan (src/models/balagan.js `userData.swallows`)
+  const kystyk = (world.placed || []).find((p) => p.object?.userData.swallows);
+  const counts = { kite: 3, eagle: 1, crane: 2, duck: tier === 'low' ? 5 : 8, swallow: tier === 'low' ? 5 : tier === 'high' ? 12 : 9, crow: 3, nester: kystyk ? kystyk.object.userData.swallows.nests.length + 1 : 0 };
   const birds = [];
-  for (const [k, n] of Object.entries(counts)) for (let i = 0; i < n; i++) birds.push(new Bird(SP[k], k));
+  for (const [k, n] of Object.entries(counts)) for (let i = 0; i < n; i++) birds.push(new Bird(SP[k === 'nester' ? 'swallow' : k], k));
   const N = birds.length;
 
   const { P, N: NN, BP, I } = birdGeometry();
@@ -480,6 +482,69 @@ export function buildBirds(ctx, world, { tier, W, onWater }) {
     b.dih = 0.02;
   }
 
+  // nesting swallows: they sit at their nests on the beams while the house is shut; when its door opens they dart
+  // out one after another by the door, circle the house, and come back in the same way while it stays open
+  const nesters = birds.filter((b) => b.kind === 'nester');
+  let nestStep = null;
+  if (kystyk) {
+    const S = kystyk.object.userData.swallows, o = kystyk.object;
+    o.updateMatrixWorld(true);
+    const Wp = (a) => o.localToWorld(new THREE.Vector3(...a));
+    const door = Wp(S.door), inner = Wp(S.inside), out = Wp([S.door[0] + 3.5, 2.2, S.door[2] + 0.6]), home = Wp([0, 0, 0]);
+    let wasOpen = S.open() > 0.5;
+    nesters.forEach((b, i) => {
+      const n = S.nests[i % S.nests.length];
+      b.nest = Wp([n[0] + (i >= S.nests.length ? 0.07 : 0), n[1], n[2]]);
+      b.pos.copy(b.nest); b.mode = 'nest'; b.shown = 1; b.fold = 1; b.t = 0;
+      b.fwd.set(home.x - b.pos.x, 0, home.z - b.pos.z).normalize();
+    });
+    const go = (b, pts, next, speed) => { b.path = new THREE.CatmullRomCurve3(pts); b.u = 0; b.len = b.path.getLength(); b.next = next; b.mode = 'path'; b.speed = speed; };
+    nestStep = (b, dt) => {
+      if (b.mode === 'nest') {
+        b.pos.copy(b.nest); b.sit(dt); b.fold = damp(b.fold, 1, 8, dt); b.flap(dt, false, 0, 0);
+        if (b.delay !== undefined && (b.delay -= dt) < 0) {
+          b.delay = undefined;
+          if (S.open() > 0.5) { go(b, [b.nest.clone(), inner.clone().add(_w.set(0, rand(-0.2, 0.2), rand(-0.2, 0.2))), door.clone(), out.clone()], 'circle', rand(6.5, 8.5)); call('swallow', b.pos, 0.18, 6); }
+        }
+        return;
+      }
+      if (b.mode === 'path') {
+        b.u = Math.min(1, b.u + (b.speed * dt) / b.len);
+        const p = b.path.getPointAt(b.u), t = b.path.getTangentAt(b.u);
+        _v.copy(p).sub(b.pos).divideScalar(Math.max(dt, 1e-3));
+        b.vel.copy(_v); b.pos.copy(p);
+        b.fwd.lerp(t, 1 - Math.exp(-14 * dt)).normalize();
+        b.roll = damp(b.roll, 0, 6, dt);
+        b.fold = damp(b.fold, 0, 10, dt); b.flap(dt, true, 9, 0.65);
+        if (b.u >= 1) {
+          if (b.next === 'nest') { b.mode = 'nest'; b.vel.set(0, 0, 0); b.fwd.y = 0; b.fwd.normalize(); b.t = 0; if (S.open() > 0.5) b.delay = rand(12, 40); }
+          else { b.mode = 'circle'; b.t = rand(18, 40); b.goal = b.pos.clone(); }
+        }
+        return;
+      }
+      // circling the house, low and fast; while the door is open, after a while back in
+      b.t -= dt;
+      if (b.t < 0 && S.open() > 0.5) { go(b, [b.pos.clone(), out.clone(), door.clone(), inner.clone(), b.nest.clone()], 'nest', rand(6, 7.5)); call('swallow', door, 0.14, 6); return; }
+      if (b.pos.distanceTo(b.goal) < 2.5 || !b.ring) {
+        b.ring = true;
+        const a = Math.atan2(b.pos.z - home.z, b.pos.x - home.x) + rand(0.5, 1.3), r = rand(7, 13);
+        b.goal.set(home.x + Math.cos(a) * r, 0, home.z + Math.sin(a) * r); b.goal.y = ground(b.goal.x, b.goal.z) + rand(1.5, 5.5);
+      }
+      _v.copy(b.goal).sub(b.pos).setLength(rand(9, 11));
+      if (Math.hypot(b.pos.x - home.x, b.pos.z - home.z) < 6.5 && b.pos.y < home.y + 4.5) _v.y = Math.max(_v.y, 3);
+      b.fly(_v, dt, 28, 1.3);
+      b.burst = (b.burst || 0) - dt;
+      if (b.burst < -rand(0.25, 0.8)) b.burst = rand(0.35, 0.9);
+      b.flap(dt, b.burst > 0, 8.5, 0.6); b.fold = damp(b.fold, b.burst > 0 ? 0 : 0.22, 6, dt); b.dih = 0.02;
+    };
+    // the door's opening sets them off, one after another
+    nesters.watch = () => {
+      const open = S.open() > 0.5;
+      if (open && !wasOpen) nesters.forEach((b, i) => { if (b.mode === 'nest') b.delay = 0.25 + i * rand(0.3, 0.6); });
+      wasOpen = open;
+    };
+  }
+
   // crows: walk about the homestead, flap off when the player comes near
   const crowSpot = () => {
     for (let k = 0; k < 40; k++) {
@@ -557,6 +622,7 @@ export function buildBirds(ctx, world, { tier, W, onWater }) {
     for (const b of ducks) if (!b.frozen) duckStep(b, dt);
     for (const b of swallows) if (!b.frozen) swallowStep(b, dt);
     for (const b of crows) if (!b.frozen) crowStep(b, dt);
+    if (nestStep) { nesters.watch(); for (const b of nesters) if (!b.frozen) nestStep(b, dt); }
     // the raft's ducks come back to the north shore after a while
     raft.t -= dt;
     if (raft.t < 0) { raft.t = rand(90, 200); if (Math.random() < 0.5) flush(ducks.filter((b) => b.mode === 'swim').slice(0, 3)); }

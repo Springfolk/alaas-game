@@ -8,7 +8,7 @@ Real recordings only (no synthesis). `src/audio/audio.js` (`AudioScape`) plays `
 |---|---|
 | Beds | `wind-larch` (forest ring), `birch` (forest edge, sacred birch), `breeze` + `insects` (meadow), `birds` (always, more in forest), `mosquito` (near water/forest), `lake` (panner at the nearest shore point); gains follow distance from `ALAAS`/`LAKE` and a slow gust random walk |
 | Calls | `cuckoo`, `thrush`, `crow`, `woodpecker` (forest ring), `lark` (overhead), `horse`, `cow` (far pasture, ≥110 m away): random gaps, HRTF panner + distance lowpass |
-| Bird calls | from `src/nature/life/birds.js` via `shot()`: `crane`/`crane-2` while the crane pair passes within ~320 m, `crow` when a homestead crow takes off |
+| Bird calls | from `src/nature/life/birds.js` via `shot()`: `crane`/`crane-2` while the crane pair passes within ~320 m, `crow` when a homestead crow takes off, `swallow` (quiet) as the winter balagan's swallows fly out of or into its door |
 | Indoors | inside a house pad (`urasa`, `balagan`, `mogol-urasa`) or `engine.exposureTarget > 0.7`: outside bus lowpassed to ~650 Hz and −55 %, `room` tone fades in |
 | Fire | `fire` loop at every interactable with entry `ohokh` / `uot-ichchite`; muffled from another room |
 | Steps | `step(surface, speed)`: a sprite per surface (`grass dirt forest mud wood`, `water` → mud); random slice, never one of the last two, pitch/gain/filter jitter, alternating L/R; `speed > 2.6` = run |
