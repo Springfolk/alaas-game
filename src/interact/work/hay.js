@@ -13,7 +13,7 @@ const TXT = {
   mow: L('оту оҕус', 'strike the grass', 'ударить по траве'),
   hang: L('хотууру ыйаа', 'hang the scythe up', 'повесить косу'),
 };
-const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
+const _v = new THREE.Vector3(), _m = new THREE.Matrix4(), _up = new THREE.Vector3(0, 1, 0), _q = new THREE.Quaternion();
 function basisQ(y, xHint, out = new THREE.Quaternion()) {
   const Y = _v.copy(y).normalize().clone(), Z = new THREE.Vector3().crossVectors(xHint, Y).normalize(), X = new THREE.Vector3().crossVectors(Y, Z);
   return out.setFromRotationMatrix(_m.makeBasis(X, Y, Z));
@@ -122,8 +122,10 @@ export class Hay {
     for (let i = 0; i < cells.length; i += 2) {
       if (Math.random() < 0.6) continue;
       const x = cells[i] + (Math.random() - 0.5) * 0.3 + sx * 0.15, z = cells[i + 1] + (Math.random() - 0.5) * 0.3 + sz * 0.15;
-      p.set(x, g.world.groundAt(x, z) + 0.02, z);
-      q.setFromAxisAngle(_v.set(0, 1, 0), Math.atan2(fx, fz) + (Math.random() - 0.5) * 1.1);
+      // on the ground as drawn, tipped to its slope
+      const W = g.world, gx = (W.drawnAt(x + 0.3, z) - W.drawnAt(x - 0.3, z)) / 0.6, gz = (W.drawnAt(x, z + 0.3) - W.drawnAt(x, z - 0.3)) / 0.6;
+      p.set(x, W.drawnAt(x, z) + 0.006, z);
+      q.setFromUnitVectors(_up, _v.set(-gx, 1, -gz).normalize()).multiply(_q.setFromAxisAngle(_up, Math.atan2(fx, fz) + (Math.random() - 0.5) * 1.1));
       sw.setMatrixAt(this.next, M4.compose(p, q, s.setScalar(0.55 + Math.random() * 0.35)));
       this.next = (this.next + 1) % this.parts.max;
     }

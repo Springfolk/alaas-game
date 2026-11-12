@@ -36,7 +36,10 @@ export default async function build(ctx, placement) {
   addLog(B, hp0, hp1, 0.035, 0.022, rng, M.wood, M.end, { seg: 6, step: 0.25 });
   addLog(B, [FX + 0.06, g0 + 1.02, FZ], [FX + 0.12, g0 + 0.9, FZ + 0.01], 0.012, 0.01, rng, M.wood, M.end, { seg: 5 });
   // a fork stake holding it up
-  addLog(B, [FX - 0.62, ground(FX - 0.62, FZ + 0.06) - 0.2, FZ + 0.06], [FX - 0.58, g0 + 0.58, FZ + 0.06], 0.025, 0.02, rng, M.wood, M.end, { seg: 5 });
+  { // its top just under the pole where it crosses it
+    const k = (FX - 0.58 - hp0[0]) / (hp1[0] - hp0[0]), y = hp0[1] + (hp1[1] - hp0[1]) * k - 0.035, z = hp0[2] + (hp1[2] - hp0[2]) * k;
+    addLog(B, [FX - 0.62, ground(FX - 0.62, z) - 0.2, z], [FX - 0.58, y, z], 0.025, 0.02, rng, M.wood, M.end, { seg: 5 });
+  }
   colliders.push({ x: FX, z: FZ, r: 0.5 });
 
   // ── the kettle (чаанньык): squat, soot-black below, a domed lid with a knob, a spout and a wire bail; on the
@@ -118,11 +121,30 @@ export default async function build(ctx, placement) {
   // ── the stack poles: long thin larch poles (stack poles and carrying poles) laid side by side on two sleepers ──
   const SX = -1.4, SZ = -2.6, SA = -0.15;
   const sp = (t, off) => [SX + Math.cos(SA) * t - Math.sin(SA) * off, SZ - Math.sin(SA) * t - Math.cos(SA) * off];
-  for (const t of [-1.3, 1.3]) { const [a0, a1] = [sp(t, -0.5), sp(t, 0.5)]; addLog(B, [a0[0], ground(...a0) + 0.06, a0[1]], [a1[0], ground(...a1) + 0.06, a1[1]], 0.08, 0.075, rng, M.wood, M.end, { seg: 7 }); }
-  for (let k = 0; k < 9; k++) {
-    const off = -0.36 + (k % 6) * 0.14 + (k >= 6 ? 0.07 : 0), y = k >= 6 ? 0.25 : 0.17, L = 3.6 + rng() * 0.8, sh = (rng() - 0.5) * 0.5;
-    const a = sp(-L / 2 + sh, off + (rng() - 0.5) * 0.04), b = sp(L / 2 + sh, off + (rng() - 0.5) * 0.04);
-    addLog(B, [a[0], ground(...a) + y, a[1]], [b[0], ground(...b) + y, b[1]], 0.045 + rng() * 0.015, 0.03, rng, M.wood, M.end, { seg: 6, step: 0.35, bend: 0.02 });
+  const SL = [-1.3, 1.3], R0 = 0.08, R1 = 0.075; // the sleepers (along the poles), their radius at either end
+  for (const t of SL) { const [a0, a1] = [sp(t, -0.5), sp(t, 0.5)]; addLog(B, [a0[0], ground(...a0) + 0.06, a0[1]], [a1[0], ground(...a1) + 0.06, a1[1]], R0, R1, rng, M.wood, M.end, { seg: 7 }); }
+  const sleeperTop = (t, off) => { const k = off + 0.5, [a0, a1] = [sp(t, -0.5), sp(t, 0.5)]; return ground(...a0) + 0.06 + (ground(...a1) - ground(...a0)) * k + R0 + (R1 - R0) * k; };
+  // each pole straight from its thick end (t0) to its thin one, its height at the sleepers `at` (axis), radius `r(t)`
+  const pole = (off, L, sh, r0, r1, flip) => { const t0 = flip ? L / 2 + sh : -L / 2 + sh, t1 = flip ? -L / 2 + sh : L / 2 + sh; return { off, t0, t1, r: (t) => r0 + (r1 - r0) * (t - t0) / (t1 - t0), at: [] }; };
+  const lay = (p) => {
+    const y = (t) => p.at[0] + (p.at[1] - p.at[0]) * (t - SL[0]) / (SL[1] - SL[0]);
+    let lift = 0; for (let k = 0; k <= 10; k++) { const t = p.t0 + (p.t1 - p.t0) * k / 10, [x, z] = sp(t, p.off); lift = Math.max(lift, ground(x, z) + p.r(t) - y(t)); } // never into the ground past the sleepers
+    const [ax, az] = sp(p.t0, p.off), [bx, bz] = sp(p.t1, p.off);
+    addLog(B, [ax, y(p.t0) + lift, az], [bx, y(p.t1) + lift, bz], p.r(p.t0), p.r(p.t1), rng, M.wood, M.end, { seg: 6, step: 0.35 });
+  };
+  // six side by side on the sleepers, thick ends alternating, each clear of the next; three in the grooves between them
+  const low = [];
+  for (let k = 0, off = 0; k < 6; k++) {
+    const L = 3.6 + rng() * 0.8, p = pole(off, L, (rng() - 0.5) * 0.5, 0.045 + rng() * 0.015, 0.03, k % 2 === 1);
+    if (k) { const q = low[k - 1]; p.off = off = q.off + Math.max(...SL.map((t) => q.r(t) + p.r(t))) + 0.006 + rng() * 0.02; }
+    low.push(p);
+  }
+  const mid = (low[0].off + low[5].off) / 2;
+  for (const p of low) { p.off -= mid; p.at = SL.map((t) => sleeperTop(t, p.off) + p.r(t)); lay(p); }
+  for (let k = 0; k < 3; k++) {
+    const a = low[k], b = low[k + 1], p = pole((a.off + b.off) / 2, 3.6 + rng() * 0.8, (rng() - 0.5) * 0.5, 0.04 + rng() * 0.012, 0.028, k % 2 === 0);
+    p.at = SL.map((t, i) => Math.max(...[a, b].map((q) => q.at[i] + Math.sqrt(Math.max(0, (q.r(t) + p.r(t)) ** 2 - (q.off - p.off) ** 2)))) + 0.004);
+    lay(p);
   }
   colliders.push({ x: SX, z: SZ, hw: 2.1, hd: 0.55, rot: SA });
   const polesT = proxy(T, object, 4.2, 0.5, 1.2, [SX, ground(SX, SZ) + 0.2, SZ], [0, SA, 0]);

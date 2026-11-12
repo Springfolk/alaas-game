@@ -5,7 +5,8 @@
 // Local frame: HOME; it lies on the hide of yardlife's craft spot.
 import { pmat } from './yardlife/kit.js';
 import { yardMats } from './yardlife/mats.js';
-import { drawnHeight } from '../world/ground-data.js';
+import { drawnBy } from '../world/ground-data.js';
+import { TIER } from '../engine/tier.js';
 
 const BASE = [0.2, 0.12], WALL = 0.07, UP = 1.36; // base (x, z), wall height, how far a wall is raised (rad)
 const AT = [0.75, -7.81, 0.25]; // on the craft spot's hide, clear of the pail and the coil (yardlife PLACES.craft + its yaw)
@@ -78,8 +79,8 @@ export default async function build(ctx, placement) {
   berries.userData.show = (n) => { for (let i = 0; i < BERRIES; i++) berries.setMatrixAt(i, i < n ? full[i] : zero); berries.instanceMatrix.needsUpdate = true; };
   vessel.add(berries);
 
-  // on the hide (1.0–1.4 cm over the ground as drawn on desktop), tipped to the ground's plane under the sheet
-  const hg = (a, b) => Math.max(drawnHeight(terrain, px + AT[0] + a, pz + AT[1] + b, 640), drawnHeight(terrain, px + AT[0] + a, pz + AT[1] + b, 512)) - py;
+  // on the hide (1.0–1.4 cm over the ground as this tier draws it: yardlife.js followGround), tipped to the ground's plane under the sheet
+  const drawn = drawnBy(terrain, TIER.ground), hg = (a, b) => drawn(px + AT[0] + a, pz + AT[1] + b) - py;
   const sx = (hg(0.18, 0) - hg(-0.18, 0)) / 0.36, sz = (hg(0, 0.15) - hg(0, -0.15)) / 0.3;
   const lift = Math.max(0, ...[[0.18, 0.15], [-0.18, 0.15], [0.18, -0.15], [-0.18, -0.15]].map(([a, b]) => hg(a, b) - (hg(0, 0) + sx * a + sz * b)));
   vessel.position.set(AT[0], hg(0, 0) + lift + 0.016, AT[1]);

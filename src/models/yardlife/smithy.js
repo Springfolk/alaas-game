@@ -247,12 +247,27 @@ export function smithy(K, x, z, yaw) {
       }
     }
     // outside: a heap of rust-brown bog ore, glassy slag cakes by the door
-    const OH = 0.13, OR = 0.5, mound = (r) => OH * Math.max(0, 1 - (r / OR) ** 2); // the heap's body: fine ore under the lumps
-    F.add(new THREE.SphereGeometry(1, 18, 5, 0, TAU, 0, Math.PI / 2), M.ore, mtx([-2.3, g(-2.3, 1.6) - 0.03, 1.6], [0, 0, 0], [OR, OH + 0.03, OR]), [0.8, 0.75, 0.7]);
+    // the heap's body (fine ore under the lumps): a ragged outline, not a disc, so from above it reads as lying on the ground
+    const OH = 0.13, OR = 0.5, edge = (a) => 1 + 0.14 * Math.sin(3 * a + 1.3) + 0.08 * Math.sin(5 * a + 0.4) + 0.04 * Math.sin(9 * a + 2.1);
+    const mound = (r, a) => OH * Math.max(0, 1 - (r / (OR * edge(a))) ** 2);
+    {
+      const hg = new THREE.SphereGeometry(1, 36, 5, 0, TAU, 0, Math.PI / 2), hp = hg.attributes.position;
+      for (let i = 0; i < hp.count; i++) { const k = edge(Math.atan2(hp.getZ(i), hp.getX(i))); hp.setX(i, hp.getX(i) * k); hp.setZ(i, hp.getZ(i) * k); }
+      hg.computeVertexNormals();
+      F.add(hg, M.ore, mtx([-2.3, g(-2.3, 1.6) - 0.03, 1.6], [0, 0, 0], [OR, OH + 0.03, OR]), [0.8, 0.75, 0.7]);
+    }
     for (let i = 0; i < 30; i++) {
       const a = rng() * TAU, r = Math.sqrt(rng()) * 0.45, s = 0.035 + rng() * 0.035;
       const lx = -2.3 + Math.cos(a) * r, lz = 1.6 + Math.sin(a) * r;
-      F.add(blob(s, s * 0.85, s, rng, { detail: 1, rough: 0.35 }), M.ore, mtx([lx, Math.max(g(lx, lz), g(-2.3, 1.6) - 0.03 + mound(r)) + s * 0.3, lz], [rng(), rng() * TAU, 0]), jitterTint(rng, 0.15));
+      F.add(blob(s, s * 0.85, s, rng, { detail: 1, rough: 0.35 }), M.ore, mtx([lx, Math.max(g(lx, lz), g(-2.3, 1.6) - 0.03 + mound(r, a)) + s * 0.3, lz], [rng(), rng() * TAU, 0]), jitterTint(rng, 0.15));
+    }
+    { // lumps rolled off into the grass round its foot (their own sequence: the yard's random draws stay as they were)
+      let seed = 91; const r2 = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 12; i++) {
+        const a = r2() * TAU, r = OR * edge(a) * (0.95 + r2() * 0.45), s = 0.025 + r2() * 0.03;
+        const lx = -2.3 + Math.cos(a) * r, lz = 1.6 + Math.sin(a) * r;
+        F.add(blob(s, s * 0.8, s, r2, { detail: 1, rough: 0.35 }), M.ore, mtx([lx, g(lx, lz) + s * 0.25, lz], [r2(), r2() * TAU, 0]), [0.85, 0.78, 0.72]);
+      }
     }
     for (let i = 0; i < 6; i++) {
       const lx = -2.1 + (rng() - 0.5) * 0.9, lz = -1.4 + (rng() - 0.5) * 0.6, s = 0.07 + rng() * 0.05;
