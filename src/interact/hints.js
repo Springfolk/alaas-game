@@ -23,7 +23,7 @@ const LOOK = {
   fire: { glow: { m: 2.4, col: C(1, 0.55, 0.25, 1.4), ring: 1 }, near: 7 }, // the hearth's light swelling in the smoke
   ripple: { px: 30, col: C(1, 0.96, 0.88, 10), glow: { m: 1.8, asp: 0.35, col: C(1, 0.95, 0.85, 1.1) } }, // the sun on the risen water
   splash: { px: 30, col: C(1, 0.96, 0.88, 10), glow: { m: 1.8, asp: 0.35, col: C(1, 0.95, 0.85, 1.1) }, sparks: 2 },
-  dew: { px: 24, col: C(1, 0.97, 0.9, 9), glow: { m: 6, asp: 0.2, col: C(1, 0.95, 0.8, 0.8) }, sparks: 4 }, // dew on the standing grass
+  dew: { px: 24, col: C(1, 0.97, 0.9, 9), glow: { m: 6, asp: 0.2, col: C(1, 0.95, 0.8, 1) }, sparks: 4 }, // dew on the standing grass
 };
 // seconds between a hint's beats
 const BEAT = { glint: [1.8, 3.2], sheen: [1.4, 2.6], ember: [1.2, 2.4], ripple: [1.6, 3], splash: [1.1, 2.4], fire: [2.4, 3.6], dew: [1.8, 3], berries: [1.6, 2.8] };
@@ -53,7 +53,7 @@ export class Hints {
     this.edge = this.sprite(lightMaterial(this.eOp, this.eCol, uniform(0), uniform(0), true), home, 11);
     this.cur = null; this.t = 0; this.beat = 0.5; this.flash = -1; this.again = 0; this.left = 0; this.swell = -1;
     this.lit = null; this.spot = new THREE.Vector3();
-    this.gain = { bloom: 2.5, shaft: 0.6, edge: 2 }; // the lights' strengths
+    this.gain = { bloom: 2.5, shaft: 0.6, edge: 2.5 }; // the lights' strengths
   }
   sprite(m, at, order) {
     const s = new THREE.Sprite(m);
@@ -267,8 +267,8 @@ export class Hints {
     const n = Math.max(Math.abs(ex), Math.abs(ey)) || 1;
     ex /= n; ey /= n;
     this.edge.position.set(ex * th * 1.02, ey * tv * 1.02, -1).applyMatrix4(cam.matrixWorld);
-    const eh = tv * 2 * 0.95, side = Math.abs(ex) > Math.abs(ey);
-    this.edge.scale.set(eh * (side ? 0.6 : 1.4), eh * (side ? 1 : 0.5), 1);
+    const eh = Math.min(tv, th) * 2 * 0.95, side = Math.abs(ex) > Math.abs(ey); // by the view's short side (a portrait phone)
+    this.edge.scale.set(eh * (side ? 0.5 : 2.4), eh * (side ? 1.6 : 0.5), 1); // a band of light along that edge
     this.eOp.value = env * this.gain.edge;
     this.edge.visible = true;
   }
