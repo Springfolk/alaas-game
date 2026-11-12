@@ -125,6 +125,9 @@ class Game {
     this.audio = await this.loadAudio();
     this.audio?.fetchClips();
     releaseGeometry(this); // again: meshes first drawn in the warm-up
+    // pick and hit boxes (an invisible material) leave the render passes: three still frustum-tests a visible
+    // object per pass before it reads the material (raycasts and bounds ignore `visible`)
+    this.engine.scene.traverse((o) => { if (o.isMesh && o.material?.visible === false && !o.children.length) o.visible = false; });
     this.sharpening = sharpenTextures().then(() => { this.sharp = true; mark('sharp'); closeWorkers(); }); // 256 → the tier's size, in play
     if (params.has('perftest')) this.sharpening.then(() => import('./load/perftest.js')).then((m) => m.perfTest(this)); // per-layer frame cost on a device
     this.player.onStep = (surface, speed) => this.audio?.step(surface, speed);

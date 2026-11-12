@@ -53,6 +53,8 @@ const CASES = {
   'GPU-bound ×3 (floor not enough)': { js: 6, gpu: 8, px: 42 },
   'GPU-bound ×3, 120 Hz': { hz: 120, js: 6, gpu: 8, px: 42 },
   'CPU-bound: JS 14 ± 4 ms': { js: 14, gpu: 3, px: 5, noise: 0.3 },
+  'CPU at the budget: JS 15.5 ± 3 ms': { js: 15.5, gpu: 3, px: 5, noise: 0.2 },
+  'CPU-bound: JS 17 ms': { js: 17, gpu: 3, px: 5 },
   'CPU-bound: JS 20 ms': { js: 20, gpu: 3, px: 5 },
   'CPU-bound: JS 20 ms, 120 Hz': { hz: 120, js: 20, gpu: 3, px: 5 },
   'heavy view for 15 s': { js: 5, gpu: 3, px: 8, load: heavy },
