@@ -358,5 +358,5 @@ export default async function build(ctx, placement) {
 
   // the low door passage: the player stoops under its lintel
   const lows = [{ x: (XD + 0.15 + inner(FX, DH) - 0.1) / 2, z: ZD, hw: (XD + 0.15 - inner(FX, DH) + 0.1) / 2, hd: DW / 2 + 0.05, h: DH + 0.01 }];
-  return { object: root, colliders, floors: [], lows, interactables: its, update };
+  return { object: root, colliders, floors: [], rests: inside.rests, lows, interactables: its, update };
 }

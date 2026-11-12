@@ -1,7 +1,9 @@
 // Clipping check: loads the world headless (generated geometry, vertex data kept, no merging) and reports, per
 // connected part of every placed model (welded triangles): parts floating (no contact with the ground or
 // another part), sunk into the ground, bottoms gaping over the ground, pairs of parts interpenetrating,
-// near-coplanar overlapping faces (z-fighting, also with the ground), and walkable eye spots too near geometry.
+// near-coplanar overlapping faces (z-fighting, also with the ground), walkable eye spots too near geometry, open sheets
+// (cloth, hide, bark) under the ground or passed through by a solid, and small parts resting with their weight off what holds
+// them or hovering just over it.
 // Usage: PORT=5195 node tools/clipcheck.mjs [out.json] (TOP=n rows per list) — env: MODEL=regex (placements to check; `loose/` =
 // things in the scene itself: carried, set down, work props, hands), NEAR=m (also load every other placement whose bounds come
 // within m of a checked one and report contacts with it), STATE=js (run in the page before the check, awaited: a door opened, an
@@ -13,7 +15,7 @@ import { launch, PORT } from './browser.mjs';
 // the check itself, run in a page loaded with ?nogeo&keepgeo&nomerge: { only: regex, camera, nearM, view } → report
 export const analyse = ({ only = '', camera = false, nearM = null, view = false, region = null, skip = null } = {}) => {
   const TOL = { float: 0.015, touch: 0.03, sunk: 0.05, gap: 0.04, pen: 0.01, z: 0.0003, eye: 0.12, R: 0.25 };
-  const SKIP = new RegExp(skip || 'grass|dyedyen|smoke|steam|^decal|trodden|^earth$', 'i'); // ground cover, decals and particles: not solids
+  const SKIP = new RegExp(skip || 'grass|dyedyen|flowers|smoke|steam|^decal|trodden|^earth$', 'i'); // ground cover, decals and particles: not solids
   const w = window.game.world, C = 0.25, cell = (v) => Math.floor(v / C), key = (ix, iz) => (ix + 4000) * 8000 + (iz + 4000);
   const tris = [], triComp = [], comps = [];
   const grid = new Map(), col = new Map(), cols = new Set(); // 3D cells of every triangle; columns of closed parts' triangles (parity)
@@ -49,6 +51,7 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
       const m = o.material;
       if (Array.isArray(m) || m.visible === false || m.colorWrite === false || m.transparent && (m.opacity < 0.05 || !m.depthWrite)) return; // proxies, particles, glows
       const label = `${name}/${o.name || '-'}|${m.name || '-'}`;
+      let unit = null; for (let u = o; u && u !== p.object.parent; u = u.parent) if (u.userData.dynamic) unit = u; // the loose thing it is part of
       if (SKIP.test(o.name) || SKIP.test(m.name)) return;
       const pos = o.geometry.attributes.position;
       if (!pos?.array?.length) return;
@@ -75,7 +78,7 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
         for (let t = 0; t < n / 3; t++) {
           const r = find(wid[vi(t, 0)]);
           let c = byRoot.get(r);
-          if (!c) byRoot.set(r, (c = { label, model: name, mesh: o, tris: [], edges: new Map(), verts: new Map(), double: m.side === 2, offset: !!m.polygonOffset, cut: m.alphaTest > 0, dyn: !!o.userData.dynamic, inv, focus: isFocus }));
+          if (!c) byRoot.set(r, (c = { label, model: name, mesh: o, tris: [], edges: new Map(), verts: new Map(), double: m.side === 2, offset: !!m.polygonOffset, cut: m.alphaTest > 0, dyn: !!o.userData.dynamic, unit, inv, focus: isFocus }));
           const ids = [vi(t, 0), vi(t, 1), vi(t, 2)];
           const ax = P[ids[0] * 3], ay = P[ids[0] * 3 + 1], az = P[ids[0] * 3 + 2];
           const ux = P[ids[1] * 3] - ax, uy = P[ids[1] * 3 + 1] - ay, uz = P[ids[1] * 3 + 2] - az;
@@ -94,11 +97,13 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
           if (!c.tris.length) continue;
           let open = 0; for (const v of c.edges.values()) if (v % 2) open++;
           c.closed = open <= c.edges.size * 0.003;
+          c.sheet = !c.closed && c.double && !c.cut; // cloth, hide, bark: open and seen from both sides (not alpha cards)
           c.vs = [...c.verts.values()].map((k) => [c.P[k], c.P[k + 1], c.P[k + 2]]);
           const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
           for (const v of c.vs) for (let j = 0; j < 3; j++) { lo[j] = Math.min(lo[j], v[j]); hi[j] = Math.max(hi[j], v[j]); }
           if (region) { const m = Math.max(nearM ?? 0, 1.5), hit = (e) => lo[0] <= region[2] + e && hi[0] >= region[0] - e && lo[2] <= region[3] + e && hi[2] >= region[1] - e; if (!hit(m)) continue; if (!hit(0)) c.focus = false; }
           c.lo = lo; c.hi = hi; c.id = comps.length; c.t0 = tris.length;
+          c.sheet &&= Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) < 2.5; // a thing, not a building's plaster or sod
           delete c.edges; delete c.verts; delete c.P;
           for (const t of c.tris) { tris.push(t); triComp.push(c.id); }
           c.nt = c.tris.length; delete c.tris;
@@ -122,7 +127,7 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
   const gtris = [], ggrid = new Map();
   const near = (x, z) => comps.some((c) => x > c.lo[0] - 3 && x < c.hi[0] + 3 && z > c.lo[2] - 3 && z < c.hi[2] + 3);
   w.ground.traverse((o) => {
-    if (!o.isMesh || !o.geometry.attributes.position?.array?.length) return;
+    if (!o.isMesh || !o.visible || !o.geometry.attributes.position?.array?.length) return;
     const pos = o.geometry.attributes.position, idx = o.geometry.index?.array, e = o.matrixWorld.elements;
     const n = idx ? idx.length : pos.count, seen = new Set();
     for (let t = 0; t < n / 3; t++) {
@@ -208,6 +213,10 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
         pair.set(k, e);
       }
       if (A._hit) A._hit.clear();
+      // what holds it: vertices within 8 mm of another part or the ground
+      let md = gd; for (const [b, d2] of best) if (!A.unit || comps[b].unit !== A.unit) md = Math.min(md, Math.sqrt(d2));
+      if (md < 0.008) (A.cts ||= []).push(v);
+      A.free = Math.min(A.free ?? 1e9, md); // nearest thing outside its own unit, or the ground
       for (const [b, d2] of best) {
         const k = A.id + ',' + b, e = pair.get(k) || { d: 1e9, pen: 0 };
         e.d = Math.min(e.d, Math.sqrt(d2)); pair.set(k, e);
@@ -363,6 +372,46 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
     nearEye.unshift({ label: '(all parts near the eye)', cover: +(n / all.length).toFixed(3), fov: +cam.fov.toFixed(1), aspect: +cam.aspect.toFixed(2) });
   }
 
+  // ---- open sheets lying low (a hide, a cloth, a bark sheet): the ground shows through at any depth, not only past `sunk`
+  const sheetG = [];
+  for (const A of comps) {
+    if (!A.focus || !A.sheet || A.gmin > 0.12 || A.gmin < -0.3 || A.hi[1] - A.lo[1] > 0.3 * Math.max(A.hi[0] - A.lo[0], A.hi[2] - A.lo[2])) continue; // lying flat
+    let under = 0, depth = 0, at = null;
+    for (const v of A.vs) { const d = groundY(v[0], v[2]) - v[1]; if (d > 0.002) { under++; if (d > depth) { depth = d; at = v; } } }
+    if (under) sheetG.push({ label: A.label, depth: +depth.toFixed(3), share: +(under / A.vs.length).toFixed(2), at: fmt(at), local: local(A, at) });
+  }
+
+  // ---- resting small parts: touching nothing they pass into, the weight (vertex centroid) must be over the hull of what
+  // holds them from below (not a hammer's head out past a stump's edge); a part held by nothing but within the touch
+  // tolerance hovers. Hung things (held above their middle) are left alone.
+  // a unit: a loose thing's parts together (a hammer: head, haft, wedge), else one closed part or one sheet
+  const units = new Map();
+  for (const A of comps) if (A.unit || (A.closed || A.sheet) && !A.cut) { const k = A.unit || A; let u = units.get(k); if (!u) units.set(k, (u = [])); u.push(A); }
+  const fixed = new Set(); // units passing into something outside them: set in, pegged, bitten
+  const fix = (a, b) => { const A = comps[a], B = comps[b]; if (!A.unit || A.unit !== B.unit) { fixed.add(A.unit || A); fixed.add(B.unit || B); } };
+  for (const [k, e] of pair) if (e.pen >= TOL.pen) fix(...k.split(',').map(Number));
+  for (const k of crossM.keys()) fix(...k.split(',').map(Number));
+  const unsup = [], hover = [];
+  for (const [k, U] of units) {
+    if (!U.some((A) => A.focus) || fixed.has(k)) continue;
+    const lo = [0, 1, 2].map((j) => Math.min(...U.map((A) => A.lo[j]))), hi = [0, 1, 2].map((j) => Math.max(...U.map((A) => A.hi[j])));
+    if (Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) > 1.2) continue;
+    const vs = U.flatMap((A) => A.vs), C = [0, 0, 0]; for (const v of vs) for (let j = 0; j < 3; j++) C[j] += v[j] / vs.length;
+    const cts = U.flatMap((A) => A.cts || []), A0 = U[0], name = U.length > 1 ? `${A0.model}/${k.name || '-'} (${U.length} parts)` : A0.label;
+    if (!cts.length) { const g = Math.min(...U.map((A) => A.free ?? 1e9)); if (g < TOL.touch) hover.push({ label: name, gap: +g.toFixed(3), at: fmt(C), local: local(A0, C) }); continue; }
+    if (cts.some((v) => v[1] > C[1] + 0.01)) continue; // hung
+    // the 2D hull of the contacts (monotone chain), the centroid inside it?
+    const P = cts.map((v) => [v[0], v[2]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const L = [], R = [];
+    for (const q of P) { while (L.length > 1 && cr(L[L.length - 2], L[L.length - 1], q) <= 0) L.pop(); L.push(q); }
+    for (const q of [...P].reverse()) { while (R.length > 1 && cr(R[R.length - 2], R[R.length - 1], q) <= 0) R.pop(); R.push(q); }
+    const H = L.slice(0, -1).concat(R.slice(0, -1)), c = [C[0], C[2]];
+    let out;
+    if (H.length < 3) { const a = H[0] || P[0], b = H[H.length - 1] || a, ab = [b[0] - a[0], b[1] - a[1]], l2 = ab[0] ** 2 + ab[1] ** 2, t = l2 ? Math.max(0, Math.min(1, ((c[0] - a[0]) * ab[0] + (c[1] - a[1]) * ab[1]) / l2)) : 0; out = Math.hypot(c[0] - a[0] - ab[0] * t, c[1] - a[1] - ab[1] * t); }
+    else { out = -Infinity; for (let i = 0; i < H.length; i++) { const a = H[i], b = H[(i + 1) % H.length], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; out = Math.max(out, -cr(a, b, c) / l); } }
+    if (out > 0.015) unsup.push({ label: name, off: +out.toFixed(3), contacts: cts.length, at: fmt(C), local: local(A0, C) });
+  }
+
   // ---- summaries
   const P = (c) => ({ label: c.label, at: fmt(c.low), local: local(c, c.low) });
   const group = (rows, keyf, score) => {
@@ -385,15 +434,17 @@ export const analyse = ({ only = '', camera = false, nearM = null, view = false,
   const isl = group(islands, (r) => r.labels, (r) => Math.min(r.groundGap, r.nearestOther));
   const eyes = group(eye, (r) => r.label + r.eye, (r) => -r.d);
   const viewRows = nearEye.length ? [nearEye[0], ...group(nearEye.slice(1), (r) => r.label, (r) => r.cover - r.depth / 10)] : [];
-  const cross = group([...crossM].map(([k, e]) => { const [a, b] = k.split(',').map(Number); return { a: comps[a].label, b: comps[b].label, cross: comps[a].model !== comps[b].model || undefined, edges: e.n, span: +Math.hypot(e.hi[0] - e.lo[0], e.hi[1] - e.lo[1], e.hi[2] - e.lo[2]).toFixed(3), at: fmt(e.at), local: local(comps[a], e.at) }; }), (r) => r.a + ' × ' + r.b, (r) => r.span);
+  const cross = group([...crossM].map(([k, e]) => { const [a, b] = k.split(',').map(Number); return { a: comps[a].label, b: comps[b].label, cross: comps[a].model !== comps[b].model || undefined, sheet: comps[a].sheet || comps[b].sheet || undefined, edges: e.n, span: +Math.hypot(e.hi[0] - e.lo[0], e.hi[1] - e.lo[1], e.hi[2] - e.lo[2]).toFixed(3), at: fmt(e.at), local: local(comps[a], e.at) }; }), (r) => r.a + ' × ' + r.b, (r) => r.span);
+  const sheets = cross.filter((r) => r.sheet); // an open sheet and a solid through each other: a cloth on a log never crosses it
   const models = {}; for (const c of comps) if (c.focus) models[c.model] = (models[c.model] || 0) + 1;
-  return { models, view: viewRows, tol: TOL, parts: comps.length, triangles: tris.length, closed: comps.filter((c) => c.closed).length, islands: isl, sunk, gaps, pen, cross, zfight, zground, eyes };
+  const sheetGround = group(sheetG, (r) => r.label, (r) => r.depth), unsupported = group(unsup, (r) => r.label, (r) => r.off), hovering = group(hover, (r) => r.label, (r) => r.gap);
+  return { models, view: viewRows, tol: TOL, parts: comps.length, triangles: tris.length, closed: comps.filter((c) => c.closed).length, islands: isl, unsupported, hovering, sunk, sheetGround, gaps, pen, cross, sheets, zfight, zground, eyes };
 };
 // print a report's lists
 export const print = (report, top = 25) => {
   const line = (o) => Object.entries(o).filter(([k, v]) => k !== 'n' && v !== undefined).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(',') : v}`).join(' ');
   console.log(`${report.parts} parts (${report.closed} closed), ${report.triangles} triangles; tolerances ${JSON.stringify(report.tol)}\nchecked: ${JSON.stringify(report.models)}`);
-  for (const k of [...(report.view.length ? ['view'] : []), 'islands', 'sunk', 'gaps', 'pen', 'cross', 'zfight', 'zground', 'eyes']) {
+  for (const k of [...(report.view.length ? ['view'] : []), 'islands', 'unsupported', 'hovering', 'sunk', 'sheetGround', 'gaps', 'pen', 'cross', 'sheets', 'zfight', 'zground', 'eyes']) {
     console.log(`\n## ${k}: ${report[k].length}`);
     for (const r of report[k].slice(0, top)) console.log(`${r.n ? `×${r.n} ` : ''}${line(r)}`);
   }

@@ -56,8 +56,9 @@ export default async function build(ctx, placement) {
   const proxyMat = new T.MeshBasicMaterial({ visible: false });
   const K = {
     M, rng, group, colliders, lows, ups, b: yardB, bm: meadowB, wind: WIND, gate: PLACES.gate,
-    // the ground as drawn at its highest over the tiers' grids (yard frame): what a thing lying flat on it must clear
-    drawnTop: (x, z) => Math.max(terrain.height(px + x, pz + z), ...[640, 512, 320].map((N) => drawnHeight(terrain, px + x, pz + z, N))) - py,
+    // the ground as drawn on desktop (the higher of its two grids; yard frame): what a thing lying flat on it must clear.
+    // Phones' coarser grid differs here by several centimetres.
+    drawnTop: (x, z) => Math.max(drawnHeight(terrain, px + x, pz + z, 640), drawnHeight(terrain, px + x, pz + z, 512)) - py,
     barkCraft: pmat('canvas:birch', { scale: 0.5, back: 'birchIn', double: true, dirt: 0.4, tint: 0xecd3a6 }),
     // an invisible box the player's ray can hit
     proxy(x, y, z, w, h, d, yaw = 0) {

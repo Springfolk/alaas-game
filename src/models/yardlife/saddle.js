@@ -19,12 +19,10 @@ function bowGeo(B, d) {
   s.moveTo(-o[o.length - 1][0], o[o.length - 1][1]);
   for (let i = o.length - 1; i >= 0; i--) s.lineTo(-o[i][0], o[i][1]);
   for (const [x, y] of o) s.lineTo(x, y);
-  // the opening under the bow that clears the horse's withers
-  const hp = new THREE.Path(), h = B.hole;
-  hp.moveTo(-h[h.length - 1][0], h[h.length - 1][1]);
-  for (let i = h.length - 1; i >= 0; i--) hp.lineTo(-h[i][0], h[i][1]);
-  for (const [x, y] of h) hp.lineTo(x, y);
-  s.holes.push(hp);
+  // the opening under the bow that clears the horse's withers, open at the foot (an arch: no bar across its bottom)
+  const h = B.hole;
+  for (let i = h.length - 1; i >= 0; i--) s.lineTo(h[i][0], h[i][1]);
+  for (const [x, y] of h) s.lineTo(-x, y);
   const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 2, curveSegments: 4 });
   g.translate(0, 0, -d / 2);
   // uvs: planar in metres (the bow plate texture spans x −0.17…0.17, y 0…0.34)
@@ -145,7 +143,7 @@ export function saddle(K, x, z, yaw) {
     // iron hook on the front bow
     F.add(new THREE.TorusGeometry(0.02, 0.003, 4, 10, Math.PI * 1.2), M.iron, mtx([0, top + 0.198, 0.27], [0, Math.PI / 2, 0]));
     // seat: leather cushion stuffed with hair
-    F.add(blob(0.105, 0.075, 0.16, rng, { detail: 2, rough: 0.05 }), M.leather, mtx([0, top + 0.005, 0]), [1.5, 1.25, 1.05]);
+    F.add(blob(0.105, 0.075, 0.16, rng, { detail: 2, rough: 0.05 }), M.leather, mtx([0, top + 0.04, 0], [0, 0, 0], [1, 0.75, 1]), [1.5, 1.25, 1.05]); // on the boards, over the cloth
     // stirrups hanging on leathers, a horsehair girth hanging down one side
     for (const sd of [-1, 1]) {
       const sx = sd * 0.16;

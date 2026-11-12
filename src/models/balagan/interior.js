@@ -462,7 +462,9 @@ export function buildInterior({ B, M, rng, winter, root }) {
     g.computeVertexNormals();
     B.add(M.web, g);
   }
-  return { colliders, targets, benches };
+  // what a thing set down rests on: the beaten earth (about 1.2 cm, taken at 1.5), and through the door passage
+  const rests = [{ x: 0.05, z: 0, hw: 3.75, hd: 3.2, h: 0.015 }, { x: 4.0, z: ZD, hw: 0.2, hd: DW / 2 + 0.05, h: 0.014 }];
+  return { colliders, targets, benches, rests };
 }
 
 // A hide lying on a bench: body with four legs, neck and tail, drooping over the front edge.

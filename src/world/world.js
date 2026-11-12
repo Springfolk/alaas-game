@@ -25,6 +25,7 @@ export class World {
     this.terrain = new Terrain();
     this.colliders = [];     // { kind: 'circle', x, z, r } | { kind: 'box', x, z, hw, hd, c, s, y0?, y1? }
     this.floors = [];        // { x, z, hw, hd, c, s, h } walkable surfaces above the ground (world y)
+    this.rests = [];         // { x, z, r | hw, hd, c, s, h } surfaces loose things rest on (drawnAt)
     this.lows = [];          // { x, z, hw, hd, c, s, h } low lintels/ceilings: clear height (world y) the player stoops under
     this.interactables = []; // { entry, target?, zone?, act?, label? }
     this.updaters = [];      // (dt, ctx) => void, from models and nature
@@ -153,6 +154,10 @@ export class World {
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
       this.floors.push({ ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h });
     }
+    for (const f of res.rests || []) { // surfaces drawn over the ground that loose things rest on (an earth floor): circles or boxes
+      const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
+      this.rests.push(f.r !== undefined ? { ...w, r: f.r, h: p.y + f.h } : { ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h });
+    }
     for (const f of res.lows || []) {
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
       this.lows.push({ ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h });
@@ -183,6 +188,9 @@ export class World {
       this._at ||= (i, j) => { const k = j * N + i; let y = c.get(k); if (y === undefined) { const [gx, gz] = gridNode(i, j, N); c.set(k, (y = Math.round(this.terrain.height(gx, gz) * 1000) / 1000)); } return y; };
       h = drawnHeight(this.terrain, x, z, N, this._at);
     } else h = this.terrain.height(x, z);
+    for (const f of this.rests) {
+      if (f.r !== undefined ? Math.hypot(x - f.x, z - f.z) < f.r : (([lx, lz]) => Math.abs(lx) < f.hw && Math.abs(lz) < f.hd)(World.local(f, x, z))) h = Math.max(h, f.h);
+    }
     for (const f of this.floors) {
       const [lx, lz] = World.local(f, x, z);
       if (Math.abs(lx) < f.hw && Math.abs(lz) < f.hd) h = Math.max(h, f.h);
