@@ -24,6 +24,7 @@ export const PLACEMENTS = [
   { model: 'balagan', x: 268, z: -96, yaw: -0.35, pad: 8, variant: 'winter' }, // the empty winter place (кыстык)
   { model: 'haybase', x: 257, z: -84, yaw: 0 },                // the hay crew's fire, forks and rakes, stack poles by the winter place's meadows
   { model: 'hayfield', x: 253.4, z: -83.2, yaw: 0 },           // the scythe on its post beside them (src/interact/work/hay.js)
+  { model: 'hayfield', ...H(-6.5, 60), yaw: 0 },               // a second scythe on its post at the home meadow's edge
 ];
 
 // Where the walk starts: on the track coming in from the east, looking at the homestead.

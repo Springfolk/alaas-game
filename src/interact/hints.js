@@ -36,7 +36,7 @@ export class Hints {
     this.game = game;
     const its = game.world.interactables, jobs = game.work?.jobs || [];
     this.hands = game.interact.hands;
-    this.split = jobs.find((j) => j.axe); this.fish = jobs.find((j) => j.trap); this.hay = jobs.find((j) => j.scythe); this.tuos = jobs.find((j) => j.rest && j.thing);
+    this.split = jobs.find((j) => j.axe); this.fish = jobs.find((j) => j.trap); this.hays = jobs.filter((j) => j.scythe); this.tuos = jobs.find((j) => j.rest && j.thing);
     this.fires = its.filter((i) => i.fireplace);
     this.heap = its.find((i) => i.rounds); this.tymtay = its.find((i) => i.tymtay); this.stone = its.find((i) => i.offering);
     this.blank = its.find((i) => i.target?.userData.forge); this.forge = its.find((i) => i.act?.id === 'bellows');
@@ -125,7 +125,7 @@ export class Hints {
       if (F.held) return F.n > 0 ? this.sheen(this.tymtay.target) : { kind: 'ripple', at: this.wet(F.gap.clone().add(_v.set(0.5, 0, 0))), lap: true }; // fish rising where the trap goes
       if (F.state === 'set' && F.n >= 3 && !held && P.distanceTo(F.trap.obj.position) < 45) return { kind: 'splash', at: this.wet(F.trap.obj.position.clone()), lap: true }; // the catch thrashing in the trap
     }
-    const H = this.hay;
+    const H = this.hays.find((h) => h.held);
     if (H?.held && !H.sw) {
       const mask = H.mask;
       if (mask?.tall && !mask.tall(P.x, P.z)) { const at = this.meadow(H, mask); return at && { kind: 'dew', at }; }

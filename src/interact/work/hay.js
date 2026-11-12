@@ -44,7 +44,7 @@ export class Hay {
     this.scythe.it.thing = this.scythe;
     this.scythe.put = () => (!this.sw && game.player.pos.distanceTo(this.home.p) < 2.6 ? this.hangAct : undefined); // by its post: hung up
     this.home = { p: parts.scythe.position.clone(), q: parts.scythe.quaternion.clone() };
-    this.rackIt = game.world.interactables.find((i) => i.rack);
+    this.rackIt = game.world.interactables.find((i) => i.rack && i.target === parts.post); // its own post (there is one by home and one at the hay camp)
     this.sw = null;
     this.side = 1; // the next blow comes from the right (1) or the left (-1)
     this.next = 0; // the swath's next wisp
