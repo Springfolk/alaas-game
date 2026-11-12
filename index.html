@@ -405,20 +405,6 @@
     background: radial-gradient(circle, rgba(255,236,180,.35) 0, rgba(255,220,140,.14) 35%, rgba(255,220,140,0) 70%); mix-blend-mode: screen; }
   #gshimmer.on { display: block; }
   #gshimmer::after { content: ''; position: absolute; inset: 25%; border-radius: 50%; border: 1px solid rgba(255,230,170,.55); animation: gring 1.8s ease-out infinite; }
-  /* the next thing to do (src/ui/cue.js): a green glint on it, an arrow at the edge when it is out of view */
-  #cue { position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none; display: none; will-change: transform; font-size: calc(16px * var(--ui)); --star: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%); }
-  #cue.on { display: block; }
-  #cue .c-ring { position: absolute; left: -2.2em; top: -2.2em; width: 4.4em; height: 4.4em; border-radius: 50%; background: radial-gradient(closest-side, rgba(150,255,90,.6) 0, rgba(120,240,60,.28) 45%, rgba(110,230,60,0) 100%); animation: cue-halo 1.5s ease-in-out infinite; }
-  #cue .c-star { position: absolute; left: -1.5em; top: -1.5em; width: 3em; height: 3em; background: rgba(12,70,0,.8); clip-path: var(--star); animation: cue-star 1.5s ease-in-out infinite; }
-  #cue .c-star::before { content: ''; position: absolute; inset: .26em; background: linear-gradient(180deg, #fff, #dcffc4); clip-path: var(--star); }
-  #cue .c-arrow { display: none; position: absolute; left: -.8em; top: -.8em; width: 1.6em; height: 1.6em; background: #c4ff96; clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%); transform: rotate(var(--a)) translateX(1.9em); }
-  #cue.edge .c-arrow { display: block; }
-  #cue.edge .c-ring { animation: none; }
-  #cue.near .c-star { display: none; }
-  #cue.edge .c-star { left: -.9em; top: -.9em; width: 1.8em; height: 1.8em; animation: none; }
-  #cue.edge .c-star::before { inset: .18em; }
-  @keyframes cue-star { 0%, 100% { transform: scale(.62) rotate(0deg); } 50% { transform: scale(1.1) rotate(45deg); } }
-  @keyframes cue-halo { 0%, 100% { transform: scale(.7); opacity: .6; } 50% { transform: scale(1.15); opacity: 1; } }
   @keyframes gpulse { 50% { opacity: .55; } }
   @keyframes gring { from { transform: scale(.6); opacity: .9; } to { transform: scale(1.9); opacity: 0; } }
 
@@ -573,9 +559,9 @@
 
   /* src/ui/prewarm.js: every surface drawn once while loading, under the key art (which must not count as opaque:
      what an opaque layer hides is not drawn); with no key art (?auto), all but unseen instead */
-  .prewarm :is(#dot, #prompt, #puthint, #choice, #toasts, #dip, #card, #journal, #lightbox, #pause, #teach, #teach-ghost, #fps, #guide, #cue, #gshimmer, #vcursor, .tc-root) { pointer-events: none !important; z-index: 1 !important; }
+  .prewarm :is(#dot, #prompt, #puthint, #choice, #toasts, #dip, #card, #journal, #lightbox, #pause, #teach, #teach-ghost, #fps, #guide, #gshimmer, #vcursor, .tc-root) { pointer-events: none !important; z-index: 1 !important; }
   .prewarm #keyart { opacity: .999; transition: none; }
-  .prewarm.bare :is(#dot, #prompt, #puthint, #choice, #toasts, #dip, #card, #journal, #lightbox, #pause, #teach, #teach-ghost, #fps, #guide, #cue, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; }
+  .prewarm.bare :is(#dot, #prompt, #puthint, #choice, #toasts, #dip, #card, #journal, #lightbox, #pause, #teach, #teach-ghost, #fps, #guide, #gshimmer, #vcursor, .tc-root) { opacity: .01 !important; }
   #fade { position: fixed; inset: 0; background: #000; opacity: 1; transition: opacity 2.4s ease; pointer-events: none; }
   #fade.clear { opacity: 0; }
 

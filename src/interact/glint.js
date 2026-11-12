@@ -9,6 +9,19 @@ import { uniform, uv, vec3, vec4, float, abs, exp, max } from 'three/tsl';
 const ENTRY = 'sayylyk-kystyk';
 const PX = 34; // sprite size on screen, rays included
 
+// A sun glint's star (core, halo, four rays, faint diagonals) as an additive sprite material: `op` its opacity,
+// `col` its colour node (HDR). Also the job hints' glint (src/interact/hints.js).
+export function glintMaterial(op, col) {
+  const m = new THREE.SpriteNodeMaterial({ name: 'glint', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+  const p = uv().sub(0.5).mul(2), a = abs(p);
+  const core = exp(p.dot(p).mul(-60)), halo = exp(p.dot(p).mul(-9)).mul(0.25);
+  const rays = max(exp(a.x.mul(-26)).mul(exp(a.y.mul(-4.5))), exp(a.y.mul(-26)).mul(exp(a.x.mul(-4.5))));
+  const diag = exp(abs(a.x.sub(a.y)).mul(-30)).mul(exp(p.dot(p).mul(-14))).mul(0.4);
+  const shape = core.add(halo).add(rays).add(diag).min(float(1));
+  m.colorNode = vec4(col, shape.mul(op));
+  return m;
+}
+
 export class Glint {
   constructor(game) {
     this.game = game;
@@ -24,13 +37,7 @@ export class Glint {
     this.pos = win.clone().addScaledVector(this.normal, 0.25); // just proud of the mica pane
 
     this.op = uniform(0);
-    const m = new THREE.SpriteNodeMaterial({ name: 'glint', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
-    const p = uv().sub(0.5).mul(2), a = abs(p);
-    const core = exp(p.dot(p).mul(-60)), halo = exp(p.dot(p).mul(-9)).mul(0.25);
-    const rays = max(exp(a.x.mul(-26)).mul(exp(a.y.mul(-4.5))), exp(a.y.mul(-26)).mul(exp(a.x.mul(-4.5))));
-    const diag = exp(abs(a.x.sub(a.y)).mul(-30)).mul(exp(p.dot(p).mul(-14))).mul(0.4);
-    const shape = core.add(halo).add(rays).add(diag).min(float(1));
-    m.colorNode = vec4(vec3(1, 0.95, 0.84).mul(14), shape.mul(this.op));
+    const m = glintMaterial(this.op, vec3(1, 0.95, 0.84).mul(14));
     this.sprite = new THREE.Sprite(m);
     this.sprite.position.copy(this.pos);
     this.sprite.castShadow = this.sprite.receiveShadow = false;

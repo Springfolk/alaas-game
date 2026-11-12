@@ -20,7 +20,7 @@ import { T, CONTROLS, LANGS, LANG_NAMES, tr, detectLang } from './ui/i18n.js';
 import { Guide } from './ui/guide.js';
 import { Stage } from './ui/stage.js';
 import { Teach } from './ui/teach.js';
-import { Cues } from './ui/cue.js';
+import { Hints } from './interact/hints.js';
 import { prewarmUI } from './ui/prewarm.js';
 import { icon, glyph } from './ui/icons.js';
 import { fillSelects, watchSelects } from './ui/select.js';
@@ -106,7 +106,7 @@ class Game {
     mark('built');
     releaseGeometry(this); // vertex arrays the GPU holds leave the JS heap before the warm-up (src/load/release.js)
     this.interact = new Interactions(this); // carrying, sitting, berries (src/interact)
-    this.cues = new Cues(this); // the next thing to do, shown (src/ui/cue.js); its ghosts exist before the warm-up
+    this.hints = new Hints(this); // the next thing to do, told by the world (src/interact/hints.js); its sprites exist before the warm-up
     this.guide = new Guide(this); // the journal's finder (DOM only)
     this.stage = this.ui.stage = new Stage(this); // the inspect stage: the view goes to the thing (src/ui/stage.js)
     this.ui.placed = new Set(this.world.interactables.map((i) => i.entry).filter(Boolean));
@@ -556,7 +556,7 @@ class Game {
     this.engine.update(dt);
     this.engine.render();
     this.guide?.update(dt);
-    this.cues?.update(dt);
+    this.hints?.update(dt);
     this.ui.frame();
     this.fpsMeter(dt);
     this.teach.update(dt);

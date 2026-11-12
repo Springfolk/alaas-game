@@ -75,13 +75,11 @@ export async function prewarmUI(game) {
     await frames();
     for (const tab of document.querySelectorAll('#pause .tab')) { on('#pause .menu', 'paged'); on(`#${tab.id}`, 'on'); await frames(); }
     document.getElementById('pause').classList.remove('show');
-    // what is made once the world is built: the journal's finder marker, the cue
+    // what is made once the world is built: the journal's finder marker
     for (const t = performance.now(); !game.guide && performance.now() - t < 60000;) await frames(6);
-    on('#guide', 'on'); on('#gshimmer', 'on'); on('#cue', 'on');
+    on('#guide', 'on'); on('#gshimmer', 'on');
     await frames(14);
-    on('#cue', 'near');
-    await frames(2);
-    on('#guide', 'edge'); on('#cue', 'edge');
+    on('#guide', 'edge');
     await frames(3);
   } finally {
     for (const u of undo.reverse()) u();

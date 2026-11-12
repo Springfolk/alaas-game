@@ -222,5 +222,5 @@ export function buildFire(rng, { holeY, holeR, coneR }) {
     sg.attributes.position.needsUpdate = true;
     sg.attributes.aP.needsUpdate = true;
   }
-  return { group, update, light, flare: () => { flare = 1; }, fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); } };
+  return { group, update, light, flare: () => { flare = 1; }, stir: (k) => { flare = Math.max(flare, k); }, fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); } };
 }

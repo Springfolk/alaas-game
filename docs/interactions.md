@@ -25,32 +25,32 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 - Exit (`game.exit()`): saves, `window.close()` (refused only in a tab holding an earlier page), else the title screen and back to that earlier page (not when it is the game again).
 
 ## Hooks
-- Interactable: `off` (not focusable), `take`, `berries`, `sit`, `fireplace: { pos(), upright, fuel() }`. Things with a home (`hands.homed`): `guest` (choron), `offering` (lake stone), `khomus` flags; parts in the model's `userData`.
+- Interactable: `off` (not focusable), `take`, `berries`, `sit`, `fireplace: { pos(), upright, fuel(), stir(k) }`. Things with a home (`hands.homed`): `guest` (choron), `offering` (lake stone), `khomus` flags; parts in the model's `userData`.
 - `game.interact.actFor(it)` overrides `it.act` while carrying; `idleAct()` = the do input with nothing in focus; `putAct()` = put down. `game.doReady` / `readReady` / `putReady` light the touch buttons; `game.choosing` = a `choose()` strip is up (touch hides its controls).
 - Jobs: a placed model names its job in `object.userData.work.job` (`JOBS` in `work/index.js`). `Work` (`game.work`) is asked before the carrying code: `actFor(it)` → act, `null` = nothing, `undefined` = not mine; `count(key)` → `save.work`; `say()` = a saying, once.
 - Tools are carried things: `hands.addKind(kind, hold, lie)`, `hands.addThing({ kind, obj, it, name })`, `it.thing`, `thing.put()`; `hands.pose(dt, cam)` → `{ p, q, world? }` drives a held tool. Carried things have weight: they trail the turning view, sit nearer the middle on a narrow screen, and `weigh()` dips the view.
 - A job's movable parts are scene children marked `userData.dynamic`; after moving one, clear its `userData.sphere` (the look-at cache).
 
-## Cues (`src/ui/cue.js` `next()`, `game.cues`)
-No sentence says the next step: the cue marks it (`docs/ui.md`). One rule table, read from the jobs' own state; nothing while acting, sitting or choosing.
+## Hints (`src/interact/hints.js` `next()`, `game.hints`)
+No sentence and no mark says the next step: the thing itself answers, as in life. One rule table, read from the jobs' own state; nothing while acting, sitting or choosing; it stops once the step is done.
 
-| In the hands / state | The cue goes to |
+| In the hands / state | The world's hint |
 |---|---|
-| empty pail | the lake's edge |
-| billets | the nearer of the woodpile and a hearth |
-| axe | the round on the block; none there: a fallen half, else the heap of rounds, else the loose billets |
-| nothing, ≤ 8 m from the block | the axe when a round stands ready; a fallen half |
-| fish trap | empty: its ghost in the weir's gap; with fish: the тымтай |
-| nothing, trap set with ≥ 3 fish, ≤ 45 m | the trap |
-| scythe, standing on mown ground | the nearest standing grass |
-| bark sheet | cold: the nearest hearth; warm: its ghost on the hide |
-| warm bark on the hide, nothing held | the hide |
-| тордуйа | the nearest full дьэдьэн patch ≤ 80 m |
-| nothing, forge begun, ≤ 14 m | the blank when it is ready for the hands, else the bellows |
-| the guest's choron | the nearest hearth |
-| the lake's milk | the lake's edge |
+| empty pail | a fish rises in open water off the nearest shore |
+| billets | the nearer of: the woodpile (resin glints on the billet ends), a hearth (a log settles: a knock, the fire lifts, sparks) |
+| axe | the round on the block, else a fallen half, the heap of rounds, the loose billets: resin glints on it |
+| nothing, ≤ 8 m from the block | a round stands ready: the sun glints on the axe's edge; a fallen half: resin glints |
+| fish trap | empty: fish rise and jump in the weir's gap, water laps there; with fish: the тымтай's bark glints |
+| nothing, trap set with ≥ 3 fish, ≤ 45 m | the catch splashes in the trap, water laps |
+| scythe, standing off the standing grass | insects buzz from the nearest standing grass |
+| bark sheet | cold: the nearest hearth's fire lifts; warm: a glint on the hide where it lies |
+| warm bark on the hide, nothing held | the sheet's satin glints |
+| тордуйа | the nearest full дьэдьэн patch ≤ 80 m: its berries glint, a thrush calls from there |
+| nothing, forge begun, ≤ 14 m | the blank spits an ember when it is ready for the hands, else the bellows glint |
+| the guest's choron | the nearest hearth's fire lifts |
+| the lake's milk | a fish rises off the shore by the stone |
 
-- Ghosts (`trap`, `bark`): the thing's own geometry under one additive material, made before the warm-up, shown within 40 m.
+- Glints: one additive sprite (`glintMaterial`, `src/interact/glint.js`) made before the warm-up, ≤45 m, on a point of the thing's surface picked by a ray from the eye; a beat every 1.2–3.2 s (resin, bark, berries: two sparkles). Ripples are the lake's own (`world.life.water.ring`); the fire's lift is `fireplace.stir(k)`.
 
 ## Finder (`src/ui/guide.js`, DOM only)
 - `game.guide.go({ key, id, at })` (the journal's map; `clear()`, `dest`): a gold diamond with the distance over the destination, at the screen edge with an arrow when out of view, a soft shimmer within 7 m. An entry (`id`): its nearest place, until found. A job or a spot (`at`): until within 3 m.

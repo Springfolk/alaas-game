@@ -6,7 +6,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 - Aero glass, drawn: `.glass` (window frame: tint, gloss band, streaks, bright edge), `.pane` (small glass on the view), `.client` (light reading sheet), glossy `.btn`, key caps, the red caption close (`.win-close`). No backdrop blur anywhere.
 - Colours: blue = looking closer (inspect), green = the hands (do, and the next thing for them), gold = a place to go to.
 - Glyphs: `src/ui/icons.js` (`icon`, `actIcon(act)` = an act's own tool, `actHeld(act)`, `glyph(control, touch)`, `MOUSE`).
-- Scale: `--ui` (`UI.fit`): 1 up to 1600×900 and on phones, then with the screen (2560×1440: 1.6); every surface has `zoom: var(--ui)` (the finder marker and the cue: their parts).
+- Scale: `--ui` (`UI.fit`): 1 up to 1600×900 and on phones, then with the screen (2560×1440: 1.6); every surface has `zoom: var(--ui)` (the finder marker: its parts).
 - Select (`src/ui/select.js`, `.sel[data-sel]`): the current choice on a button, the list drops from it, the current one ticked. Language (`lang`: title, pause, stage, journal) and quality (`q`).
 - Every surface and state is painted while loading (`src/ui/prewarm.js`); a new one must be added there.
 
@@ -19,7 +19,6 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 | Found by doing (`ui.discovered`) | glass pill, top right: the thing's journal picture in a gold ring and its name, 2.6 s |
 | Saying (`ui.toast`) | glass caption: one italic line and its by-line, low in the view (phones: under the corner buttons) |
 | Finder marker (`#guide`) | gold diamond + metres over the destination set on the journal's map, at the edge with an arrow |
-| Cue (`#cue`, `src/ui/cue.js`) | green star on the next thing for the hands, a green arrow at the edge when it is out of view; a pale ghost of the carried thing where it belongs (`docs/interactions.md`) |
 | Touch (`src/ui/touch.js`) | stick left; right: the hand (green square, the act's tool, a bar = hold), the eye (blue, round), put down, jump, crouch; journal and pause top right. The prompt's lens and plate are the same two inputs at the thing. A touch on the view only looks |
 
 ## Lessons (`src/ui/teach.js`, `#teach`)

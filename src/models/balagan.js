@@ -233,7 +233,7 @@ export default async function build(ctx, placement) {
     };
   }
   // src/interact lays carried firewood here: it stands upright in the mouth and burns brighter for ~60 s
-  if (!winter) hearthIt.fireplace = { pos: () => world(fire.pos), upright: true, fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); } };
+  if (!winter) hearthIt.fireplace = { pos: () => world(fire.pos), upright: true, fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); }, stir: (k) => { flare = Math.max(flare, k); } };
   its.push(hearthIt);
 
   // хомус: taken from its peg and played at the lips (src/interact/rites.js), never after dark (the card explains the taboo)
