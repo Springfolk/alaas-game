@@ -4,7 +4,7 @@
 // shows again once the place is found. One additive sprite, added before the warm-up; only its opacity
 // uniform and transform change (userData.dynamic keeps it out of the merge).
 import * as THREE from 'three/webgpu';
-import { uniform, uv, vec3, vec4, float, abs, exp, max } from 'three/tsl';
+import { uniform, uv, vec3, vec4, float, abs, exp, max, mix } from 'three/tsl';
 
 const ENTRY = 'sayylyk-kystyk';
 const PX = 34; // sprite size on screen, rays included
@@ -19,6 +19,24 @@ export function glintMaterial(op, col) {
   const diag = exp(abs(a.x.sub(a.y)).mul(-30)).mul(exp(p.dot(p).mul(-14))).mul(0.4);
   const shape = core.add(halo).add(rays).add(diag).min(float(1));
   m.colorNode = vec4(col, shape.mul(op));
+  return m;
+}
+
+// Soft light as an additive sprite material (the job hints' bloom, halo, light shaft and the glare at the view's
+// edge, src/interact/hints.js): `op` opacity, `col` colour (HDR), `ring` a faint ring of light round the bloom
+// (a halo in haze), `shaft` 0 → 1 a round bloom → a shaft of sunlight falling on the sprite's foot, wider aloft
+// (stretch the sprite tall for it, `rot` leans it towards the sun). `edge`: drawn over everything (no depth test).
+export function lightMaterial(op, col, ring, shaft, edge = false, rot = null) {
+  const m = new THREE.SpriteNodeMaterial({ name: edge ? 'glare' : 'halo', transparent: true, depthWrite: false, depthTest: !edge, blending: THREE.AdditiveBlending, fog: false });
+  const p = uv().sub(0.5).mul(2), r2 = p.dot(p);
+  const bloom = edge ? exp(r2.mul(-3.5)) : exp(r2.mul(-5)).mul(0.35).add(exp(r2.mul(-40)).mul(0.65)), r = r2.sqrt(); // the edge: a broad wash
+  const halo = exp(r.sub(0.6).pow(2).mul(-16)).mul(0.16).mul(ring);
+  const foot = p.y.add(1).mul(0.5); // 0 at the foot, 1 at the top
+  const xw = p.x.div(foot.mul(0.4).add(0.6));
+  const column = exp(xw.mul(xw).mul(-2.6)).mul(foot.mul(8).min(1)).mul(foot.oneMinus().pow(1.3));
+  const shape = mix(bloom.add(halo).mul(r2.oneMinus().max(0)), column.mul(p.x.mul(p.x).oneMinus()), shaft).min(float(1)); // nothing at the sprite's edges
+  m.colorNode = vec4(col, shape.mul(op));
+  if (rot) m.rotationNode = rot;
   return m;
 }
 

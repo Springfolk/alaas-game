@@ -8,18 +8,26 @@
 import * as THREE from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { LAKE } from '../world/terrain.js';
-import { glintMaterial } from './glint.js';
+import { glintMaterial, lightMaterial } from './glint.js';
 
 const FAR = 45; // m: glints show within this
-// a glint by what it is off: size on screen (px), colour (HDR)
+const NEAR = 14; // m: farther off (the hearth: 7 m) the light at the thing rises as a shaft, seen over roofs and trees
+const C = (r, g, b, k) => new THREE.Color(r, g, b).multiplyScalar(k);
+// each hint's light: `px` its glint's least size on screen, `col` its colour (HDR), `glow` the bloom at the thing
+// (`m` across in metres, `asp` height/width, `ring` a halo's ring), `sparks` glints per beat
 const LOOK = {
-  glint: { px: 34, col: new THREE.Color(1, 0.95, 0.84).multiplyScalar(12) }, // metal
-  sheen: { px: 28, col: new THREE.Color(1, 0.9, 0.7).multiplyScalar(9) }, // resin, bark, wet wicker
-  berries: { px: 24, col: new THREE.Color(1, 0.88, 0.82).multiplyScalar(8) }, // a ripe berry's skin
-  ember: { px: 26, col: new THREE.Color(1, 0.5, 0.16).multiplyScalar(9) }, // a spit off hot iron
+  glint: { px: 34, col: C(1, 0.95, 0.84, 12), glow: { m: 0.5, col: C(1, 0.93, 0.8, 1.6) } }, // metal
+  sheen: { px: 30, col: C(1, 0.9, 0.7, 9), glow: { m: 0.7, col: C(1, 0.85, 0.6, 1.3) }, sparks: 2 }, // resin, bark, wet wicker
+  berries: { px: 26, col: C(1, 0.88, 0.82, 8), glow: { m: 0.9, col: C(1, 0.75, 0.62, 1.2) }, sparks: 2 }, // a ripe berry's skin
+  ember: { px: 28, col: C(1, 0.5, 0.16, 9), glow: { m: 0.6, col: C(1, 0.45, 0.15, 2) } }, // a spit off hot iron
+  fire: { glow: { m: 2.4, col: C(1, 0.55, 0.25, 1.4), ring: 1 }, near: 7 }, // the hearth's light swelling in the smoke
+  ripple: { px: 30, col: C(1, 0.96, 0.88, 10), glow: { m: 1.8, asp: 0.35, col: C(1, 0.95, 0.85, 1.1) } }, // the sun on the risen water
+  splash: { px: 30, col: C(1, 0.96, 0.88, 10), glow: { m: 1.8, asp: 0.35, col: C(1, 0.95, 0.85, 1.1) }, sparks: 2 },
+  dew: { px: 24, col: C(1, 0.97, 0.9, 9), glow: { m: 6, asp: 0.22, col: C(1, 0.95, 0.8, 1.6) }, sparks: 4 }, // dew on the standing grass
 };
-// seconds between a hint's beats (a glint, a rise, a settle of the fire, a call)
-const BEAT = { glint: [1.8, 3.2], sheen: [1.4, 2.6], ember: [1.2, 2.4], ripple: [1.6, 3], splash: [1.1, 2.4], fire: [3, 5], chirr: [2.6, 4.2], berries: [1.6, 2.8] };
+// seconds between a hint's beats
+const BEAT = { glint: [1.8, 3.2], sheen: [1.4, 2.6], ember: [1.2, 2.4], ripple: [1.6, 3], splash: [1.1, 2.4], fire: [2.4, 3.6], dew: [1.8, 3], berries: [1.6, 2.8] };
+const SWELL = 1.8; // s: a bloom's swell and fade
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _b = new THREE.Box3(), _ray = new THREE.Raycaster();
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -33,14 +41,25 @@ export class Hints {
     this.heap = its.find((i) => i.rounds); this.tymtay = its.find((i) => i.tymtay); this.stone = its.find((i) => i.offering);
     this.blank = its.find((i) => i.target?.userData.forge); this.forge = its.find((i) => i.act?.id === 'bellows');
     this.patches = its.filter((i) => i.berries !== undefined); this.pile = its.find((i) => i.take === 'woodpile');
-    const scene = game.engine.scene, home = this.heap ? this.centre(this.heap) : new THREE.Vector3();
-    // the glint: a sun star off metal, resin, bark or a ripe berry (an ember's spit off hot iron)
+    const home = this.heap ? this.centre(this.heap) : new THREE.Vector3();
+    // the pool, made before the warm-up (layer 1: not in the lake mirror or the shadows); in play only uniforms,
+    // transforms and `visible` change: the glint (a sun star off metal, resin, bark, water, a berry), the bloom at
+    // the thing (a halo, a sheen, a shaft of light), the glare at the view's edge on the side of a thing out of view
     this.gOp = uniform(0); this.gCol = uniform(LOOK.glint.col.clone());
-    const s = this.glint = new THREE.Sprite(glintMaterial(this.gOp, this.gCol));
-    s.position.copy(home); s.castShadow = s.receiveShadow = false; s.renderOrder = 10; s.userData.dynamic = true;
-    s.visible = false; scene.add(s);
-    this.cur = null; this.t = 0; this.beat = 0.5; this.flash = -1; this.again = 0;
-    this.at = new THREE.Vector3(); this.spot = new THREE.Vector3();
+    this.glint = this.sprite(glintMaterial(this.gOp, this.gCol), home, 10);
+    this.bOp = uniform(0); this.bCol = uniform(new THREE.Color()); this.bRing = uniform(0); this.bShaft = uniform(0); this.bRot = uniform(0);
+    this.bloom = this.sprite(lightMaterial(this.bOp, this.bCol, this.bRing, this.bShaft, false, this.bRot), home, 9);
+    this.eOp = uniform(0); this.eCol = uniform(new THREE.Color(1, 0.84, 0.62));
+    this.edge = this.sprite(lightMaterial(this.eOp, this.eCol, uniform(0), uniform(0), true), home, 11);
+    this.cur = null; this.t = 0; this.beat = 0.5; this.flash = -1; this.again = 0; this.left = 0; this.swell = -1;
+    this.lit = null; this.spot = new THREE.Vector3();
+    this.gain = { bloom: 2.5, shaft: 0.6, edge: 2.5 }; // the lights' strengths
+  }
+  sprite(m, at, order) {
+    const s = new THREE.Sprite(m);
+    s.position.copy(at); s.castShadow = s.receiveShadow = false; s.renderOrder = order; s.userData.dynamic = true;
+    s.layers.set(1); s.visible = false; this.game.engine.scene.add(s);
+    return s;
   }
 
   centre(it) { return _b.setFromObject(it.target).getCenter(new THREE.Vector3()); }
@@ -66,7 +85,12 @@ export class Hints {
     for (let s = 0; s < 6 && T.lakeDist(p.x, p.z) - LAKE.r > -0.5; s++) { p.x += dx / d * 0.25; p.z += dz / d * 0.25; }
     return p;
   }
-  fireHint(it) { return it ? { kind: 'fire', it, at: it.fireplace.pos?.() || this.centre(it) } : null; }
+  // a hearth, and where its smoke leaves the roof (the urasa's smoke hole, the balagan's chimney top)
+  fireHint(it) {
+    if (!it) return null;
+    const at = it.fireplace.pos?.() || this.centre(it);
+    return { kind: 'fire', it, at, top: at.clone().setY(at.y + (it.fireplace.upright ? 3.3 : 10.5)) };
+  }
   sheen(obj, at) { return { kind: 'sheen', obj, at: at || _b.setFromObject(obj).getCenter(new THREE.Vector3()) }; }
 
   // What the hands should go to next, and how the world says it: { at, kind, … } or null. The rules, job by job.
@@ -104,7 +128,7 @@ export class Hints {
     const H = this.hay;
     if (H?.held && !H.sw) {
       const mask = H.mask;
-      if (mask?.tall && !mask.tall(P.x, P.z)) { const at = this.meadow(H, mask); return at && { kind: 'chirr', at }; }
+      if (mask?.tall && !mask.tall(P.x, P.z)) { const at = this.meadow(H, mask); return at && { kind: 'dew', at }; }
       return null;
     }
     const T = this.tuos;
@@ -144,14 +168,14 @@ export class Hints {
 
   // One beat of the hint `c`: what the world does now and then.
   pulse(c) {
-    const g = this.game, a = g.audio, water = g.world.life?.water;
+    const g = this.game, a = g.audio, water = g.world.life?.water, L = LOOK[c.kind];
+    this.lit = c; // (also a job's own beat, outside the rule table)
+    if (L?.px) { this.flash = 0; this.place(c); this.left = (L.sparks || 1) - 1; this.again = 0.45; }
+    if (L?.glow) this.swell = 0;
     switch (c.kind) {
-      case 'glint': case 'ember': this.flash = 0; this.place(c); break;
-      case 'sheen': case 'berries': this.flash = 0; this.place(c); this.again = 0.45; break; // resin, bark, berries: a glitter of two
       case 'ripple': water?.ring(c.at.x + rand(-0.4, 0.4), c.at.z + rand(-0.4, 0.4), 1, Math.random() < 0.3 ? 2 : 1); break; // a fish rises, now and then jumps
       case 'splash': water?.ring(c.at.x + rand(-0.3, 0.3), c.at.z + rand(-0.3, 0.3), 1, Math.random() < 0.6 ? 2 : 1); break;
-      case 'fire': c.it.fireplace.stir?.(0.45); a?.shot('wood-lay', c.at, 0.22, 1.5, a.near, rand(0.7, 0.85)); break; // a log settles: a knock, a lift of sparks
-      case 'chirr': this.sound('insects', c.at, 0.9, 2.2); break;
+      case 'fire': c.it?.fireplace.stir?.(0.45); a?.shot('wood-lay', c.at, 0.22, 1.5, a.near, rand(0.7, 0.85)); break; // a log settles: a knock, the fire lifts
     }
     if (c.lap && Math.random() < 0.5) this.sound('lake', c.at, 0.5, 1.8); // water lapping at the weir
     if (c.kind === 'berries' && (this.call = (this.call ?? 0) - 1) < 0) { this.call = 3; a?.shot(Math.random() < 0.5 ? 'thrush' : 'thrush-2', _v.copy(c.at).setY(c.at.y + 1.5), 0.25, 6, a.outside, rand(0.97, 1.04)); }
@@ -167,7 +191,8 @@ export class Hints {
   }
 
   // where this glint sits: a point of the thing's surface seen from the eye (its upper half, where the sun falls),
-  // ~15 cm proud of it towards the eye (clear of its own surface, still behind walls); a point thing (`at` only) as it is
+  // ~15 cm proud of it towards the eye (clear of its own surface, still behind walls); dew: anywhere on the grass
+  // round it; water: round the rise; a point thing (`at` only) as it is
   place(c) {
     const cam = this.game.engine.camera;
     this.spot.copy(c.at);
@@ -179,9 +204,16 @@ export class Hints {
         const hit = _ray.intersectObject(c.obj, true)[0];
         if (hit) { this.spot.copy(hit.point); break; }
       }
+    } else if (c.kind === 'dew' || c.kind === 'ripple' || c.kind === 'splash') {
+      const r = c.kind === 'dew' ? 2.2 : 0.6, a = rand(0, 7), q = Math.sqrt(Math.random()) * r;
+      this.spot.x += Math.cos(a) * q; this.spot.z += Math.sin(a) * q;
+      if (c.kind === 'dew') this.spot.y = this.game.world.groundAt(this.spot.x, this.spot.z) + rand(0.25, 0.5);
     }
     this.glint.position.copy(this.spot).addScaledVector(_w.subVectors(cam.position, this.spot).normalize(), Math.min(0.18, this.spot.distanceTo(cam.position) * 0.1));
   }
+
+  // metres across at distance `d` for `px` CSS pixels on screen
+  m(px, d) { return d * 2 * Math.tan(THREE.MathUtils.degToRad(this.game.engine.camera.fov) / 2) * px / innerHeight; }
 
   update(dt) {
     const g = this.game;
@@ -190,22 +222,59 @@ export class Hints {
       const live = !g.title && !g.paused && !g.ui.modal && !g.stage?.on;
       let c = null;
       try { c = live ? this.next() : null; } catch (e) { if (!this.warned) { this.warned = true; console.warn('hints: a rule no longer fits its job', e); } } // a job reworked under the table never stops the frame
-      if (c?.kind !== this.cur?.kind) { this.beat = c?.kind === 'fire' ? 0.6 : 0.3; this.call = 0; }
+      if (c?.kind !== this.cur?.kind) { this.beat = c?.kind === 'fire' ? 0.6 : 0.3; this.call = 0; this.left = 0; }
       this.cur = c;
-      if (c) this.at.copy(c.at);
     }
-    const c = this.cur, cam = g.engine.camera;
-    if (c && (this.beat -= dt) <= 0) { const [lo, hi] = BEAT[c.kind]; this.beat = rand(lo, hi); this.pulse(c); }
-    if (c && this.again > 0 && (this.again -= dt) <= 0) { this.flash = 0; this.place(c); }
+    const c = this.cur, cam = g.engine.camera, H = innerHeight;
+    if (c && BEAT[c.kind] && (this.beat -= dt) <= 0) { const [lo, hi] = BEAT[c.kind]; this.beat = rand(lo, hi); this.pulse(c); }
+    const lit = this.lit, L = lit && LOOK[lit.kind];
+    if (lit && this.left > 0 && (this.again -= dt) <= 0) { this.left--; this.again = rand(0.3, 0.6); this.flash = 0; this.place(lit); }
     // the glint: a quick rise, a flicker and out (~0.5 s), on the thing's surface seen from here
-    if (this.flash < 0) return;
-    this.flash += dt;
-    const k = this.flash / 0.5, L = LOOK[c?.kind], d = cam.position.distanceTo(this.spot);
-    if (k >= 1 || !L || d > FAR) { this.flash = -1; this.glint.visible = false; return; }
-    this.gCol.value.copy(L.col);
-    this.gOp.value = Math.sin(Math.PI * k) ** 2 * (0.75 + 0.25 * Math.sin(this.flash * 70));
-    const s = d * 2 * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2) * L.px * THREE.MathUtils.clamp(5 / d, 1, 1.8) / innerHeight; // larger close by
-    this.glint.scale.set(s, s, 1);
-    this.glint.visible = true;
+    if (this.flash >= 0) {
+      this.flash += dt;
+      const k = this.flash / 0.5, d = cam.position.distanceTo(this.spot);
+      if (k >= 1 || !L?.px || d > FAR) { this.flash = -1; this.glint.visible = false; } else {
+        this.gCol.value.copy(L.col);
+        this.gOp.value = Math.sin(Math.PI * k) ** 2 * (0.75 + 0.25 * Math.sin(this.flash * 70));
+        const s = this.m(Math.max(L.px, 0.055 * H), d) * THREE.MathUtils.clamp(5 / d, 1, 1.8); // larger close by
+        this.glint.scale.set(s, s, 1);
+        this.glint.visible = true;
+      }
+    }
+    // the bloom at the thing and the glare at the view's edge: a slow swell and fade with each beat
+    let env = 0;
+    if (this.swell >= 0) { this.swell += dt; const k = this.swell / SWELL; if (k >= 1 || !L?.glow) this.swell = -1; else env = Math.sin(Math.PI * Math.sqrt(k)) ** 2; }
+    this.bloom.visible = this.edge.visible = false;
+    if (env <= 0) return;
+    const G = L.glow, far = cam.position.distanceTo(lit.at) > (L.near ?? NEAR), top = far && lit.top;
+    const at = top || lit.at, d = cam.position.distanceTo(at); // a hearth from afar: its light in the smoke over the roof
+    if (far && !top) { // a shaft of sunlight falling on it
+      const w = Math.max(5, this.m(0.15 * H, d));
+      _w.copy(g.engine.sun.position).transformDirection(cam.matrixWorldInverse); // the sun's side of the view
+      this.bRot.value = THREE.MathUtils.clamp(-_w.x * 0.6, -0.35, 0.35);
+      this.bloom.scale.set(w, w * 3, 1); this.bloom.center.set(0.5, 0.03); this.bloom.position.copy(at);
+      this.bShaft.value = 1; this.bOp.value = env * this.gain.shaft;
+    } else {
+      const w = Math.max(G.m, this.m(0.1 * H, d) * (G.asp ? 1.6 : 1));
+      this.bloom.scale.set(w, w * (G.asp || 1), 1); this.bloom.center.set(0.5, 0.5); this.bRot.value = 0;
+      this.bloom.position.copy(at).addScaledVector(_w.subVectors(cam.position, at).normalize(), Math.min(0.3, d * 0.1));
+      if (G.asp) this.bloom.position.y += w * G.asp * 0.3; // lying on the water or the grass, not sunk in it
+      this.bShaft.value = 0; this.bOp.value = env * this.gain.bloom;
+    }
+    this.bCol.value.copy(G.col); this.bRing.value = G.ring || 0;
+    this.bloom.visible = true;
+    // out of view: sunlight flaring in at the edge of the view on its side
+    _v.copy(lit.at).applyMatrix4(cam.matrixWorldInverse);
+    const tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), th = tv * cam.aspect;
+    if (_v.z < 0 && Math.abs(_v.x / -_v.z) < th * 0.95 && Math.abs(_v.y / -_v.z) < tv * 0.95) return;
+    let ex = _v.x / th, ey = _v.y * 0.35 / tv;
+    if (_v.z > 0 && Math.abs(ex) < 0.2 * Math.abs(_v.z / th)) ex = Math.sign(ex || 1) * Math.abs(_v.z / th); // right behind: the nearer shoulder
+    const n = Math.max(Math.abs(ex), Math.abs(ey)) || 1;
+    ex /= n; ey /= n;
+    this.edge.position.set(ex * th * 1.02, ey * tv * 1.02, -1).applyMatrix4(cam.matrixWorld);
+    const eh = Math.min(tv, th) * 2 * 0.95, side = Math.abs(ex) > Math.abs(ey); // by the view's short side (a portrait phone)
+    this.edge.scale.set(eh * (side ? 0.5 : 2.4), eh * (side ? 1.6 : 0.5), 1); // a band of light along that edge
+    this.eOp.value = env * this.gain.edge;
+    this.edge.visible = true;
   }
 }

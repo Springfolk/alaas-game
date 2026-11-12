@@ -569,10 +569,10 @@ class Game {
     const ctx = { dt, time: this.clock.getElapsed(), camera: this.engine.camera, player: this.player, game: this };
     this.world.update(dt, ctx);
     this.audio?.update(dt, ctx);
+    this.hints?.update(dt); // before the render: its light at the view's edge sits on this frame's camera
     this.engine.update(dt);
     this.engine.render();
     this.guide?.update(dt);
-    this.hints?.update(dt);
     this.ui.frame();
     this.fpsMeter(dt);
     this.teach.update(dt);
