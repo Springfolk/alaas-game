@@ -17,7 +17,7 @@ const TXT = {
   proverb: L('Оннооҕор туу сүрэхтээх.', '“Even a fish trap has a heart.”', '«Даже у верши есть сердце».'),
   proverbBy: L('өс хоһооно', 'a Sakha saying', 'якутская пословица'),
 };
-const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
+const _v = new THREE.Vector3(), _m = new THREE.Matrix4(), _w = new THREE.Vector3();
 function basisQ(y, xHint, out = new THREE.Quaternion()) {
   const Y = _v.copy(y).normalize().clone(), Z = new THREE.Vector3().crossVectors(xHint, Y).normalize(), X = new THREE.Vector3().crossVectors(Y, Z);
   return out.setFromRotationMatrix(_m.makeBasis(X, Y, Z));
@@ -121,7 +121,7 @@ export class Fish {
       const P = this.pose = { p: from.p.clone(), q: from.q.clone() };
       const per = Math.max(1, Math.ceil((this.pour0 ||= this.n) / 3));
       let out = 0;
-      const tip = (k) => { P.p.lerpVectors(from.p, TIP.p, ease(k)); P.q.slerpQuaternions(from.q, TIP.q, ease(k)); };
+      const tip = (k) => { P.p.lerpVectors(from.p, TIP.p, ease(k)); P.q.slerpQuaternions(from.q, TIP.q, ease(k)); this.overGround(P); };
       await this.tween(0.4, tip);
       game.audio?.play('water-pour-2', this.tyIt?.target.getWorldPosition(_v) || game.engine.camera.position);
       for (let i = 0; i < per && this.n > 0; i++) {
@@ -137,6 +137,14 @@ export class Fish {
       game.promptKey = null;
     },
   };
+  // a pose (camera space) raised so the trap's tail stays over the ground as drawn (looking down a slope it went in)
+  overGround(P) {
+    const cam = this.game.engine.camera, o = this.trap.obj;
+    if (this.len === undefined) { let y = 0; o.traverse((m) => { if (m.geometry?.attributes.position) { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); y = Math.max(y, m.geometry.boundingBox.max.y); } }); this.len = y; }
+    const t = cam.localToWorld(_w.set(0, this.len, 0).applyQuaternion(P.q).add(P.p));
+    const lack = this.game.world.drawnAt(t.x, t.z) + 0.08 - t.y;
+    if (lack > 0) P.p.add(_w.set(0, lack, 0).transformDirection(cam.matrixWorldInverse).multiplyScalar(lack));
+  }
   tween(dur, step) { return new Promise((res) => { (this.tweens ||= []).push({ dur, k: 0, step, res }); }); }
 
   update(dt) {

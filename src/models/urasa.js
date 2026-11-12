@@ -216,10 +216,14 @@ export default async function build(ctx) {
     {
       entry: 'uot-ichchite', target: fireProxy,
       // src/interact lays carried firewood here
-      fireplace: { pos: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), upright: false, fuel: fire.fuel, stir: fire.stir },
+      fireplace: {
+        pos: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), upright: false, fuel: fire.fuel, stir: fire.stir,
+        // the bearing (world, rad from +x towards +z) of the next gap between the fire's leaning billets
+        lean: (() => { let n = 0; return () => { const a = fire.gaps[n++ % fire.gaps.length], o = fire.group.localToWorld(new THREE.Vector3()), d = fire.group.localToWorld(new THREE.Vector3(Math.cos(a), 0, Math.sin(a))).sub(o); return Math.atan2(d.z, d.x); }; })(),
+      },
       act: {
         // a pinch from the hand, carried slowly to the hearth and set down on it; the fire takes it
-        id: 'feed', label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
+        id: 'feed', empty: true, label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
         run: async (game) => {
           const cam = game.engine.camera, hearth = fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top + 0.1, 0));
           const hand = new THREE.Vector3(0.14, -0.2, -0.35).applyQuaternion(cam.quaternion).add(cam.position);

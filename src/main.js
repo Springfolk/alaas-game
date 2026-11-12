@@ -495,7 +495,7 @@ class Game {
   actOf(it) {
     const o = this.interact?.actFor(it);
     if (o !== undefined) return o;
-    if (!it.act) return null;
+    if (!it.act || it.act.empty && this.interact?.hands?.held) return null; // `empty`: with empty hands only
     const doneKey = it.act.once ? `${it.entry}:${it.act.id || 'act'}` : null;
     return doneKey && this.done.has(doneKey) ? null : it.act;
   }

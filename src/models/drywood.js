@@ -31,8 +31,10 @@ export default async function build(ctx, placement) {
       B.add(tw.side, M.wood, mtx([0, y, 0], [0.7 + rng() * 0.5, a, 0]), tint);
     }
     // a second, thinner bough beside it (one armload piece)
-    const side = logGeo(len * 0.8, r * 0.7, r * 0.4, rng, { seg: 5, step: 0.12, bend: 0.07, wob: 0.12, caps: true });
-    const sm = mtx([r * 1.6, 0.04, r * 0.5], [0.05, rng() * 6.28, 0.07]);
+    // lying beside the bough, its underside level with the bough's (local +z is down once the branch lies), spreading from it
+    const side = logGeo(len * 0.8, r * 0.7, r * 0.4, rng, { seg: 5, step: 0.12, bend: 0.03, wob: 0.12, caps: true });
+    rng(); // (a draw kept: the branches after this one stay as they were)
+    const sm = mtx([r * 2.2, 0.04, r * 0.3], [0, 0, -0.08]);
     B.add(side.side, M.wood, sm, tint); B.add(side.caps, M.end, sm, tint);
     for (const m of B.build(g)) m.castShadow = true;
     const home = { x, z, yaw: rng() * 6.28 };
@@ -40,7 +42,7 @@ export default async function build(ctx, placement) {
     const tilt = Math.atan2(ground(x + Math.sin(home.yaw) * len, z + Math.cos(home.yaw) * len) - ground(x, z), len);
     g.position.set(x, ground(x, z) + r + 0.01, z);
     g.rotation.set(Math.PI / 2 - tilt, home.yaw, 0, 'YXZ');
-    g.userData.dynamic = true;
+    g.userData.dynamic = true; g.userData.len = len; // (src/interact/work/gather.js lays it on the drawn ground)
     object.add(g);
     sticks.push({ obj: g, x, z });
     interactables.push({ target: g, take: 'log', drywood: i, label: { sah: 'хаппыт мас', en: 'dry wood', ru: 'сушняк' } });

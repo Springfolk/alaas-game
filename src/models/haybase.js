@@ -76,6 +76,7 @@ export default async function build(ctx, placement) {
     addLog(B, [x, gy + railY - 0.08, z], [x + 0.06, gy + railY + 0.16, z + 0.05], 0.022, 0.018, rng, M.wood, M.end, { seg: 5 });
     colliders.push({ x, z, r: 0.1 });
   }
+  { const [cx, cz] = rp(0, 0.42); colliders.push({ x: cx, z: cz, hw: 1.5, hd: 0.52, rot: RA }); } // the rail and the tools leaning on it: walked round, not through
   const [ax, az] = rp(-1.45), [bx, bz] = rp(1.45);
   addLog(B, [ax, ground(ax, az) + railY + 0.04, az], [bx, ground(bx, bz) + railY + 0.04, bz], 0.035, 0.03, rng, M.wood, M.end, { seg: 7, step: 0.3 });
   // forks (атырдьах): a straight haft that splits into two long tines, bound below the fork; rakes: a head

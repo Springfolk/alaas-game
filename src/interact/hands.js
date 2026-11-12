@@ -295,11 +295,24 @@ export class Hands {
       const t = this.letGo();
       t.state = 'fire';
       const at = fp.pos();
-      const yaw = Math.random() * Math.PI * 2;
-      // upright in a balagan's open mouth; across the embers on an uraha's hearth
-      const q = fp.upright ? new THREE.Quaternion().setFromEuler(_e.set(0.12, yaw, 0.05)) : new THREE.Quaternion().setFromEuler(_e.set(Math.PI / 2, yaw, 0, 'YXZ'));
-      const to = at.clone().add(fp.upright ? _v.set(0, -0.32, 0) : _v.set(0, 0.06, 0));
-      if (!fp.upright) to.add(_v.set(0, -0.25, 0).applyQuaternion(q)); // centre the billet on the fire
+      const yaw = Math.random() * Math.PI * 2; // a round stick: any turn about its axis
+      // leaned into the fire in a gap between two of its billets, its foot in the ashes (a split billet's wood
+      // turned up or out, away from the others): upright in a balagan's mouth, slanting on an uraha's hearth
+      const L = t.len ??= lengthOf(t.obj), a = fp.lean(), c = Math.cos(a), s = Math.sin(a);
+      let to, top;
+      if (fp.upright) { // `at` 0.35 over the fire's floor; its billets stand in a cone there
+        const rf = 0.3 + 0.08 * clamp((L - 0.5) / 0.4, 0, 1), h = Math.min(L * 0.95, 0.9);
+        to = at.clone().add(_v.set(c * rf, -0.33, s * rf));
+        top = to.clone().add(_v.set(-c * 0.3 * h, h, -s * 0.3 * h));
+      } else { // `at` the hearth's top; the foot out on the ash, the top against the others
+        const rf = clamp(0.1 + Math.sqrt(Math.max(0, (L - 0.06) ** 2 - 0.24 ** 2)), 0.3, 0.62);
+        to = at.clone().add(_v.set(c * rf, 0.04, s * rf));
+        top = at.clone().add(_v.set(c * 0.1, 0.28, s * 0.1)); // on its own side of the middle: two laid ones never meet
+      }
+      const dir = top.sub(to).normalize(), q = new THREE.Quaternion().setFromUnitVectors(_e2.set(0, 1, 0), dir);
+      const want = fp.upright ? _p.set(c, 0, s) : _p.set(0, 1, 0).addScaledVector(dir, -dir.y).normalize(); // where its wood should face
+      const w = want.applyQuaternion(_q.copy(q).invert()), m = midOf(t.obj);
+      q.multiply(_q.setFromAxisAngle(_e2.set(0, 1, 0), Math.atan2(w.x, w.z) - Math.atan2(m.x, m.z) + (Math.hypot(m.x, m.z) < 0.01 ? yaw : 0)));
       await this.fly(t, to, q, 0.7);
       game.audio?.play('wood-lay', at);
       fp.fuel();
@@ -445,4 +458,18 @@ export class Hands {
       }
     }
   }
+}
+
+// a carried thing's length along its own +Y (billets and branches stand on their foot at the origin)
+function lengthOf(obj) {
+  let y = 0;
+  obj.traverse((m) => { if (!m.geometry?.attributes.position) return; if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); y = Math.max(y, m.geometry.boundingBox.max.y * m.scale.y); });
+  return y || 0.5;
+}
+// the middle of its shape across its own +Y axis (a split billet's wood lies off its pith edge)
+function midOf(obj) {
+  if (obj.userData.mid) return obj.userData.mid;
+  const m = new THREE.Vector3(); let n = 0;
+  for (const v of hullOf(obj)) { m.x += v.x; m.z += v.z; n++; }
+  return (obj.userData.mid = m.multiplyScalar(1 / Math.max(1, n)));
 }

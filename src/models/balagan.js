@@ -232,7 +232,7 @@ export default async function build(ctx, placement) {
   if (!winter) {
     hearthIt.act = {
       // a pinch of butter from the hand, carried slowly into the hearth's mouth and set down there; the fire takes it
-      id: 'feed', label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
+      id: 'feed', empty: true, label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
       run: async (game) => {
         const cam = game.engine.camera;
         morselFrom.set(0.14, -0.2, -0.35).applyQuaternion(cam.quaternion).add(cam.position);
@@ -245,7 +245,7 @@ export default async function build(ctx, placement) {
     };
   }
   // src/interact lays carried firewood here: it stands upright in the mouth and burns brighter for ~60 s
-  if (!winter) hearthIt.fireplace = { pos: () => world(fire.pos), upright: true, fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); }, stir: (k) => { flare = Math.max(flare, k); } };
+  if (!winter) hearthIt.fireplace = { pos: () => world(fire.pos), upright: true, lean: (() => { let n = 0; return () => { const a = fire.gaps[n++ % fire.gaps.length], d = world(new THREE.Vector3(Math.cos(a), 0, Math.sin(a))).sub(world(new THREE.Vector3())); return Math.atan2(d.z, d.x); }; })(), fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); }, stir: (k) => { flare = Math.max(flare, k); } };
   its.push(hearthIt);
 
   // хомус: taken from its peg and played at the lips (src/interact/rites.js), never after dark (the card explains the taboo)
