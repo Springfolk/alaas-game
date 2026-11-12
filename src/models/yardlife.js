@@ -119,6 +119,7 @@ export default async function build(ctx, placement) {
 function followGround(meshes, cx, cz, drawn, top, px, py, pz) {
   for (const m of meshes) {
     const p = m.geometry.attributes.position, bs = m.geometry.boundingSphere;
+    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); // the box stays as shaped: the homestead atlas key (engine/lod.js) is the same on every tier
     if (bs && Math.hypot(bs.center.x - cx, bs.center.z - cz) > bs.radius + 1.9) continue;
     let moved = false;
     for (let i = 0; i < p.count; i++) {
@@ -129,6 +130,6 @@ function followGround(meshes, cx, cz, drawn, top, px, py, pz) {
       const w = (1 - smooth(1.6, 1.9, d)) * (1 - smooth(0.4, 0.8, h));
       if (w > 0) { p.setY(i, p.getY(i) + w * (drawn(wx, wz) - t)); moved = true; }
     }
-    if (moved) { p.needsUpdate = true; m.geometry.computeBoundingSphere(); m.geometry.boundingBox = null; }
+    if (moved) { p.needsUpdate = true; m.geometry.computeBoundingSphere(); }
   }
 }
