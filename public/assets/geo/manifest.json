@@ -13,7 +13,7 @@
   "model:kuruo": "1de125ef24e6",
   "model:lakeside": "fa4fbd90d79d",
   "model:sacred-birch": "56b5cf43ba39",
-  "model:sele": "042da974701a",
+  "model:sele": "81399b06ce4b",
   "model:serge": "5ad310dd22e9",
   "model:urasa": "c7dc13e12bf0",
   "model:work": "c84cdcb48b0a",
@@ -160,7 +160,7 @@
   },
   "model:sele#6f8bdbc0": {
    "group": "model:sele",
-   "key": "042da974701a",
+   "key": "81399b06ce4b",
    "empty": true
   },
   "model:serge#08963bf0": {

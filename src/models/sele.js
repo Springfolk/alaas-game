@@ -1,12 +1,12 @@
 // Биэ сэлэтэ: the mare-milking line on the meadow. A long rope of black and white horsehair (18 m) between two plain
-// posts of human height, sagging to ~0.7 m; short tethers along it where the foals are tied so the
-// mares stay near to be milked. The herd is out on pasture: only signs remain — hoof-trodden ground
-// along the line, horse droppings, a halter dropped in the grass, a birch-bark milk pail by a post.
+// posts of human height, sagging to ~0.7 m; tether loops knotted into it, short tethers where the foals are tied
+// so the mares stay near to be milked, and the foals' pegs beside it. The herd is out on pasture: only signs
+// remain — a churned, hoof-trodden strip along the line, droppings, a halter in the grass, a birch-bark pail by a post.
 import * as THREE from 'three/webgpu';
 import { turned, logProfile, bow, tube, sagCurve, strip, merge, tris, surfaceOf } from './yard/geo.js';
 import { larch, rope, trodden, grass, plain, birchBark } from './yard/mat.js';
 import { groundOf, troddenPatch, grassClump, noSway } from './yard/bits.js';
-import { fbm } from '../util.js';
+import { fbm, mulberry32 } from '../util.js';
 
 const TAU = Math.PI * 2;
 const HALF = 9;       // posts at z = ±9 (rope runs N–S)
@@ -37,14 +37,28 @@ export default async function build(ctx, placement) {
     g.translate(p.x, p.gy - 0.35, p.z);
     wood.push(g);
   }
+  // the foals' pegs: short stakes either side of the line, worn bright at the top where the tethers are tied
+  const pr = mulberry32(7310); // own stream: the build's rng draws stay as they were
+  const pegs = [];
+  for (let i = 0; i < 9; i++) {
+    const z = -HALF + 1.5 + i * ((2 * HALF - 3) / 8) + (pr() - 0.5) * 0.5, x = (i % 2 ? 1 : -1) * (0.75 + pr() * 0.35);
+    const gy = ground(x, z), H = 0.32 + pr() * 0.14, L = H + 0.25;
+    const g = turned(logProfile(L, 0.032, 0.026, { step: 0.1 }), {
+      radial: 9, rng: pr, noise: 0.06, oval: 0.08, bend: bow(pr, L, 0.01), capTop: true,
+      color: (y, a, c) => { const d = Math.max(0, Math.min(1, (0.3 - y) / 0.25)), t = y > L - 0.1 ? 1.12 : 1; c[0] = 0.9 * t * (1 - d * 0.5); c[1] = 0.82 * t * (1 - d * 0.55); c[2] = 0.7 * t * (1 - d * 0.6); },
+    });
+    g.rotateZ((pr() - 0.5) * 0.12); g.rotateX((pr() - 0.5) * 0.12);
+    g.translate(x, gy - 0.25, z);
+    pegs.push({ x, z, gy, H, g });
+  }
   const postGeo = merge(wood);
-  const postMesh = new THREE.Mesh(postGeo, larch(ctx, { key: 'larch-sele', lichen: 0.4 }));
+  const postMesh = new THREE.Mesh(merge([postGeo, ...pegs.map((q) => q.g)]), larch(ctx, { key: 'larch-sele', lichen: 0.4 }));
   postMesh.name = 'sele-posts'; postMesh.castShadow = true;
   object.add(postMesh);
 
   // ── the rope: wrapped twice round each post, then the long sagging span ──
   // laid on the posts' real surfaces (bent, oval), so the turns neither sink into the wood nor float off it
-  const RR = 0.011; // a mare-line rope is thick: it holds a row of foals
+  const RR = 0.014; // a mare-line rope is thick: it holds a row of foals
   for (const p of posts) p.surf = surfaceOf(postGeo, p.x, p.z);
   const on = (p, y, ang, out) => { const s = p.surf(y, ang), r = s.r + out; return new THREE.Vector3(s.cx + Math.cos(ang) * r, y, s.cz - Math.sin(ang) * r); };
   const ropes = [];
@@ -63,38 +77,57 @@ export default async function build(ctx, placement) {
   // things lying on the trodden earth sit on its sheet (troddenPatch lifts it 2.5 cm over the ground): under it,
   // the see-through sheet greyed them out
   const top = (x, z) => ground(x, z) + 0.027;
-  // foal tethers every ~1.6 m: a knot on the line, a short rope hanging down to a loop
+  // tether loops knotted into the line every ~0.75 m (an eye hanging under a knot); a short tether from some of
+  // them, its end loop lying in the grass or hanging free; and a tether round each foal's peg, trailing
   const tethers = [];
   const along = (t) => span[Math.round(t * (span.length - 1))];
-  for (let i = 1; i < 11; i++) {
-    const t = i / 11 + (rng() - 0.5) * 0.02;
-    const k = along(t);
-    // the knot
-    const knot = new THREE.SphereGeometry(0.02, 8, 6);
-    knot.scale(1, 0.8, 1.4);
-    knot.translate(k.x, k.y - 0.004, k.z);
+  const eye = (cx, cy, cz, r, ang, drop) => { // a loop hanging from (cx, cy, cz) in the vertical plane at ang
+    const pts = [];
+    for (let j = 0; j <= 14; j++) {
+      const u = (j / 14) * TAU, h = Math.cos(ang), v = Math.sin(ang);
+      const lx = Math.sin(u) * r, ly = -(1 - Math.cos(u)) * r * drop;
+      pts.push(new THREE.Vector3(cx + lx * h, cy + ly, cz + lx * v));
+    }
+    return tube(pts, 0.0055, { radial: 5 });
+  };
+  const knotAt = (k, s = 1) => {
+    const knot = new THREE.SphereGeometry(0.024 * s, 8, 6);
+    knot.scale(1, 0.8, 1.5);
+    knot.translate(k.x, k.y - 0.006, k.z);
     knot.setAttribute('color', new THREE.Float32BufferAttribute(new Array(knot.attributes.position.count * 3).fill(1), 3));
     tethers.push(knot);
-    // the tether hangs, the end loop lies in the grass (some hang free)
-    const lying = rng() < 0.6;
-    const len = 0.7 + rng() * 0.3;
-    const endY = lying ? top(k.x, k.z) + 0.005 : k.y - len * 0.75;
-    const side = (rng() - 0.5) * 0.6;
-    const end = [k.x + side, endY, k.z + (rng() - 0.5) * 0.3];
-    const pts = sagCurve([k.x, k.y - 0.01, k.z], end, -0.06, 0.05, 0.01, rng);
-    if (lying) pts.forEach((p) => { p.y = Math.max(p.y, top(p.x, p.z) + 0.004); });
-    tethers.push(tube(pts, 0.0065, { radial: 6 }));
-    // the loop at the free end
-    const loop = [];
-    const la = rng() * TAU;
+  };
+  const NL = 22;
+  for (let i = 1; i < NL; i++) {
+    const k = along(i / NL + (pr() - 0.5) * 0.01);
+    knotAt(k);
+    if (i % 2) { tethers.push(eye(k.x, k.y - 0.02, k.z, 0.035, Math.PI / 2 + (pr() - 0.5) * 0.6, 1.1)); continue; }
+    // a tether: 0.6–0.9 m, the end loop lying in the grass (or hanging free)
+    const lying = pr() < 0.65, len = 0.6 + pr() * 0.3;
+    const endY = lying ? top(k.x, k.z) + 0.006 : k.y - len * 0.8;
+    const end = [k.x + (pr() - 0.5) * 0.7, endY, k.z + (pr() - 0.5) * 0.3];
+    const pts = sagCurve([k.x, k.y - 0.012, k.z], end, -0.06, 0.05, 0.01, pr);
+    if (lying) pts.forEach((p) => { p.y = Math.max(p.y, top(p.x, p.z) + 0.006); });
+    tethers.push(tube(pts, 0.008, { radial: 6 }));
+    const la = pr() * TAU, loop = [];
     for (let j = 0; j <= 18; j++) {
-      const u = (j / 18) * TAU;
-      const r = 0.07;
-      const lx = Math.cos(u) * r, lz = Math.sin(u) * r;
+      const u = (j / 18) * TAU, r = 0.08, lx = Math.cos(u) * r, lz = Math.sin(u) * r;
       const px = end[0] + Math.cos(la) * (lx + r) - Math.sin(la) * lz, pz = end[2] + Math.sin(la) * (lx + r) + Math.cos(la) * lz;
-      loop.push(new THREE.Vector3(px, lying ? top(px, pz) + 0.004 : end[1] - Math.abs(lz) * 0.4 - (lx + r) * 0.9, lying ? pz : end[2] + lz * 0.3));
+      loop.push(new THREE.Vector3(px, lying ? top(px, pz) + 0.006 : end[1] - Math.abs(lz) * 0.4 - (lx + r) * 0.9, lying ? pz : end[2] + lz * 0.3));
     }
-    tethers.push(tube(loop, 0.0065, { radial: 6 }));
+    tethers.push(tube(loop, 0.008, { radial: 6 }));
+  }
+  for (const q of pegs) {
+    const ty = q.gy + q.H - 0.06, ring = [];
+    for (let j = 0; j <= 16; j++) { const u = (j / 16) * TAU; ring.push(new THREE.Vector3(q.x + Math.cos(u) * 0.036, ty - Math.sin(u * 2) * 0.006, q.z + Math.sin(u) * 0.036)); }
+    tethers.push(tube(ring, 0.008, { radial: 5 }));
+    // the tether trails off the peg over the trodden earth
+    const a = pr() * TAU, len = 0.5 + pr() * 0.4, pts = [];
+    for (let j = 0; j <= 12; j++) {
+      const t = j / 12, x = q.x + 0.036 + Math.cos(a) * len * t + Math.sin(t * 6) * 0.04, z = q.z + Math.sin(a) * len * t;
+      pts.push(new THREE.Vector3(x, Math.max(top(x, z) + 0.006, ty - t * 3), z));
+    }
+    tethers.push(tube(pts, 0.008, { radial: 6 }));
   }
   const ropeMesh = new THREE.Mesh(merge([...ropes, ...tethers].map(noSway)), rope({ key: 'sele-rope', colors: [0x241d17, 0xd6cfbf, 0x4a3f33], plies: 3, pitch: 0.07, radius: 0.011, sheen: 0.4 }));
   ropeMesh.name = 'sele-rope';
@@ -107,23 +140,32 @@ export default async function build(ctx, placement) {
     const ends = Math.min(1, (HALF + 1.6 - Math.abs(z)) / 2);
     return across * 1.6 * ends;
   }, { step: 0.4 });
-  const earth = new THREE.Mesh(tg, trodden(ctx, { key: 'trodden-sele', hoof: 1.5 }));
+  const earth = new THREE.Mesh(tg, trodden(ctx, { key: 'trodden-sele', hoof: 2.4 }));
   earth.castShadow = false; earth.renderOrder = -1; earth.userData.ground = 'terrain'; // follows the drawn ground (world/settle.js)
   object.add(earth);
 
   const dung = [];
-  for (let c = 0; c < 6; c++) {
-    const cx = (rng() - 0.5) * 3, cz = (rng() - 0.5) * 2 * (HALF - 1);
-    const n = 5 + Math.floor(rng() * 6), old = rng() < 0.5;
+  const addLump = (x, z, r, sq, col, lift) => {
+    const g = new THREE.SphereGeometry(r, 8, 6);
+    g.scale(1 + pr() * 0.4, sq, 1 + pr() * 0.4); g.rotateY(pr() * TAU);
+    g.translate(x, top(x, z) + r * sq * 0.35 + lift, z);
+    g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(g.attributes.position.count).fill(col).flat(), 3));
+    dung.push(g);
+  };
+  // droppings: most along the line where the foals stood, old (grey-brown) and fresh (dark)
+  for (let c = 0; c < 14; c++) {
+    const cx = (pr() - 0.5) * (c < 10 ? 2.2 : 5), cz = (pr() - 0.5) * 2 * (HALF - 0.8);
+    const n = 5 + Math.floor(pr() * 6), old = pr() < 0.5;
     for (let i = 0; i < n; i++) {
-      const x = cx + (rng() - 0.5) * 0.22, z = cz + (rng() - 0.5) * 0.22, r = 0.03 + rng() * 0.012;
-      const g = new THREE.SphereGeometry(r, 10, 7);
-      g.scale(1, 0.75, 1.15); g.rotateY(rng() * TAU);
-      g.translate(x, top(x, z) + r * 0.25 + (i > n / 2 ? r * 0.8 : 0), z);
-      const col = old ? [0.13, 0.11, 0.07] : [0.06, 0.05, 0.028];
-      g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(g.attributes.position.count).fill(col).flat(), 3));
-      dung.push(g);
+      const x = cx + (pr() - 0.5) * 0.22, z = cz + (pr() - 0.5) * 0.22, r = 0.03 + pr() * 0.012;
+      addLump(x, z, r, 0.75, old ? [0.13, 0.11, 0.07] : [0.06, 0.05, 0.028], i > n / 2 ? r * 0.6 : 0);
     }
+  }
+  // churned earth: clods kicked up by hooves, thickest near the line
+  for (let i = 0; i < 140; i++) {
+    const x = (pr() - 0.5) * 2 * (0.4 + Math.pow(pr(), 1.6) * 2.2), z = (pr() - 0.5) * 2 * (HALF + 0.6);
+    const d = 0.55 + pr() * 0.3;
+    addLump(x + 0.07, z, 0.015 + pr() * 0.025, 0.5, [0.25 * d, 0.17 * d, 0.09 * d], -0.004);
   }
   const dungMesh = new THREE.Mesh(merge(dung), plain('dung', { roughness: 0.88, bump: 0.003, bumpFreq: 30 }));
   dungMesh.castShadow = false; dungMesh.userData.ground = 'terrain';
@@ -193,7 +235,7 @@ export default async function build(ctx, placement) {
   object.userData.info = { tris: tris(ropeMesh.geometry) };
   return {
     object,
-    colliders: [...posts.map((p) => ({ x: p.x, z: p.z, r: 0.11 })), { x: 0, z: 0, hw: 0.03, hd: HALF }], // the rope at hip height: walked round, not through
+    colliders: [...posts.map((p) => ({ x: p.x, z: p.z, r: 0.11 })), ...pegs.map((q) => ({ x: q.x, z: q.z, r: 0.06 })), { x: 0, z: 0, hw: 0.03, hd: HALF }], // the rope at hip height: walked round, not through
     floors: [],
     interactables: [{ entry: 'horse-and-cow', target }],
   };
