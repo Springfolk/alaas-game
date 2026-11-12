@@ -57,7 +57,7 @@ export const CONTROLS = [
   { id: 'run', keys: ['Shift'], touch: 'rim', label: { sah: 'Сүүрүү', en: 'Run', ru: 'Бег' } },
   { id: 'jump', keys: ['Space'], touch: 'jump', label: { sah: 'Ыстаныы', en: 'Jump / vault', ru: 'Прыжок / перелезть' } },
   { id: 'crouch', keys: ['C'], touch: 'crouch', label: { sah: 'Бөкчөйүү', en: 'Crouch', ru: 'Присесть' } },
-  { id: 'do', keys: ['mouseL'], touch: 'hand', label: { sah: 'Оҥор', en: 'Do, use (hold where the work asks)', ru: 'Сделать, применить' } },
+  { id: 'do', keys: ['mouseL'], touch: 'hand', label: { sah: 'Оҥор', en: 'Do, use', ru: 'Сделать, применить' } },
   { id: 'put', keys: ['mouseR'], touch: 'put', label: { sah: 'Уур', en: 'Set down, put back', ru: 'Положить, убрать' } },
   { id: 'read', keys: ['E'], touch: 'eye', label: { sah: 'Чугастык көр', en: 'Look closer', ru: 'Рассмотреть' } },
   { id: 'journal', keys: ['J'], touch: 'book', label: { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' } },

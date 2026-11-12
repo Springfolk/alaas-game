@@ -50,8 +50,7 @@ export class Interactions {
   // putting down what is carried (src/interact/hands.js)
   putAct() { return this.seat.on ? null : this.hands?.putAct() || null; }
 
-  // Berries come off one by one for as long as the hands stay in the patch: a press takes one, a patient hold
-  // strips it. They go into the тордуйа if one is carried (src/interact/work/tuos.js), else they are eaten.
+  // A tap takes a small handful of berries off the crown, one by one. They go into the тордуйа if one is carried (src/interact/work/tuos.js), else they are eaten.
   pickAct = {
     id: 'pick', label: { sah: 'дьэдьэн хомуй', en: 'pick berries', ru: 'собрать ягоды' },
     run: async (game, it) => {
@@ -66,7 +65,7 @@ export class Interactions {
           if (got % 3 === 1) game.audio?.step?.('grass', 0.8); // a rustle in the leaves
           this.work.jobs.some((j) => j.picked?.(1));
         }
-        if (P.n > 0 && game.input.doing && game.focus === it) return false;
+        if (P.n > 0 && got < 3) return false;
         res(); return true;
       }));
       for (const j of this.work.jobs) j.gathered?.(got);

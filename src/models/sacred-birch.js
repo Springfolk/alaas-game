@@ -285,15 +285,14 @@ export default async function build(ctx, placement) {
     label: { sah: 'эҕэрдэлээ, лиэнтэ баай', en: 'greet the tree and tie a ribbon', ru: 'поприветствовать дерево и повязать ленточку' },
     run: async (game) => {
       const pl = game?.player;
-      // the bow is the player's own: the head goes down for as long as the hands are held out to the tree (a tap
-      // is a nod), and rises when they are lowered
+      // the bow is the player's own: a tap, the head goes down, stays a breath and rises
       const p0 = pl ? pl.pitch : 0, back = Math.min(p0, 0.15);
       if (pl) {
         let k = 0, held = 0, last = performance.now();
         await new Promise((res) => {
           const f = () => {
             const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
-            const down = game.input.doing || held < 0.35;
+            const down = held < 1.6;
             held += dt;
             k = Math.max(0, Math.min(1, k + (down ? dt / 1.1 : -dt / 0.9)));
             pl.pitch = pl.aimPitch = (down ? p0 : back) + (-0.32 - (down ? p0 : back)) * ease(k);

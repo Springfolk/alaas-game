@@ -447,10 +447,12 @@ class Game {
   // taking play input: not on the title, in a menu or under a centred window
   get playing() { return !this.title && !this.paused && !this.ui.modal && this.input.active; }
   // Acting (the do input goes down): the act of the thing in view, or with nothing in view what the carried
-  // thing does by itself. Acts that last read `input.doing` (held) themselves. It never opens a card.
+  // thing does by itself (also when the thing in view has nothing for the hands: a job's tool works at its
+  // object from anywhere near it). Every act is a tap; a running act may take the next taps (`act.tap`). It
+  // never opens a card.
   act(it) {
-    if (this.acting) return;
-    const act = it ? this.actOf(it) : this.interact?.idleAct();
+    if (this.acting) { this.acting.tap?.(); return; }
+    const act = (it && this.actOf(it)) || this.interact?.idleAct();
     if (act && act.id !== 'none') this.teach.note('do');
     if (act) return this.run(act, it);
   }
@@ -533,7 +535,7 @@ class Game {
     if (pick || this.promptKey == null) {
       // the prompt names the thing in view, what the hands would do with it and whether it has a card; with
       // nothing in view the dot alone turns into a ring when the carried thing can be used
-      const act = !live || this.acting ? null : f ? this.actOf(f) : this.interact?.idleAct();
+      const act = !live || this.acting ? null : (f && this.actOf(f)) || this.interact?.idleAct();
       const e = f && BY_ID[f.entry];
       const what = f ? f.label || e || f.entry : null; // (src/ui/names.js)
       const can = !!act && act.id !== 'none';

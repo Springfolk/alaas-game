@@ -70,17 +70,13 @@ export const icon = (k, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" vie
 const OF = {
   take: 'hand', 'take-log': 'log', down: 'put', back: 'back', stack: 'stack', 'stack-all': 'stack', fill: 'pail', pour: 'drop', lay: 'flame',
   feed: 'flame', pick: 'berry', sit: 'sit', stand: 'stand', door: 'door', gate: 'gate', lid: 'lid', ribbon: 'ribbon',
-  choron: 'cup', 'fill-choron': 'ladle', milk: 'drop', play: 'khomus',
+  choron: 'cup', drink: 'cup', 'fill-choron': 'ladle', milk: 'drop', play: 'khomus',
   strike: 'axe', 'strike-again': 'axe', 'free-axe': 'up', 'stick-axe': 'axe', 'place-round': 'round', 'stand-half': 'round',
   'set-tuu': 'trap', 'lift-tuu': 'up', 'pour-tuu': 'fish', mow: 'scythe', 'hang-scythe': 'back',
   'warm-bark': 'flame', 'lay-bark': 'put', 'fold-bark': 'fold', 'pin-bark': 'peg', 'try-bark': 'hand',
   bellows: 'bellows', 'to-anvil': 'tongs', 'to-fire': 'flame', quench: 'drop', churn: 'churn',
 };
 export const actIcon = (act) => (act ? act.icon || OF[act.id] || (/^hammer/.test(act.id) ? 'hammer' : 'hand') : 'hand');
-// acts whose motion lasts for as long as the do input is held (the prompt and the touch button show a hold)
-const HELD = new Set(['take-log', 'stack', 'fill', 'pour', 'pick', 'gate', 'choron', 'milk', 'play', 'strike', 'strike-again', 'lift-tuu', 'pour-tuu', 'mow',
-  'warm-bark', 'fold-bark', 'pin-bark', 'try-bark', 'bellows', 'churn']);
-export const actHeld = (act) => !!act && (act.hold ?? (HELD.has(act.id) || /^hammer/.test(act.id)));
 
 // the mouse with one button lit, or moved (the prompt, the hints, the controls page)
 const mouse = (d) => `<svg class="mouse" viewBox="0 0 14 20" aria-hidden="true"><rect x="1" y="1" width="12" height="18" rx="6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="${d}" fill="currentColor"/></svg>`;

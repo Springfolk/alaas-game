@@ -1,11 +1,9 @@
 // Мас хайытыы: splitting firewood at the chopping block (дүлүҥ олох мас). Take the axe out of the block, stand a round of larch
-// on it, raise the axe (the do input held: it climbs over the shoulder, and the arms tire if it is kept there) and
-// let go: it falls where you look. In line with the round's drying crack and from high enough it opens the round
-// in two: a clean blow drops the halves by the block, a ragged one sends them tumbling. Each half is stood up again
-// and split into two billets, which are carried (an armful) to the woodpile or to a fire.
-// A low blow in the right line leaves the axe bitten in: the round is lifted on it (held) and brought down again.
-// A blow across the grain only sticks, and the axe is wrenched free. Put down while it is raised lowers it.
-// Nothing is told in words: the axe's height, the crack and the sound of the blow say it.
+// on it; then every tap is a blow, from wherever you stand by the block: the axe goes up over the shoulder and
+// comes down along the round's drying crack. Taps in rhythm: a tap before the axe is back up gives a lower blow.
+// A full blow opens the round in two (halves by the block); a low one bites in, and the next tap lifts the round on
+// the axe and brings it down, open. Each half is stood up again and split into two billets, which are carried (an
+// armful) to the woodpile or to a fire. Nothing is told in words: the axe's height, the crack and the sound say it.
 // Props: src/models/work.js (two rounds of four mating quarters).
 import * as THREE from 'three/webgpu';
 import { ease, fwdX, fwdZ } from '../../util.js';
@@ -21,7 +19,6 @@ const TXT = {
   stand: L('олох маска туруор', 'stand it on the block', 'поставить на колоду'),
   strike: L('хайыт', 'split it', 'расколоть'),
   again: L('дүлүҥү кытта өрө көтөҕөн оҕус', 'lift it on the axe and bring it down', 'поднять на топоре и ударить о колоду'),
-  free: L('сүгэни сулбу тарт', 'pull the axe free', 'выдернуть топор'),
   stick: L('сүгэни олох маска батары оҕус', 'leave the axe in the block', 'всадить топор в колоду'),
   tidy: L('хайыппыккын хомуй', 'gather what you have split first', 'сначала соберите наколотое'),
   proverb: L('Сүгэ түһүөр диэри дүлүҥ сынньанар.', '“Until the axe falls, the log rests.”', '«Пока топор опускается, бревно отдыхает».'),
@@ -40,8 +37,8 @@ const REST = { p: new THREE.Vector3(0.3, -0.56, -0.24), q: basisQ(new THREE.Vect
 const RAISED = { p: new THREE.Vector3(0.3, -0.03, -0.44), q: basisQ(new THREE.Vector3(0.08, 0.86, 0.5), new THREE.Vector3(0, 0.5, -0.86)) }; // the hands at the face: how high the haft's end stands in view is how high the axe is
 const HANDS = new THREE.Vector3(0.1, -0.6, -0.32); // where the hands end the blow
 const NEED = { 4: 0.5, 2: 0.33 }; // the least swing that opens a whole round / a half
-const LINE = 0.06, TURN = 0.6; // how far off the crack (m) and how far turned from it (rad) a blow still opens it
-const RISE = 0.75, TIRE = 2.6; // s to raise the axe fully; s after which the arms begin to tire
+const RISE = 0.3, BACK = 0.45; // s for the axe to go up; s for it to come back up after a blow (the beat)
+const REACH = 2.2; // m from the block's middle a blow still reaches it
 
 export class Split {
   constructor(work, parts, find) {
@@ -90,15 +87,30 @@ export class Split {
     if (it.block) return this.axeHeld && !this.onBlock && !this.sw ? this.stickAct : undefined;
     const c = this.chunkOf(it);
     if (!c) return undefined; // a loose billet: the carrying code's
-    if (this.sw?.phase === 'stuck') return this.sw.aligned ? this.againAct : this.freeAct;
+    if (this.sw?.phase === 'stuck') return this.againAct;
+    if (c.state === 'block') return this.axeHeld && (!this.sw || this.sw.phase === 'back') ? this.strikeAct : null;
     if (this.sw) return null;
-    if (c.state === 'block') return this.axeHeld ? this.strikeAct : null;
     if (c.state === 'rest') return !this.onBlock && (!h || h === this.axe) ? this.standAct : null;
     return null;
   }
+  // the axe in the hands anywhere by the block, facing it: the blow (no aiming at the round)
   idleAct() {
-    if (this.sw?.phase === 'stuck') return this.sw.aligned ? this.againAct : this.freeAct;
+    if (this.sw?.phase === 'stuck') return this.againAct;
+    if (this.axeHeld && this.nearBlock()) {
+      if (this.onBlock?.state === 'block' && (!this.sw || this.sw.phase === 'back')) return this.strikeAct;
+      if (!this.onBlock && !this.sw) { if (this.restHalf()) return this.standAct; if (this.freeRound() !== undefined) return this.placeAct; } // the next piece onto the block
+    }
     return this.sw ? this.noAct : null;
+  }
+  // the half lying nearest the block
+  restHalf() {
+    let best = null, bd = 4;
+    for (const c of this.chunks) if (c.state === 'rest' && c.n === 2) { const d = c.pos.distanceTo(this.block); if (d < bd) { bd = d; best = c; } }
+    return best;
+  }
+  nearBlock() {
+    const pl = this.game.player, dx = this.block.x - pl.pos.x, dz = this.block.z - pl.pos.z, d = Math.hypot(dx, dz);
+    return d < REACH && (d < 0.6 || (dx * fwdX(pl.yaw) + dz * fwdZ(pl.yaw)) / d > 0.35);
   }
 
   freeRound() {
@@ -117,7 +129,7 @@ export class Split {
       if (r === undefined || this.onBlock) return;
       this.clearBlock(game);
       const ps = this.pieces.filter((p) => p.round === r);
-      const from = it.target.getWorldPosition(new THREE.Vector3());
+      const from = (it?.rounds ? it : this.heapIt).target.getWorldPosition(new THREE.Vector3());
       from.y = game.world.drawnAt(from.x, from.z) + 0.16;
       const c = { pieces: ps, n: 4, pos: from, quat: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random() * 6.28, Math.PI / 2)), com: new THREE.Vector3(0, ps[0].len / 2, 0) };
       for (const p of ps) { p.chunk = c; p.state = 'chunk'; p.obj.visible = true; p.obj.scale.setScalar(1); p.it.off = false; p.it.label = TXT.round; }
@@ -130,7 +142,7 @@ export class Split {
   standAct = {
     id: 'stand-half', label: TXT.stand,
     run: async (game, it) => {
-      const c = this.chunkOf(it);
+      const c = (it && this.chunkOf(it)) || this.restHalf();
       if (!c || this.onBlock || c.state !== 'rest') return;
       this.clearBlock(game);
       this.toBlock(c);
@@ -168,30 +180,31 @@ export class Split {
     },
   };
 
-  // the blow: the axe rises while the do input is held and falls when it is let go (put down lowers it instead)
-  strikeAct = { id: 'strike', label: TXT.strike, run: (game, it) => this.strike(it) };
-  async strike(it) {
-    const c = this.chunkOf(it), g = this.game;
-    if (!c || c.state !== 'block' || !this.axeHeld || this.sw) return;
-    const sw = this.sw = { phase: 'raise', t: 0, power: 0, chunk: c };
+  // The blow: up over the shoulder and down along the crack. Its height is the beat: a tap while the axe is still
+  // coming back from the last blow gives a lower one (`sw.next`, taken when it is back).
+  strikeAct = { id: 'strike', label: TXT.strike, run: (game) => this.strike() };
+  async strike() {
+    const c = this.onBlock, g = this.game;
+    if (!c || c.state !== 'block' || !this.axeHeld) return;
+    if (this.sw?.phase === 'back') { this.sw.next ??= 0.45 + 0.55 * ease(this.sw.k); return; }
+    if (this.sw) return;
+    const power = this.queued ?? 1;
+    this.queued = null;
+    const sw = this.sw = { phase: 'raise', t: 0, power: 0, top: power, chunk: c };
     await new Promise((res) => { sw.released = res; });
-    if (sw.cancel) {
-      sw.phase = 'back'; sw.k = 0; sw.wait = 0;
-      sw.from = { p: this.axe.obj.position.clone(), q: this.axe.obj.quaternion.clone() };
-      return;
-    }
-    // aim: where the look meets the round's top
+    // the blow lands on the crack, the blade along it, from the side the player stands on
     const cam = g.engine.camera, top = c.pos.y + c.pieces[0].len;
-    const dir = cam.getWorldDirection(new THREE.Vector3());
-    let hit;
-    if (dir.y < -0.05) hit = cam.position.clone().addScaledVector(dir, (top - cam.position.y) / dir.y);
-    else hit = cam.position.clone().addScaledVector(_v.set(dir.x, 0, dir.z).normalize(), 0.9).setY(top);
-    const reach = Math.hypot(hit.x - cam.position.x, hit.z - cam.position.z);
-    if (reach > 1.25) hit.set(cam.position.x + (hit.x - cam.position.x) / reach * 1.25, top, cam.position.z + (hit.z - cam.position.z) / reach * 1.25);
-    const res = this.judge(c, hit, dir, sw.power);
+    let ax = 1, az = 0; // the crack's line in the chunk's frame
+    if (c.n === 2) { const a = c.pieces[1].k * Math.PI / 2; ax = Math.cos(a); az = Math.sin(a); }
+    const line = _w.set(ax, 0, az).applyQuaternion(c.quat), toCam = _v.set(cam.position.x - c.pos.x, 0, cam.position.z - c.pos.z);
+    if (line.dot(toCam) < 0) line.negate();
+    const mid = c.n === 4 ? 0 : 0.5 * c.pieces[0].R; // a half: the middle of its seam, out from the pith
+    const hit = new THREE.Vector3(c.pos.x, top, c.pos.z).addScaledVector(line, mid);
+    const dir = hit.clone().sub(cam.position).normalize();
+    const res = sw.power >= NEED[c.n] ? { kind: 'split', clean: 0.6 + 0.4 * sw.power } : { kind: 'stuck' };
     // the fall of the axe
     const butt = HANDS.clone().applyQuaternion(cam.quaternion).add(cam.position);
-    const at = hit.clone(); at.y -= res.kind === 'miss' ? Math.min(0.5, at.y - this.block.y) : res.kind === 'split' ? 0.1 : 0.035;
+    const at = hit.clone(); at.y -= res.kind === 'split' ? 0.1 : 0.035;
     const q = basisQ(at.clone().sub(butt), _w.set(dir.x * 0.3, -1, dir.z * 0.3).clone());
     sw.to = { p: at.clone().sub(this.tip.clone().applyQuaternion(q)), q };
     sw.from = { p: this.axe.obj.position.clone(), q: this.axe.obj.quaternion.clone() };
@@ -199,26 +212,6 @@ export class Split {
     await new Promise((r) => { sw.landed = r; });
     g.player.springV -= 0.9 + sw.power * 1.2; // the blow goes through the body
     this.land(c, res, hit, sw);
-  }
-
-  // Where the blow fell, in the chunk's own frame, and what it does.
-  judge(c, hit, dir, power) {
-    const inv = _q.copy(c.quat).invert();
-    const l = hit.clone().sub(c.pos).applyQuaternion(inv), f = _v.set(dir.x, 0, dir.z).normalize().applyQuaternion(inv);
-    const R = c.pieces[0].R;
-    let on = Math.hypot(l.x, l.z) < R + 0.01, off, turn;
-    if (c.n === 4) { off = Math.abs(l.z); turn = Math.atan2(Math.abs(f.z), Math.abs(f.x)); } else {
-      // a half opens along the seam between its two quarters: the line from the pith out through its middle
-      const a = c.pieces[1].k * Math.PI / 2, bx = Math.cos(a), bz = Math.sin(a);
-      on = on && l.x * bx + l.z * bz > -0.015;
-      off = Math.abs(-l.x * bz + l.z * bx); turn = Math.atan2(Math.abs(-f.x * bz + f.z * bx), Math.abs(f.x * bx + f.z * bz));
-    }
-    if (!on) return { kind: 'miss' };
-    const aligned = off < LINE && turn < TURN;
-    if (power < 0.2) return { kind: 'glance', aligned };
-    // how clean: 1 = dead on the crack and square to it from full height
-    if (aligned && power >= NEED[c.n]) return { kind: 'split', clean: (1 - 0.5 * off / LINE - 0.5 * turn / TURN) * (0.6 + 0.4 * power) };
-    return { kind: 'stuck', aligned, weak: aligned };
   }
 
   land(c, res, hit, sw) {
@@ -232,44 +225,29 @@ export class Split {
     }
     if (res.kind === 'stuck') {
       a?.play('chop-stuck', hit) || a?.play('wood-lay', hit);
-      sw.phase = 'stuck'; sw.aligned = res.aligned;
+      sw.phase = 'stuck';
       sw.rel = { p: sw.to.p.clone().sub(c.pos), q: sw.to.q.clone() }; // the axe rides the round
       g.promptKey = null;
       return;
     }
-    a?.play(res.kind === 'miss' ? 'chop-stuck' : 'wood-take', hit) || a?.play('wood-lay', hit);
-    sw.phase = 'back'; sw.k = 0; sw.wait = 0.1;
-    sw.from = { p: sw.to.p.clone(), q: sw.to.q.clone() };
   }
 
-  // stuck in the right line: the round goes up on the axe for as long as the do input is held (a tap is a short
-  // lift) and comes down on the block; from high enough it opens
+  // bitten in: a tap lifts the round on the axe and brings it down on the block, open
   againAct = {
     id: 'strike-again', label: TXT.again,
     run: async (game) => {
       const sw = this.sw;
       if (sw?.phase !== 'stuck' || sw.busy) return;
       sw.busy = true;
-      const c = sw.chunk, y0 = c.pos.y, inp = game.input;
-      let h = 0, t = 0;
-      await this.until((dt) => { t += dt; h = Math.min(1, h + dt / 0.45); c.pos.y = y0 + Math.sin(h * Math.PI / 2) * 0.4; return (!inp.doing && t > 0.2) || t > 2.5; });
+      const c = sw.chunk, y0 = c.pos.y;
+      let h = 0;
+      await this.until((dt) => { h = Math.min(1, h + dt / 0.4); c.pos.y = y0 + Math.sin(h * Math.PI / 2) * 0.4; return h >= 1; });
       const top = c.pos.y - y0;
       await this.tween(0.05 + 0.09 * top / 0.4, (k) => { c.pos.y = y0 + (1 - k * k) * top; });
       game.player.springV -= 0.6 + 2.5 * top;
-      if (top < 0.2) { game.audio?.play('chop-stuck', c.pos); sw.busy = false; return; } // too low: still bitten in
       game.audio?.play('chop', c.pos) || game.audio?.play('wood-lay', c.pos);
       this.open(c, 0.5 + top, 0.7);
       sw.phase = 'back'; sw.k = 0; sw.wait = 0.12;
-      sw.from = { p: this.axe.obj.position.clone(), q: this.axe.obj.quaternion.clone() };
-    },
-  };
-  freeAct = {
-    id: 'free-axe', label: TXT.free,
-    run: async (game) => {
-      const sw = this.sw;
-      if (sw?.phase !== 'stuck' || sw.busy) return;
-      game.audio?.play('wood-take', sw.chunk.pos);
-      sw.phase = 'back'; sw.k = 0; sw.wait = 0;
       sw.from = { p: this.axe.obj.position.clone(), q: this.axe.obj.quaternion.clone() };
     },
   };
@@ -321,16 +299,17 @@ export class Split {
     if (sw) {
       if (!held) this.sw = null; else if (sw.phase === 'raise') {
         sw.t += dt;
-        const inp = g.input;
-        // up over the shoulder in RISE s; kept there past TIRE s the arms tire and it sinks a little
-        sw.power = ease(Math.min(1, sw.t / RISE)) * (1 - Math.min(0.35, Math.max(0, sw.t - TIRE) * 0.1));
-        if (inp.hit('Put')) { sw.cancel = true; sw.released(); } else if (!inp.doing || sw.t > 12 || sw.chunk.state !== 'block') sw.released();
+        sw.power = sw.top * ease(Math.min(1, sw.t / (RISE * (0.5 + 0.5 * sw.top)))); // up over the shoulder, as high as the beat allows
+        if (sw.power >= sw.top - 1e-3 && sw.released) { const f = sw.released; sw.released = null; f(); }
       } else if (sw.phase === 'swing') {
         sw.k = Math.min(1, sw.k + dt / 0.14);
         if (sw.k >= 1 && sw.landed) { const f = sw.landed; sw.landed = null; f(); }
       } else if (sw.phase === 'back') {
-        if (sw.wait > 0) sw.wait -= dt; else sw.k = Math.min(1, sw.k + dt / 0.4);
-        if (sw.k >= 1) { this.sw = null; g.promptKey = null; }
+        if (sw.wait > 0) sw.wait -= dt; else sw.k = Math.min(1, sw.k + dt / BACK);
+        if (sw.k >= 1) {
+          this.sw = null; g.promptKey = null;
+          if (sw.next != null && this.onBlock?.state === 'block') { this.queued = sw.next; this.strike(); } // the early tap's blow
+        }
       }
     }
     for (const c of [...this.chunks]) {
@@ -493,9 +472,9 @@ export class Split {
     if (!sw || !this.axeHeld) return null;
     const P = this._pose ||= { p: new THREE.Vector3(), q: new THREE.Quaternion(), world: false };
     if (sw.phase === 'raise') {
-      const e = sw.power, shake = Math.max(0, sw.t - TIRE) * 0.004 * Math.sin(sw.t * 31); // tiring arms tremble
+      const e = sw.power;
       P.world = false;
-      P.p.lerpVectors(REST.p, RAISED.p, e); P.p.x += shake; P.q.slerpQuaternions(REST.q, RAISED.q, e);
+      P.p.lerpVectors(REST.p, RAISED.p, e); P.q.slerpQuaternions(REST.q, RAISED.q, e);
       return P;
     }
     P.world = true;
