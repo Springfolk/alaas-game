@@ -73,7 +73,9 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 
 ## Pause (`#pause`, `game.pausePage`)
 - Glass window, the version small in its head. Left: Continue (large), Settings, Controls, About, Exit. Right: the chosen page. A phone shows the list first and one page at a time with a back button.
-- Settings: language; look speed, field of view, camera motion, look smoothing (each slider between two drawn extremes); invert Y, battery saver (switches); volume; quality (reload note).
+- Settings: language; look speed, field of view, camera motion, look smoothing (each slider between two drawn extremes); invert Y, battery saver (switches); volume; quality (reload note); Advanced (folds open, `.settings.adv`): the video options, each a name over a one-line hint.
+- Video options (`src/engine/video.js`): resolution (50–100% of the screen's), adaptive resolution, frame-rate cap (30/60, not on phones), shadow detail (512/1024/2048), shadow distance (45–150 m), ambient occlusion, anti-aliasing (TRAA/FXAA/off), grass density, draw distance (forest rings), glow, lake reflection (off/low/high). They show the running preset's values; changing one makes the quality Custom (its preset + the options).
+- Applied at once: resolution, adaptive resolution, frame-rate cap, shadow distance, lake reflection low ↔ high. The rest (built with the world or the post chain) and any other preset: the reload note.
 - Controls: every control drawn (keys and mouse, or on a phone its stick, drag and buttons) with what it does.
 - About: Springfolk mark, links, licence.
 
@@ -84,4 +86,4 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 - `onAction('close'|'learn'|'more'|'open', id, it, back)`: buttons, journal tiles, card links, stage names → `main.js`.
 - `game.stage`: `on`, `open`, `close`, `orbit`, `zoomBy`. `game.paused`, `game.pausePage(id)`.
 - Title progress is read from `#go`'s text (`N%` build → `… N%` warm-up); `#title.ready` once `game.ready`.
-- Settings ids → `save.settings`: `s-sens`, `s-fov`, `s-vol`, `s-inv` `invertY`, `s-motion`, `s-smooth`, `s-battery` `batterySaver`; selects `q` → `quality` (auto/high/medium/low/mobile), `lang` → `save.lang`.
+- Settings ids → `save.settings`: `s-sens`, `s-fov`, `s-vol`, `s-inv` `invertY`, `s-motion`, `s-smooth`, `s-battery` `batterySaver`; selects `q` → `quality` (auto/high/medium/low/mobile/custom), `v-<option>` → `video` (on preset `videoBase`), `lang` → `save.lang`.

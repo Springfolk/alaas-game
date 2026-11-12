@@ -35,9 +35,10 @@ export class Engine {
   }
 
   presetOpts(tier) {
-    const { quality, ...rest } = this.requested;
+    const { quality, custom, ...rest } = this.requested;
     // ?keyart: the high preset maxed — 4096 shadow maps over the whole shot, full-resolution lake mirror
-    return { post: true, ...setTier(tier, KEYART ? { shadows: 4096, shadowFar: 900, reflection: 1, texMax: 4096 } : this.tierExtra), ...rest };
+    // custom: the player's video options on top of the preset (src/engine/video.js)
+    return { post: true, ...setTier(tier, KEYART ? { shadows: 4096, shadowFar: 900, reflection: 1, texMax: 4096 } : { ...this.tierExtra, ...custom }), ...rest };
   }
 
   // A broken WebGPU device (Safari): a new buffer maps no bytes, or mapping throws. Load errors check this first.

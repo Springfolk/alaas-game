@@ -8,6 +8,7 @@ import { launch, pageOptions, PORT as port } from './browser.mjs';
 const [kind = 'chrome', query = ''] = process.argv.slice(2);
 const browser = await launch(kind);
 const page = await browser.newPage(pageOptions(kind, { viewport: { width: 1280, height: 720 } }));
+if (process.env.INIT) await page.addInitScript(process.env.INIT); // INIT=js: run before the game (e.g. a save with custom video options)
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });

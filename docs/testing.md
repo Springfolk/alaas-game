@@ -8,7 +8,7 @@
 |---|---|
 | Screenshot (waits for `game.complete` and `game.sharp`; prints backend and console errors) | `npm run shot -- "/?auto&at=x,z,yaw" out.png [w h waitMs]`; `EVAL="js"` or `SCRIPT=file` runs code first (`window.game`, `window.viewer`); `DPR=2\|3` |
 | A model alone (`window.ready` after 40 frames) | `viewer.html?m=<model>&cam=x,y,z&look=x,y,z` |
-| Shaders and pipelines built on a walk: must be 0 / 0 | `npm run walkcheck -- chrome\|webkit\|phone` (`EARLY=1`: from ready, no frame > 50 ms) |
+| Shaders and pipelines built on a walk: must be 0 / 0 | `npm run walkcheck -- chrome\|webkit\|phone` (`EARLY=1`: from ready, no frame > 50 ms; `INIT=js` runs before the game, e.g. a save with custom video options) |
 | First world pixel, playable, stalls before and 2.5 s after ready | `npm run loadprof -- chrome\|webkit\|phone [query] [shotPrefix]` (`THROTTLE=4` CPU ×4; shots at 1/2/4/8 s) |
 | Load breakdown (`?prof`: ms per stage and bucket, worker and pipeline spans; Chrome CPU profile) | `npm run loadtrace -- chrome\|webkit [query] [profile.json]` (`AFTER=1`: the 2.5 s after ready) |
 | Uncapped CPU ms, fps, calls, triangles at five views | `npm run bench -- chrome\|webkit\|phone [query]` (`?gputime`: GPU timestamps per pass, overcount on Apple GPUs: compare only relatively) |

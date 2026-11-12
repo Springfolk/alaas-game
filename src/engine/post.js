@@ -44,7 +44,7 @@ export function buildPost(engine) {
   // TRAA everywhere but phones: at their 30 fps cap and upscaled render its jitter and history blend show as a
   // shimmering, soft still image (sharp only while looking around); FXAA there instead (below).
   // ?taa / ?notaa override.
-  const taa = urlFlag('taa') || (engine.tier !== 'mobile' && !urlFlag('notaa'));
+  const taa = urlFlag('taa') || (!urlFlag('notaa') && (engine.opts.aa ? engine.opts.aa === 'taa' : engine.tier !== 'mobile')); // opts.aa: the video options
   let scenePass, depth, vel;
   if (engine.opts.ao) {
     // high: a normals/velocity pre-pass feeds GTAO into the scene pass's ambient light
@@ -127,7 +127,7 @@ export function buildPost(engine) {
   })();
   // phones (no TRAA): FXAA on the graded display-space image (its edge search needs gamma, not linear HDR); ?noaa: none
   // (graded is display-referred 0–1: FXAA reads it from 8 bits, not half floats)
-  pipe.outputNode = taa || urlFlag('noaa') ? graded : fxaa(rtt(graded, null, null, { type: THREE.UnsignedByteType }));
+  pipe.outputNode = taa || urlFlag('noaa') || engine.opts.aa === 'none' ? graded : fxaa(rtt(graded, null, null, { type: THREE.UnsignedByteType }));
   engine.graded = graded; // (tools/iphone.mjs: the 'no fxaa' A/B)
 
   // exposure meter: mean log2 luminance of the anti-aliased frame, centre-weighted, read back on the CPU

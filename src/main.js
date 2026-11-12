@@ -2,7 +2,8 @@
 import * as THREE from 'three/webgpu';
 import { Engine } from './engine/engine.js';
 import { setAnisotropy, setTextureRenderer, sharpenTextures } from './engine/materials.js';
-import { bootDone, bootFailed, restoreLost, resumeSpot } from './engine/tier.js';
+import { bootDone, bootFailed, restoreLost, resumeSpot, isPhone, PRESETS } from './engine/tier.js';
+import { VIDEO, fromOpts, toOpts, needsReload, applyLive } from './engine/video.js';
 import { releaseGeometry } from './load/release.js';
 import { World } from './world/world.js';
 import { START } from './world/layout.js';
@@ -58,9 +59,13 @@ class Game {
     this.state = { lang: this.save.lang, found: new Set(this.save.found), work: this.save.work ||= {} }; // work: counts of the hands-on jobs (src/interact/work)
     this.done = new Set(this.save.done); // actions already performed (ribbon tied…)
     const canvas = document.getElementById('game');
-    const quality = this.bootQuality = params.get('q') || (params.has('low') ? 'low' : this.save.settings.quality);
+    const st = this.save.settings;
+    if (st.quality === 'custom' && !(st.video && PRESETS[st.videoBase])) st.quality = 'auto';
+    const quality = this.bootQuality = params.get('q') || (params.has('low') ? 'low' : st.quality);
+    const custom = quality === 'custom'; // the video options on their preset (src/engine/video.js)
     this.applyStatic();
-    this.engine = await new Engine(canvas, { webgl: params.has('webgl'), post: !params.has('nopost'), quality }).init();
+    this.engine = await new Engine(canvas, { webgl: params.has('webgl'), post: !params.has('nopost'), quality: custom ? st.videoBase : quality, custom: custom ? toOpts(st.video, st.videoBase) : undefined }).init();
+    this.bootVideo = fromOpts(this.engine.opts, this.engine.tier); // what this load is built with
     setAnisotropy(this.engine.renderer.getMaxAnisotropy?.() || 8);
     setTextureRenderer(this.engine.renderer); // phones: texture images freed once uploaded
     instrument(this.engine.renderer); // ?prof (src/load/prof.js)
@@ -156,7 +161,8 @@ class Game {
     };
     watchSelects((name, v) => {
       if (name === 'lang') this.setLang(v);
-      else if (name === 'q') { this.save.settings.quality = v; this.persist(); this.applySettings(); }
+      else if (name === 'q') { this.setQuality(v); }
+      else if (name.startsWith('v-')) this.setVideo(name.slice(2), VIDEO.find((o) => o.key === name.slice(2)).values.find((x) => String(x) === v));
     });
     if (params.has('auto')) this.start(true);
 
@@ -316,10 +322,51 @@ class Game {
     for (const b of document.querySelectorAll('#pause .pz-nav [data-page]')) b.classList.toggle('on', b.dataset.page === id);
     for (const t of document.querySelectorAll('#pause .tab')) t.classList.toggle('on', t.id === 'tab-' + id);
   }
+  // Graphics: the quality preset and, under Advanced, the options it sets (src/engine/video.js); changing one makes it Custom.
+  // Live options apply at once; the rest (and another preset) after the reload the note offers.
   fillQuality() {
-    const q = this.save.settings.quality;
-    fillSelects('q', ['auto', 'high', 'medium', 'low', 'mobile'].map((v) => [v, this.tt(T['q' + v[0].toUpperCase() + v.slice(1)])]), q);
-    document.getElementById('qnote').hidden = q === this.bootQuality;
+    const s = this.save.settings, q = s.quality, cap = (v) => v[0].toUpperCase() + v.slice(1);
+    fillSelects('q', ['auto', 'high', 'medium', 'low', 'mobile', 'custom'].map((v) => [v, this.tt(T['q' + cap(v)])]), q);
+    if (!this.bootVideo) return; // (the engine not up yet)
+    const v = this.shownVideo(), adv = document.getElementById('v-adv');
+    if (!adv.firstChild) {
+      const phone = this.engine?.tier === 'mobile' || isPhone();
+      adv.innerHTML = VIDEO.filter((o) => !(o.desktop && phone)).map(({ key, values }) => {
+        const label = `<span class="vl"><span data-t="v${cap(key)}"></span><small data-t="v${cap(key)}Hint"></small></span>`;
+        return typeof values[0] === 'boolean' ? `<label class="row">${label}<input type="checkbox" id="v-${key}"></label>` : `<div class="row">${label}<span class="sel up" data-sel="v-${key}"></span></div>`;
+      }).join('');
+      for (const el of adv.querySelectorAll('input')) el.onchange = () => this.setVideo(el.id.slice(2), el.checked);
+      document.getElementById('v-more').onclick = () => document.querySelector('#tab-settings .settings').classList.toggle('adv');
+    }
+    for (const el of adv.querySelectorAll('[data-t]')) el.textContent = this.tt(T[el.dataset.t]);
+    const word = (o, x, i) => (o.fmt ? o.fmt(x) : o.metres ? `${x} ${this.tt(T.vMetres)}` : this.tt(T[o.words[i]]));
+    for (const o of VIDEO) {
+      const el = document.getElementById('v-' + o.key);
+      if (el) el.checked = !!v[o.key];
+      else fillSelects('v-' + o.key, o.values.map((x, i) => [String(x), word(o, x, i)]), String(v[o.key]));
+    }
+    document.getElementById('qnote').hidden = q === 'custom' ? !needsReload(this.bootVideo, s.video) : q === this.bootQuality;
+  }
+  // the options shown: the custom ones, else those of this load's preset (or of the chosen one, from its table)
+  shownVideo() {
+    const s = this.save.settings, q = s.quality;
+    if (q === 'custom') return s.video;
+    if (q === this.bootQuality || !PRESETS[q]) return this.bootVideo;
+    return fromOpts(PRESETS[q], q);
+  }
+  setQuality(q) {
+    const s = this.save.settings;
+    s.quality = q;
+    if (q === 'custom' && !s.video) { s.video = { ...this.bootVideo }; s.videoBase = this.engine.tier; }
+    if (q === 'custom' || q === this.bootQuality) applyLive(this.engine, this.shownVideo(), q === 'custom' ? s.videoBase : this.engine.tier);
+    this.persist(); this.applySettings();
+  }
+  setVideo(key, value) {
+    const s = this.save.settings;
+    if (s.quality !== 'custom') { s.videoBase = PRESETS[s.quality] ? s.quality : this.engine.tier; s.video = { ...this.shownVideo() }; s.quality = 'custom'; }
+    s.video[key] = value;
+    applyLive(this.engine, s.video, s.videoBase);
+    this.persist(); this.applySettings();
   }
   unpause() {
     document.getElementById('pause').classList.remove('show');
