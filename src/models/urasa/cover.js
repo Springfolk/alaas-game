@@ -6,7 +6,7 @@ import { TAU, tube } from './geom.js';
 import { DOOR, wob, doorHalfAngle } from './frame.js';
 import { hash2, valueNoise } from '../../util.js';
 
-const RING_STEP = 0.5, RING_H = 0.62;
+const RING_STEP = 0.5, LAP = 0.12, SHEET_H = 0.62; // mean ring step, overlap on the ring below, the sheet texture's height
 export const O_IN = 0.042, O_OUT = 0.056;
 const HOLE_R = 0.55; // the smoke hole: the cover stops at this radius
 
@@ -30,11 +30,37 @@ function rows(P, s0, s1, nv, doorCut) {
   return res;
 }
 
+// The cover rests on the inner poles and sags between them (3 % of the span, ≤ 1.1 cm): the poles show through.
+// set(s): the sorted azimuths of the poles that reach arc length s; sag(A, a, s): the dip at azimuth a over the poles A;
+// samples(A, r): azimuths at each pole and at halves of each span (thirds where it is over 0.3 m wide at radius r;
+// 0 and TAU included), so the dips are drawn.
+function poleSag(P, poles, sTop) {
+  const set = (s) => poles.filter((p) => p.sEnd >= s).map((p) => p.a).sort((x, y) => x - y);
+  const sag = (A, a, s) => {
+    a = ((a % TAU) + TAU) % TAU;
+    let lo = 0, hi = A.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (A[m] <= a) lo = m + 1; else hi = m; }
+    const p0 = lo === 0 ? A[A.length - 1] - TAU : A[lo - 1], p1 = lo === A.length ? A[0] + TAU : A[lo];
+    const q = P.at(Math.max(0, s)), fade = Math.min(1, Math.max(0, (sTop - 1.2 - s) / 1.5)); // the poles bend to the tie up there
+    return -Math.min(0.011, 0.03 * (p1 - p0) * q.r) * fade * Math.sin((Math.PI * (a - p0)) / (p1 - p0));
+  };
+  const samples = (A, r) => {
+    const out = [0, TAU];
+    A.forEach((p0, k) => {
+      const p1 = k + 1 < A.length ? A[k + 1] : A[0] + TAU;
+      for (const t of (p1 - p0) * r > 0.3 ? [0, 1 / 3, 2 / 3] : [0, 0.5]) { const x = (p0 + (p1 - p0) * t) % TAU; if (x > 1e-4 && x < TAU - 1e-4) out.push(x); }
+    });
+    return out.sort((x, y) => x - y);
+  };
+  return { set, sag, samples };
+}
+
 // Build a strip of the surface between arc lengths s0..s1 at normal offset off(v), round the cone, the door cut away
-// (each cut row starts and ends on the straight cut edge, z = ±DOOR.edge). nu: segments round (fixed for a strip).
-function strip(P, s0, s1, nv, off, segLen, { doorCut, flipNormals = false, uvFn, attrFn, edgeWobble = 0, seed = 0, lift, nu: nuFixed }) {
+// (each cut row starts and ends on the straight cut edge, z = ±DOOR.edge). nu: segments round (fixed for a strip);
+// angles: the azimuths round instead (0..TAU; cut rows clamp them to the cut edges); sag(a, s, v): offset added.
+function strip(P, s0, s1, nv, off, segLen, { doorCut, flipNormals = false, uvFn, attrFn, edgeWobble = 0, seed = 0, lift, nu: nuFixed, angles, sag }) {
   const rMid = P.at((s0 + s1) / 2).r + off(0.5);
-  const nu = nuFixed || Math.max(24, Math.ceil((TAU * rMid) / segLen));
+  const nu = angles ? angles.length - 1 : nuFixed || Math.max(24, Math.ceil((TAU * rMid) / segLen));
   const R = rows(P, s0, s1, nv, doorCut);
   const pos = [], uv = [], ex = [], idx = [];
   R.forEach((row, j) => {
@@ -42,12 +68,12 @@ function strip(P, s0, s1, nv, off, segLen, { doorCut, flipNormals = false, uvFn,
     const qr = P.at(Math.max(0, row.s));
     const da = row.cut ? doorHalfAngle(qr.r + off(v)) : 0;
     for (let i = 0; i <= nu; i++) {
-      const a = da + (TAU - 2 * da) * (i / nu);
+      const a = angles ? Math.min(TAU - da, Math.max(da, angles[i])) : da + (TAU - 2 * da) * (i / nu);
       // the cut lower edge is not perfectly level
       const s = row.s + (j === 0 ? valueNoise(a * 3.1, seed, 7) * edgeWobble : 0);
       const q = P.at(Math.max(0, s));
       const t = uvFn(a, v, rMid, s);
-      const o = off(v) + valueNoise(a * 5.3, s * 2.1 + seed, 3) * 0.003 + (lift ? lift(t[0], v) : 0);
+      const o = off(v) + valueNoise(a * 5.3, s * 2.1 + seed, 3) * 0.003 + (lift ? lift(t[0], v) : 0) + (sag ? sag(a, s, v) : 0);
       const r = (q.r + q.nr * o) * wob(a, q.y), y = q.y + q.ny * o;
       pos.push(Math.cos(a) * r, y, Math.sin(a) * r);
       uv.push(...t);
@@ -77,22 +103,34 @@ function toGeom(parts, attrName, attrSize) {
   return g;
 }
 
-export function buildCover(rng, P) {
+export function buildCover(rng, P, poles) {
   const sTop = P.sAtR(HOLE_R);
-  const nRings = Math.ceil((sTop + 0.02) / RING_STEP);
+  const PS = poleSag(P, poles, sTop);
+  // the rings: cut from sheets of different widths, each 0.43–0.57 m to the next, lapping 12 cm over the one below
+  const R0 = [], STEP = [];
+  for (let i = 0, s = -0.03; s + 0.03 < sTop + 0.02; i++) {
+    const st = RING_STEP * (0.86 + 0.28 * hash2(i, 1, 93));
+    if (i > 0 && sTop + 0.01 - s < 0.1) break; // a sliver at the top: the ring below already reaches the rim
+    R0.push(s); STEP.push(st); s += st;
+  }
+  const nRings = R0.length;
+  // three draws per ring of 0.5 m, as many as ever (the interior's draws follow these)
+  const draws = Array.from({ length: Math.ceil((sTop + 0.02) / RING_STEP) }, () => [rng(), rng(), 0.75 + rng() * 0.6]);
+  const ringH = (i) => (STEP[i] ?? RING_STEP) + LAP;
+  const ringSet = (i) => PS.set(Math.max(0, R0[Math.min(i, nRings - 1)] + (i >= nRings ? RING_STEP : 0)));
   const outer = [], inner = [], bands = [];
   // ornament bands as on the Suntar urasa: the arcade just above the door, the zigzag band where the cone has
   // narrowed to ~0.65 of its base radius. [ring, kind, height, repeat]: one texture repeat holds 11 arcade or
   // 7 zigzag periods; periods 0.20 m and 0.24 m (scaled from the photo by the door), heights keep the traced
   // proportions. The band above the zigzag (a garland) is too small in the photo to trace and is left out.
-  const ringAtY = (y) => Math.ceil((P.sAtY(y) + 0.03 - 0.07) / RING_STEP);
+  const ringAtY = (y) => R0.findIndex((s0) => s0 + 0.07 >= P.sAtY(y) - 1e-6);
   const BANDS = [[ringAtY(DOOR.h + 0.2), 'arcade', 0.2 * 946 / 356, 11 * 0.2], [ringAtY(5.2), 'zigzag', 0.24 * 680 / 406, 7 * 0.24]];
   const BAND_RINGS = BANDS.map((b) => b[0]);
-  const scallops = () => 0; // sheet edges are cut straight, also on the ornamented rings (Suntar urasa)
+  // sheet edges are cut straight, also on the ornamented rings (Suntar urasa)
   for (let i = 0; i < nRings; i++) {
-    const s0 = i * RING_STEP - 0.03, s1 = Math.min(s0 + RING_H, sTop + 0.01);
+    const s0 = R0[i], s1 = Math.min(s0 + ringH(i), sTop + 0.01);
     const doorCut = P.at(Math.max(0, s0)).y < DOOR.cutY;
-    const rnd = rng(), uOff = rng(), uScale = 0.75 + rng() * 0.6; // sheets differ in length ring to ring
+    const [rnd, uOff, uScale] = draws[i % draws.length]; // sheets differ in length ring to ring
     // sheets lift and curl at their free lower edge and corners, and are wavy from drying
     const lift = (u, v) => {
       const su = u * 2, sid = Math.floor(su), lu = su - sid, h = hash2(sid, i, 91), h2 = hash2(sid, i, 92);
@@ -101,11 +139,13 @@ export function buildCover(rng, P) {
       const k = BAND_RINGS.includes(i) || BAND_RINGS.includes(i - 1) ? 0.2 : 1; // under a band: sewn down flat
       return k * (free * (0.003 + h * 0.014) + corner * Math.pow(1 - v, 2) * 0.02 + Math.sin(lu * Math.PI * (2 + Math.floor(h2 * 3)) + h * 6) * 0.004 * (0.4 + free));
     };
-    const vis = (s1 - s0) / RING_H; // the top ring is shorter
+    // over its part hidden under the ring above, a ring takes that ring's dips (fewer poles reach higher up)
+    const A = ringSet(i), An = ringSet(i + 1);
+    const sag = (a, s, v) => { const k = Math.min(1, Math.max(0, (v - 0.55) / 0.25)); return PS.sag(A, a, s) * (1 - k) + PS.sag(An, a, s) * k; };
     outer.push(strip(P, s0, s1, 3, (v) => O_OUT + 0.011 * (1 - v) * (1 - v * 0.3), 0.2, {
-      doorCut, edgeWobble: 0.018, seed: i * 3.3, lift,
-      uvFn: (a, v, rm) => [((a * rm) / 1.6) * uScale + uOff, v * vis],
-      attrFn: () => [i, rnd, scallops(i), scallops(i + 1)],
+      doorCut, edgeWobble: 0.018, seed: i * 3.3, lift, angles: PS.samples(A, P.at(Math.max(0, s0)).r), sag,
+      uvFn: (a, v, rm) => [((a * rm) / 1.6) * uScale + uOff, (v * (s1 - s0)) / SHEET_H], // uv.y: metres / SHEET_H
+      attrFn: () => [i, rnd, 0, STEP[i] / SHEET_H], // .w: where the ring above lies on this one (uv.y)
     }));
   }
   // inner face: one watertight surface from the ground to the smoke hole (the same vertices round every row,
@@ -131,14 +171,16 @@ export function buildCover(rng, P) {
     inner.push({ pos: [...g.attributes.position.array], uv: [...uvA.array], ex: [], idx: [...g.index.array] });
   }
   const bandAt = (ring, kind, hgt, repeat) => {
-    const s0 = ring * RING_STEP - 0.03 + 0.07, s1 = s0 + hgt;
+    const s0 = R0[ring] + 0.07, s1 = s0 + hgt;
     // the band is sewn over its ring and, where taller than the ring's visible part, over the ring above
-    const surf = (h) => (h < 0 ? 0 : 0.011 * (1 - h / RING_H) * (1 - (0.3 * h) / RING_H)); // a ring's face above O_OUT
-    const o = (v) => { const h = 0.07 + v * hgt; return O_OUT + Math.max(surf(h), surf(h - RING_STEP) + 0.005) + 0.008; };
+    const surf = (h, H) => (h < 0 ? 0 : 0.011 * (1 - h / H) * (1 - (0.3 * h) / H)); // a ring's face above O_OUT
+    const o = (v) => { const h = 0.07 + v * hgt; return O_OUT + Math.max(surf(h, ringH(ring)), surf(h - STEP[ring], ringH(ring + 1)) + 0.005) + 0.008; };
     const rm = P.at((s0 + s1) / 2).r + O_OUT;
     const reps = Math.max(2, Math.round((TAU * rm) / repeat));
+    const sets = [ring, ring + 1, ring + 2].map(ringSet); // over both rings it lies on: never below either
     bands.push(strip(P, s0, s1, 3, o, 0.16, {
-      doorCut: P.at(s0).y < DOOR.cutY, seed: ring,
+      doorCut: P.at(s0).y < DOOR.cutY, seed: ring, angles: PS.samples(sets[0], P.at(s0).r),
+      sag: (a, s) => Math.max(...sets.map((A) => PS.sag(A, a, s))),
       uvFn: (a, v) => [(a / TAU) * reps, kind === 'arcade' ? 0.5 + v * 0.5 : v * 0.5],
     }));
   };
