@@ -1,10 +1,10 @@
-// Мас хайытыы: splitting firewood at the chopping block (дүлүҥ олох мас). Take the axe out of the block, stand a round of larch
-// on it; then every tap is a blow, from wherever you stand by the block: the axe goes up over the shoulder and
-// comes down along the round's drying crack. Taps in rhythm: a tap before the axe is back up gives a lower blow.
-// A full blow opens the round in two (halves by the block); a low one bites in, and the next tap lifts the round on
-// the axe and brings it down, open. Each half is stood up again and split into two billets, which are carried (an
-// armful) to the woodpile or to a fire. Nothing is told in words: the axe's height, the crack and the sound say it.
-// Props: src/models/work.js (two rounds of four mating quarters).
+// Мас хайытыы: splitting firewood at the chopping block (дүлүҥ олох мас). One tap at the block (the axe, the heap of
+// rounds, a half) frames the view on it (src/interact/framed.js); the axe comes out of the block into a worker's
+// hands there (`hands.eye`), a round of larch stands up on the block by itself, and every tap is a blow: the axe
+// goes up over the shoulder and comes down along the round's drying crack, the round opens in two, the halves fall
+// aside, the next half stands up by itself and splits into two billets, which fall aside for the carrying code (an
+// armful to the woodpile or a fire). A tap before the axe is back is kept for when it is. Walking away leaves; the
+// axe goes back into the block. Props: src/models/work.js (two rounds of four mating quarters).
 import * as THREE from 'three/webgpu';
 import { ease, fwdX, fwdZ } from '../../util.js';
 import { footprint, hullOf, overlaps, restSpot } from '../rest.js';
@@ -69,7 +69,8 @@ export class Split {
     this.chunks = []; // a whole round or a half: { pieces, n, pos, quat, state: 'to-block' | 'block' | 'fly' | 'settle' | 'rest', … }
     this.onBlock = null;
     this.sw = null; // the swing: { phase: 'raise' | 'swing' | 'stuck' | 'back', … }
-    hands.pose = (dt, cam) => this.axePose(dt, cam);
+    const own = hands.pose;
+    hands.pose = (dt, cam) => (this.axeHeld ? this.axePose(dt, cam) : own?.(dt, cam));
   }
 
   get axeHeld() { return this.hands.held === this.axe; }
@@ -78,29 +79,14 @@ export class Split {
   // ── what E does ──
   actFor(it) {
     const h = this.hands.held;
-    if (it.tool === 'axe') return h || this.sw ? null : this.hands.takeAct;
-    if (it.rounds) {
-      if (h && h !== this.axe) return null;
-      if (this.onBlock || this.sw) return null;
-      return this.freeRound() === undefined ? this.tidyAct : this.placeAct;
-    }
-    if (it.block) return this.axeHeld && !this.onBlock && !this.sw ? this.stickAct : undefined;
-    const c = this.chunkOf(it);
-    if (!c) return undefined; // a loose billet: the carrying code's
-    if (this.sw?.phase === 'stuck') return this.againAct;
-    if (c.state === 'block') return this.axeHeld && (!this.sw || this.sw.phase === 'back') ? this.strikeAct : null;
-    if (this.sw) return null;
-    if (c.state === 'rest') return !this.onBlock && (!h || h === this.axe) ? this.standAct : null;
-    return null;
+    const mine = it.tool === 'axe' || it.rounds || it.block || this.chunkOf(it)?.state === 'rest';
+    if (!mine) return undefined; // a loose billet: the carrying code's
+    return this.working || (h && h !== this.axe) ? null : this.workAct;
   }
-  // the axe in the hands anywhere by the block, facing it: the blow (no aiming at the round)
+  // free hands by the block, facing it: the same
   idleAct() {
-    if (this.sw?.phase === 'stuck') return this.againAct;
-    if (this.axeHeld && this.nearBlock()) {
-      if (this.onBlock?.state === 'block' && (!this.sw || this.sw.phase === 'back')) return this.strikeAct;
-      if (!this.onBlock && !this.sw) { if (this.restHalf()) return this.standAct; if (this.freeRound() !== undefined) return this.placeAct; } // the next piece onto the block
-    }
-    return this.sw ? this.noAct : null;
+    if (this.working || this.hands.held && !this.axeHeld) return null;
+    return this.nearBlock() ? this.workAct : null;
   }
   // the half lying nearest the block
   restHalf() {
@@ -118,6 +104,44 @@ export class Split {
     return undefined;
   }
 
+  // The framed work at the block: a worker's eye stands at the block on the player's side, the view from beside it.
+  workAct = { id: 'split', label: TXT.strike, run: (game) => this.session(game), tap: () => this.blow() };
+  blowAct = { id: 'strike', label: TXT.strike, run: async () => {} };
+  async session(game) {
+    const F = game.framed, h = this.hands, b = this.block, pl = game.player.pos;
+    if (this.working || (h.held && !this.axeHeld)) return;
+    const away = Math.atan2(pl.x - b.x, pl.z - b.z), a = new THREE.Vector3(Math.sin(away), 0, Math.cos(away));
+    const eye = { position: b.clone().addScaledVector(a, 0.8), quaternion: new THREE.Quaternion(), aspect: 1.6 };
+    eye.position.y = game.world.drawnAt(eye.position.x, eye.position.z) + 1.55;
+    eye.quaternion.setFromRotationMatrix(_m.lookAt(eye.position, _v.set(b.x, b.y + 0.15, b.z), UP));
+    this.working = true;
+    h.eye = eye;
+    if (this.axeHeld) { this.axe.blend = 0; this.axe.from = { p: this.axe.obj.position.clone(), q: this.axe.obj.quaternion.clone() }; } // from the body's hands to the worker's
+    else await h.takeAct.run(game, this.axe.it);
+    const opened = F.open({ c: b.clone().add(new THREE.Vector3(0, 0.36, 0)).addScaledVector(a, 0.15), r: 0.62, yaw: away + 1.0, el: 0.24, fov: 45, act: () => (this.onBlock?.state === 'block' && !this.sw ? this.blowAct : null) });
+    let idle = 0;
+    if (await opened) {
+      while (F.on) {
+        await this.tween(0.1, () => {});
+        if (this.onBlock || this.sw || this.chunks.some((c) => c.state !== 'rest')) { idle = 0; continue; }
+        const half = this.restHalf();
+        if (half) { await this.tween(0.25, () => {}); this.standAct.run(game, null); continue; } // the next half stands up by itself
+        if (this.freeRound() !== undefined) { this.placeAct.run(game, null); continue; }
+        if ((idle += 0.1) > 1.2) break; // nothing left to split: the billets wait to be carried
+      }
+      await F.close();
+    }
+    h.eye = null;
+    this.sw = null;
+    if (this.axeHeld) await this.stickAct.run(game); // back into the block
+    this.working = false;
+    game.promptKey = null;
+  }
+  // a tap at the block: a blow, or the next one once the axe is back up
+  blow() {
+    if (this.sw) { this.sw.next = 1; return; }
+    if (this.onBlock?.state === 'block') this.strike(); else this.early = true;
+  }
   noAct = { id: 'none', label: L('', '', ''), run: async () => {} };
   tidyAct = { id: 'tidy', label: TXT.tidy, run: async () => {} };
 
@@ -193,7 +217,7 @@ export class Split {
     const sw = this.sw = { phase: 'raise', t: 0, power: 0, top: power, chunk: c };
     await new Promise((res) => { sw.released = res; });
     // the blow lands on the crack, the blade along it, from the side the player stands on
-    const cam = g.engine.camera, top = c.pos.y + c.pieces[0].len;
+    const cam = this.hands.eye || g.engine.camera, top = c.pos.y + c.pieces[0].len;
     let ax = 1, az = 0; // the crack's line in the chunk's frame
     if (c.n === 2) { const a = c.pieces[1].k * Math.PI / 2; ax = Math.cos(a); az = Math.sin(a); }
     const line = _w.set(ax, 0, az).applyQuaternion(c.quat), toCam = _v.set(cam.position.x - c.pos.x, 0, cam.position.z - c.pos.z);
@@ -210,7 +234,6 @@ export class Split {
     sw.from = { p: this.axe.obj.position.clone(), q: this.axe.obj.quaternion.clone() };
     sw.phase = 'swing'; sw.k = 0;
     await new Promise((r) => { sw.landed = r; });
-    g.player.springV -= 0.9 + sw.power * 1.2; // the blow goes through the body
     this.land(c, res, hit, sw);
   }
 
@@ -308,7 +331,7 @@ export class Split {
         if (sw.wait > 0) sw.wait -= dt; else sw.k = Math.min(1, sw.k + dt / BACK);
         if (sw.k >= 1) {
           this.sw = null; g.promptKey = null;
-          if (sw.next != null && this.onBlock?.state === 'block') { this.queued = sw.next; this.strike(); } // the early tap's blow
+          if (sw.next != null) { if (this.onBlock?.state === 'block') { this.queued = sw.next; this.strike(); } else this.early = true; } // the early tap's blow
         }
       }
     }
@@ -319,7 +342,7 @@ export class Split {
         c.pos.lerpVectors(c.from.p, c.toP, e); c.pos.y += Math.sin(c.k * Math.PI) * 0.25;
         c.quat.slerpQuaternions(c.from.q, c.toQ, e);
         if (c.k < 1) this.clear(c, world);
-        if (c.k >= 1) { c.state = 'block'; g.audio?.play('wood-lay', c.pos); this.touch(c); }
+        if (c.k >= 1) { c.state = 'block'; g.audio?.play('wood-lay', c.pos); this.touch(c); if (this.early) { this.early = false; this.strike(); } } // a tap that came early
       } else if (c.state === 'fly') this.fly(c, dt, world);
       else if (c.state === 'settle') this.settle(c, dt, world);
       else continue;
