@@ -5,11 +5,11 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 ## Inputs
 | | Keyboard and mouse | Touch |
 |---|---|---|
-| **Do**: the act of the thing in view; with nothing in view, what the carried thing does. Held where the motion lasts (`input.doing`) | left button, F | the hand button, held (a drag starting on it looks, so a held tool can be aimed); also the prompt's green plate. A touch on the view only looks |
+| **Do**: a tap; the act of the thing in view; with nothing for the hands there, what the carried thing does or the work place the player stands at. A tap while an act runs goes to it (`act.tap`) | left button, F | the hand button (a drag starting on it looks); also the prompt's green plate. A touch on the view only looks |
 | **Put down**: the carried thing back to its place when within reach (`thing.put()`: axe → block, scythe → post, bark → hide), else onto dry ground ahead (tipped to its slope, clear of what lies there: `rest.js`); of an armful, one billet | right button, Q | the put-down button (shown while carrying) |
 | **Inspect**: the inspect stage (`docs/ui.md`), never an act | E | the eye button (shown when the thing has a card) |
 
-- The prompt (`docs/ui.md`): the thing's name under the dot; left of the dot the blue lens + E when it has a card; right of it the green plate with the act's own tool (`actIcon`, `src/ui/icons.js`), its verb and the mouse glyph (a bar beside it: the motion lasts while held, `actHeld`). The dot becomes a green ring when the hands can do something; with nothing in view the plate still shows what the carried thing would do. While carrying: a put-down hint low on the right.
+- The prompt (`docs/ui.md`): the thing's name under the dot; left of the dot the blue lens + E when it has a card; right of it the green plate with the act's own tool (`actIcon`, `src/ui/icons.js`), its verb and the mouse glyph. The dot becomes a green ring when the hands can do something; with nothing in view the plate still shows what the carried thing would do. While carrying: a put-down hint low on the right.
 - An act never opens a card; doing a thing adds its entry to the journal.
 - One thing in the hands at a time (or an armful of billets); nothing goes into the lake.
 - Acts run while you walk and look; only `act.freeze` holds the player (the ribbon choice, the birch bow, the 0.9 s turn as you sit).
@@ -27,6 +27,8 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 ## Hooks
 - Interactable: `off` (not focusable), `take`, `berries`, `sit`, `fireplace: { pos(), upright, fuel(), stir(k) }`. Things with a home (`hands.homed`): `guest` (choron), `offering` (lake stone), `khomus` flags; parts in the model's `userData`.
 - `game.interact.actFor(it)` overrides `it.act` while carrying; `idleAct()` = the do input with nothing in focus; `putAct()` = put down. `game.doReady` / `readReady` / `putReady` light the touch buttons; `game.choosing` = a `choose()` strip is up (touch hides its controls).
+- Aim: when the look hits nothing, a thing within reach whose bounds it passes close to is in view (`pickFocus`: ≤ 0.8 × its radius, at least 0.3 m).
+- Work places: `it.around = { at(), r }` with `it.live()`: empty hands within `r` get its act of the moment (the forge).
 - Jobs: a placed model names its job in `object.userData.work.job` (`JOBS` in `work/index.js`). `Work` (`game.work`) is asked before the carrying code: `actFor(it)` → act, `null` = nothing, `undefined` = not mine; `count(key)` → `save.work`; `say()` = a saying, once.
 - Tools are carried things: `hands.addKind(kind, hold, lie)`, `hands.addThing({ kind, obj, it, name })`, `it.thing`, `thing.put()`; `hands.pose(dt, cam)` → `{ p, q, world? }` drives a held tool. Carried things have weight: they trail the turning view, sit nearer the middle on a narrow screen, and `weigh()` dips the view.
 - A job's movable parts are scene children marked `userData.dynamic`; after moving one, clear its `userData.sphere` (the look-at cache).
