@@ -135,7 +135,6 @@ export default async function build(ctx) {
   // ---- little animation runner for the hands-on actions
   const tweens = [];
   const tween = (dur, fn) => new Promise((res) => tweens.push({ t: 0, dur, fn, res }));
-  const wait = (s) => tween(s, () => {});
   const ease = (k) => k * k * (3 - 2 * k);
   const local = (v) => root.worldToLocal(v.clone());
   // Churning: a tap on the sack is a stroke: the хамнатар comes up and plunges. Taps in rhythm: a tap before the
@@ -158,14 +157,20 @@ export default async function build(ctx) {
   const sprinkle = (from, dir) => {
     for (const d of drops) {
       d.o.position.copy(from);
-      d.v.copy(dir).multiplyScalar(1.4 + Math.random() * 0.8).add(new THREE.Vector3((Math.random() - 0.5) * 0.4, Math.random() * 0.4, (Math.random() - 0.5) * 0.4));
+      d.v.copy(dir).multiplyScalar(0.9 + Math.random() * 0.4).add(new THREE.Vector3((Math.random() - 0.5) * 0.4, Math.random() * 0.4, (Math.random() - 0.5) * 0.4));
       d.t = 1.4; d.o.visible = true;
     }
   };
-  // n drops thrown from a world point with a world velocity, gone after `life` s
-  const toss = (fromW, velW, n, life) => {
-    const from = local(fromW), v = velW.clone().applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()).invert());
-    for (const d of drops.slice(0, n)) { d.o.position.copy(from); d.v.copy(v).add(new THREE.Vector3((Math.random() - 0.5) * 0.25, (Math.random() - 0.5) * 0.25, (Math.random() - 0.5) * 0.25)); d.t = life; d.o.visible = true; }
+  // An offering put into the fire: n drops carried slowly from a world point to just over the embers, then
+  // lowered onto them: put, never thrown
+  const offer = (fromW, toW, n, dur) => {
+    const from = local(fromW), to = local(toW), put = drops.slice(0, n);
+    put.forEach((d, i) => { d.held = true; d.o.visible = true; d.o.scale.setScalar(1.8); d.off = new THREE.Vector3((i - 1) * 0.012, 0, ((i * 7) % 3 - 1) * 0.01); });
+    return tween(dur, (k) => {
+      const e = ease(Math.min(1, k / 0.75)), low = ease(Math.max(0, (k - 0.75) / 0.25)); // carried over, then set down
+      for (const d of put) { d.o.position.lerpVectors(from, to, e).add(d.off); d.o.position.y += 0.12 * (1 - low) * e; }
+      if (k >= 1) for (const d of put) { d.held = false; d.o.visible = false; d.o.scale.setScalar(1); }
+    });
   };
   // The guest's choron (src/interact/rites.js takes it into the hands): the ladle fills it from the sack where it stands.
   const fillChoron = async (game) => {
@@ -195,7 +200,7 @@ export default async function build(ctx) {
     inside: (p) => { const l = root.worldToLocal(p.clone()); return Math.hypot(l.x, l.z) < R0 - 0.2; },
   };
 
-  // the sprinkle-and-drink act (model space; the model only turns about +Y)
+  // the ladle's motion (model space; the model only turns about +Y)
   const flyTo = async (obj, to, dur, quatTo, during) => {
     const from = obj.position.clone(), q0 = obj.quaternion.clone();
     await tween(dur, (k) => { const e = ease(k); obj.position.lerpVectors(from, to, e); if (quatTo) obj.quaternion.slerpQuaternions(q0, quatTo, e); during?.(e); });
@@ -213,15 +218,12 @@ export default async function build(ctx) {
       // src/interact lays carried firewood here
       fireplace: { pos: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), upright: false, fuel: fire.fuel, stir: fire.stir },
       act: {
-        // a pinch from the hand: it flies to the hearth, and the fire takes it
+        // a pinch from the hand, carried slowly to the hearth and set down on it; the fire takes it
         id: 'feed', label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
         run: async (game) => {
           const cam = game.engine.camera, hearth = fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top + 0.1, 0));
           const hand = new THREE.Vector3(0.14, -0.2, -0.35).applyQuaternion(cam.quaternion).add(cam.position);
-          const d = hearth.distanceTo(hand), t = 0.25 + d * 0.12;
-          // thrown so that it lands on the hearth after t seconds
-          toss(hand, hearth.clone().sub(hand).divideScalar(t).add(new THREE.Vector3(0, 4.9 * t, 0)), 3, t);
-          await wait(t);
+          await offer(hand, hearth, 3, 1.3 + Math.min(1, hearth.distanceTo(hand) * 0.25));
           sound(game, 'fire-feed', fire.group);
           fire.flare();
         },
@@ -312,7 +314,7 @@ export default async function build(ctx) {
     _u.set(0, 1, 0).applyQuaternion(c.camera.quaternion).applyQuaternion(_iq);
     fire.update(dt, { sunLocal: _sun, sunElev: engine ? engine.sunElev : 40, camRight: _r, camUp: _u });
     for (const d of drops) {
-      if (!d.o.visible) continue;
+      if (!d.o.visible || d.held) continue;
       d.t -= dt; d.v.y -= 9.8 * dt; d.o.position.addScaledVector(d.v, dt);
       if (d.t <= 0 || d.o.position.y < 0.02) d.o.visible = false;
     }

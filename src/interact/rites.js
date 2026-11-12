@@ -82,7 +82,7 @@ export class Choron extends Homed {
     if (!sprinkle) await this.drink(); else if (kl.vol > kl.volAt(this.parts.KYMYS.left) * 1.001) await this.sprinkle();
     this.busy = false;
   }
-  // A flick of the cup towards the look: a few drops fly that way. Into the fire, it answers.
+  // The cup tipped a little towards the look: a few drops go that way, sprinkled (ыс). Towards the fire, it answers.
   async sprinkle() {
     const g = this.game, cam = g.engine.camera, P = this.parts, kl = P.kymys;
     const dir = cam.getWorldDirection(new THREE.Vector3()), flat = _v.set(dir.x, 0, dir.z).normalize().clone();
