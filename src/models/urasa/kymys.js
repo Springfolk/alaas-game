@@ -221,8 +221,6 @@ export function buildKymys(rng, M) {
   }
   const tuftMesh = add(merge(tuft), M.hair, stirrer);
   tuftMesh.userData.noShadow = true;
-  stirrer.userData.grips = [{ hand: 'R', p: [0, 1.4, 0], axis: [0, 1, 0], r: 0.0155 }, { hand: 'L', p: [0, 1.22, 0], axis: [0, 1, 0], r: 0.0155 }];
-  { const [sx, , sz] = P2(rS - 0.72, aS); stirrer.userData.stand = { of: group, x: sx, z: sz }; } // before the sack
   stirrer.position.y = neckY - 1.06; // the pole stands in the sack, knob ~0.5 m above the collar
 
   // ---- the ladle (удьаа kind): deep bowl, S-curved handle with a hook, hung on the collar
@@ -262,7 +260,6 @@ export function buildKymys(rng, M) {
   const chorons = new THREE.Group();
   boardRoot.add(chorons);
   const hero = add(choronA(1, 56), M.birch, chorons); // held at the face: rounder
-  hero.userData.grips = [{ hand: 'R', p: [0, 0.06, 0], axis: [0, 1, 0], r: 0.024 }]; // by the stem
   hero.position.set(0.02, 0.118, 0.01);
   const b = add(choronB(), M.birch, chorons);
   b.position.set(-0.22, 0.118, -0.02); b.rotation.y = 0.4;

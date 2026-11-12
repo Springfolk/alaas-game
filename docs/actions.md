@@ -18,7 +18,7 @@ Tap = the do input pressed and let go; hold = kept down (`docs/interactions.md`)
 | Ribbon | salama on the serge; the sacred birch | serge: tap. Birch: hold = the bow (head down while held, a tap is a nod). Then three strips under the look: mouse, ← → or 1 2 3 choose, do ties, put down / Esc leaves (touch: tap a strip or ✕) | the ribbon unrolls from the knot; kept in the save |
 
 ## Jobs (`src/interact/work/`)
-Raise-and-release tools (axe, scythe): hold raises (≈0.7 s to the top, the hands come up to the face; held past ~2.5 s the arms tire and it sinks), letting go strikes where you look, put down while raised lowers it; a tap is a feeble blow.
+Raise-and-release tools (axe, scythe): hold raises (≈0.7 s to the top; held past ~2.5 s it sinks), letting go strikes where you look, put down while raised lowers it; a tap is a feeble blow.
 
 | Job | Where | The hands | The world answers |
 |---|---|---|---|

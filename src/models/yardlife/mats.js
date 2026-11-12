@@ -49,9 +49,6 @@ export function yardMats() {
       emissive: mix(color(0.9, 0.2, 0.03), color(1.0, 0.55, 0.16), crust.pow(3)).mul(crust).mul(flick(glow, 9).mul(flick(float(1), 23).add(0.4))).mul(3.4) }),
     embers: pmat('rock_ground', { scale: 0.25, tint: 0x2a221c, dirt: 0, rough: 0.9, id: 'embers',
       emissive: color(1.0, 0.28, 0.05).mul(flick(ember, 6).pow(2)).mul(1.6) }),
-    // the player's own hands and sleeve (chores/arms.js)
-    skin: pmat('canvas:skin', { scale: 0.09, tint: 0xd39c78, dirt: 0, vary: 0.04 }),
-    sleeve: pmat('canvas:cloth', { scale: 0.03, tint: 0x3f4c66, dirt: 0, vary: 0.1 }),
     charcoal: pmat('rock_ground', { scale: 0.25, tint: 0x1d1b1a, dirt: 0, rough: 0.85 }),
   };
 }

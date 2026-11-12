@@ -382,7 +382,6 @@ export function buildInterior({ B, M, rng, winter, root }) {
       // its own group and bucket (it is taken from the peg and played: src/interact/rites.js), built about its middle
       const KB = new Buckets(), kh = new THREE.Group();
       kh.name = 'khomus'; kh.position.set(kx, ky, kz); kh.userData.dynamic = true;
-      kh.userData.grips = [{ hand: 'L', p: [0, 0.035, 0.012], axis: [1, 0, 0], r: 0.008 }];
       // keyhole frame: ring + two parallel cheeks
       const pts = [];
       for (let k = 0; k <= 20; k++) { const a = -Math.PI / 2 + 0.35 + (k / 20) * (Math.PI * 2 - 0.7); pts.push([Math.cos(a) * 0.014, 0.035 + Math.sin(a) * -0.014, 0]); }
