@@ -64,7 +64,7 @@ export default async function build(ctx, placement) {
   pail.position.set(PAIL_AT[0], ground(...PAIL_AT), PAIL_AT[1]);
   pail.rotation.y = 0.6;
   object.add(pail);
-  interactables.push({ entry: 'mas-yagas', target: pail, take: 'pail', label: { sah: 'мас ыаҕас', en: 'wooden water pail (мас ыаҕас)', ru: 'деревянное ведро (мас ыаҕас)' } });
+  interactables.push({ entry: 'mas-yagas', target: pail, take: 'pail', label: { sah: 'мас ыаҕас', en: 'wooden water pail (mas yaghas)', ru: 'деревянное ведро (мас ыаҕас)' } });
 
   // ── firewood billets: split larch, built along +Y (base at 0), hidden until taken from the pile ──
   const logs = [];
@@ -93,7 +93,7 @@ export default async function build(ctx, placement) {
   dy.patches.forEach((P, k) => {
     const t = proxy(P.R * 1.8, 0.2, P.R * 1.8, P.cx, ground(P.cx, P.cz) + 0.1, P.cz);
     t.name = 'dyedyen-patch';
-    interactables.push({ entry: 'dyedyen', target: t, berries: k, label: { sah: 'дьэдьэн', en: 'wild strawberries (дьэдьэн)', ru: 'земляника (дьэдьэн)' } });
+    interactables.push({ entry: 'dyedyen', target: t, berries: k, label: { sah: 'дьэдьэн', en: 'wild strawberries (djedjen)', ru: 'земляника (дьэдьэн)' } });
   });
   const mown = dy.colonies.flatMap((C) => C.short); // grass kept short so the colony shows
 

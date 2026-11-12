@@ -23,7 +23,7 @@ export const WORKS = [
     made: (w) => [['scythe', Math.round(w.mown || 0), ' m²']],
   },
   {
-    id: 'tuos', name: L('Туос үлэтэ: тордуйа', 'Birch-bark work: a тордуйа', 'Работа с берестой: тордуйа'), entry: 'birch-bark',
+    id: 'tuos', name: L('Туос үлэтэ: тордуйа', 'Birch-bark work: a torduya', 'Работа с берестой: тордуйа'), entry: 'birch-bark',
     find: (i) => i.bark, icon: 'fold',
     done: (w) => w.torduya > 0,
     made: (w) => [['fold', w.torduya || 0], ['berry', w.berries || 0]],

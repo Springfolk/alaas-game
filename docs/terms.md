@@ -35,7 +35,7 @@ Research behind the Sakha and Russian words (`docs/content.md`). Sources: sakhat
 | blacksmith | anvil 'treated with sour milk' | not used: the Jochelson passage may describe the Pamirs, not the Sakha |
 
 - Confirmed: Аал Луук Мас, Аан Алахчын Хотун, Хатан Тэмиэрийэ, айыы аймаҕа, Эллэй Боотур (sah.wiki); хаппахчы, биллэрик, хабаҕал, холумтан, үөлэс, булгунньах, удьаа, көҕүөр, кырыыс, уруй, айхал, чэчир, түһүлгэ, аар баҕах, эбэ (lake euphemism) (sakhatyla); хаһаа = horse stall, дал = cattle pen by the khoton, ибиир хамыйах (ибиир= 'to sprinkle'), кырыымпа, саламаат, чохоон = butter whipped with warm milk and frozen, often with berries (sakhatyla); Айыыһыт, оһуохайы таһаарааччы (also оһуохайдьыт) (sah.wiki).
-- Russian, thin sources: кытыя (vs кытыйа), Иэйэхсит, Джёсёгёй Айыы, сымыыр (симир) for the kymys sack, хамнатар as «мутовка», тюптэ, «жердевые ворота» for сүрдьүгэс, Улла Йохансен, «серебро с водой» (уулаах көмүс).
+- Russian, thin sources: кытыя (vs кытыйа), Иэйэхсит, Джёсёгёй Айыы, хамнатар as «мутовка», тюптэ, «жердевые ворота» for сүрдьүгэс, Улла Йохансен, «серебро с водой» (уулаах көмүс).
 
 ## Wood and fire
 | Thing | Sakha | EN · RU | Source |

@@ -85,7 +85,7 @@ export default async function build(ctx, placement) {
   trap.rotation.set(Math.PI / 2, 0, 0.35, 'YXZ');
   trap.userData.dynamic = true;
   object.add(trap);
-  interactables.push({ target: trap, tuu: true, entry: 'tuu', label: { sah: 'туу', en: 'fish trap (туу)', ru: 'верша (туу)' } });
+  interactables.push({ target: trap, tuu: true, entry: 'tuu', label: { sah: 'туу', en: 'fish trap (tuu)', ru: 'верша (туу)' } });
 
   // ── the carrier (тымтай): an oval birch-bark basket with a willow rim and a shoulder cord ──
   const basket = new T.Group(); basket.name = 'tymtay';
@@ -103,7 +103,7 @@ export default async function build(ctx, placement) {
   basket.rotation.y = 0.4;
   basket.userData.dynamic = true;
   object.add(basket);
-  interactables.push({ target: basket, tymtay: true, entry: 'tuu', label: { sah: 'тымтай', en: 'fish carrier (тымтай)', ru: 'короб для рыбы (тымтай)' } });
+  interactables.push({ target: basket, tymtay: true, entry: 'tuu', label: { sah: 'тымтай', en: 'fish carrier (tymtay)', ru: 'короб для рыбы (тымтай)' } });
 
   // ── мунду (lake minnow, a hand's breadth long): one small fish, instanced in the trap and in the carrier ──
   const fishGeo = minnow(T);
@@ -139,7 +139,7 @@ export default async function build(ctx, placement) {
   gap.name = 'weir-gap';
   interactables.push({ target: gap, gap: true, entry: 'tuu', label: { sah: 'быһыт аана', en: 'the gap in the weir', ru: 'проход в запруде' } });
   const weir = proxy(0.3, 0.9, 4, 0, waterY + 0.2, 1.6);
-  interactables.push({ entry: 'tuu', target: weir, label: { sah: 'быһыт', en: 'fish weir (быһыт)', ru: 'запруда (быһыт)' } });
+  interactables.push({ entry: 'tuu', target: weir, label: { sah: 'быһыт', en: 'fish weir (byhyt)', ru: 'запруда (быһыт)' } });
 
   // the working shore is trodden short, so the trap and the carrier show
   object.userData.mown = [{ x: 0.1, z: z0 - 1.5, rx: 3.4, rz: 1.9 }];

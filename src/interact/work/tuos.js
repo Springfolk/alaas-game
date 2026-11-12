@@ -11,7 +11,7 @@ import { ease } from '../../util.js';
 const L = (sah, en, ru) => ({ sah, en, ru });
 const TXT = {
   sheet: L('туос', 'birch bark', 'береста'),
-  vessel: L('тордуйа', 'тордуйа', 'тордуйа'),
+  vessel: L('тордуйа', 'torduya', 'тордуйа'),
   take: L('ыл', 'take it', 'взять'),
   warm: L('туоһу уокка сылыт', 'warm the bark at the fire', 'согреть бересту у огня'),
   lay: L('тириигэ тэлгээ', 'lay it on the hide', 'расстелить на шкуре'),

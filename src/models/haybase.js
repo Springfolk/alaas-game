@@ -131,7 +131,7 @@ export default async function build(ctx, placement) {
 
   interactables.push({ entry: 'hay-making', target: toolsT, label: { sah: 'атырдьахтар, кыраабыллар', en: 'hay forks and rakes', ru: 'вилы и грабли' } });
   interactables.push({ entry: 'hay-making', target: polesT, label: { sah: 'кэбиһии мастара', en: 'stack poles', ru: 'жерди для стогов' } });
-  interactables.push({ entry: 'otuu', target: kettleT, label: { sah: 'чаанньык', en: 'tea kettle (чаанньык)', ru: 'чайник' } });
+  interactables.push({ entry: 'otuu', target: kettleT, label: { sah: 'чаанньык', en: 'tea kettle (chaanniyk)', ru: 'чайник' } });
 
   // trodden ground round the fire and from it to the rail and the poles; the grass short where the crew sat
   object.userData.mown = [{ x: 0.6, z: -0.4, rx: 3.2, rz: 2.6 }];

@@ -72,7 +72,7 @@ export default async function build(ctx, placement) {
   }
   scythe.userData.dynamic = true;
   object.add(scythe);
-  interactables.push({ target: scythe, khotuur: true, entry: 'hay-making', label: { sah: 'саха хотуура', en: 'Sakha scythe (саха хотуура)', ru: 'якутская коса (саха хотуура)' } });
+  interactables.push({ target: scythe, khotuur: true, entry: 'hay-making', label: { sah: 'саха хотуура', en: 'Sakha scythe (sakha khotuura)', ru: 'якутская коса (саха хотуура)' } });
   const hidden = new T.MeshBasicMaterial({ visible: false });
   const post = new T.Mesh(new T.BoxGeometry(0.3, 1.5, 0.3), hidden);
   post.position.set(0, g0 + 0.75, 0); post.castShadow = false; object.add(post);
