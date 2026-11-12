@@ -211,8 +211,26 @@ export class Journal {
     for (const k of order) {
       const m = this.pins[k], [u, v] = toMap(m.p.x, m.p.z), x = u * U * sc, y = v * U * sc;
       const hide = kept.some(([kx, ky]) => Math.abs(kx - x) < 24 && Math.abs(ky - y) < 24);
-      if (!hide) kept.push([x, y]);
+      if (!hide) kept.push([x, y, k]);
       this.pinEls[k].classList.toggle('off', hide);
+    }
+    this.label(kept);
+  }
+  // The names of the kept markers: below, above, right or left of their marker, wherever they cover no marker and
+  // no other name (the more important first); with no room, none until a closer look.
+  label(kept) {
+    const sc = this.view.sc, R = 2, boxes = kept.map(([x, y, k]) => { const h = this.pins[k].kind === 'job' ? 13 : 10; return [x - h, y - h, x + h, y + h]; });
+    for (const el of [this.meEl, this.destEl]) if (el && (el === this.meEl || el.classList.contains('on'))) { const x = parseFloat(el.style.left) / 100 * U * sc, y = parseFloat(el.style.top) / 100 * U * sc; if (x === x) boxes.push([x - 12, y - 14, x + 12, y + 12]); }
+    const hit = (a) => boxes.some((b) => a[0] < b[2] + R && a[2] > b[0] - R && a[1] < b[3] + R && a[3] > b[1] - R);
+    for (const [x, y, k] of kept) {
+      const m = this.pins[k], el = this.pinEls[k], sp = el.querySelector(':scope > span');
+      if (!sp) continue;
+      if (!m.lw) { m.lw = sp.offsetWidth; m.lh = sp.offsetHeight; }
+      const w = m.lw || 60, h = m.lh || 16, r = m.kind === 'job' ? 12 : 9;
+      const at = [['b', x - w / 2, y + r + 3], ['t', x - w / 2, y - r - 3 - h], ['r', x + r + 4, y - h / 2], ['l', x - r - 4 - w, y - h / 2]]
+        .map(([s, l, t]) => [s, [l, t, l + w, t + h]]).find(([, a]) => !hit(a));
+      el.classList.toggle('nolab', !at);
+      if (at) { el.dataset.lp = at[0]; boxes.push(at[1]); }
     }
   }
   rankOf(m) { return this.sel?.key === m.key ? 0 : m.rank; }

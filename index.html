@@ -362,7 +362,11 @@
   .j-pin.q { background: rgba(20,30,44,.72); border-color: var(--gold); color: var(--gold); }
   .j-pin.job { width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 6px; background: linear-gradient(180deg, #8fdc6f, #3a9c1c); color: #fff; }
   .j-pin.job .ic { width: 16px; height: 16px; stroke-width: 2.4; }
-  .j-pin span { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 3px; white-space: nowrap; pointer-events: none; font: 400 14px/1.1 var(--serif); color: #2a1c08; text-shadow: 0 0 3px #fff6e2, 0 0 3px #fff6e2, 0 0 6px #fff6e2; }
+  .j-pin > span { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 3px; white-space: nowrap; pointer-events: none; font: 400 14px/1.1 var(--serif); color: #2a1c08; text-shadow: 0 0 3px #fff6e2, 0 0 3px #fff6e2, 0 0 6px #fff6e2; }
+  .j-pin[data-lp=t] > span { top: auto; bottom: 100%; margin: 0 0 3px; }
+  .j-pin[data-lp=r] > span { left: 100%; top: 50%; transform: translateY(-50%); margin: 0 0 0 4px; }
+  .j-pin[data-lp=l] > span { left: auto; right: 100%; top: 50%; transform: translateY(-50%); margin: 0 4px 0 0; }
+  .j-pin.nolab > span { visibility: hidden; } /* (src/ui/journal.js `label`: no room for its name here) */
   .j-pin.off { display: none; }
   .j-pin.on { z-index: 2; box-shadow: 0 0 0 3px #fff, 0 0 12px 4px rgba(var(--glow),.95); }
   .j-pin.vh, .j-pin:hover { z-index: 3; box-shadow: 0 0 0 3px rgba(255,255,255,.75); }
