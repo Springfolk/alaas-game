@@ -16,14 +16,14 @@ const C = (r, g, b, k) => new THREE.Color(r, g, b).multiplyScalar(k);
 // each hint's light: `px` its glint's least size on screen, `col` its colour (HDR), `glow` the bloom at the thing
 // (`m` across in metres, `asp` height/width, `ring` a halo's ring), `sparks` glints per beat
 const LOOK = {
-  glint: { px: 34, col: C(1, 0.95, 0.84, 12), glow: { m: 0.5, col: C(1, 0.93, 0.8, 1.6) } }, // metal
-  sheen: { px: 30, col: C(1, 0.9, 0.7, 9), glow: { m: 0.7, col: C(1, 0.85, 0.6, 1.3) }, sparks: 2 }, // resin, bark, wet wicker
-  berries: { px: 26, col: C(1, 0.88, 0.82, 8), glow: { m: 0.9, col: C(1, 0.75, 0.62, 1.2) }, sparks: 2 }, // a ripe berry's skin
-  ember: { px: 28, col: C(1, 0.5, 0.16, 9), glow: { m: 0.6, col: C(1, 0.45, 0.15, 2) } }, // a spit off hot iron
-  fire: { glow: { m: 2.4, col: C(1, 0.55, 0.25, 1.4), ring: 1 }, near: 7 }, // the hearth's light swelling in the smoke
-  ripple: { px: 30, col: C(1, 0.96, 0.88, 10), glow: { m: 1.8, asp: 0.35, col: C(1, 0.95, 0.85, 1.1) } }, // the sun on the risen water
-  splash: { px: 30, col: C(1, 0.96, 0.88, 10), glow: { m: 1.8, asp: 0.35, col: C(1, 0.95, 0.85, 1.1) }, sparks: 2 },
-  dew: { px: 24, col: C(1, 0.97, 0.9, 9), glow: { m: 6, asp: 0.22, col: C(1, 0.95, 0.8, 1.6) }, sparks: 4 }, // dew on the standing grass
+  glint: { px: 16, col: C(1, 0.95, 0.84, 5), glow: { m: 0.35, col: C(1, 0.93, 0.8, 0.8) } }, // metal
+  sheen: { px: 14, col: C(1, 0.9, 0.7, 4), glow: { m: 0.5, col: C(1, 0.85, 0.6, 0.65) }, sparks: 2 }, // resin, bark, wet wicker
+  berries: { px: 12, col: C(1, 0.88, 0.82, 3.5), glow: { m: 0.6, col: C(1, 0.75, 0.62, 0.6) }, sparks: 2 }, // a ripe berry's skin
+  ember: { px: 14, col: C(1, 0.5, 0.16, 4), glow: { m: 0.4, col: C(1, 0.45, 0.15, 1) } }, // a spit off hot iron
+  fire: { glow: { m: 1.6, col: C(1, 0.55, 0.25, 0.7), ring: 1 }, near: 7 }, // the hearth's light swelling in the smoke
+  ripple: { px: 14, col: C(1, 0.96, 0.88, 4), glow: { m: 1.2, asp: 0.35, col: C(1, 0.95, 0.85, 0.55) } }, // the sun on the risen water
+  splash: { px: 14, col: C(1, 0.96, 0.88, 4), glow: { m: 1.2, asp: 0.35, col: C(1, 0.95, 0.85, 0.55) }, sparks: 2 },
+  dew: { px: 12, col: C(1, 0.97, 0.9, 3.5), glow: { m: 4, asp: 0.22, col: C(1, 0.95, 0.8, 0.7) }, sparks: 4 }, // dew on the standing grass
 };
 // seconds between a hint's beats
 const BEAT = { glint: [1.8, 3.2], sheen: [1.4, 2.6], ember: [1.2, 2.4], ripple: [1.6, 3], splash: [1.1, 2.4], fire: [2.4, 3.6], dew: [1.8, 3], berries: [1.6, 2.8] };
@@ -53,7 +53,7 @@ export class Hints {
     this.edge = this.sprite(lightMaterial(this.eOp, this.eCol, uniform(0), uniform(0), true), home, 11);
     this.cur = null; this.t = 0; this.beat = 0.5; this.flash = -1; this.again = 0; this.left = 0; this.swell = -1;
     this.lit = null; this.spot = new THREE.Vector3();
-    this.gain = { bloom: 2.5, shaft: 0.6, edge: 2.5 }; // the lights' strengths
+    this.gain = { bloom: 1, shaft: 0.25, edge: 0.8 }; // the lights' strengths
   }
   sprite(m, at, order) {
     const s = new THREE.Sprite(m);
@@ -236,7 +236,7 @@ export class Hints {
       if (k >= 1 || !L?.px || d > FAR) { this.flash = -1; this.glint.visible = false; } else {
         this.gCol.value.copy(L.col);
         this.gOp.value = Math.sin(Math.PI * k) ** 2 * (0.75 + 0.25 * Math.sin(this.flash * 70));
-        const s = this.m(Math.max(L.px, 0.055 * H), d) * THREE.MathUtils.clamp(5 / d, 1, 1.8); // larger close by
+        const s = this.m(Math.max(L.px, 0.025 * H), d) * THREE.MathUtils.clamp(5 / d, 1, 1.3); // larger close by
         this.glint.scale.set(s, s, 1);
         this.glint.visible = true;
       }
@@ -249,13 +249,13 @@ export class Hints {
     const G = L.glow, far = cam.position.distanceTo(lit.at) > (L.near ?? NEAR), top = far && lit.top;
     const at = top || lit.at, d = cam.position.distanceTo(at); // a hearth from afar: its light in the smoke over the roof
     if (far && !top) { // a shaft of sunlight falling on it
-      const w = Math.max(5, this.m(0.15 * H, d));
+      const w = Math.max(3, this.m(0.09 * H, d));
       _w.copy(g.engine.sun.position).transformDirection(cam.matrixWorldInverse); // the sun's side of the view
       this.bRot.value = THREE.MathUtils.clamp(-_w.x * 0.6, -0.35, 0.35);
-      this.bloom.scale.set(w, w * 3, 1); this.bloom.center.set(0.5, 0.03); this.bloom.position.copy(at);
+      this.bloom.scale.set(w, w * 2.5, 1); this.bloom.center.set(0.5, 0.03); this.bloom.position.copy(at);
       this.bShaft.value = 1; this.bOp.value = env * this.gain.shaft;
     } else {
-      const w = Math.max(G.m, this.m(0.1 * H, d) * (G.asp ? 1.6 : 1));
+      const w = Math.max(G.m, this.m(0.06 * H, d) * (G.asp ? 1.6 : 1));
       this.bloom.scale.set(w, w * (G.asp || 1), 1); this.bloom.center.set(0.5, 0.5); this.bRot.value = 0;
       this.bloom.position.copy(at).addScaledVector(_w.subVectors(cam.position, at).normalize(), Math.min(0.3, d * 0.1));
       if (G.asp) this.bloom.position.y += w * G.asp * 0.3; // lying on the water or the grass, not sunk in it
@@ -273,7 +273,7 @@ export class Hints {
     ex /= n; ey /= n;
     this.edge.position.set(ex * th * 1.02, ey * tv * 1.02, -1).applyMatrix4(cam.matrixWorld);
     const eh = Math.min(tv, th) * 2 * 0.95, side = Math.abs(ex) > Math.abs(ey); // by the view's short side (a portrait phone)
-    this.edge.scale.set(eh * (side ? 0.5 : 2.4), eh * (side ? 1.6 : 0.5), 1); // a band of light along that edge
+    this.edge.scale.set(eh * (side ? 0.3 : 2.4), eh * (side ? 1.6 : 0.3), 1); // a band of light along that edge
     this.eOp.value = env * this.gain.edge;
     this.edge.visible = true;
   }

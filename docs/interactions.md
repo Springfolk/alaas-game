@@ -53,10 +53,10 @@ No sentence and no mark says the next step: light catches the thing, as in a pho
 | the guest's choron | the nearest hearth's light swells |
 | the lake's milk | a fish rises off the shore by the stone |
 
-- Lights: three additive sprites on layer 1 made before the warm-up (`glintMaterial`, `lightMaterial`, `src/interact/glint.js`); in play only uniforms, transforms and `visible` change. `LOOK` sets each hint's colours and sizes, `gain` the strengths.
-- Glint: a sun star ≤ 45 m on a point of the thing's surface picked by a ray from the eye (dew, water: round the spot), ≥ 5.5 % of the view's height; a beat every 1.1–3.6 s, some kinds 2–4 sparkles.
+- Lights: three additive sprites on layer 1 made before the warm-up (`glintMaterial`, `lightMaterial`, `src/interact/glint.js`); in play only uniforms, transforms and `visible` change. `LOOK` sets each hint's colours and sizes, `gain` the strengths: all kept faint, a catch of light a curious eye finds, never a beacon.
+- Glint: a sun star ≤ 45 m on a point of the thing's surface picked by a ray from the eye (dew, water: round the spot), ≥ 2.5 % of the view's height; a beat every 1.1–3.6 s, some kinds 2–4 sparkles.
 - Bloom: swells and fades over 1.8 s each beat: ≤ 14 m (hearth 7 m) a glare at the thing (hearth: a faint halo; water, dew: flat), farther a soft shaft of sunlight leaning from the sun's side (hearth: the glow in the smoke over the roof).
-- Edge glare: the thing out of view: the same swell flares in at the view's edge on its side (behind: the nearer shoulder).
+- Edge glare: the thing out of view: the same swell, a thin faint band at the view's edge on its side (behind: the nearer shoulder).
 - Ripples are the lake's own (`world.life.water.ring`); the fire's lift is `fireplace.stir(k)`.
 
 ## Finder (`src/ui/guide.js`, DOM only)
