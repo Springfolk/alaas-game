@@ -9,11 +9,11 @@ const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const cache = new WeakMap();
 
-// Sakha in the game's readable Latin (docs/content.md "Names"): ү u, ө o, ҥ ng, ҕ gh, һ h, дь dj, нь ny (ni before ы),
+// Sakha in the game's phonetic Latin (docs/content.md "Names"): ө ö, ү ü, ыа e, ҥ ng, ҕ gh, һ h, дь dj, нь ny (ni before ы),
 // х kh, ч ch, ы y, й y, э e; long vowels stay doubled.
-const LAT = { а: 'a', б: 'b', в: 'v', г: 'g', ҕ: 'gh', д: 'd', е: 'e', ё: 'yo', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', ҥ: 'ng', о: 'o', ө: 'o', п: 'p', р: 'r', с: 's', һ: 'h', т: 't', у: 'u', ү: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
-export const translit = (s) => String(s || '').replace(/[дн]ь|[Ѐ-ӿ]/gi, (c, i, all) => {
-  const l = c.toLowerCase(), t = l === 'дь' ? 'dj' : l === 'нь' ? (/ы/i.test(all[i + 2] || '') ? 'ni' : 'ny') : LAT[l] ?? c;
+const LAT = { а: 'a', б: 'b', в: 'v', г: 'g', ҕ: 'gh', д: 'd', е: 'e', ё: 'yo', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', ҥ: 'ng', о: 'o', ө: 'ö', п: 'p', р: 'r', с: 's', һ: 'h', т: 't', у: 'u', ү: 'ü', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
+export const translit = (s) => String(s || '').replace(/ыа|[дн]ь|[Ѐ-ӿ]/gi, (c, i, all) => {
+  const l = c.toLowerCase(), t = l === 'ыа' ? 'e' : l === 'дь' ? 'dj' : l === 'нь' ? (/ы/i.test(all[i + 2] || '') ? 'ni' : 'ny') : LAT[l] ?? c;
   return c[0] === l[0] ? t : cap(t);
 });
 
