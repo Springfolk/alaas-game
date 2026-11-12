@@ -88,6 +88,9 @@ const q = (v, f) => v[Math.min(v.length - 1, Math.floor(v.length * f))];
 export function govern(e, dt, now = performance.now()) {
   const iv = e.paceIv || 1000 / 60, ms = dt * 1000;
   if (dt <= 0) return;
+  // e.govHold: the view stands still behind a window (journal, pause): its frames are cheaper than play's and would
+  // lift the resolution play cannot hold. Nothing is measured; play starts a fresh window.
+  if (e.govHold) { const g = e.gov; if (g) { g.n = g.t = g.late = g.deep = g.js = g.room = g.over = 0; g.settle = true; } if (e.gpuTimes) e.gpuTimes.length = 0; return; }
   const g = e.gov ||= { n: 0, t: 0, late: 0, deep: 0, js: 0, room: 0, over: 0 };
   g.n++; g.t += Math.min(ms, iv * 3); g.js += e.jsMs || 0;
   if (ms > iv + 0.5 * iv / (e.paceN || 1)) g.late++; // a refresh or more over (at 30 on a 60 Hz display that is 50 ms, 1.5×: no margin for a ratio)

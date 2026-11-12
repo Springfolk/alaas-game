@@ -7,6 +7,7 @@ Targets: desktop 60 fps, phones 30. Priorities in order: no late frame, then a s
 - `pace` draws every n-th display refresh (120 Hz: every 2nd; 75/90 Hz every one, 144 Hz every 2nd), counted on the display's clock from the last drawn frame (interval from 31 rAF deltas): jitter and late callbacks do not shift the beat.
 - `pace` holds a frame back while the GPU still has three (Chrome queues 3–4 before it slows rAF).
 - `govern` (every ~0.5 s of frames) reads late frames, the frame's JS time and when the GPU finished each frame (`Engine.frameDone`: WebGPU queue promise, WebGL2 fence). Where the first 30 fences cost over 1 ms each (Safari's WebGL2) it uses late frames alone.
+- While the journal or the pause is up (`Engine.govHold`) `govern` measures nothing and changes nothing; play starts a fresh window.
 - Over (late frames, or the GPU behind; or JS over 0.75 of the interval with 2 late frames in 3 s): 5–20% fewer pixels a step, down to the tier's floor. At the floor, or when the JS alone is the limit, `KNOBS` one at a time: shadow range ×0.7 → lake mirror ×0.6 → lazy shadows (desktop; `docs/performance.md`) → a slower beat (60 → 30; 120 Hz 60 → 40 → 30; phones 30 → 20). No knob builds a shader.
 - Room (no late frame, a quarter of frames done by the GPU within 0.8 of the interval, JS under 0.6): 4–8% more pixels; a slower beat comes back first, only when the faster one is measured to fit. A rate held with little to spare is not probed.
 - F3 shows `res` (% of native), the knobs on and the GPU's ms.
