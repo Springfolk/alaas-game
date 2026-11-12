@@ -8,7 +8,7 @@
 // things in the scene itself: carried, set down, work props, hands), NEAR=m (also load every other placement whose bounds come
 // within m of a checked one and report contacts with it), STATE=js (run in the page before the check, awaited: a door opened, an
 // action run to its end), VIEW=1 (what is near the eye: depth, cut by the near plane, share of the screen covered),
-// REGION=x0,z0,x1,z1 (only parts within it, world metres), SKIP=regex (meshes or materials left out; default ground cover), SIZE=WxH (viewport), CAMERA=0 (skip the eye sweep), QUERY=extra url flags.
+// REGION=x0,z0,x1,z1 (only parts within it, world metres), SKIP=regex (meshes or materials left out; default ground cover), SIZE=WxH (viewport), CAMERA=0 (skip the eye sweep), QUERY=extra url flags, Q=tier (default low).
 import { writeFileSync } from 'node:fs';
 import { launch, PORT } from './browser.mjs';
 
@@ -486,7 +486,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const [VW, VH] = (process.env.SIZE || '480x300').split('x').map(Number);
   const page = await browser.newPage({ viewport: { width: VW, height: VH } });
   page.on('pageerror', (e) => console.log('page error:', e.message));
-  await page.goto(`http://127.0.0.1:${PORT}/?auto&nogeo&keepgeo&nomerge&q=low${process.env.QUERY || ''}`);
+  await page.goto(`http://127.0.0.1:${PORT}/?auto&nogeo&keepgeo&nomerge&q=${process.env.Q || 'low'}${process.env.QUERY || ''}`);
   await page.waitForFunction(() => window.game?.complete, null, { timeout: 400000 });
   if (process.env.STATE) await page.evaluate(process.env.STATE);
   await page.waitForTimeout(500);
