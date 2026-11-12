@@ -139,11 +139,13 @@ export function buildDyedyen(T, { ground, forest }) {
     fill('dyedyen-flowers', trussGeo, flowerMat, crowns.flatMap((P) => P.trusses), crowns.flatMap((P) => P.tc));
   }
 
-  const far = phone ? 45 : 80;
+  // berries and flowers (at most ~1 px, swollen ×3) end nearer than the leaves: fewer draws over the yard
+  const far = phone ? 45 : 80, fruitFar = phone ? 25 : 40;
+  for (const m of meshes) m.userData.far = /dyedyen(-flowers)?$/.test(m.name) ? fruitFar : far;
   return {
     meshes, patches, colonies, perPatch: PER,
     // regions out of sight range go to the unrendered layer, as merge.js does (cam: local to the model)
-    cull(cx, cz) { for (const m of meshes) { const b = m.boundingSphere; m.layers.mask = Math.hypot(b.center.x - cx, b.center.z - cz) < b.radius + far ? 1 : 1 << CULL_LAYER; } },
+    cull(cx, cz) { for (const m of meshes) { const b = m.boundingSphere; m.layers.mask = Math.hypot(b.center.x - cx, b.center.z - cz) < b.radius + m.userData.far ? 1 : 1 << CULL_LAYER; } },
     // k: crown, n: how many berries stay (0 … PER); the last picked are the first back
     setPatch(k, n) {
       const P = patches[k];
