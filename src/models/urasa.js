@@ -141,15 +141,30 @@ export default async function build(ctx) {
   const tween = (dur, fn) => new Promise((res) => tweens.push({ t: 0, dur, fn, res }));
   const ease = (k) => k * k * (3 - 2 * k);
   const local = (v) => root.worldToLocal(v.clone());
-  // Churning: a tap on the sack is a stroke: the хамнатар comes up and plunges. Taps in rhythm: a tap before the
-  // plunge is kept, and its stroke is short and counts in part; strokes one after another raise a froth at the
-  // collar (8 whole ones: it foams over, `save.work.kymys`), a long rest lets it fall again.
+  // Churning, watched: one tap on the sack and the view is framed on it (src/interact/framed.js); the хамнатар comes
+  // up and plunges, stroke after stroke, a turn of the wrist each time, the sack swelling at each plunge, until the
+  // froth rises over the collar (8 strokes: it foams over and stays 90 s, `save.work.kymys`). Leaving stops the
+  // strokes; left alone the froth falls again.
   const churn = { up: 0, top: 0, fall: 0, lifting: false, t: 0, score: 0, idle: 9, bulge: 0, foamed: 0, base: ky.stirrer.position.y };
   const froth = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 8).scale(1, 0.42, 1), M.kymys);
   { const uv = froth.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, 0.9); } // all froth (uv.x: `kymys` in urasa/mats.js)
   froth.position.set(0, ky.neckY + 0.05, 0); froth.visible = false; froth.castShadow = false; froth.userData.dynamic = true;
   ky.sackRoot.add(froth);
   const sound = (game, name, obj) => { const p = new THREE.Vector3(); obj.getWorldPosition(p); game?.audio?.play(name, p); };
+  const churnIt = async (game) => {
+    const F = game?.framed;
+    if (!F || churn.lifting || churn.fall > 0) return;
+    const c = ky.sackRoot.localToWorld(new THREE.Vector3(0, ky.neckY + 0.08, 0)), pl = game.player.pos; // the collar: the sack below, the knob's stroke above
+    if (!(await F.open({ c, r: 0.72, yaw: Math.atan2(pl.x - c.x, pl.z - c.z), el: 0.22, fov: 40 }))) return;
+    await tween(0.3, () => {});
+    while (F.on && !churn.foamed) {
+      churn.lifting = true; churn.t = 0; churn.to = 0.85 + Math.random() * 0.15; churn.twist = -(churn.twist || 0.35);
+      await new Promise((res) => { churn.res = res; });
+      await tween(0.2 + Math.random() * 0.08, () => {}); // the beat: up, plunge, a breath
+    }
+    if (churn.foamed) await tween(1.8, () => {}); // it foams over the collar
+    await F.close();
+  };
 
   // milk-white drops for the sprinkling
   const drops = [];
@@ -240,12 +255,7 @@ export default async function build(ctx) {
       entry: 'kymys', target: ky.sackRoot,
       act: {
         id: 'churn', label: { sah: 'Хамнат', en: 'Churn the kymys', ru: 'Покачать мутовку в кумысе' },
-        tap: () => { churn.next = 0.55; },
-        run: async () => {
-          if (churn.lifting || churn.fall > 0) { churn.next = 0.55; return; }
-          churn.lifting = true; churn.t = 0; churn.to = 1;
-          await new Promise((res) => { churn.res = res; });
-        },
+        run: (game) => churnIt(game),
       },
     },
     { entry: 'khamyiakh-ladle', target: ky.ladle },
@@ -268,21 +278,21 @@ export default async function build(ctx) {
       churn.up = churn.top * churn.fall * churn.fall;
       if (churn.fall === 0) { // the plunge
         sound(c.game, 'churn', ky.sack);
-        churn.score = Math.min(12, churn.score + (churn.top > 0.7 ? 1.5 : churn.top * 0.75));
+        churn.score = Math.min(12, churn.score + 1.5);
         churn.idle = 0; churn.bulge = 0.5 + 0.5 * churn.top;
         c.game?.work?.count('churn');
         if (churn.score >= 12 && !churn.foamed) { churn.foamed = 90; c.game?.work?.count('kymys'); }
         churn.res?.();
-        if (churn.next) { churn.lifting = true; churn.t = 0; churn.to = churn.next; churn.next = 0; } // the early tap's short stroke
       }
     } else if ((churn.idle += dt) > 1.6 && !churn.foamed) churn.score = Math.max(0, churn.score - dt * 1.5); // left alone, the froth falls
     if (churn.foamed && (churn.foamed -= dt) <= 0) { churn.foamed = 0; churn.score = 0; }
     ky.stirrer.position.y = churn.base + 0.26 * ease(churn.up);
+    ky.stirrer.rotation.y = (churn.twist || 0) * ease(churn.up); // a turn of the wrist as it rises
     churn.bulge = Math.max(0, churn.bulge - dt * 3);
     { const s = Math.sin(churn.bulge * Math.PI) * 0.03; ky.sack.scale.set(1 + s, 1 - s * 0.6, 1 + s); }
     const fk = churn.score / 12;
     froth.visible = fk > 0.04;
-    if (froth.visible) froth.scale.setScalar((0.25 + 0.75 * fk) * (1 + 0.04 * Math.sin((c.time || 0) * 3.1)));
+    if (froth.visible) { const k = (0.3 + 1.25 * fk) * (1 + 0.04 * Math.sin((c.time || 0) * 3.1)); froth.scale.set(k, k * (0.8 + 0.7 * fk), k); froth.position.y = ky.neckY + 0.05 + 0.025 * fk; } // full: it rises over the collar's rim
     for (let i = tweens.length - 1; i >= 0; i--) {
       const tw = tweens[i];
       tw.t += dt;

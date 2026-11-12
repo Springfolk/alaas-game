@@ -17,11 +17,12 @@ const ART = {
   turn: () => [SWAY.replace('%', `<span class="t-sway">${MOUSE.left}</span>`), SWAY.replace('%', `<span class="t-sway">${icon('finger')}</span>`)],
   do: (g) => { const k = actIcon(g.doAct); return [`<span class="t-press">${MOUSE.left}</span>${btn(k, 'do sq')}`, btn(k, 'do sq tap')]; },
   put: (g) => { const k = actIcon(g.putAct || { id: 'down' }); return [`<span class="t-press">${MOUSE.right}</span>${icon(k)}`, btn(k, 'tap')]; },
+  back: () => [`<span class="t-wasd">${key('W', 'lit')}${key('A')}${key('S')}${key('D')}</span><span class="t-press">${MOUSE.right}</span>${icon('back')}`, btn('back', 'tap')],
   journal: () => [`${key('J', 'lit')}${icon('book')}`, btn('book', 'sq tap')],
   pause: () => [`${key('P', 'lit')}${icon('pause')}`, btn('pause', 'sq tap')],
 };
 // the phone button a lesson is about (src/ui/touch.js `data-b`)
-const BUTTON = { walk: '.tc-stick', read: '[data-b=eye]', do: '[data-b=act]', put: '[data-b=put]', journal: '[data-b=journal]', pause: '[data-b=pause]' };
+const BUTTON = { back: '[data-b=put]', walk: '.tc-stick', read: '[data-b=eye]', do: '[data-b=act]', put: '[data-b=put]', journal: '[data-b=journal]', pause: '[data-b=pause]' };
 const GHOST = { look: 1, turn: 1 }; // a phone: the gesture itself is shown on the view, a finger sliding
 const LABEL = { look: 'look', walk: 'walk', read: 'read', do: 'do', put: 'put', journal: 'journal', pause: 'pause' }; // rows of CONTROLS (i18n.js); the others say it with the picture alone
 
@@ -34,6 +35,7 @@ const LESSONS = [
   { id: 'read', when: (g) => !g.ui.open && g.readReady && !!g.focus },
   { id: 'do', when: (g) => !g.ui.open && g.doReady },
   { id: 'put', when: (g, s) => !g.ui.open && g.putReady && s.carry > 2.5 && !g.doReady },
+  { id: 'back', when: (g) => g.framed?.on && g.framed.time > 2.5 },
   { id: 'journal', when: (g, s, t) => !g.ui.open && (t.done.read || t.done.do) && g.state.found.size > 0 && !g.focus && s.free > 1.5 },
   { id: 'pause', when: (g, s, t) => !g.ui.open && t.done.journal && !g.focus && s.free > 4, brief: 9 },
 ];
@@ -110,7 +112,8 @@ export class Teach {
     s.near = near ? s.near + 0.25 : 0;
     const cur = this.cur;
     if (cur?.brief && this.shown > cur.brief) { this.note(cur.id); return; } // (it cannot ask to be done: shown for a while, once)
-    const open = LESSONS.filter((L) => !this.done[L.id] && !(this.snooze[L.id] > s.time) && L.when(g, s, this));
+    const fr = g.framed?.on; // a framed work view: only its own lessons
+    const open = LESSONS.filter((L) => !this.done[L.id] && !(this.snooze[L.id] > s.time) && (!fr || L.id === 'do' || L.id === 'back') && L.when(g, s, this));
     let next = open[0] || null;
     if (cur && open.includes(cur)) {
       next = cur;

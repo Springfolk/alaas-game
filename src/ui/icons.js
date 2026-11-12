@@ -30,9 +30,6 @@ const P = {
   trap: 'M3.5 12L18 5.5v13zM18 5.5c2.3 2 2.3 11 0 13M9 9.5v5M13.5 7.5v9',
   fish: 'M3 12c3-4.3 9-5.3 13-1l4.5-3.3v8.6L16 13c-4 4.3-10 3.3-13-1zM7.5 11.2v.01',
   fold: 'M3.5 18h17M6 18l1.5-9M18 18l-1.5-9M10 6l2-2.5L14 6',
-  peg: 'M12 3v11M8.5 6.5h7M12 14l-2 6.5h4z',
-  bellows: 'M3.5 8.5l10.5-3v13l-10.5-3zM14 10h6.5v4H14zM7 9.5v5',
-  tongs: 'M6.5 3l5 9-3 9M17.5 3l-5 9 3 9M9.8 9.3h4.4',
   churn: 'M12 2.5v13M7 15.5h10M12 15.5V21M8.5 6L12 2.5 15.5 6',
   book: 'M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3zM21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z',
   pause: 'M9 6v12M15 6v12',
@@ -73,9 +70,8 @@ const OF = {
   feed: 'flame', pick: 'berry', sit: 'sit', stand: 'stand', door: 'door', gate: 'gate', lid: 'lid', ribbon: 'ribbon',
   choron: 'cup', drink: 'cup', 'fill-choron': 'ladle', milk: 'drop', play: 'khomus',
   strike: 'axe', 'strike-again': 'axe', 'free-axe': 'up', 'stick-axe': 'axe', 'place-round': 'round', 'stand-half': 'round',
-  'set-tuu': 'trap', 'lift-tuu': 'up', 'pour-tuu': 'fish', mow: 'scythe', 'hang-scythe': 'back',
-  'warm-bark': 'flame', 'lay-bark': 'put', 'fold-bark': 'fold', 'pin-bark': 'peg',
-  bellows: 'bellows', 'to-anvil': 'tongs', 'to-fire': 'flame', quench: 'drop', churn: 'churn',
+  'set-tuu': 'trap', 'lift-tuu': 'up', mow: 'scythe', 'hang-scythe': 'back',
+  'lay-bark': 'put', 'make-bark': 'fold', split: 'axe', strike: 'axe', forge: 'hammer', churn: 'churn',
 };
 export const actIcon = (act) => (act ? act.icon || OF[act.id] || (/^hammer/.test(act.id) ? 'hammer' : 'hand') : 'hand');
 

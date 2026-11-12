@@ -117,7 +117,14 @@ export default async function build(ctx, placement) {
     const full = [];
     for (let i = 0; i < n; i++) { place(i); full.push(m4.compose(p, q.setFromEuler(e), s).clone()); im.setMatrixAt(i, zero); }
     im.instanceMatrix.setUsage(T.DynamicDrawUsage);
-    im.userData.show = (k) => { for (let i = 0; i < n; i++) im.setMatrixAt(i, i < k ? full[i] : zero); im.instanceMatrix.needsUpdate = true; };
+    let shown = 0;
+    im.userData.show = (k) => { shown = k; for (let i = 0; i < n; i++) im.setMatrixAt(i, i < k ? full[i] : zero); im.instanceMatrix.needsUpdate = true; };
+    // out of the water they flap: each shown fish bends to and fro about its own middle (`k`: how hard, 0 = still)
+    const fq = new T.Quaternion(), fm = new T.Matrix4(), up = new T.Vector3(0, 1, 0);
+    im.userData.flap = (t, k) => {
+      for (let i = 0; i < shown; i++) { fm.makeRotationFromQuaternion(fq.setFromAxisAngle(up, Math.sin(t * (17 + i % 5) + i * 1.7) * 0.5 * k)); im.setMatrixAt(i, m4.multiplyMatrices(full[i], fm)); }
+      im.instanceMatrix.needsUpdate = true;
+    };
     return im;
   };
   // in the trap: lying along the laths towards the tail
@@ -133,6 +140,18 @@ export default async function build(ctx, placement) {
   });
   basket.add(inBasket);
 
+  // water running off the lifted trap: thin strands from its laths, hidden until it comes up (fish.js scales them)
+  const wet = new T.MeshStandardNodeMaterial({ color: 0xd8e6ea, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.6, depthWrite: false });
+  wet.name = 'trap-water';
+  const strandGeo = new T.CylinderGeometry(0.007, 0.003, 1, 5, 1, true).translate(0, -0.5, 0);
+  const drips = [];
+  for (let i = 0; i < 6; i++) {
+    const d = new T.Mesh(strandGeo, wet);
+    d.visible = false; d.castShadow = false; d.userData.dynamic = true; d.name = 'trap-drip';
+    d.userData.at = new T.Vector3(Math.cos(i * 2.1) * TUU.r * 0.85, 0.12 + i * (TUU.len - 0.25) / 6, Math.sin(i * 2.1) * TUU.r * 0.85); // on the trap, local
+    object.add(d); drips.push(d);
+  }
+
   // look-at boxes: the gap (where the trap goes) and the weir
   const gz = (GAP[0] + GAP[1]) / 2;
   const gap = proxy(0.5, 0.7, GAP[1] - GAP[0], 0, waterY + 0.15, gz);
@@ -144,7 +163,7 @@ export default async function build(ctx, placement) {
   // the working shore is trodden short, so the trap and the carrier show
   object.userData.mown = [{ x: 0.1, z: z0 - 1.5, rx: 3.4, rz: 1.9 }];
   object.userData.work = {
-    job: 'fish', object, trap, basket, inTrap, inBasket, max: FISH, len: TUU.len,
+    job: 'fish', object, trap, basket, inTrap, inBasket, drips, max: FISH, len: TUU.len,
     gap: new T.Vector3(0, waterY - 0.1, z0 + gz), // the middle of the opening, a little under the surface
   };
   return { object, colliders, floors: [], interactables };

@@ -1,7 +1,7 @@
 // Small things with a place of their own that are taken into the hands, used with the do input and put back
-// (they never lie on the ground: `Hands.homed`): the guest's choron in the uraha (a tap sprinkles a few drops of
-// kymys towards the fire, the earth or the sky, else it is a sip), the cup of milk on the lake's offering stone (a tap
-// over the water pours a little), the khomus on its peg in the balagan (a tap plucks it, taps in rhythm play on). The respectful gestures that
+// (they never lie on the ground: `Hands.homed`): the guest's choron in the uraha (one tap: filled, a few drops for
+// the fire, a sip, back on its board), the cup of milk on the lake's offering stone (one tap: carried out over the
+// water, poured, set back), the khomus on its peg in the balagan (a tap plucks it, taps in rhythm play on). The respectful gestures that
 // were there before, now done by the player's own hands and look; nothing here can go wrong (docs/interactions.md).
 // Props and their own animations stay in the models (`userData.guest`, `.offering`, `.khomus`).
 import * as THREE from 'three/webgpu';
@@ -9,7 +9,7 @@ import { ease, clamp, fwdX, fwdZ } from '../util.js';
 
 const L = (sah, en, ru) => ({ sah, en, ru });
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
+const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _q = new THREE.Quaternion();
 const X = V(1, 0, 0), Y = V(0, 1, 0);
 const BACK = L('төттөрү уур', 'put it back', 'вернуть на место');
 
@@ -43,7 +43,7 @@ export class Choron extends Homed {
     this.thing.it = this.it;
     this.sprinkleAct = { id: 'choron', label: L('ыс', 'sprinkle', 'окропить'), run: () => this.use(true) };
     this.drinkAct = { id: 'drink', label: L('ис', 'drink', 'выпить'), run: () => this.use(false) };
-    this.fillAct = { id: 'fill-choron', label: L('кымыста кут', 'ladle kymys into it', 'налить кумыса'), run: () => this.fill() };
+    this.fillAct = { id: 'fill-choron', label: L('кымыста кут', 'kymys: drops for the fire, a sip', 'кумыс: капли огню, глоток'), run: () => this.rite() };
     this.tilt = new THREE.Quaternion(); this.off = V(0, 0, 0); // the held cup's lean and shift (world lean, camera shift)
     this.P = { p: V(0, 0, 0), q: new THREE.Quaternion(), world: true };
   }
@@ -59,6 +59,21 @@ export class Choron extends Homed {
     const h = this.parts.hearth(), to = _w.copy(h).sub(cam.position), d = to.length();
     const fire = d < 7 && to.normalize().dot(cam.getWorldDirection(_v)) > 0.86;
     return fire || pitch < -0.6 || pitch > 0.5 ? this.sprinkleAct : this.drinkAct;
+  }
+  // One tap, the guest's whole part: the ladle fills it, it comes into the hands, a few drops for the fire, a sip,
+  // and it goes back onto its board.
+  async rite() {
+    if (this.busy || this.hands.held) return;
+    await this.fill();
+    if (!this.held) return;
+    this.busy = true;
+    await this.until(((t) => (dt) => (t += dt) > 0.5)(0));
+    const cam = this.game.engine.camera, dir = _w.copy(this.parts.hearth()).sub(cam.position).normalize().clone();
+    await this.sprinkle(dir);
+    await this.until(((t) => (dt) => (t += dt) > 0.4)(0));
+    await this.drink();
+    this.busy = false;
+    await this.hands.goHome(this.thing);
   }
   // the ladle fills it from the симиир, then it is in the hands
   async fill() {
@@ -83,9 +98,9 @@ export class Choron extends Homed {
     this.busy = false;
   }
   // The cup tipped a little towards the look: a few drops go that way, sprinkled (ыс). Towards the fire, it answers.
-  async sprinkle() {
+  async sprinkle(dir = this.game.engine.camera.getWorldDirection(new THREE.Vector3())) {
     const g = this.game, cam = g.engine.camera, P = this.parts, kl = P.kymys;
-    const dir = cam.getWorldDirection(new THREE.Vector3()), flat = _v.set(dir.x, 0, dir.z).normalize().clone();
+    const flat = _v.set(dir.x, 0, dir.z).normalize().clone();
     const axis = new THREE.Vector3().crossVectors(Y, flat).normalize(), lean = 0.3 + 0.2 * (1 - Math.abs(dir.y));
     const rise = clamp(dir.y, -0.6, 0.9) * 0.1;
     let k = 0;
@@ -136,46 +151,50 @@ export class Cup extends Homed {
     super(game, hands, 'cup', parts.cup, L('үүттээх туос иһит', 'cup of milk', 'чашка молока'), { p: [0.14, -0.24, -0.42], r: [0, 0, 0] });
     this.parts = parts;
     this.stone = game.world.interactables.find((i) => i.offering);
-    this.milk = 1; this.tip = 0;
-    this.pourAct = { id: 'milk', label: L('Эбэҕэ үүт кут', 'Pour a little milk for the lake', 'Налить озеру немного молока'), run: () => this.pour() };
-    this.takeAct.label = L('үүтү ыл', 'take the milk', 'взять молоко');
-    this.P = { p: V(0, 0, 0), q: new THREE.Quaternion() };
+    this.milk = 1;
+    this.offerAct = { id: 'milk', label: L('Эбэҕэ үүт кут', 'Pour milk for the lake', 'Налить озеру молока'), run: () => this.offer() };
   }
+  idleAct() { return null; }
   actFor(it) {
-    if (it.offering) return this.held ? this.backAct : this.hands.held || this.milk <= 0 ? null : this.takeAct;
+    if (it.offering) return this.held ? this.backAct : this.hands.held || this.milk <= 0 || this.busy ? null : this.offerAct;
     return undefined;
   }
-  // milk goes to the water only (never onto the ground): looking down at the lake within reach
-  idleAct() { return this.held && !this.busy && this.milk > 0 && this.hands.waterAhead() ? this.pourAct : null; }
-  posed() {
-    if (!this.tip) return null;
-    const P = this.P, e = ease(this.tip);
-    P.p.set(0.14 - 0.06 * e, -0.24 + 0.03 * e, -0.42 - 0.1 * e);
-    P.q.setFromEuler(_e.set(-1.25 * e, 0, 0)); // the far rim down
-    return P;
-  }
-  async pour() {
-    const g = this.game, P = this.parts, cup = P.cup, w = this.hands.waterAhead();
-    if (!w || this.busy) return;
-    this.busy = true;
-    const to = Math.max(0, this.milk - 0.34); // a tap: a third of the cup
-    let rings = 9, sounded = false;
+  // One tap, the whole offering: the cup is carried from its stone out over the water, tipped until the milk is
+  // poured, and set back on the stone.
+  async offer() {
+    const g = this.game, t = this.thing, h = this.hands, terrain = g.world.terrain, home = t.home.p;
+    if (this.busy || h.held || this.milk <= 0) return;
+    let w = null;
+    for (let r = 0.6; r < 3 && !w; r += 0.3) for (let a = 0; a < 6.28; a += 0.4) { // the nearest open water, seen from the player's side
+      const x = home.x + Math.cos(a) * r, z = home.z + Math.sin(a) * r, gy = terrain.height(x, z), wy = terrain.water(x, z, gy);
+      if (wy !== null && wy - gy > 0.08) { w = V(x, wy, z); break; }
+    }
+    if (!w) return;
+    this.busy = true; t.it.off = true;
+    const yaw = Math.atan2(w.x - home.x, w.z - home.z) + Math.PI, up = new THREE.Quaternion().setFromAxisAngle(Y, yaw); // the far rim (−z) towards the water
+    g.audio?.play('wood-take', home);
+    await h.fly(t, w.clone().add(V(0, 0.32, 0)).lerp(home, 0.25), up, 1.1);
+    const P = this.parts, cup = P.cup;
+    let rings = 9, sounded = false, tip = 0;
     await this.until((dt) => {
-      const on = this.milk > to;
-      this.tip = clamp(this.tip + (on ? dt / 0.5 : -dt / 0.4), 0, 1);
-      const flowing = this.tip > 0.8 && this.milk > 0;
+      const on = this.milk > 0;
+      tip = clamp(tip + (on ? dt / 0.7 : -dt / 0.5), 0, 1);
+      cup.quaternion.copy(up).multiply(_q.setFromAxisAngle(X, -1.25 * ease(tip)));
+      const flowing = tip > 0.8 && this.milk > 0;
       if (flowing) {
-        this.milk = Math.max(to, this.milk - dt / 1.6);
+        this.milk = Math.max(0, this.milk - dt / 2.2);
         P.milkTop.scale.setScalar(0.45 + 0.55 * this.milk); P.milkTop.visible = this.milk > 0;
         if (!sounded) { sounded = true; g.audio?.play('pour', w); }
-        // the strand from the far rim down to the water, rings where it lands
         const lip = _v.set(0, 0.1, -0.066).applyQuaternion(cup.quaternion).add(cup.position), local = P.group.worldToLocal(lip.clone());
         P.stream.position.copy(local); P.stream.scale.set(1, Math.max(0.05, local.y - P.waterY), 1);
         if ((rings += dt) > 0.9) { rings = 0; P.rippleT.value = 0; P.ripple.position.set(local.x, P.waterY + 0.012, local.z); }
       }
       P.stream.visible = flowing;
-      return this.tip <= 0 && !on;
+      return tip <= 0 && !on;
     });
+    await h.fly(t, home, t.home.q, 1.0);
+    g.audio?.play('wood-lay-2', home);
+    t.it.off = false; t.obj.userData.sphere = undefined;
     this.busy = false;
     g.promptKey = null;
   }

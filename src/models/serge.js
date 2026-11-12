@@ -3,12 +3,12 @@
 // teeth; twice arches over teeth), a narrowed waist where reins and the салама are tied, a choron-cup finial.
 // Two smaller posts (орто сэргэ): 1.7 m, plain (no traced source for their carving), a neck groove, a rounded top.
 // On the main neck: an old салама of twisted white+black mane hair with tufts, faded ribbons and a
-// birch-bark horse; the player may tie one ribbon (white / light blue / green), which stays.
+// birch-bark horse; the player may tie one white ribbon, which stays.
 // On the north post: a coiled horsehair tether (кыл көнтөс) — the "horsehair" entry.
 import * as THREE from 'three/webgpu';
 import { turned, bow, tube, sagCurve, merge, tris, surfaceOf } from './yard/geo.js';
 import { larch, rope, hair, cloth, birchBark, trodden, grass } from './yard/mat.js';
-import { groundOf, troddenPatch, blob, tuft, ribbon, noSway, grassClump, choose, tween, ease } from './yard/bits.js';
+import { groundOf, troddenPatch, blob, tuft, ribbon, noSway, grassClump, tween, ease } from './yard/bits.js';
 import { section } from '../load/geocache.js';
 
 const TAU = Math.PI * 2;
@@ -310,14 +310,12 @@ export default async function build(ctx, placement) {
     const c = game?.save?.yard?.ribbon;
     if (c && RIBBONS[c] && !mine.visible) { paint(mine.geometry, RIBBONS[c].c); mine.visible = true; mine.scale.setScalar(1); }
   };
-  const doneKey = 'salama:ribbon';
+
   const tie = {
-    id: 'ribbon', once: true, freeze: true, // the colour choice holds the player still
+    id: 'ribbon', once: true,
     label: { sah: 'лиэнтэ баай', en: 'tie a ribbon', ru: 'повязать ленточку' },
     run: async (game) => {
-      const pick = await choose(game, { sah: 'Ханнык өҥнөөх лиэнтэни баайаҕын?', en: 'Which ribbon will you tie?', ru: 'Какую ленточку повязать?' },
-        Object.entries(RIBBONS).map(([id, r]) => ({ id, label: r.label, swatch: r.swatch })));
-      if (!pick) { setTimeout(() => { game?.done?.delete(doneKey); game?.persist?.(); }, 0); return; }
+      const pick = 'white'; // one tap ties a white ribbon, the colour of the aiyy
       paint(mine.geometry, RIBBONS[pick].c);
       mine.visible = true;
       // tied at the knot: the ribbon unrolls from it
