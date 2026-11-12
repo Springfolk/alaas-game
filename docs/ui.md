@@ -68,10 +68,10 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 - Pictures: `public/assets/ui/journal/<id>.webp` (320 px), `<id>.s.webp` (20 px), `work-<job>.webp`: `npm run bake-journal`. `map.webp` + its extent in `src/data/journal.json`: `npm run bake-map` (after a change to the terrain).
 
 ## Title and loading
-- Key art, the name, a glass dock: the loading bar and its status, then the start button; under it the language select. Version, source, credits and the ticket call beneath.
+- Key art, the name, a glass dock: the loading bar and its status, then the start button; under it the language select. Version (`package.json`, `.ver`), source, credits and the ticket call beneath.
 
 ## Pause (`#pause`, `game.pausePage`)
-- Glass window. Left: Continue (large), Settings, Controls, About, Exit. Right: the chosen page. A phone shows the list first and one page at a time with a back button.
+- Glass window, the version small in its head. Left: Continue (large), Settings, Controls, About, Exit. Right: the chosen page. A phone shows the list first and one page at a time with a back button.
 - Settings: language; look speed, field of view, camera motion, look smoothing (each slider between two drawn extremes); invert Y, battery saver (switches); volume; quality (reload note).
 - Controls: every control drawn (keys and mouse, or on a phone its stick, drag and buttons) with what it does.
 - About: Springfolk mark, links, licence.
