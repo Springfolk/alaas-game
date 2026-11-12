@@ -313,9 +313,9 @@ class Game {
     this.ui.setMenu(true);
     this.teach.note('pause');
   }
-  // the pause window; on a phone it opens on its list of what can be done
+  // the pause window, open on the controls (a phone: its back button shows the list)
   showPause() {
-    document.querySelector('#pause .menu').classList.remove('paged');
+    this.pausePage('controls');
     document.getElementById('pause').classList.add('show');
   }
   // one of its pages (settings, controls, about); none: back to the list (a phone)
@@ -339,7 +339,6 @@ class Game {
         return typeof values[0] === 'boolean' ? `<label class="row" data-v="${key}">${label}<input type="checkbox" id="v-${key}"></label>` : `<div class="row" data-v="${key}">${label}<span class="sel up" data-sel="v-${key}"></span></div>`;
       }).join('');
       for (const el of adv.querySelectorAll('input')) el.onchange = () => this.setVideo(el.id.slice(2), el.checked);
-      document.getElementById('v-more').onclick = () => document.querySelector('#tab-settings .settings').classList.toggle('adv');
     }
     for (const el of adv.querySelectorAll('[data-t]')) el.textContent = this.tt(T[el.dataset.t]);
     const word = (o, x, i) => (o.fmt ? o.fmt(x) : o.metres ? `${x} ${this.tt(T.vMetres)}` : this.tt(T[o.words[i]]));

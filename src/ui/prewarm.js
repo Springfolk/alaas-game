@@ -74,7 +74,7 @@ export async function prewarmUI(game) {
     ui.close();
     for (const L of LESSONS) { game.teach.show(L); on('.tc-btn, .tc-stick', 'tc-teach'); on('#teach-ghost', 'on'); await frames(2); } // each lesson's drawing, the ring on a button
     game.teach.show(null);
-    on('#pause', 'show'); on('#tab-settings .settings', 'adv'); // with the advanced video options open
+    on('#pause', 'show');
     await frames();
     on('#pause .sel', 'open'); // the selects' lists
     await frames();

@@ -9,7 +9,7 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 | **Put down**: the carried thing back to its place when within reach (`thing.put()`: axe → block, scythe → post, bark → hide), else onto dry ground ahead (tipped to its slope, clear of what lies there, of walls and of eaves lower than it: `rest.js`); of an armful, one billet | right button, Q | the put-down button (shown while carrying) |
 | **Inspect**: the inspect stage (`docs/ui.md`), never an act | E | the eye button (shown when the thing has a card) |
 
-- The prompt (`docs/ui.md`): the thing's name under the dot; left of the dot the blue lens + E when it has a card; right of it the green plate with the act's own tool (`actIcon`, `src/ui/icons.js`), its verb and the mouse glyph. The dot becomes a green ring when the hands can do something; with nothing in view the plate still shows what the carried thing would do. While carrying: a put-down hint low on the right.
+- The prompt (`docs/ui.md`): the thing's name; under it, apart, the blue lens + E when it has a card and the green plate with the act's own tool (`actIcon`, `src/ui/icons.js`), its verb and the mouse glyph. The dot becomes a green ring when the hands can do something; with nothing in view the plate still shows what the carried thing would do. While carrying: a put-down hint low on the right.
 - An act never opens a card; doing a thing adds its entry to the journal.
 - One thing in the hands at a time (or an armful of billets); nothing goes into the lake.
 - Acts run while you walk and look; only `act.freeze` holds the player (the ribbon choice, the birch bow, the 0.9 s turn as you sit).
@@ -53,10 +53,10 @@ No sentence and no mark says the next step: light catches the thing, as in a pho
 | the guest's choron | the nearest hearth's light swells |
 | the lake's milk | a fish rises off the shore by the stone |
 
-- Lights: three additive sprites on layer 1 made before the warm-up (`glintMaterial`, `lightMaterial`, `src/interact/glint.js`); in play only uniforms, transforms and `visible` change. `LOOK` sets each hint's colours and sizes, `gain` the strengths.
-- Glint: a sun star ≤ 45 m on a point of the thing's surface picked by a ray from the eye (dew, water: round the spot), ≥ 5.5 % of the view's height; a beat every 1.1–3.6 s, some kinds 2–4 sparkles.
+- Lights: three additive sprites on layer 1 made before the warm-up (`glintMaterial`, `lightMaterial`, `src/interact/glint.js`); in play only uniforms, transforms and `visible` change. `LOOK` sets each hint's colours and sizes, `gain` the strengths: all kept faint, a catch of light a curious eye finds, never a beacon.
+- Glint: a sun star ≤ 45 m on a point of the thing's surface picked by a ray from the eye (dew, water: round the spot), ≥ 2.5 % of the view's height; a beat every 1.1–3.6 s, some kinds 2–4 sparkles.
 - Bloom: swells and fades over 1.8 s each beat: ≤ 14 m (hearth 7 m) a glare at the thing (hearth: a faint halo; water, dew: flat), farther a soft shaft of sunlight leaning from the sun's side (hearth: the glow in the smoke over the roof).
-- Edge glare: the thing out of view: the same swell flares in at the view's edge on its side (behind: the nearer shoulder).
+- Edge glare: the thing out of view: the same swell, a thin faint band at the view's edge on its side (behind: the nearer shoulder).
 - Ripples are the lake's own (`world.life.water.ring`); the fire's lift is `fireplace.stir(k)`.
 
 ## Finder (`src/ui/guide.js`, DOM only)
