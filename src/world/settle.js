@@ -2,76 +2,54 @@
 // each tier draws is its own grid, linear between nodes, and differs from the terrain by up to ~10 cm (more at the far
 // places, where the grid is coarse). Once the homestead is placed (World.build, before merging) every resting thing is
 // moved onto the surface as this tier draws it, `world.drawnAt` without floors: the drawn ground, raised by the
-// models' rests (earth floors and mats drawn over it, exact where a rest carries its height function).
-// - Meshes with `userData.ground` follow it vertex by vertex: every vertex within FULL of its reference moves by
-//   (surface − reference), fading out to FADE. The reference: 'grime' = the yard Bucket's per-vertex height over the
-//   ground it was shaped on (yardlife/kit.js); 'terrain' = shaped over the terrain itself; a number = the level (model
-//   frame) it was built standing on.
+// models' rests (earth floors and mats drawn over it, exact where a rest carries its drawn surface).
+// - Meshes with `userData.ground` follow it vertex by vertex, in a load worker (settle-data.js): every vertex within
+//   FULL of its reference moves by (surface − reference), fading out to FADE. The reference: 'grime' = the yard
+//   Bucket's per-vertex height over the ground it was shaped on (yardlife/kit.js); 'terrain' = shaped over the terrain
+//   itself; a number = the level (model frame) it was built standing on.
 // - Objects with `userData.rest` (loose things, taken later) move as one, their lowest point on the surface.
 // The geometry's bounding box stays as built: the homestead atlas key (engine/lod.js) is the same on every tier.
 import * as THREE from 'three/webgpu';
 import { restY } from '../interact/rest.js';
-import { smooth } from '../util.js';
+import { work } from '../load/workers.js';
+import { settleMeshes } from './settle-data.js';
 
-const FULL = 0.35, FADE = 0.8;
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
 
-// in slices of ≤ ~8 ms between frames (`world.breathe`); returns { meshes, verts, things, ms, slice }
+// returns { meshes, verts, things, ms (main thread), wall }
 export async function settle(world) {
-  const work = [];
-  let things = 0;
+  const t0 = performance.now();
+  const meshes = [], things = [];
   for (const { object: root } of world.placed) root.traverse((o) => { // world matrices as World.place left them
-    if (o.userData.rest) { things++; work.push(() => { rest(world, o); return 0; }); }
-    else if (o.isMesh && o.userData.ground !== undefined) work.push(() => drape(world, o, root));
+    if (o.userData.rest) things.push(o);
+    else if (o.isMesh && o.userData.ground !== undefined) {
+      const g = o.geometry, p = g.attributes.position, ref = o.userData.ground, grime = ref === 'grime' ? g.attributes.grime : null, e = o.matrixWorld.elements;
+      if (!p?.array?.length || p.isInterleavedBufferAttribute || p.itemSize !== 3 || (ref === 'grime' && (!grime || grime.itemSize !== 1))) return;
+      if (Math.abs(e[1]) > 1e-6 || Math.abs(e[9]) > 1e-6 || Math.abs(e[5] - 1) > 1e-6) { console.warn(`settle: ${o.name} is tilted or scaled: not draped`); return; }
+      meshes.push({ o, args: { pos: p.array.slice(), grime: grime?.array.slice(), e: [...e], ref, level: root.position.y + (typeof ref === 'number' ? ref : 0) } });
+    }
   });
-  let ms = 0, slice = 0, verts = 0, t = performance.now();
-  for (const job of work) {
-    verts += job();
-    const d = performance.now() - t;
-    if (d > 8) { ms += d; slice = Math.max(slice, d); await world.breathe(); t = performance.now(); }
-  }
-  const d = performance.now() - t; ms += d; slice = Math.max(slice, d);
-  console.info(`settle: ${work.length - things} meshes (${verts} vertices moved), ${things} things: ${Math.round(ms)} ms, longest slice ${Math.round(slice)} ms`);
-  return { meshes: work.length - things, things, verts, ms: Math.round(ms), slice: Math.round(slice) };
-}
-
-// the surface under (x, z) for the rests overlapping a box (world xz)
-function surfaceIn(world, box) {
-  const rs = world.rests.filter((f) => { // (`loose` rests, a mat lying on a floor, only take things set down in play)
-    if (f.loose) return false;
-    const R = f.r ?? Math.hypot(f.hw, f.hd);
-    return f.x + R > box.min.x && f.x - R < box.max.x && f.z + R > box.min.z && f.z - R < box.max.z;
+  const g = world.ground.userData, pads = world.terrain.pads;
+  const args = { N: g.N, mm: g.h, pads, rests: world.rests.filter((f) => !f.loose), meshes: meshes.map((m) => m.args) }; // (`loose` rests, a mat lying on a floor, only take things set down in play)
+  const job = work('settle', args, () => ({ meshes: settleMeshes(args), pos: args.meshes.map((m) => m.pos) }));
+  for (const o of things) rest(world, o); // meanwhile
+  let ms = performance.now() - t0;
+  const res = await job;
+  const t1 = performance.now();
+  let verts = 0;
+  meshes.forEach(({ o }, k) => {
+    const { n, box, sphere } = res.meshes[k], geo = o.geometry;
+    if (!geo.boundingBox) geo.boundingBox = new THREE.Box3(new THREE.Vector3(box[0], box[1], box[2]), new THREE.Vector3(box[3], box[4], box[5])); // as built (see above)
+    if (!n) return;
+    const p = geo.attributes.position;
+    p.array.set(res.pos[k]); p.needsUpdate = true;
+    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[1], sphere[2]), sphere[3]);
+    verts += n;
   });
-  if (!rs.length) { world.drawnAt(box.min.x, box.min.z); return world._drawnG || world._drawn || ((x, z) => world.drawnAt(x, z, null, null)); } // the bare grid sampler
-  return (x, z) => world.drawnAt(x, z, rs, null);
-}
-
-function drape(world, mesh, root) {
-  const g = mesh.geometry, p = g.attributes.position;
-  if (!p?.array?.length) return 0;
-  const e = mesh.matrixWorld.elements;
-  if (Math.abs(e[1]) > 1e-6 || Math.abs(e[9]) > 1e-6 || Math.abs(e[5] - 1) > 1e-6) { console.warn(`settle: ${mesh.name} is tilted or scaled: not draped`); return 0; }
-  if (!g.boundingBox) g.computeBoundingBox(); // as built (see above)
-  const wb = g.boundingBox.clone().applyMatrix4(mesh.matrixWorld);
-  const ref = mesh.userData.ground, grime = ref === 'grime' ? g.attributes.grime : null;
-  if (ref === 'grime' && !grime) return 0;
-  const level = root.position.y + (typeof ref === 'number' ? ref : 0), T = world.terrain;
-  const terr = ref === 'terrain' && (T.heightFast ? (x, z) => T.heightFast(x, z) : (x, z) => T.height(x, z));
-  const surf = surfaceIn(world, wb);
-  let n = 0;
-  const A = p.array, G = grime?.array;
-  if (p.isInterleavedBufferAttribute || p.itemSize !== 3 || (grime && grime.itemSize !== 1)) return 0;
-  for (let i = 0; i < p.count; i++) {
-    const lx = A[i * 3], ly = A[i * 3 + 1], lz = A[i * 3 + 2];
-    const x = e[0] * lx + e[8] * lz + e[12], y = ly + e[13], z = e[2] * lx + e[10] * lz + e[14];
-    const h = G ? G[i] : terr ? y - terr(x, z) : y - level; // height over the reference
-    if (h > FADE || h < -FADE) continue;
-    const w = h < FULL ? 1 : 1 - smooth(FULL, FADE, h);
-    const d = surf(x, z) - (y - h);
-    if (d !== 0) { A[i * 3 + 1] = ly + w * d; n++; }
-  }
-  if (n) { p.needsUpdate = true; g.computeBoundingSphere(); }
-  return n;
+  ms += performance.now() - t1;
+  const wall = Math.round(performance.now() - t0);
+  console.info(`settle: ${meshes.length} meshes (${verts} vertices moved), ${things.length} things: ${Math.round(ms)} ms on the main thread, ${wall} ms in all`);
+  return { meshes: meshes.length, things: things.length, verts, ms: Math.round(ms), wall };
 }
 
 function rest(world, o) {

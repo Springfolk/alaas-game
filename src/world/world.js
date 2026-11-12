@@ -11,6 +11,7 @@ import { pbr, maps, tex } from '../engine/materials.js';
 import { optimizePlaced } from '../engine/merge.js';
 import { TIER } from '../engine/tier.js';
 import { settle } from './settle.js';
+import { restAt } from './settle-data.js';
 import { geoBuild } from '../load/geocache.js';
 import { homesteadLights, useLights, shareGraphs, materialsOf } from '../engine/master.js';
 import { mulberry32, strHash, urlFlag } from '../util.js';
@@ -158,10 +159,10 @@ export class World {
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
       this.floors.push({ ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h });
     }
-    for (const f of res.rests || []) { // surfaces drawn over the ground that loose things rest on (an earth floor): circles or boxes, `y(lx, lz)` = its exact height
+    for (const f of res.rests || []) { // surfaces drawn over the ground that loose things rest on (an earth floor): circles or boxes, `polar` = its surface as drawn (settle-data.js restAt)
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
-      const y = f.y && ((x, z) => { const dx = x - p.x, dz = z - p.z; return p.y + f.y(dx * c - dz * s, dx * s + dz * c); });
-      this.rests.push(f.r !== undefined ? { ...w, r: f.r, h: p.y + f.h, y, loose: f.loose } : { ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h, y, loose: f.loose });
+      const polar = f.polar && { ...f.polar, x: p.x, y: p.y, z: p.z, c, s };
+      this.rests.push(f.r !== undefined ? { ...w, r: f.r, h: p.y + f.h, polar, loose: f.loose } : { ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h, polar, loose: f.loose });
     }
     for (const f of res.lows || []) {
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
@@ -191,9 +192,7 @@ export class World {
     if (this.ground) h = (this._drawnG ||= drawnSampler(this.terrain, N, this.ground.userData.h))(x, z);
     else if (N) h = (this._drawn ||= drawnSampler(this.terrain, N))(x, z);
     else h = this.terrain.height(x, z);
-    for (const f of rests || []) {
-      if (f.r !== undefined ? Math.hypot(x - f.x, z - f.z) < f.r : (([lx, lz]) => Math.abs(lx) < f.hw && Math.abs(lz) < f.hd)(World.local(f, x, z))) h = Math.max(h, f.y ? f.y(x, z) : f.h);
-    }
+    for (const f of rests || []) h = Math.max(h, restAt(f, x, z));
     for (const f of floors || []) {
       const [lx, lz] = World.local(f, x, z);
       if (Math.abs(lx) < f.hw && Math.abs(lz) < f.hd) h = Math.max(h, f.h);
