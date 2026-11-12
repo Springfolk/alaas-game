@@ -34,6 +34,7 @@
 ## Phone memory
 - iOS kills a tab past ~1–1.5 GB: memory is decided at boot (tier, `LITE`) and cannot be handed back.
 - `TIER.release` closes each texture image once uploaded (WebKit keeps ImageBitmaps as IOSurfaces); ≤3 load workers on coarse-pointer or ≤4 GB devices.
+- Indices go up 16-bit under 65536 vertices (`Engine.init`, three r186 internals: its WebGPU upload widens them; `?wideindex` off).
 - Every tier: `src/load/release.js` drops the JS copy of uploaded vertex data after the build and after the warm-up (`?keepgeo` off); raycast meshes keep positions + index; dev warns on a freed array.
 - `src/load/stream.js` empties each three `NodeBuilder` once its state is taken (`?keepbuilders` off).
 
