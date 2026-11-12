@@ -470,8 +470,15 @@
   input[type=checkbox]::after { content: ''; position: absolute; left: 2px; top: 2px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid #6f8aa8; background: linear-gradient(180deg, #fff, #dbe6f1); box-shadow: 0 1px 2px rgba(0,20,50,.4); transition: transform .15s; }
   input[type=checkbox]:checked { border-color: #2c7a12; background: linear-gradient(180deg, #4aa827, #7fd45a); }
   input[type=checkbox]:checked::after { transform: translateX(20px); }
+  .settings button.row { border: 0; background: none; font: inherit; color: inherit; width: 100%; cursor: pointer; text-align: left; }
+  .settings .vmore .chev { width: 16px; height: 16px; color: var(--c-dim); }
+  .settings.adv .vmore .chev { transform: rotate(90deg); }
+  .settings .vadv { display: none; }
+  .settings.adv .vadv { display: contents; }
+  .settings .row > .vl:first-child { flex-direction: column; align-items: flex-start; gap: 1px; padding-left: 28px; }
+  .settings .vl small { font-size: 11.5px; color: var(--c-dim); }
   .qnote { color: #8a5a10; font-size: 13px; background: #fff6e2; border: 1px solid #f0d49a; margin-top: 4px; }
-  .qnote[hidden] { display: none; }
+  .qnote[hidden], .settings .row[hidden] { display: none; }
   /* the controls, drawn: its key (or the touch control) and what it does */
   .keys { display: grid; grid-template-columns: auto 1fr; gap: 9px 14px; font-size: 14px; color: var(--c-ink); align-items: center; padding: 4px 6px; }
   .keys > :nth-child(odd) { justify-self: end; display: flex; gap: 4px; align-items: center; }
@@ -625,6 +632,8 @@
             <div class="grp" data-t="gGraphics"></div>
             <div class="row"><span><i data-ic="quality"></i><span data-t="quality"></span></span><span class="sel up" data-sel="q"></span></div>
             <label class="row"><span><i data-ic="battery"></i><span data-t="battery"></span></span><input id="s-battery" type="checkbox"></label>
+            <button class="row vmore" id="v-more" type="button"><span><i data-ic="sliders"></i><span data-t="vMore"></span></span><i data-ic="chev" class="chev"></i></button>
+            <div class="vadv" id="v-adv"></div>
             <div class="qnote" id="qnote" hidden><span data-t="qReload"></span> <button class="btn" id="reload" data-t="reload"></button></div>
           </div>
         </div>

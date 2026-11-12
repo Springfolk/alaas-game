@@ -24,7 +24,7 @@
 | `mobile` | native, starts at 67% (67%) | 1024, 55 m, lazy | 512 | FXAA instead of TRAA, anisotropy ≤4, atlases 1024, ≤4 pipeline compiles in flight, `release`, grass 0.45, ground grid 320 |
 | `mobile` + `LITE` | as mobile | 512, 45 m | 256 | atlases 512, ≤2 compiles, grass 0.3 |
 
-- Auto (default): phone or tablet → `mobile`, + `LITE` at ≤3 GB or <4 cores; no WebGPU, <6 cores, <4 GB, pre-Xe Intel or `maxTextureDimension2D` < 8192 → `low`; else `medium`. A change needs a reload.
+- Auto (default): phone or tablet → `mobile`, + `LITE` at ≤3 GB or <4 cores; no WebGPU, <6 cores, <4 GB, pre-Xe Intel or `maxTextureDimension2D` < 8192 → `low`; else `medium`. A change needs a reload. Custom: a preset with the player's video options on top (`src/engine/video.js`, `docs/ui.md`).
 - No tier renders under half the screen's own resolution (`MIN_RES`).
 - WebGPU wherever the browser gives an adapter, phones too; WebGL2 only with `?webgl`, without an adapter, or after 3 GPU losses within 2 min in the tab.
 - Read the tier from `engine.tier` or `TIER` (set before the world builds: `grassDensity`, `forest`, `ground`, `texMax`, `lite` …); `engine.opts.quality` is `high|medium|low` (mobile → `low`).
