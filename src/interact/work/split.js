@@ -1,4 +1,4 @@
-// Мас хайытыы: splitting firewood at the chopping block. Take the axe out of the block, stand a round of larch
+// Мас хайытыы: splitting firewood at the chopping block (дүлүҥ олох мас). Take the axe out of the block, stand a round of larch
 // on it, raise the axe (the do input held: it climbs over the shoulder, and the arms tire if it is kept there) and
 // let go: it falls where you look. In line with the round's drying crack and from high enough it opens the round
 // in two: a clean blow drops the halves by the block, a ragged one sends them tumbling. Each half is stood up again
@@ -13,15 +13,15 @@ import { ease, fwdX, fwdZ } from '../../util.js';
 const L = (sah, en, ru) => ({ sah, en, ru });
 const TXT = {
   axe: L('сүгэ', 'axe', 'топор'),
-  round: L('чурбаан', 'round of larch', 'чурбак'),
-  half: L('чурбаан аҥаара', 'half a round', 'половина чурбака'),
-  billet: L('оттук мас', 'firewood', 'дрова'),
+  round: L('дүлүҥ', 'round of larch', 'лиственничный кругляк'),
+  half: L('дүлүҥ аҥаара', 'half a round', 'половина кругляка'),
+  billet: L('хардаҕас', 'billet', 'полено'),
   take: L('ыл', 'take it', 'взять'),
-  stand: L('төҥүргэскэ туруор', 'stand it on the block', 'поставить на колоду'),
+  stand: L('олох маска туруор', 'stand it on the block', 'поставить на колоду'),
   strike: L('хайыт', 'split it', 'расколоть'),
-  again: L('чурбааны кытта өрө көтөҕөн оҕус', 'lift it on the axe and bring it down', 'поднять на топоре и ударить о колоду'),
+  again: L('дүлүҥү кытта өрө көтөҕөн оҕус', 'lift it on the axe and bring it down', 'поднять на топоре и ударить о колоду'),
   free: L('сүгэни сулбу тарт', 'pull the axe free', 'выдернуть топор'),
-  stick: L('сүгэни төҥүргэскэ батары оҕус', 'leave the axe in the block', 'всадить топор в колоду'),
+  stick: L('сүгэни олох маска батары оҕус', 'leave the axe in the block', 'всадить топор в колоду'),
   tidy: L('хайыппыккын хомуй', 'gather what you have split first', 'сначала соберите наколотое'),
   proverb: L('Сүгэ түһүөр диэри дүлүҥ сынньанар.', '“Until the axe falls, the log rests.”', '«Пока топор опускается, бревно отдыхает».'),
   proverbBy: L('өс хоһооно', 'a Sakha saying', 'якутская пословица'),

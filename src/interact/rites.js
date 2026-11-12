@@ -131,7 +131,7 @@ export class Cup extends Homed {
     this.parts = parts;
     this.stone = game.world.interactables.find((i) => i.offering);
     this.milk = 1; this.tip = 0;
-    this.pourAct = { id: 'milk', label: L('Эбэҕэ үүт кут', 'Pour a little milk for the lake', 'Плеснуть озеру немного молока'), run: () => this.pour() };
+    this.pourAct = { id: 'milk', label: L('Эбэҕэ үүт кут', 'Pour a little milk for the lake', 'Налить озеру немного молока'), run: () => this.pour() };
     this.takeAct.label = L('үүтү ыл', 'take the milk', 'взять молоко');
     this.P = { p: V(0, 0, 0), q: new THREE.Quaternion() };
   }
