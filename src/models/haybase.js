@@ -122,7 +122,7 @@ export default async function build(ctx, placement) {
   const SX = -1.4, SZ = -2.6, SA = -0.15;
   const sp = (t, off) => [SX + Math.cos(SA) * t - Math.sin(SA) * off, SZ - Math.sin(SA) * t - Math.cos(SA) * off];
   const SL = [-1.3, 1.3], R0 = 0.08, R1 = 0.075; // the sleepers (along the poles), their radius at either end
-  for (const t of SL) { const [a0, a1] = [sp(t, -0.5), sp(t, 0.5)]; addLog(B, [a0[0], ground(...a0) + 0.06, a0[1]], [a1[0], ground(...a1) + 0.06, a1[1]], R0, R1, rng, M.wood, M.end, { seg: 7 }); }
+  for (const t of SL) { const [a0, a1] = [sp(t, -0.5), sp(t, 0.5)]; addLog(B, [a0[0], ground(...a0) + 0.06, a0[1]], [a1[0], ground(...a1) + 0.06, a1[1]], R0, R1, rng, M.wood, M.end, { seg: 7, bend: 0 }); }
   const sleeperTop = (t, off) => { const k = off + 0.5, [a0, a1] = [sp(t, -0.5), sp(t, 0.5)]; return ground(...a0) + 0.06 + (ground(...a1) - ground(...a0)) * k + R0 + (R1 - R0) * k; };
   // each pole straight from its thick end (t0) to its thin one, its height at the sleepers `at` (axis), radius `r(t)`
   const pole = (off, L, sh, r0, r1, flip) => { const t0 = flip ? L / 2 + sh : -L / 2 + sh, t1 = flip ? -L / 2 + sh : L / 2 + sh; return { off, t0, t1, r: (t) => r0 + (r1 - r0) * (t - t0) / (t1 - t0), at: [] }; };
@@ -130,7 +130,7 @@ export default async function build(ctx, placement) {
     const y = (t) => p.at[0] + (p.at[1] - p.at[0]) * (t - SL[0]) / (SL[1] - SL[0]);
     let lift = 0; for (let k = 0; k <= 10; k++) { const t = p.t0 + (p.t1 - p.t0) * k / 10, [x, z] = sp(t, p.off); lift = Math.max(lift, ground(x, z) + p.r(t) - y(t)); } // never into the ground past the sleepers
     const [ax, az] = sp(p.t0, p.off), [bx, bz] = sp(p.t1, p.off);
-    addLog(B, [ax, y(p.t0) + lift, az], [bx, y(p.t1) + lift, bz], p.r(p.t0), p.r(p.t1), rng, M.wood, M.end, { seg: 6, step: 0.35 });
+    addLog(B, [ax, y(p.t0) + lift, az], [bx, y(p.t1) + lift, bz], p.r(p.t0), p.r(p.t1), rng, M.wood, M.end, { seg: 6, step: 0.35, bend: 0, wob: 0.03 }); // straight: they lie on each other
   };
   // six side by side on the sleepers, thick ends alternating, each clear of the next; three in the grooves between them
   const low = [];
@@ -143,7 +143,7 @@ export default async function build(ctx, placement) {
   for (const p of low) { p.off -= mid; p.at = SL.map((t) => sleeperTop(t, p.off) + p.r(t)); lay(p); }
   for (let k = 0; k < 3; k++) {
     const a = low[k], b = low[k + 1], p = pole((a.off + b.off) / 2, 3.6 + rng() * 0.8, (rng() - 0.5) * 0.5, 0.04 + rng() * 0.012, 0.028, k % 2 === 0);
-    p.at = SL.map((t, i) => Math.max(...[a, b].map((q) => q.at[i] + Math.sqrt(Math.max(0, (q.r(t) + p.r(t)) ** 2 - (q.off - p.off) ** 2)))) + 0.004);
+    p.at = SL.map((t, i) => Math.max(...[a, b].map((q) => q.at[i] + Math.sqrt(Math.max(0, (q.r(t) + p.r(t)) ** 2 - (q.off - p.off) ** 2)))) + 0.006);
     lay(p);
   }
   colliders.push({ x: SX, z: SZ, hw: 2.1, hd: 0.55, rot: SA });
