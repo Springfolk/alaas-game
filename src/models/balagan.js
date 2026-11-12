@@ -216,7 +216,10 @@ export default async function build(ctx, placement) {
     its.push({ entry: 'winter-clothing', target: G.clothing }, { entry: 'winter-clothing', target: G.boots });
     its.push({ entry: 'kharangachchy', target: G.nests });
     // the swallows nesting on the beams fly out by the door (src/nature/life/birds.js reads this)
-    root.userData.swallows = { nests: gear.nests, door: [XD + 0.4, 1.0, ZD], inside: [XD - 1.4, 1.25, ZD], open: () => shell.door.open };
+    // out, they sit on the chimney's rim, along the roof's crown (above its grass) and on the sledge
+    const ridge = [-2.4, 0, 2.4].map((x) => [x, shell.roofTop(x, 0.15) + 0.2, 0.15]);
+    ridge.push([chim.x - 0.12, shell.chim.chTop + 0.02, chim.z], [chim.x + 0.12, shell.chim.chTop + 0.02, chim.z + 0.05]);
+    root.userData.swallows = { nests: gear.nests, door: [XD + 0.4, 1.0, ZD], inside: [XD - 1.4, 1.25, ZD], open: () => shell.door.open, perches: [...ridge, ...gear.perches] };
   }
   hearthT.userData.isHearth = true;
   const fire = hearth.fire;

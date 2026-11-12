@@ -483,7 +483,8 @@ export function buildBirds(ctx, world, { tier, W, onWater }) {
   }
 
   // nesting swallows: they sit at their nests on the beams while the house is shut; when its door opens they dart
-  // out one after another by the door, circle the house, and come back in the same way while it stays open
+  // out one after another by the door, circle the house and the meadow a few rounds, then sit on the roof's crown
+  // and on the sledge (`S.perches`), and dart up again for a few rounds when the player comes near
   const nesters = birds.filter((b) => b.kind === 'nester');
   let nestStep = null;
   if (kystyk) {
@@ -498,6 +499,15 @@ export function buildBirds(ctx, world, { tier, W, onWater }) {
       b.pos.copy(b.nest); b.mode = 'nest'; b.shown = 1; b.fold = 1; b.t = 0;
       b.fwd.set(home.x - b.pos.x, 0, home.z - b.pos.z).normalize();
     });
+    const perches = (S.perches || []).map(Wp), taken = new Set();
+    // a free perch, else back to the nest
+    const settle = (b) => {
+      const free = perches.map((p, i) => i).filter((i) => !taken.has(i));
+      if (!free.length) { go(b, [b.pos.clone(), out.clone(), door.clone(), inner.clone(), b.nest.clone()], 'nest', rand(6, 7.5)); return; }
+      const i = free[Math.floor(Math.random() * free.length)], p = perches[i];
+      taken.add(i); b.perch = i;
+      go(b, [b.pos.clone(), p.clone().add(_w.set(rand(-1.5, 1.5), rand(1.2, 2.2), rand(-1.5, 1.5))), p.clone().add(_w.set(0, 0.25, 0)), p.clone()], 'perch', rand(6, 7.5));
+    };
     const go = (b, pts, next, speed) => { b.path = new THREE.CatmullRomCurve3(pts); b.u = 0; b.len = b.path.getLength(); b.next = next; b.mode = 'path'; b.speed = speed; };
     nestStep = (b, dt) => {
       if (b.mode === 'nest') {
@@ -517,14 +527,22 @@ export function buildBirds(ctx, world, { tier, W, onWater }) {
         b.roll = damp(b.roll, 0, 6, dt);
         b.fold = damp(b.fold, 0, 10, dt); b.flap(dt, true, 9, 0.65);
         if (b.u >= 1) {
+          if (b.next === 'perch') { b.mode = 'perch'; b.vel.set(0, 0, 0); b.fwd.y = 0; b.fwd.normalize(); return; }
           if (b.next === 'nest') { b.mode = 'nest'; b.vel.set(0, 0, 0); b.fwd.y = 0; b.fwd.normalize(); b.t = 0; if (S.open() > 0.5) b.delay = rand(12, 40); }
-          else { b.mode = 'circle'; b.t = rand(18, 40); b.goal = b.pos.clone(); }
+          else { b.mode = 'circle'; b.t = rand(9, 15); b.goal = b.pos.clone(); }
         }
         return;
       }
-      // circling the house, low and fast; while the door is open, after a while back in
+      if (b.mode === 'perch') { // sitting out; the player near: up again for a few rounds
+        b.pos.copy(perches[b.perch]); b.sit(dt); b.fold = damp(b.fold, 1, 8, dt); b.flap(dt, false, 0, 0);
+        if (Math.hypot(playerPos.x - b.pos.x, playerPos.z - b.pos.z) < 6 && Math.abs(playerPos.y - b.pos.y) < 6) {
+          taken.delete(b.perch); b.mode = 'circle'; b.t = rand(6, 10); b.ring = false; b.goal = b.pos.clone(); b.vel.set(0, 3, 0); call('swallow', b.pos, 0.16, 6);
+        }
+        return;
+      }
+      // circling the house and the meadow, low and fast; after a few rounds they sit
       b.t -= dt;
-      if (b.t < 0 && S.open() > 0.5) { go(b, [b.pos.clone(), out.clone(), door.clone(), inner.clone(), b.nest.clone()], 'nest', rand(6, 7.5)); call('swallow', door, 0.14, 6); return; }
+      if (b.t < 0) { settle(b); return; }
       if (b.pos.distanceTo(b.goal) < 2.5 || !b.ring) {
         b.ring = true;
         const a = Math.atan2(b.pos.z - home.z, b.pos.x - home.x) + rand(0.5, 1.3), r = rand(7, 13);
