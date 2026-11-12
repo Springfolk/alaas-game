@@ -12,6 +12,7 @@ Real recordings only (no synthesis). `src/audio/audio.js` (`AudioScape`) plays `
 | Indoors | inside a house pad (`urasa`, `balagan`, `mogol-urasa`) or `engine.exposureTarget > 0.7`: outside bus lowpassed to ~650 Hz and −55 %, `room` tone fades in |
 | Fire | `fire` loop at every interactable with entry `ohokh` / `uot-ichchite`; muffled from another room |
 | Steps | `step(surface, speed)`: a sprite per surface (`grass dirt forest mud wood`, `water` → mud); random slice, never one of the last two, pitch/gain/filter jitter, alternating L/R; `speed > 2.6` = run |
+| Hints | `src/interact/hints.js`: `wood-lay` (low pitch, a log settling) at the hearth, 1.8–2.2 s slices of `lake` (the weir) and `insects` (standing grass), `thrush` from ripe berries |
 | Shots | `play(name, pos?)`: `discover` (one khomus pluck), `fire-feed`, `ribbon`, `pour`, `water-pour`, `churn`, `door`, `gate`, `bellows`, `bench`, `wood-take`, `wood-lay`, `chop`, `chop-stuck`, `swish` + `scythe`, `anvil`, `khomus` (18 s phrase; `sustain()` while held), `khomus-pluck`. Variants `name-2` picked at random. Gain per name in `SHOTS` (default 0.75), 0.82–1× gain and 0.94–1.05× pitch jitter (not music); a shot at the ear moves 0.6 m down |
 
 - Shot loudness: hand foley (sit, wood, ribbon) ≈ −30…−25 LUFS, the rest ≈ −26…−23, `khomus` −17.
