@@ -266,7 +266,7 @@ export default async function build(ctx, placement) {
     colliders,
     floors: [],
     interactables: [
-      { entry: 'kuruo', target: gate, act, label: { sah: 'сүрдьүгэс', en: 'gate rails (сүрдьүгэс)', ru: 'жердевые ворота (сүрдьүгэс)' } },
+      { entry: 'kuruo', target: gate, act, label: { sah: 'сүрдьүгэс', en: 'gate rails (surdjuges)', ru: 'жердевые ворота (сүрдьүгэс)' } },
       { entry: 'kuruo', target: fenceTarget },
     ],
   };

@@ -86,7 +86,7 @@ export default async function build(ctx, placement) {
   vessel.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(-sx, 1, -sz).normalize()).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), AT[2] + 0.5));
   vessel.userData.dynamic = true;
   object.add(vessel);
-  const interactables = [{ target: vessel, bark: true, entry: 'birch-bark', label: { sah: 'туос', en: 'a sheet of birch bark (туос)', ru: 'лист бересты (туос)' } }];
+  const interactables = [{ target: vessel, bark: true, entry: 'birch-bark', label: { sah: 'туос', en: 'a sheet of birch bark (tuos)', ru: 'лист бересты (туос)' } }];
   object.userData.work = { job: 'tuos', object, vessel, setFold, berries, max: BERRIES, rest: { p: vessel.position.clone(), yaw: vessel.rotation.y } };
   return { object, colliders: [], floors: [], interactables };
 }

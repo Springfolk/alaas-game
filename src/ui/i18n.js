@@ -72,7 +72,7 @@ export const T = {
   issue: { sah: 'Алҕаһы буллуҥ дуо? GitHub-ка суруй', en: 'Found a mistake? Open a ticket on GitHub', ru: 'Нашли ошибку? Сообщите на GitHub' },
   aboutText: {
     sah: 'Алаас — босхо, аһаҕас куодтаах оонньуу. Тиэкистэрэ, моделлара уонна куода бары GitHub-ка сыталлар. Алҕаһы буллаххына эбэтэр тугу эмит көннөрүөххүн баҕарар буоллаххына, онно суруй.',
-    en: 'Алаас is free and open source. Every text, model and line of code is on GitHub: if you spot a mistake or want to improve something, open a ticket or a pull request there.',
+    en: 'Alaas is free and open source. Every text, model and line of code is on GitHub: if you spot a mistake or want to improve something, open a ticket or a pull request there.',
     ru: 'Алаас — бесплатная игра с открытым кодом. Все тексты, модели и код лежат на GitHub: если вы нашли ошибку или хотите что-то улучшить, создайте там тикет или pull request.',
   },
   licence: {

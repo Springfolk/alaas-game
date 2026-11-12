@@ -37,7 +37,7 @@ class Homed {
 // ── the guest's choron ──
 export class Choron extends Homed {
   constructor(game, hands, parts) {
-    super(game, hands, 'choron', parts.hero, L('чороон', 'choron', 'чорон'), { p: [0.15, -0.27, -0.44], r: [0, 0, 0] });
+    super(game, hands, 'choron', parts.hero, L('чороон', 'choroon', 'чороон'), { p: [0.15, -0.27, -0.44], r: [0, 0, 0] });
     this.parts = parts;
     this.it = game.world.interactables.find((i) => i.guest);
     this.thing.it = this.it;

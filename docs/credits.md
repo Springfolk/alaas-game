@@ -14,7 +14,7 @@
   - `acg_net` ← Net004A — https://ambientcg.com/view?id=Net004A
   - `acg_rope` ← Rope001 — https://ambientcg.com/view?id=Rope001
 - Own baked sets (`canvas_*`, `tuos_sheet`, `carving`, `foliage`, `birch_bark`): original, CC BY-SA 4.0 (`LICENSE`); `carving` and `canvas_bowplate` hold ornament traced from the sources in `docs/patterns.md` (museum photos: motif shapes only).
-- Traced cover ornament (`tools/ornament-traces.mjs` → `tuos_sheet/band.webp`, the icon and banner): from Il-Gil's photo of the Suntar urasa (`urasa-1` below), CC BY-SA 4.0; the traces are CC BY-SA 4.0.
+- Traced cover ornament (`tools/ornament-traces.mjs` → `tuos_sheet/band.webp`, the icon and banner): from Il-Gil's photo of the Suntaar urasa (`urasa-1` below), CC BY-SA 4.0; the traces are CC BY-SA 4.0.
 
 ## Project's own (original, CC BY-SA 4.0)
 - The key art (`public/assets/ui/keyart-*`, also in `public/og.jpg`): a render of the game (`tools/key-art.mjs`).

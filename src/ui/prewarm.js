@@ -32,7 +32,7 @@ export async function prewarmUI(game) {
     // each surface at rest first, then its other states (the stick at rest and pushed are different gradients)
     on('#fps', 'on'); on('#vcursor', 'on');
     if (touch) touch.show = 'play';
-    ui.setPrompt(BY_ID[id], { act: { id: 'strike', label: { en: 'Алаас' } }, read: true, put: { id: 'down' } }); // with every part it can have
+    ui.setPrompt(BY_ID[id], { act: { id: 'strike', label: { en: 'Alaas' } }, read: true, put: { id: 'down' } }); // with every part it can have
     ui.toast('<b>Алаас</b><small>Алаас</small>', 1e9);
     ui.discovered(id);
     await frames(3);

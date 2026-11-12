@@ -75,7 +75,7 @@ export default async function build(ctx, placement) {
   }
   axe.userData.dynamic = true;
   object.add(axe);
-  interactables.push({ target: axe, tool: 'axe', label: { sah: 'сүгэ', en: 'axe (сүгэ)', ru: 'топор (сүгэ)' } });
+  interactables.push({ target: axe, tool: 'axe', label: { sah: 'сүгэ', en: 'axe (suge)', ru: 'топор (сүгэ)' } });
 
   // ── rounds: four quarters about the pith (local origin on the axis, base at y 0), mating along two seams ──
   const pieces = [];
@@ -135,10 +135,10 @@ export default async function build(ctx, placement) {
   // look-at boxes: the rounds lying by the block (yardlife's), and the block's own top
   const heap = proxy(1.3, 0.4, 1.7, bx - 0.82, ground(bx - 0.82, bz + 0.2) + 0.17, bz + 0.2);
   heap.name = 'rounds';
-  interactables.push({ target: heap, rounds: true, label: { sah: 'дүлүҥ', en: 'rounds of larch (дүлүҥ)', ru: 'кругляки (дүлүҥ)' } });
+  interactables.push({ target: heap, rounds: true, label: { sah: 'дүлүҥ', en: 'rounds of larch (dulung)', ru: 'кругляки (дүлүҥ)' } });
   const top = proxy(0.5, 0.12, 0.5, bx, by - 0.05, bz);
   top.name = 'chopping-block';
-  interactables.push({ target: top, block: true, entry: 'ottuk-mas', label: { sah: 'дүлүҥ олох мас', en: 'chopping block (олох мас)', ru: 'колода (олох мас)' } });
+  interactables.push({ target: top, block: true, entry: 'ottuk-mas', label: { sah: 'дүлүҥ олох мас', en: 'chopping block (olokh mas)', ru: 'колода (олох мас)' } });
 
   object.userData.work = { job: 'split', object, axe, axeDims: AXE, pieces, rounds: ROUND.n, block: new T.Vector3(bx, by, bz), blockR: CHOP.r };
   return { object, colliders: [], floors: [], interactables };
