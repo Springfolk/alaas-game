@@ -127,7 +127,7 @@ export class Split {
         const half = this.restHalf();
         if (half) { await this.tween(0.25, () => {}); this.standAct.run(game, null); continue; } // the next half stands up by itself
         if (this.freeRound() !== undefined) { this.placeAct.run(game, null); continue; }
-        if ((idle += 0.1) > 1.2) break; // nothing left to split: the billets wait to be carried
+        if ((idle += 0.1) > 0.8) break; // nothing left to split: the billets wait to be carried
       }
       await F.close();
     }
