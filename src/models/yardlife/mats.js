@@ -24,7 +24,7 @@ export function yardMats() {
     splitFace: pmat('canvas:splitwood', { scale: 1, dirt: 0, vary: 0.1 }), // a fresh radial split: uv = (pith…bark, metres / 0.6)
     lash: pmat('bark_willow_02', { scale: 0.35, tint: 0xa79479, dirt: 0.3 }),
     willow: pmat('raw_plank_wall', { scale: 0.6, tint: 0xf4e3c4, dirt: 0.3, rough: 0.8 }),
-    hay: pmat('acg_hay', { scale: 0.9, tint: 0xd4c08c, vary: 0.3, dirt: 0.5, normalScale: 2.2 }),
+    hay: pmat('acg_hay', { scale: 0.9, tint: 0xe8dcc0, vary: 0.3, dirt: 0.5, normalScale: 2.2 }),
     hayGreen: pmat('acg_hay', { scale: 1.1, tint: 0xa9b07a, vary: 0.25, dirt: 0.4 }),
     birch: pmat('canvas:birch', { scale: 0.5, back: 'birchIn', double: true, dirt: 0.4 }),
     birchIn: pmat('canvas:birchIn', { scale: 0.5, dirt: 0.4 }),
