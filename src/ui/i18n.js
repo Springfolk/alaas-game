@@ -23,7 +23,7 @@ export const T = {
   qMedium: { sah: 'Орто', en: 'Medium', ru: 'Среднее' },
   qLow: { sah: 'Намыһах', en: 'Low', ru: 'Низкое' },
   qCustom: { sah: 'Бэйэҥ', en: 'Custom', ru: 'Своё' },
-  vMore: { sah: 'Сиһилии', en: 'Advanced', ru: 'Подробнее' },
+  vMore: { sah: 'Сиһилии', en: 'Advanced', ru: 'Дополнительно' },
   vRes: { sah: 'Чуолкайа', en: 'Resolution', ru: 'Разрешение' },
   vResHint: { sah: 'Аҕыйах пиксел — түргэн, сымнаҕас хартыына', en: 'Fewer pixels: faster, softer picture', ru: 'Меньше пикселей — быстрее, мягче картинка' },
   vDynres: { sah: 'Уларыйар чуолкайа', en: 'Adaptive resolution', ru: 'Адаптивное разрешение' },

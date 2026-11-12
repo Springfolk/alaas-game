@@ -479,10 +479,7 @@
   input[type=checkbox]:checked { border-color: #2c7a12; background: linear-gradient(180deg, #4aa827, #7fd45a); }
   input[type=checkbox]:checked::after { transform: translateX(20px); }
   .settings button.row { border: 0; background: none; font: inherit; color: inherit; width: 100%; cursor: pointer; text-align: left; }
-  .settings .vmore .chev { width: 16px; height: 16px; color: var(--c-dim); }
-  .settings.adv .vmore .chev { transform: rotate(90deg); }
-  .settings .vadv { display: none; }
-  .settings.adv .vadv { display: contents; }
+  .settings .vadv { display: contents; }
   .settings .row > .vl:first-child { flex-direction: column; align-items: flex-start; gap: 1px; padding-left: 28px; }
   .settings .vl small { font-size: 11.5px; color: var(--c-dim); }
   .qnote { color: #8a5a10; font-size: 13px; background: #fff6e2; border: 1px solid #f0d49a; margin-top: 4px; }
@@ -619,13 +616,13 @@
     <div class="pz">
       <nav class="pz-nav">
         <button id="resume"><i data-ic="play"></i><span data-t="resume"></span></button>
-        <button data-page="settings" class="on"><i data-ic="gear"></i><span data-t="settings"></span><i data-ic="chev" class="chev"></i></button>
-        <button data-page="controls"><i data-ic="keys"></i><span data-t="controls"></span><i data-ic="chev" class="chev"></i></button>
+        <button data-page="settings"><i data-ic="gear"></i><span data-t="settings"></span><i data-ic="chev" class="chev"></i></button>
+        <button data-page="controls" class="on"><i data-ic="keys"></i><span data-t="controls"></span><i data-ic="chev" class="chev"></i></button>
         <button data-page="about"><i data-ic="info"></i><span data-t="about"></span><i data-ic="chev" class="chev"></i></button>
         <button id="exit"><i data-ic="exit"></i><span data-t="exit"></span></button>
       </nav>
       <div class="pz-page client">
-        <div class="tab on" id="tab-settings">
+        <div class="tab" id="tab-settings">
           <div class="pz-title"><button class="pz-back" data-page=""><i data-ic="chev"></i></button><i data-ic="gear"></i><span data-t="settings"></span></div>
           <div class="settings">
             <div class="row"><span><i data-ic="globe"></i><span data-t="language"></span></span><span class="sel" data-sel="lang"></span></div>
@@ -640,12 +637,12 @@
             <div class="grp" data-t="gGraphics"></div>
             <div class="row"><span><i data-ic="quality"></i><span data-t="quality"></span></span><span class="sel up" data-sel="q"></span></div>
             <label class="row"><span><i data-ic="battery"></i><span data-t="battery"></span></span><input id="s-battery" type="checkbox"></label>
-            <button class="row vmore" id="v-more" type="button"><span><i data-ic="sliders"></i><span data-t="vMore"></span></span><i data-ic="chev" class="chev"></i></button>
+            <div class="row vmore"><span><i data-ic="sliders"></i><span data-t="vMore"></span></span></div>
             <div class="vadv" id="v-adv"></div>
             <div class="qnote" id="qnote" hidden><span data-t="qReload"></span> <button class="btn" id="reload" data-t="reload"></button></div>
           </div>
         </div>
-        <div class="tab" id="tab-controls">
+        <div class="tab on" id="tab-controls">
           <div class="pz-title"><button class="pz-back" data-page=""><i data-ic="chev"></i></button><i data-ic="keys"></i><span data-t="controls"></span></div>
           <div class="keys" id="keys-pause"></div>
         </div>
