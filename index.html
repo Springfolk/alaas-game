@@ -155,38 +155,46 @@
   .links .issue:hover { background: rgba(70,42,6,.7); border-color: #f6b24a; }
   .links .issue::before { content: '!'; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: #f6b24a; color: #3a2400; font-size: 11px; font-weight: 800; }
 
-  /* ---- crosshair + look prompt: the thing's name under the dot; looking closer (blue lens, E) to its left,
-     what the hands would do (green plate, its own tool, the mouse) to its right ---- */
+  /* ---- crosshair + look prompt: the thing's name on top; under it, apart, looking closer (blue lens, E) and what the
+     hands would do (green plate, its own tool, the mouse). Desktop: low in the screen; touch: under the dot ---- */
   #dot { position: fixed; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: rgba(255,255,255,.8); box-shadow: 0 0 3px rgba(0,0,0,.6); pointer-events: none; } /* its states switch at once: animated, a frame came late after a state change */
   #dot.on { transform: scale(2); background: #dff4ff; box-shadow: 0 0 0 1px rgba(20,90,160,.6), 0 0 8px rgba(var(--glow),.95); }
   #dot.do { transform: scale(3.5); background: rgba(210,255,190,.14); box-shadow: 0 0 0 .5px #eaffdc, 0 0 5px rgba(140,240,110,.9); } /* the hands can do something here: a ring */
   .carded #dot { display: none; }
-  #prompt { position: fixed; z-index: 4; left: 50%; top: 50%; width: 0; height: 0; zoom: var(--ui); pointer-events: none; display: none; color: #fff; } /* shown and hidden at once: no animation */
-  #prompt.show { display: block; }
-  .p-name { position: absolute; left: 0; top: 34px; transform: translateX(-50%); max-width: 92vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    font: 600 17px var(--sans); text-shadow: 0 1px 2px rgba(0,8,20,.95), 0 0 10px rgba(0,8,20,.9); }
+  #prompt { position: fixed; z-index: 4; left: 50%; top: calc(50% + 22px); transform: translateX(-50%); width: max-content; zoom: var(--ui); pointer-events: none;
+    display: none; flex-direction: column; align-items: center; gap: 5px; color: #fff; } /* shown and hidden at once: no animation */
+  :root:not(.tc-live) #prompt { top: auto; bottom: 8vh; }
+  #prompt.show { display: flex; }
+  .p-name { max-width: 92vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,255,255,.9);
+    font: 500 15px var(--sans); text-shadow: 0 1px 2px rgba(0,8,20,.9), 0 0 9px rgba(0,8,20,.7); }
+  .p-row { display: flex; align-items: center; gap: 18px; }
   /* a name: Sakha, then the chosen language's over it as the surface's --nm goes 0 → 1 (src/ui/names.js) */
   @property --nm { syntax: '<number>'; inherits: true; initial-value: 1; }
   .nm { display: inline-grid; } .nm > span { grid-area: 1 / 1; }
   .nm-s { opacity: clamp(0, 1 - 2 * var(--nm), 1); } .nm-l { opacity: clamp(0, 2 * var(--nm) - 1, 1); }
   .p-name .nm, .toast .nm, .j-pin .nm { justify-items: center; }
-  .p-read, .p-act { position: absolute; top: -20px; width: max-content; display: none; align-items: center; }
+  .p-read, .p-act { width: max-content; display: none; align-items: center; }
   .has-read .p-read, .has-act .p-act { display: flex; }
-  .p-read { right: 30px; gap: 6px; }
-  .p-read .lens { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.75);
-    background: linear-gradient(180deg, rgba(255,255,255,.5) 0, rgba(255,255,255,.12) 48%, rgba(255,255,255,0) 52%, rgba(255,255,255,.16) 100%), rgb(var(--read));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 0 0 1px rgba(0,30,70,.6), 0 2px 8px rgba(0,0,0,.4); }
-  .p-read .ic { width: 22px; height: 22px; }
-  .p-act { left: 30px; gap: 8px; min-height: 40px; padding: 4px 10px 4px 4px; border-radius: 9px; border: 1px solid rgba(255,255,255,.7);
-    background: linear-gradient(180deg, rgba(255,255,255,.34) 0, rgba(255,255,255,.1) 48%, rgba(255,255,255,0) 52%, rgba(255,255,255,.1) 100%), rgba(22,74,20,.86);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 0 0 1px rgba(0,30,0,.6), 0 2px 8px rgba(0,0,0,.4); }
-  .p-act .tool { width: 30px; height: 30px; flex: none; border-radius: 6px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.6);
-    background: linear-gradient(180deg, #a5e88a 0%, #5cc23a 48%, #3a9c1c 52%, #56bd34 100%); }
-  .p-act .tool .ic { width: 21px; height: 21px; color: #fff; stroke-width: 2.2; }
-  .p-act .verb { font: 600 14px/1.2 var(--sans); max-width: min(250px, calc(50vw / var(--ui) - 104px)); text-shadow: 0 1px 2px rgba(0,20,0,.9); }
+  .p-read { gap: 6px; }
+  .p-read kbd { font-size: 11px; padding: 0 5px; min-width: 18px; opacity: .85; }
+  .p-read .lens { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.45);
+    background: linear-gradient(180deg, rgba(255,255,255,.26) 0, rgba(255,255,255,.06) 48%, rgba(255,255,255,0) 52%, rgba(255,255,255,.08) 100%), rgba(var(--read), .62);
+    box-shadow: 0 0 0 1px rgba(0,30,70,.3), 0 1px 5px rgba(0,0,0,.25); }
+  .p-read .ic { width: 17px; height: 17px; }
+  .p-act { gap: 7px; min-height: 30px; padding: 2px 8px 2px 2px; border-radius: 8px; border: 1px solid rgba(255,255,255,.4);
+    background: linear-gradient(180deg, rgba(255,255,255,.18) 0, rgba(255,255,255,.05) 48%, rgba(255,255,255,0) 52%, rgba(255,255,255,.05) 100%), rgba(22,74,20,.58);
+    box-shadow: 0 0 0 1px rgba(0,30,0,.3), 0 1px 5px rgba(0,0,0,.25); }
+  .p-act .tool { width: 24px; height: 24px; flex: none; border-radius: 5px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.4);
+    background: linear-gradient(180deg, rgba(150,220,120,.85) 0%, rgba(84,180,52,.85) 48%, rgba(58,150,28,.85) 52%, rgba(80,176,50,.85) 100%); }
+  .p-act .tool .ic { width: 16px; height: 16px; color: #fff; stroke-width: 2.2; }
+  .p-act .verb { font: 500 13px/1.2 var(--sans); color: rgba(255,255,255,.92); max-width: min(240px, calc(46vw / var(--ui) - 90px)); text-shadow: 0 1px 2px rgba(0,20,0,.8); }
   .p-act .verb:empty { display: none; }
   .p-key { display: flex; align-items: center; gap: 3px; }
-  .p-act .p-key { padding: 2px 5px; border-radius: 5px; background: linear-gradient(180deg, #fff, #dde4ec); border: 1px solid #7d91a8; }
+  .p-act .p-key { padding: 1px 4px; border-radius: 4px; background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(221,228,236,.9)); border: 1px solid #7d91a8; }
+  .p-act .p-key .mouse { width: 10px; height: 15px; }
+  /* touch: the lens and the plate are tap targets too */
+  .tc-live .p-read .lens { width: 38px; height: 38px; } .tc-live .p-read .ic { width: 20px; height: 20px; }
+  .tc-live .p-act { min-height: 38px; padding: 3px 10px 3px 3px; } .tc-live .p-act .tool { width: 30px; height: 30px; } .tc-live .p-act .tool .ic { width: 20px; height: 20px; }
   /* what is carried can be put down: by the hands, low on the right */
   #puthint { position: fixed; z-index: 4; right: 19vw; bottom: 9vh; zoom: var(--ui); display: none; align-items: center; gap: 7px; padding: 5px 7px 5px 9px; }
   #puthint.show { display: flex; }
@@ -418,7 +426,7 @@
   .toast img { width: 46px; height: 46px; flex: none; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); background: #16222e; }
   .toast b { font: 400 19px/1.2 var(--serif); text-shadow: 0 1px 2px rgba(0,8,20,.8); }
   .toast small { font-size: 12.5px; color: var(--dim); }
-  .toast.say { position: fixed; left: 50%; bottom: 15%; transform: translateX(-50%); width: max-content; max-width: min(600px, 92vw); flex-direction: column; gap: 3px; text-align: center; padding: 10px 22px 11px; }
+  .toast.say { position: fixed; left: 50%; bottom: 22%; /* over the look prompt */ transform: translateX(-50%); width: max-content; max-width: min(600px, 92vw); flex-direction: column; gap: 3px; text-align: center; padding: 10px 22px 11px; }
   .toast.say b { font-style: italic; font-size: 19px; line-height: 1.35; color: #ffe9c2; }
   .toast.out { opacity: 0; }
 
@@ -597,7 +605,7 @@
 <body>
 <canvas id="game"></canvas>
 <div id="dot"></div>
-<div id="prompt"><div class="p-name"></div><div class="p-read"><kbd class="kb">E</kbd><span class="lens"></span></div><div class="p-act"><span class="tool"></span><span class="verb"></span><span class="p-key kb"></span></div></div>
+<div id="prompt"><div class="p-name"></div><div class="p-row"><div class="p-read"><kbd class="kb">E</kbd><span class="lens"></span></div><div class="p-act"><span class="tool"></span><span class="verb"></span><span class="p-key kb"></span></div></div></div>
 <div id="puthint" class="pane kb"></div>
 <div id="choice"></div>
 <div id="toasts"></div>

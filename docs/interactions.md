@@ -9,7 +9,7 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 | **Put down**: the carried thing back to its place when within reach (`thing.put()`: axe → block, scythe → post, bark → hide), else onto dry ground ahead (tipped to its slope, clear of what lies there, of walls and of eaves lower than it: `rest.js`); of an armful, one billet | right button, Q | the put-down button (shown while carrying) |
 | **Inspect**: the inspect stage (`docs/ui.md`), never an act | E | the eye button (shown when the thing has a card) |
 
-- The prompt (`docs/ui.md`): the thing's name under the dot; left of the dot the blue lens + E when it has a card; right of it the green plate with the act's own tool (`actIcon`, `src/ui/icons.js`), its verb and the mouse glyph. The dot becomes a green ring when the hands can do something; with nothing in view the plate still shows what the carried thing would do. While carrying: a put-down hint low on the right.
+- The prompt (`docs/ui.md`): the thing's name; under it, apart, the blue lens + E when it has a card and the green plate with the act's own tool (`actIcon`, `src/ui/icons.js`), its verb and the mouse glyph. The dot becomes a green ring when the hands can do something; with nothing in view the plate still shows what the carried thing would do. While carrying: a put-down hint low on the right.
 - An act never opens a card; doing a thing adds its entry to the journal.
 - One thing in the hands at a time (or an armful of billets); nothing goes into the lake.
 - Acts run while you walk and look; only `act.freeze` holds the player (the ribbon choice, the birch bow, the 0.9 s turn as you sit).

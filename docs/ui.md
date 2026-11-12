@@ -15,7 +15,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 | Surface | Shows |
 |---|---|
 | Dot | dot; larger and blue on a thing; a green ring when the hands can do something |
-| Look prompt (`#prompt`, `ui.setPrompt`) | the thing's name under the dot. Left of the dot: blue lens + `E` = it can be looked at closer. Right of the dot: green plate = the act's tool, its verb, the mouse glyph. With nothing in view the plate alone, when what is carried can be used. Its parts are permanent elements (touch takes touches on them) |
+| Look prompt (`#prompt`, `ui.setPrompt`) | the thing's name on top; under it, apart: blue lens + `E` = it can be looked at closer; green plate = the act's tool, its verb, the mouse glyph. Desktop: low in the screen, small and soft; touch: under the dot. With nothing in view the plate alone, when what is carried can be used. Its parts are permanent elements (touch takes touches on them) |
 | Put-down hint (`#puthint`) | low on the right while something is carried: where it goes (down / back) + right mouse |
 | Found by doing (`ui.discovered`) | glass pill, top right: the thing's journal picture in a gold ring and its name, 2.6 s |
 | Saying (`ui.toast`) | glass caption: one italic line and its by-line, low in the view (phones: under the corner buttons) |
