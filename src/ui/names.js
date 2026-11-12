@@ -9,12 +9,20 @@ const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const cache = new WeakMap();
 
+// Sakha in the game's readable Latin (docs/content.md "Names"): ү u, ө o, ҥ ng, ҕ gh, һ h, дь dj, нь ny, х kh, ч ch,
+// ы y, й y, э e; long vowels stay doubled.
+const LAT = { а: 'a', б: 'b', в: 'v', г: 'g', ҕ: 'gh', д: 'd', е: 'e', ё: 'yo', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', ҥ: 'ng', о: 'o', ө: 'o', п: 'p', р: 'r', с: 's', һ: 'h', т: 't', у: 'u', ү: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
+export const translit = (s) => String(s || '').replace(/[дн]ь|[Ѐ-ӿ]/gi, (c) => {
+  const l = c.toLowerCase(), t = l === 'дь' ? 'dj' : l === 'нь' ? 'ny' : LAT[l] ?? c;
+  return c[0] === l[0] ? t : cap(t);
+});
+
 // { sah, en, ru } of an entry or a label
 export function names(x) {
   let n = cache.get(x);
   if (n) return n;
   if (x.title) { const m = x.name || {}; n = { sah: m.sah || head(x.title.sah), en: m.en || head(x.title.en), ru: m.ru || head(x.title.ru) }; }
-  else { const bare = (s) => String(s || x.sah).replace(` (${x.sah})`, ''); n = { sah: x.sah, en: bare(x.en), ru: bare(x.ru) }; }
+  else { const bare = (s, d) => String(s || d).replace(` (${x.sah})`, ''); n = { sah: x.sah, en: bare(x.en, translit(x.sah)), ru: bare(x.ru, x.sah) }; }
   n = { sah: cap(n.sah), en: cap(n.en), ru: cap(n.ru) };
   cache.set(x, n);
   return n;

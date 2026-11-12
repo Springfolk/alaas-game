@@ -203,7 +203,7 @@ export default async function build(ctx) {
 
   const interactables = [
     { entry: 'urasa', target: outerProxy },
-    { entry: 'urasa', target: frameProxy, label: { sah: 'Ураһа баҕаналара, курдуу', en: 'Uraha posts and hoop', ru: 'Столбы и обруч урасы' } },
+    { entry: 'urasa', target: frameProxy, label: { sah: 'Ураһа баҕаналара, курдуу', en: 'Uraha posts and hoop', ru: 'Столбы и обруч ураһы' } },
     { entry: 'birch-bark', target: lining, label: { sah: 'Туос', en: 'Birch bark', ru: 'Береста' } },
     { entry: 'hospitality', target: doorProxy, label: { sah: 'Аан (илин)', en: 'The door, facing east', ru: 'Дверь, обращённая на восток' } },
     { entry: 'hospitality', zone: { x: DOOR.r + 1.0, z: 0, r: 0.9 } },
@@ -241,7 +241,7 @@ export default async function build(ctx) {
     },
     { entry: 'khamyiakh-ladle', target: ky.ladle },
     { entry: 'choron', target: ky.chorons },
-    { entry: 'choron', target: ky.hero, guest: true, label: { sah: 'ыалдьыт чорооно', en: 'the guest’s choron', ru: 'чорон гостя' } },
+    { entry: 'choron', target: ky.hero, guest: true, label: { sah: 'ыалдьыт чорооно', en: 'the guest’s choroon', ru: 'чороон гостя' } },
     { entry: 'ygas-bucket', target: ky.buckets },
   ];
 

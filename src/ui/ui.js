@@ -181,7 +181,6 @@ export class UI {
       return `<button class="chip${known ? '' : ' unknown'}" ${known ? `data-entry="${r}"` : 'disabled'}>${known ? nameHTML(BY_ID[r], lang) : '· · ·'}</button>`;
     }).join('');
     const facts = (e.facts[lang] || e.facts.en || []).map((f) => `<li>${esc(f)}</li>`).join('');
-    const rest = e.sah.slice(e.sah.split(/[;(]/)[0].trim().length).replace(/^[;\s]+/, '');
     const tl = this.t(e.title), th = names(e)[lang], title = !e.name && tl.startsWith(th) ? nameHTML(e, lang) + esc(tl.slice(th.length)) : esc(tl);
     this.card.innerHTML = `
       <div class="st-orbit" data-orbit>${photo && imgs.length ? '<img class="st-hero" alt="">' : ''}</div>
@@ -191,7 +190,6 @@ export class UI {
         <div class="st-head win-head">
           <div class="cat">${this.fresh ? '<i class="gmark"></i>' : ''}${esc(this.t(CATS[e.category]) || e.category)}</div>
           <h2>${nameHTML(e, lang)}</h2>
-          <div class="sub">${rest ? `<span class="more">${esc(rest)}</span> ` : ''}${esc(e.translit || '')}${e.ru ? ` · <span class="ru">${esc(e.ru)}</span>` : ''}</div>
         </div>
         <div class="st-body st-show">
           <figure class="st-fig"></figure>

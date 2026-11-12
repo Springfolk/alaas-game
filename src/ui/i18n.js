@@ -3,7 +3,7 @@ export const LANGS = ['sah', 'en', 'ru'];
 export const LANG_NAMES = { sah: 'Сахалыы', en: 'English', ru: 'Русский' };
 
 export const T = {
-  subtitle: { sah: 'Киин Саха сирин алааһыгар сайылык', en: 'a summer homestead in Central Yakutia', ru: 'летняя усадьба в аласе Центральной Якутии' },
+  subtitle: { sah: 'Киин Саха сирин алааһыгар сайылык', en: 'a summer homestead in Central Yakutia', ru: 'летняя усадьба в алаасе Центральной Якутии' },
   loading: { sah: 'бэлэмнэнии…', en: 'loading…', ru: 'загрузка…' },
   preparing: { sah: 'бэлэмнэнии…', en: 'preparing…', ru: 'подготовка…' },
   clickToWalk: { sah: 'хаамарга баттаа', en: 'click to walk', ru: 'нажмите, чтобы начать' },
