@@ -43,6 +43,7 @@ function shag(g, amp, seed) {
 export function buildWinterGear({ B, M, rng, root, ground }) {
   const targets = {}, colliders = [];
 
+  const perches = []; // where the swallows sit when out (src/nature/life/birds.js)
   // ---------- сыарҕа: the ox hay sledge on two blocks off the ground, south of the house ----------
   // two birch runners turned up at the front, four pairs of short stanchions (атах) mortised into them carrying
   // two rails, cross-ties, a few deck boards (адарай); its two shafts (ураҕас) laid along the ground before it;
@@ -89,6 +90,8 @@ export function buildWinterGear({ B, M, rng, root, ground }) {
     for (let k = 0; k <= 40; k++) { const a = k * 0.62, r = 0.1 + 0.04 * Math.sin(k * 0.3); coil.push([S.x - 0.55 + Math.cos(a) * r, y0 + 0.175 + k * 0.0012, S.z + Math.sin(a) * r]); }
     B.add(M.leather, tube(coil, 0.008, 4, false, 80), { color: [0.42, 0.33, 0.25] });
     targets.sledge = proxy(root, 2.9, 0.7, 1.0, [S.x + 0.3, y0 + 0.3, S.z]);
+    for (const px of [-0.6, -0.05, 0.45]) for (const sd of [-1, 1]) perches.push([S.x + px, y0 + 0.4, S.z + sd * (S.track + 0.02)]); // the swallows' perches on its rails
+    perches.push([yx + 0.07, yy + 0.055, S.z - 0.2], [yx + 0.07, yy + 0.055, S.z + 0.22]); // and on the yoke
     targets.shafts = proxy(root, 2.1, 0.2, 0.9, [front + 1, gy + 0.08, S.z]);
     colliders.push({ x: S.x + 0.1, z: S.z, hw: 1.25, hd: 0.42 }, { x: front + 1, z: S.z, hw: 1, hd: 0.4, y0: -10, y1: gy + 0.15 });
   }
@@ -196,5 +199,5 @@ export function buildWinterGear({ B, M, rng, root, ground }) {
     nests.push([x, y + 0.075, nz - sd * 0.035]);
   }
   targets.nests = proxy(root, 3.2, 0.4, 0.4, [0, H + 0.05, FZ - 0.1]);
-  return { targets, colliders, nests };
+  return { targets, colliders, nests, perches };
 }
