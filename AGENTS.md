@@ -21,7 +21,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 - `docs/loading.md` — boot order, key art, load pieces and bakes, load rules.
 - `docs/materials.md` — master graphs, factories that share builds, homestead light set.
 - `docs/models.md` — the model-module contract, building notes, how to check a model.
-- `docs/content.md` — explainer entry format, language and voice rules, what awaits approval.
+- `docs/content.md` — explainer entry format, language and voice rules, sources.
 - `docs/terms.md` — term research: thin sources, confirmed words, label alternatives.
 - `docs/ui.md` — every screen and what it shows; the inspect stage; the UI API.
 - `docs/interactions.md` — inputs, inspect flow, pointer lock and pause, hooks, journal finder.

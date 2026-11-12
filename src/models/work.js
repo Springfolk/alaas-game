@@ -1,5 +1,5 @@
 // Props for the hands-on work (logic in src/interact/work/): the axe (сүгэ) standing in the chopping block by
-// the woodpile and two rounds of larch (чурбаан), each built as four mating quarters that split apart.
+// the woodpile and two rounds of larch (дүлүҥ), each built as four mating quarters that split apart.
 // Placed at the homestead centre (HOME); everything here moves, so src/interact reparents it to the scene.
 // The parts are found in `object.userData.work`.
 import { Bucket, boxUV, logGeo, mtx } from './yardlife/kit.js';
@@ -128,17 +128,17 @@ export default async function build(ctx, placement) {
       object.add(g);
       const piece = { obj: g, round: r, k, R, len: LEN };
       pieces.push(piece);
-      interactables.push({ target: g, take: 'log', quarter: pieces.length - 1, off: true, label: { sah: 'оттук мас', en: 'firewood', ru: 'дрова' } });
+      interactables.push({ target: g, take: 'log', quarter: pieces.length - 1, off: true, label: { sah: 'хардаҕас', en: 'billet', ru: 'полено' } });
     }
   }
 
   // look-at boxes: the rounds lying by the block (yardlife's), and the block's own top
   const heap = proxy(1.3, 0.4, 1.7, bx - 0.82, ground(bx - 0.82, bz + 0.2) + 0.17, bz + 0.2);
   heap.name = 'rounds';
-  interactables.push({ target: heap, rounds: true, label: { sah: 'чурбаан', en: 'rounds of larch (чурбаан)', ru: 'чурбаки (чурбаан)' } });
+  interactables.push({ target: heap, rounds: true, label: { sah: 'дүлүҥ', en: 'rounds of larch (дүлүҥ)', ru: 'кругляки (дүлүҥ)' } });
   const top = proxy(0.5, 0.12, 0.5, bx, by - 0.05, bz);
   top.name = 'chopping-block';
-  interactables.push({ target: top, block: true, entry: 'ottuk-mas', label: { sah: 'төҥүргэс', en: 'chopping block (төҥүргэс)', ru: 'колода (төҥүргэс)' } });
+  interactables.push({ target: top, block: true, entry: 'ottuk-mas', label: { sah: 'дүлүҥ олох мас', en: 'chopping block (олох мас)', ru: 'колода (олох мас)' } });
 
   object.userData.work = { job: 'split', object, axe, axeDims: AXE, pieces, rounds: ROUND.n, block: new T.Vector3(bx, by, bz), blockR: CHOP.r };
   return { object, colliders: [], floors: [], interactables };

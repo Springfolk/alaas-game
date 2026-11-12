@@ -78,7 +78,7 @@ export default async function build(ctx, placement) {
     g.visible = false;
     object.add(g);
     logs.push(g);
-    interactables.push({ target: g, take: 'log', off: true, label: { sah: 'оттук мас', en: 'firewood', ru: 'дрова' } });
+    interactables.push({ target: g, take: 'log', off: true, label: { sah: 'хардаҕас', en: 'billet', ru: 'полено' } });
   }
 
   // ── the woodpile (built by yardlife): a box to look at, where billets come from ──

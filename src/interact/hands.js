@@ -26,13 +26,13 @@ const ARM = [[0, 0, 0], [0.015, 0, -0.11], [-0.01, 0.095, -0.055], [0.01, 0.19, 
 const L = (sah, en, ru) => ({ sah, en, ru });
 const ACT = {
   take: L('ыл', 'pick it up', 'взять'),
-  takeLog: L('мас ыл', 'take a billet', 'взять полено'),
+  takeLog: L('хардаҕас ыл', 'take a billet', 'взять полено'),
   down: L('уур', 'set it down', 'поставить'),
   stack: L('кыстаа', 'stack it on the pile', 'сложить в поленницу'),
   fill: L('уу ыл', 'scoop up water', 'зачерпнуть воды'),
   pour: L('ууну кут', 'pour the water out', 'вылить воду'),
   back: L('төттөрү уур', 'put it back', 'вернуть на место'),
-  lay: L('уокка мас бырах', 'lay the billet on the fire', 'подложить полено в огонь'),
+  lay: L('уокка хардаҕас уур', 'lay the billet on the fire', 'положить полено в огонь'),
 };
 
 export class Hands {
@@ -48,7 +48,7 @@ export class Hands {
     this.pail = { kind: 'pail', obj: pail, it: find(pail), level: 0, water: pail.userData.water, name: L('мас ыаҕас', 'water pail', 'ведро') };
     this.waterY = pail.userData.water.position.y; // the full pail's surface (local)
     this.stream = pail.userData.stream; scene.attach(this.stream);
-    this.logs = parts.logs.map((obj) => { scene.attach(obj); return { kind: 'log', obj, it: find(obj), state: 'pool', t: 0, name: L('оттук мас', 'firewood', 'дрова') }; });
+    this.logs = parts.logs.map((obj) => { scene.attach(obj); return { kind: 'log', obj, it: find(obj), state: 'pool', t: 0, name: L('хардаҕас', 'billet', 'полено') }; });
     for (const l of this.logs) l.pool = true; // the woodpile's own billets
     this.pile = parts.pile;
     this.pileIt = find(parts.pile);

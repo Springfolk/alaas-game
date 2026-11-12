@@ -2,7 +2,7 @@
 
 Research behind the Sakha and Russian words (`docs/content.md`). Sources: sakhatyla.ru, sah.wikipedia.org.
 
-## Thin sources (kept; approved with the text)
+## Thin sources
 | Entry | Word / phrase | Doubt · alternative · source |
 |---|---|---|
 | sayylyk-kystyk | кыштак | the Central Asian form, Kyrgyz spelling; EN has 'kyshtak' |
@@ -37,7 +37,24 @@ Research behind the Sakha and Russian words (`docs/content.md`). Sources: sakhat
 - Confirmed: Аал Луук Мас, Аан Алахчын Хотун, Хатан Тэмиэрийэ, айыы аймаҕа, Эллэй Боотур (sah.wiki); хаппахчы, биллэрик, хабаҕал, холумтан, үөлэс, булгунньах, удьаа, көҕүөр, кырыыс, уруй, айхал, чэчир, түһүлгэ, аар баҕах, эбэ (lake euphemism) (sakhatyla); хаһаа = horse stall, дал = cattle pen by the khoton, ибиир хамыйах (ибиир= 'to sprinkle'), кырыымпа, саламаат, чохоон = butter whipped with warm milk and frozen, often with berries (sakhatyla); Айыыһыт, оһуохайы таһаарааччы (also оһуохайдьыт) (sah.wiki).
 - Russian, thin sources: кытыя (vs кытыйа), Иэйэхсит, Джёсёгёй Айыы, сымыыр (симир) for the kymys sack, хамнатар as «мутовка», тюптэ, «жердевые ворота» for сүрдьүгэс, Улла Йохансен, «серебро с водой» (уулаах көмүс).
 
-## Interface label alternatives (current labels approved)
+## Wood and fire
+| Thing | Sakha | EN · RU | Source |
+|---|---|---|---|
+| short log section to split | дүлүҥ; half: дүлүҥ аҥаара | round of larch · лиственничный кругляк | sakhatyla дүлүҥ 'обрубок бревна, короткое бревно'; saying «Сүгэ түһүөр диэри дүлүҥ сынньанар» |
+| split piece | хардаҕас | billet · полено | sakhatyla хардаҕас 'кусок расколотого дүлүҥ для топки, полено' (cf. Mongolian хагадас) |
+| chopping block | дүлүҥ олох мас (олох мас) | chopping block · колода | sakhatyla дүлүҥ олох мас 'обрубок широкого бревна… стул, столярный стол'; төҥүргэс = a stump in the ground |
+| firewood | оттук мас, оттор мас | firewood · дрова | sakhatyla дрова, оттук |
+| woodpile | кыстаммыт мас; winter stock кыстык мас | woodpile · поленница | sakhatyla поленница, мас |
+| dry wood on the ground | хаппыт мас | dry wood · сушняк | plain words; sakhatyla кураанах мас 'сухие дрова', чачынньыар 'сушняк, хворост' |
+| to split | хайыт= | split · колоть | sakhatyla хайыт= 'колоть дрова' |
+| to lay wood on the fire | уокка хардаҕас уур | lay the billet on the fire · положить полено в огонь | уур= 'put, lay' |
+| laths of a fish trap | сарт | laths · лучина | sakhatyla сарт 'тонкая дранка или лучина (для вязки верш)' |
+| kindling stick | тымтык | kindling stick · лучинка | sakhatyla тымтык 'лучина' |
+| axe, haft, poll, wedge | сүгэ, сүгэ уга, өнчөх, ытаһа | axe, haft, poll, wedge · топор, топорище, обух, клин | sakhatyla |
+| chips, kindling | мас сыыһа, сүгэ олуга; саҕаһа | chips; kindling · щепки; растопка | sakhatyla щепка, растопка |
+| bark | хатырык; birch bark туос | bark · кора, береста | sakhatyla кора |
+
+## Interface label alternatives
 | Where | Label | Proposal |
 |---|---|---|
 | `CATS.animals` | Сүөһү | **Сүөһү-сылгы**: сүөһү is often cattle only, and the entry is about horses and cows |
