@@ -24,6 +24,7 @@ Key art (`index.html` `#keyart`): the game's own render (inline placeholder, the
 ## Rules
 - Only the homestead stage adds lights (≤2 point lights per model: `docs/materials.md`).
 - `stream.js` builds each shader with the scene lights captured when it was queued: outside a render three leaves a scene's `LightsNode` stale (houses then lose their fire light).
+- A render keys its shaders by where it runs (target, MRT, nesting depth, the enclosing pass's context): a pass three runs on first use runs at one fixed place each frame (high's AO and its pre-pass: first, in `Engine.render`).
 - three keys a build by node identity: `shareGraphs` (`master.js`) makes same-shape materials share one graph before they join the scene (`docs/materials.md`).
 - Await `world.breathe()` between load steps and `world.prewarm(scene, cam, target)` before an offscreen bake render.
 - Anything added to the scene before `warmUp` is built before play; a material added later compiles in play.

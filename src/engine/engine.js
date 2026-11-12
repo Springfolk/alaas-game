@@ -292,6 +292,10 @@ export class Engine {
     s.updateMatrixWorld();
     s.matrixWorldAutoUpdate = false;
     try {
+      // high: the AO (and the pre-pass it reads) render here, first: left to three, they ran inside whichever render
+      // first met them that frame (the scene pass, or the sun's shadows within it), and every change of that nesting
+      // built the pre-pass's shaders again in play
+      if (this.aoPass?._ao) this.renderer._nodes.nodeFrame.updateBeforeNode(this.aoPass); // (once three has set it up)
       if (this.pipeline) { this.pipeline.render(); this.meter?.tick(this.meterDt || 0); }
       else this.renderer.render(s, this.camera);
     } finally { s.matrixWorldAutoUpdate = true; }
