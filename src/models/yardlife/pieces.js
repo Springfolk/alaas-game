@@ -168,21 +168,25 @@ export function craft(K, x, z, yaw = 0) {
   const F = frame(K.b, x, z, yaw);
   const g = F.ground;
   const bark = K.barkCraft; // prepared bark: warmer, boiled
+  const top = (lx, lz) => { const [wx, wz] = F.tw(lx, lz); return K.drawnTop(wx, wz); };
   geoPiece(K, () => {
     // a hide spread on the grass to work on
     {
-      const hide = sheetGeo(1.15, 0.8, rng, { curl: 0.0, warp: 0.02, res: 12 });
+      const HT = 0.2, hide = sheetGeo(1.15, 0.8, rng, { curl: 0.0, warp: 0.02, res: 12 });
+      // ...over the ground as drawn (its grid is linear between samples a metre apart)
       const p = hide.attributes.position;
       for (let i = 0; i < p.count; i++) {
         const hx = p.getX(i), hz = p.getZ(i);
         // irregular outline: pull the corners in
         const k = 1 - 0.18 * Math.abs(Math.sin(Math.atan2(hz, hx) * 2 + 0.7));
-        p.setXYZ(i, hx * k, p.getY(i) + g(hx * k, hz * k) - g(0, 0), hz * k);
+        // the ground under this vertex once the hide is turned by HT; a soft ripple 0.7–1.7 cm over it
+        const lx = hx * k * Math.cos(HT) + hz * k * Math.sin(HT), lz = -hx * k * Math.sin(HT) + hz * k * Math.cos(HT);
+        p.setXYZ(i, hx * k, 0.012 + 0.25 * p.getY(i) + top(lx, lz) - g(0, 0), hz * k);
       }
       hide.computeVertexNormals();
-      F.add(hide, M.hide, mtx([0, g(0, 0) + 0.03, 0], [0, 0.2, 0]));
+      F.add(hide, M.hide, mtx([0, g(0, 0), 0], [0, HT, 0]));
     }
-    const y0 = g(0, 0) + 0.035;
+    const hy = (lx, lz) => top(lx, lz) + 0.02; // the hide's top under a thing set on it
     // the half-sewn milking pail (ыаҕас): wall wrapped and stitched halfway up the seam
     {
       const R0 = 0.11, R1 = 0.12, H = 0.24, over = 0.35, seg = 34;
@@ -204,7 +208,7 @@ export function craft(K, x, z, yaw = 0) {
       wall.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       wall.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       wall.setIndex(idx); wall.computeVertexNormals();
-      const m = mtx([0.12, y0, 0.05], [0, 0.4, 0]);
+      const y0 = hy(0.12, 0.05), m = mtx([0.12, y0, 0.05], [0, 0.4, 0]);
       F.add(wall, bark, m);
       F.add(lathe([[0, 0.012], [0.108, 0.012], [0.11, 0.004]], 20), K.M.birchIn, m);
       F.add(new THREE.TorusGeometry(0.113, 0.0055, 5, 32), M.willow, m.clone().multiply(mtx([0, 0.025, 0], [Math.PI / 2, 0, 0])));
@@ -216,19 +220,19 @@ export function craft(K, x, z, yaw = 0) {
         F.add(st, M.hair, m.clone().multiply(mtx([Math.cos(sa) * 0.118, y, -Math.sin(sa) * 0.118], [0, sa + (k % 2 ? 0.5 : -0.5), 0])));
       }
       // the rim hoop, made but not yet sewn on, lying beside it
-      F.add(new THREE.TorusGeometry(0.122, 0.006, 5, 32), M.willow, mtx([0.42, y0 + 0.006, 0.18], [Math.PI / 2, 0, 0]));
+      F.add(new THREE.TorusGeometry(0.122, 0.006, 5, 32), M.willow, mtx([0.42, hy(0.42, 0.18) + 0.006, 0.18], [Math.PI / 2, 0, 0]));
       // a long strand of horsehair cord coming off the seam
-      F.add(tube([[0.12 + Math.cos(0.4) * 0.03, y0 + 0.14, 0.05], [0.3, y0 + 0.06, 0.12], [0.38, y0 + 0.01, 0.0], [0.33, y0 + 0.005, -0.12]], 0.0015, 4), M.hair);
+      F.add(tube([[0.12 + Math.cos(0.4) * 0.03, y0 + 0.14, 0.05], [0.3, hy(0.3, 0.12) + 0.06, 0.12], [0.38, hy(0.38, 0) + 0.01, 0.0], [0.33, hy(0.33, -0.12) + 0.005, -0.12]], 0.0015, 4), M.hair);
     }
     // awl with a bone handle on the hide
     {
-      const m = mtx([-0.12, y0 + 0.012, 0.18], [0, 0.9, Math.PI / 2]);
+      const m = mtx([-0.12, hy(-0.12, 0.18) + 0.012, 0.18], [0, 0.9, Math.PI / 2]);
       const h = logGeo(0.09, 0.012, 0.01, rng, { seg: 7, caps: true, step: 0.03 });
       F.add(h.side, M.bone, m); F.add(h.caps, M.bone, m);
       F.add(new THREE.ConeGeometry(0.003, 0.07, 6).translate(0, 0.125, 0), M.iron, m);
     }
     // coil of dark horsehair cord
-    for (let k = 0; k < 5; k++) F.add(new THREE.TorusGeometry(0.075 + k * 0.004, 0.0035, 4, 24), M.hair, mtx([-0.32 + k * 0.003, y0 + 0.005 + k * 0.006, -0.18], [Math.PI / 2 + (rng() - 0.5) * 0.2, 0, rng()]));
+    for (let k = 0; k < 5; k++) F.add(new THREE.TorusGeometry(0.075 + k * 0.004, 0.0035, 4, 24), M.hair, mtx([-0.32 + k * 0.003, hy(-0.32, -0.18) + 0.005 + k * 0.006, -0.18], [Math.PI / 2 + (rng() - 0.5) * 0.2, 0, rng()]));
     // bark rolls tied with a strip, one lying, one standing
     const roll = (p, r, tied = true) => {
       const h = 0.55 + rng() * 0.1;
@@ -265,8 +269,8 @@ export function craft(K, x, z, yaw = 0) {
       const surf = fillLathe(pot, 24, 9, 8, 0.18, { rings: 1 }); // water out to the inner wall
       F.add(pot, M.soot, mtx([cx, gy + 0.11, cz]));
       F.add(surf, water, mtx([cx, gy + 0.11, cz]));
-      // a strip of bark curling out of the water
-      F.add(sheetGeo(0.32, 0.07, rng, { curl: 0.1, res: 6 }), bark, mtx([cx + 0.08, gy + 0.11 + 0.22, cz], [0, 0.5, -0.9]));
+      // a strip of bark softening: its foot 4 cm under the water, leaning on the rim's inner lip, the end out over it
+      F.add(sheetGeo(0.32, 0.07, rng, { curl: 0, warp: 0.002, res: 6 }), bark, mtx([cx + 0.073 * Math.cos(0.5), gy + 0.11 + 0.187, cz - 0.073 * Math.sin(0.5)], [0, 0.5, 0.3]));
       F.add(blob(0.12, 0.08, 0.1, rng), M.stone, mtx([cx + 0.17, gy, cz - 0.17]), [0.4, 0.38, 0.36]);
       K.colliders.push(F.col({ x: cx, z: cz, r: 0.3 }));
     }

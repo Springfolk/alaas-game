@@ -334,7 +334,10 @@ export function smithy(K, x, z, yaw) {
     eg.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(eg.attributes.position.count).fill(1), 1));
     hammer.add(head, haft, new THREE.Mesh(eg, M.fresh));
   }
-  const hamRest = { p: new THREE.Vector3(ax + 0.16, anvilY - 0.055, az + 0.12), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, yaw + 0.5, 0, 'YXZ')) };
+  // at rest it lies on its side across the stump top beside the anvil: the head on the wood, the haft's end out over the edge
+  const hamRest = { q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, yaw + 0.5, 0, 'YXZ')) };
+  { const d = new THREE.Vector3(0, 1, 0).applyQuaternion(hamRest.q), n = new THREE.Vector3(1, 0, 0).applyQuaternion(hamRest.q);
+    hamRest.p = new THREE.Vector3(ax, anvilY - 0.075 + 0.0195, az).addScaledVector(n, 0.125).addScaledVector(d, 0.03 - 0.3); }
   hammer.position.copy(hamRest.p); hammer.quaternion.copy(hamRest.q);
   hammer.userData.dynamic = true;
   K.group.add(hammer);
@@ -415,10 +418,20 @@ export function smithy(K, x, z, yaw) {
       H.k = Math.min(1, H.k + dt / (0.05 + 0.07 * H.top));
       H.up = H.top * (1 - H.k * H.k);
       if (H.k >= 1) { H.phase = 'rest'; H.t = 0; H.done?.(); }
-    } else if (H.phase === 'rest' && (H.t += dt) > 0.3) { H.phase = null; hammer.position.copy(hamRest.p); hammer.quaternion.copy(hamRest.q); }
+    } else if (H.phase === 'rest' && (H.t += dt) > 0.3) { H.phase = null; H.d = null; hammer.position.copy(hamRest.p); hammer.quaternion.copy(hamRest.q); }
     if (H.phase) {
-      hammer.position.set(ax - 0.02, anvilY + 0.02 + H.up * 0.32, az + 0.3);
-      hammer.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2 + 0.25 + H.up * 0.9, yaw + 0.1, 0, 'YXZ'));
+      // the blow comes from the player's side: the haft level and its face square on the blank at the bottom, swung
+      // up about the haft's end (head local: haft +Y, face +X)
+      if (!H.d) {
+        H.d = new THREE.Vector3(0, 0, -1);
+        if (c?.camera) { K.group.worldToLocal(_th.copy(c.camera.position)); H.d.set(ax - _th.x, 0, az - _th.z); if (H.d.lengthSq() < 1e-4) H.d.set(0, 0, -1); H.d.normalize(); }
+        const x = new THREE.Vector3(0, -1, 0), z = new THREE.Vector3().crossVectors(x, H.d);
+        H.q0 = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, H.d, z));
+        H.axis = new THREE.Vector3().crossVectors(H.d, _ty).normalize();
+        H.p0 = new THREE.Vector3(ax, anvilY + 0.0065 + 0.0525, az).addScaledVector(H.d, -0.3); // the face on the blank's top
+      }
+      hammer.position.copy(H.p0);
+      hammer.quaternion.setFromAxisAngle(H.axis, H.up * 1.1).multiply(H.q0);
     }
     for (const s of sparks) {
       if (!s.o.visible) continue;

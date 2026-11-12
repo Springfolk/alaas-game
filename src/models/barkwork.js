@@ -5,6 +5,7 @@
 // Local frame: HOME; it lies on the hide of yardlife's craft spot.
 import { pmat } from './yardlife/kit.js';
 import { yardMats } from './yardlife/mats.js';
+import { drawnHeight } from '../world/ground-data.js';
 
 const BASE = [0.2, 0.12], WALL = 0.07, UP = 1.36; // base (x, z), wall height, how far a wall is raised (rad)
 const AT = [0.42, -7.95, 0.25]; // on the craft spot's hide (yardlife PLACES.craft + its yaw)
@@ -13,7 +14,6 @@ const BERRIES = 42;
 export default async function build(ctx, placement) {
   const { THREE: T, terrain, rng } = ctx;
   const px = placement.x, pz = placement.z, py = placement.y;
-  const ground = (x, z) => terrain.height(px + x, pz + z) - py;
   const M = yardMats();
   const bark = pmat('canvas:birch', { scale: 0.5, back: 'birchIn', double: true, dirt: 0.4, tint: 0xecd3a6 }); // the craft spot's prepared bark
   const object = new T.Group();
@@ -78,7 +78,7 @@ export default async function build(ctx, placement) {
   berries.userData.show = (n) => { for (let i = 0; i < BERRIES; i++) berries.setMatrixAt(i, i < n ? full[i] : zero); berries.instanceMatrix.needsUpdate = true; };
   vessel.add(berries);
 
-  vessel.position.set(AT[0], ground(AT[0], AT[1]) + 0.045, AT[1]);
+  vessel.position.set(AT[0], Math.max(...[640, 512, 320].map((N) => drawnHeight(terrain, px + AT[0], pz + AT[1], N))) - py + 0.021, AT[1]); // on the hide (0.7–1.7 cm over the drawn ground)
   vessel.rotation.y = AT[2] + 0.5;
   vessel.userData.dynamic = true;
   object.add(vessel);

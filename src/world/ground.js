@@ -17,6 +17,7 @@ export async function buildGround(terrain) {
   const mesh = new THREE.Mesh(groundGeometry(fine), groundMaterial());
   mesh.receiveShadow = true;
   mesh.name = 'ground';
+  mesh.userData.N = sizes[0]; // the drawn grid (world.drawnAt)
   mesh.userData.tiles = tiles(mesh, 4);
   // a coarse copy (same material, so the same pipeline) the lake reflection draws instead (lake.js)
   const coarse = new THREE.Mesh(groundGeometry(rough), mesh.material);
