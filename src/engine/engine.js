@@ -261,8 +261,9 @@ export class Engine {
     c.updateMatrixWorld();
     const moving = moved(c.matrixWorld.elements, (s.prev ||= new Float64Array(16)));
     s.prev.set(c.matrixWorld.elements);
-    if (this.lazyKnob && moving && s.t < 0.125) return; // dynamic quality (pacing.js): ≤8/s while the view moves, a still view at once
-    let dirty = s.t > 2 || !s.list || moved(c.matrixWorld.elements, s.cam);
+    const viewed = !s.list || moved(c.matrixWorld.elements, s.cam);
+    if (this.lazyKnob && s.t < 0.125 && (moving || !viewed)) return; // dynamic quality (pacing.js): ≤8/s, a view come to rest at once
+    let dirty = s.t > 2 || viewed;
     for (let i = 0; !dirty && i < s.list.length; i++) {
       const w = s.list[i], o = w.o;
       dirty = o.castShadow !== w.c || o.layers.mask !== w.l || shown(o) !== w.v || shape(o) !== w.g || moved(o.matrixWorld.elements, w.m);
