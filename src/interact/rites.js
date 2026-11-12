@@ -1,6 +1,6 @@
 // Small things with a place of their own that are taken into the hands, used with the do input and put back
-// (they never lie on the ground: `Hands.homed`): the guest's choron in the uraha (one tap: filled, a few drops for
-// the fire, a sip, back on its board), the cup of milk on the lake's offering stone (one tap: carried out over the
+// (they never lie on the ground: `Hands.homed`): the guest's choron in the uraha (one tap: filled, drops for the
+// fire, the earth and the sky, a sip, back on its board), the cup of milk on the lake's offering stone (one tap: carried out over the
 // water, poured, set back), the khomus on its peg in the balagan (a tap plucks it, taps in rhythm play on). The respectful gestures that
 // were there before, now done by the player's own hands and look; nothing here can go wrong (docs/interactions.md).
 // Props and their own animations stay in the models (`userData.guest`, `.offering`, `.khomus`).
@@ -41,39 +41,45 @@ export class Choron extends Homed {
     this.parts = parts;
     this.it = game.world.interactables.find((i) => i.guest);
     this.thing.it = this.it;
-    this.sprinkleAct = { id: 'choron', label: L('ыс', 'sprinkle', 'окропить'), run: () => this.use(true) };
-    this.drinkAct = { id: 'drink', label: L('ис', 'drink', 'выпить'), run: () => this.use(false) };
-    this.fillAct = { id: 'fill-choron', label: L('кымыста кут', 'kymys: drops for the fire, a sip', 'кумыс: капли огню, глоток'), run: () => this.rite() };
+    this.fillAct = { id: 'fill-choron', freeze: true, label: L('кымыста кут', 'kymys: drops for the fire, a sip', 'кумыс: капли огню, глоток'), run: () => this.rite() };
     this.tilt = new THREE.Quaternion(); this.off = V(0, 0, 0); // the held cup's lean and shift (world lean, camera shift)
     this.P = { p: V(0, 0, 0), q: new THREE.Quaternion(), world: true };
   }
   actFor(it) {
-    if (this.held) return this.busy ? null : it.entry === 'choron' ? this.backAct : this.useAct(); // with the choron in the hands they do nothing else
+    if (this.held) return null; // only while its rite plays
     if (it.guest) return this.hands.held || this.busy ? null : this.fillAct;
     return undefined;
   }
-  idleAct() { return this.held && !this.busy ? this.useAct() : null; }
-  // aimed at the fire, down at the earth or up at the sky: drops for it; else a sip
-  useAct() {
-    const g = this.game, cam = g.engine.camera, pitch = g.player.pitch;
-    const h = this.parts.hearth(), to = _w.copy(h).sub(cam.position), d = to.length();
-    const fire = d < 7 && to.normalize().dot(cam.getWorldDirection(_v)) > 0.86;
-    return fire || pitch < -0.6 || pitch > 0.5 ? this.sprinkleAct : this.drinkAct;
-  }
-  // One tap, the guest's whole part: the ladle fills it, it comes into the hands, a few drops for the fire, a sip,
-  // and it goes back onto its board.
+  idleAct() { return null; }
+  // One tap, the guest's whole part (the player held still, the view led): the ladle fills it, it comes into the
+  // hands, drops for the fire, for the earth and for the sky, a sip, and it goes back onto its board.
   async rite() {
     if (this.busy || this.hands.held) return;
     await this.fill();
     if (!this.held) return;
     this.busy = true;
-    await this.until(((t) => (dt) => (t += dt) > 0.5)(0));
-    const cam = this.game.engine.camera, dir = _w.copy(this.parts.hearth()).sub(cam.position).normalize().clone();
-    await this.sprinkle(dir);
-    await this.until(((t) => (dt) => (t += dt) > 0.4)(0));
+    const pl = this.game.player, h = this.parts.hearth(), eye = this.game.engine.camera.position;
+    const dx = h.x - pl.pos.x, dz = h.z - pl.pos.z, yaw = Math.atan2(-dx, -dz);
+    await this.look(yaw, clamp(Math.atan2(h.y - eye.y, Math.hypot(dx, dz)), -0.6, -0.1), 1.0); // the hearth mid-view, over the cup
+    await this.drops('fire');
+    await this.look(yaw, -0.7, 0.9);
+    await this.drops('earth');
+    await this.look(yaw, 0.6, 1.1);
+    await this.drops('sky');
+    await this.look(yaw, -0.05, 0.9);
     await this.drink();
     this.busy = false;
     await this.hands.goHome(this.thing);
+  }
+  // the view eased to (yaw, pitch) over `dur` s
+  look(yaw, pitch, dur) {
+    const pl = this.game.player, y0 = pl.yaw, p0 = pl.pitch, dy = Math.atan2(Math.sin(yaw - y0), Math.cos(yaw - y0));
+    let k = 0;
+    return this.until((dt) => {
+      k = Math.min(1, k + dt / dur); const e = ease(k);
+      pl.yaw = pl.aimYaw = y0 + dy * e; pl.pitch = pl.aimPitch = p0 + (pitch - p0) * e;
+      return k >= 1;
+    });
   }
   // the ladle fills it from the симиир, then it is in the hands
   async fill() {
@@ -90,29 +96,26 @@ export class Choron extends Homed {
     P.q.setFromAxisAngle(Y, this.game.player.yaw).premultiply(this.tilt);
     return P;
   }
-  async use(sprinkle) {
-    if (!this.held || this.busy) return;
-    const kl = this.parts.kymys;
-    this.busy = true;
-    if (!sprinkle) await this.drink(); else if (kl.vol > kl.volAt(this.parts.KYMYS.left) * 1.001) await this.sprinkle();
-    this.busy = false;
-  }
-  // The cup tipped a little towards the look: a few drops go that way, sprinkled (ыс). Towards the fire, it answers.
-  async sprinkle(dir = this.game.engine.camera.getWorldDirection(new THREE.Vector3())) {
-    const g = this.game, cam = g.engine.camera, P = this.parts, kl = P.kymys;
-    const flat = _v.set(dir.x, 0, dir.z).normalize().clone();
-    const axis = new THREE.Vector3().crossVectors(Y, flat).normalize(), lean = 0.3 + 0.2 * (1 - Math.abs(dir.y));
-    const rise = clamp(dir.y, -0.6, 0.9) * 0.1;
+  // The cup tipped slowly towards the look until a few drops leave its far rim (ыс), held, and righted. For the fire
+  // they are set down on it (the pinch's path, yard/offer.js) and it answers; for the earth they fall from the rim;
+  // for the sky the cup is raised and they rise a hand's breadth before falling. Never a throw.
+  async drops(to) {
+    const g = this.game, cam = g.engine.camera, P = this.parts, kl = P.kymys, hero = P.hero;
+    const dir = cam.getWorldDirection(new THREE.Vector3()), flat = V(dir.x, 0, dir.z).normalize();
+    const axis = new THREE.Vector3().crossVectors(Y, flat).normalize();
+    const { lean, lift } = { fire: { lean: 0.45, lift: 0 }, earth: { lean: 0.6, lift: -0.04 }, sky: { lean: 0.35, lift: 0.09 } }[to];
     let k = 0;
-    await this.until((dt) => { k = Math.min(1, k + dt / 0.16); const e = ease(k); this.tilt.setFromAxisAngle(axis, lean * e); this.off.set(0, rise * e, -0.07 * e); return k >= 1; });
-    // from the rim nearest the look
-    const hero = P.hero, lip = flat.clone().multiplyScalar(kl.rTop).addScaledVector(Y, kl.top).applyQuaternion(this.tilt).add(hero.position);
-    P.sprinkle(lip, _w.copy(dir).addScaledVector(Y, 0.35).normalize());
+    const set = (e) => { this.tilt.setFromAxisAngle(axis, lean * e); this.off.set(0, lift * e, -0.05 * e); };
+    await this.until((dt) => { k = Math.min(1, k + dt / 0.7); set(ease(k)); return k >= 1; });
+    const lip = flat.clone().multiplyScalar(kl.rTop).addScaledVector(Y, kl.top).applyQuaternion(this.tilt).add(hero.position);
     kl.vol *= 0.985;
     g.audio?.play('pour', hero.position);
-    const hearth = P.hearth(), to = _w.copy(hearth).sub(cam.position), d = to.length();
-    if (d < 7 && to.normalize().dot(dir) > 0.86) setTimeout(() => P.flare(g), 300 + d * 90); // the drops reach the fire
-    await this.until((dt) => { k = Math.max(0, k - dt / 0.3); const e = ease(k); this.tilt.setFromAxisAngle(axis, lean * e); this.off.set(0, rise * e, -0.07 * e); return k <= 0; });
+    if (to === 'fire') { await P.offer(lip, 3); P.flare(g); }
+    else {
+      P.sprinkle(lip, to === 'sky' ? flat.clone().multiplyScalar(0.12).addScaledVector(Y, 1.5) : flat.clone().multiplyScalar(0.2).addScaledVector(Y, -0.05), 6);
+      await this.until(((t) => (dt) => (t += dt) > 0.6)(0));
+    }
+    await this.until((dt) => { k = Math.max(0, k - dt / 0.6); set(ease(k)); return k <= 0; });
     this.tilt.identity(); this.off.set(0, 0, 0);
   }
   // A sip: the near rim comes to the lips, the choron tips towards the face and comes down again; what it held at

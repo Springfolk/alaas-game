@@ -19,7 +19,7 @@ export default async function build(ctx, placement) {
 }
 ```
 - `entry` = an id in `src/data/entries.json`. `target` = the Object3D looked at (raycast ≤3.4 m; among hits within 0.6 m of the first the smallest target wins, so a proxy inside a bigger one takes `side: BackSide` to answer from inside only, as the uraha lining); `zone` = a circle the player stands in.
-- `act` = `{ id, label: { sah, en }, once?: true, freeze?: true, run: async (game, it) => {} }`, run when the do input goes down on the thing (a lasting motion reads `game.input.doing`). `freeze` holds the player: only for acts that move the view or ask a choice. Hooks: `docs/interactions.md`. Sounds: `game.audio?.play(name, pos)`.
+- `act` = `{ id, label: { sah, en }, once?: true, freeze?: true, run: async (game, it) => {} }`, run when the do input goes down on the thing (a lasting motion reads `game.input.doing`). `freeze` holds the player: only for acts that move the view. Hooks: `docs/interactions.md`. Sounds: `game.audio?.play(name, pos)`.
 - Collider `y0`/`y1` compare with the player's world feet height: add `placement.y`.
 - Indoors: raise `game.engine.exposureTarget` (base 0.62) while the player is inside, back to 0.62 outside.
 - Materials: `pbr(id, { repeat, tint, normalScale })` from `public/assets/tex/<id>/`; new sets go in `tools/fetch-assets.mjs`, then `npm run fetch-assets`. TSL procedural detail welcome. Real-world metres.

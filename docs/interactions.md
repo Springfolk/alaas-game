@@ -12,7 +12,7 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 - The prompt (`docs/ui.md`): the thing's name; under it, apart, the blue lens + E when it has a card and the green plate with the act's own tool (`actIcon`, `src/ui/icons.js`), its verb and the mouse glyph. The dot becomes a green ring when the hands can do something; with nothing in view the plate still shows what the carried thing would do. While carrying: a put-down hint low on the right.
 - An act never opens a card; doing a thing adds its entry to the journal.
 - One thing in the hands at a time (or an armful of billets); nothing goes into the lake.
-- Acts run while you walk and look; only `act.freeze` holds the player (the birch bow, the 0.9 s turn as you sit) and a framed work view holds the view.
+- Acts run while you walk and look; only `act.freeze` holds the player (the birch bow, the choron's rite, the 0.9 s turn as you sit) and a framed work view holds the view.
 
 ## Framed work view (`src/interact/framed.js`, `Stage.work` in `src/ui/stage.js`)
 - A watched job or a job with a tap per step: `game.framed.open({ c, r, yaw, el, fov, act? })` glides the view (the stage's glide, 0.55 s; back 0.32 s) to look at `c` from (yaw, el), far enough that `r` fits the narrower side of the screen (portrait: field of view ×1.45, `r` ×0.75: as near as on a wide screen); never through a thin wall, never under the ground. `aim(v)` moves it on, eased.
@@ -32,7 +32,7 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 
 ## Hooks
 - Interactable: `off` (not focusable), `take`, `berries`, `sit`, `fireplace: { pos(), upright, fuel(), stir(k) }`. Things with a home (`hands.homed`): `guest` (choron), `offering` (lake stone), `khomus` flags; parts in the model's `userData`.
-- `game.interact.actFor(it)` overrides `it.act` while carrying; `idleAct()` = the do input with nothing in focus; `putAct()` = put down. `game.doReady` / `readReady` / `putReady` light the touch buttons; `game.choosing` = a `choose()` strip is up (touch hides its controls).
+- `game.interact.actFor(it)` overrides `it.act` while carrying; `idleAct()` = the do input with nothing in focus; `putAct()` = put down. `game.doReady` / `readReady` / `putReady` light the touch buttons.
 - Aim (`pickFocus`): among hits within 0.6 m behind the first, the smallest thing wins.
 - Aim, near misses (things ≤ 1.2 m radius): with nothing hit, a thing whose centre the look passes within 0.8 × its radius (≥ 0.3 m); smaller than what was hit and in front of it, within half its radius (≥ 0.12 m).
 - Work places: `it.around = { at(), r }` with `it.live()`: empty hands within `r` get its act (the forge).
@@ -41,7 +41,7 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 - A job's movable parts are scene children marked `userData.dynamic`; after moving one, clear its `userData.sphere` (the look-at cache).
 
 ## Hints (`src/interact/hints.js` `next()`, `game.hints`)
-No sentence and no mark says the next step: light catches the thing, as in a photograph. One rule table, read from the jobs' own state; nothing while acting, sitting, choosing or in a framed view; it stops once the step is done. Sound only accompanies.
+No sentence and no mark says the next step: light catches the thing, as in a photograph. One rule table, read from the jobs' own state; nothing while acting, sitting or in a framed view; it stops once the step is done. Sound only accompanies.
 
 | In the hands / state | The world's hint |
 |---|---|

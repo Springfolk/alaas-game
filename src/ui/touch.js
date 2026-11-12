@@ -206,12 +206,12 @@ export class TouchControls {
     }
   }
 
-  // Which controls show: none on the title, in pause, over a card or the journal (their own buttons) or while an
-  // act asks for a choice (its strips are tapped); otherwise the play set.
+  // Which controls show: none on the title, in pause, over a card or the journal (their own buttons); otherwise the
+  // play set.
   sync() {
     const g = this.game;
     const mode = this.show ? this.show : !g.ready || g.title || (!this.input.touchLive && !g.ui?.open) ? 'off' // (show: src/ui/prewarm.js)
-      : g.ui?.open ? 'ui' : g.choosing ? 'choice' : 'play';
+      : g.ui?.open ? 'ui' : 'play';
     if (mode !== this.root.dataset.mode) {
       this.root.dataset.mode = mode;
       if (mode !== 'play') { this.moveId = this.lookId = this.actId = null; this.input.setDo(false); this.input.stickX = this.input.stickY = 0; this.stickHome(); }

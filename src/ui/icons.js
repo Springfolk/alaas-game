@@ -25,7 +25,6 @@ const P = {
   ribbon: 'M12 3v5M12 8a1.6 1.6 0 1 0 0 3.2A1.6 1.6 0 0 0 12 8zM11 11c-2.5 2-3.3 5.5-2.5 10M13 11c2.5 2 3.3 5.5 2.5 10',
   tree: 'M12 21v-8M12 13.5a5.3 5.3 0 1 0 0-10.6 5.3 5.3 0 0 0 0 10.6zM9 21h6',
   ladle: 'M6 3l6.5 10M9 13h11a5.5 5.5 0 0 1-11 0z',
-  cup: 'M7 4h10c0 5.5-2 8.5-5 8.5S7 9.5 7 4zM12 12.5V17M8 20.5l4-3.5 4 3.5',
   khomus: 'M9.2 4.5a4 4 0 1 0 5.6 0M10.3 10.3V20M13.7 10.3V20M12 6.5V21l2.2 1',
   trap: 'M3.5 12L18 5.5v13zM18 5.5c2.3 2 2.3 11 0 13M9 9.5v5M13.5 7.5v9',
   fish: 'M3 12c3-4.3 9-5.3 13-1l4.5-3.3v8.6L16 13c-4 4.3-10 3.3-13-1zM7.5 11.2v.01',
@@ -68,7 +67,7 @@ export const icon = (k, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" vie
 const OF = {
   take: 'hand', 'take-log': 'log', down: 'put', back: 'back', stack: 'stack', 'stack-all': 'stack', fill: 'pail', pour: 'drop', lay: 'flame',
   feed: 'flame', pick: 'berry', sit: 'sit', stand: 'stand', door: 'door', gate: 'gate', lid: 'lid', ribbon: 'ribbon',
-  choron: 'cup', drink: 'cup', 'fill-choron': 'ladle', milk: 'drop', play: 'khomus',
+  'fill-choron': 'ladle', milk: 'drop', play: 'khomus',
   strike: 'axe', 'strike-again': 'axe', 'free-axe': 'up', 'stick-axe': 'axe', 'place-round': 'round', 'stand-half': 'round',
   'set-tuu': 'trap', 'lift-tuu': 'up', mow: 'scythe', 'hang-scythe': 'back',
   'lay-bark': 'put', 'make-bark': 'fold', split: 'axe', strike: 'axe', forge: 'hammer', churn: 'churn',

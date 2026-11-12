@@ -171,18 +171,19 @@ export default async function build(ctx) {
     await F.close();
   };
 
-  // milk-white drops for the sprinkling
+  // milk-white drops: the pinch for the fire, the choron's drops
   const drops = [];
   {
     const g = new THREE.IcosahedronGeometry(0.008, 1);
     const m = new THREE.MeshStandardNodeMaterial({ color: 0xece6d6, roughness: 0.25 });
     for (let i = 0; i < 14; i++) { const d = new THREE.Mesh(g, m); d.visible = false; d.userData.noShadow = true; root.add(d); drops.push({ o: d, v: new THREE.Vector3(), t: 0 }); }
   }
-  const sprinkle = (from, dir) => {
-    for (const d of drops) {
-      d.o.position.copy(from);
-      d.v.copy(dir).multiplyScalar(0.9 + Math.random() * 0.4).add(new THREE.Vector3((Math.random() - 0.5) * 0.4, Math.random() * 0.4, (Math.random() - 0.5) * 0.4));
-      d.t = 1.4; d.o.visible = true;
+  // n drops slip from the rim with velocity `vel` (m/s) and fall
+  const sprinkle = (from, vel, n = 5) => {
+    for (const d of drops.slice(-n)) {
+      d.o.position.copy(from).add(new THREE.Vector3((Math.random() - 0.5) * 0.02, 0, (Math.random() - 0.5) * 0.02));
+      d.v.copy(vel).multiplyScalar(0.8 + Math.random() * 0.4).add(new THREE.Vector3((Math.random() - 0.5) * 0.12, Math.random() * 0.1, (Math.random() - 0.5) * 0.12));
+      d.t = 1.6; d.o.visible = true; d.o.scale.setScalar(1.6);
     }
   };
   // An offering put into the fire: n drops come up from low by the player and are set down slowly on the embers
@@ -219,7 +220,8 @@ export default async function build(ctx) {
   ky.hero.userData.dynamic = true; ky.ladle.userData.dynamic = true;
   root.userData.guest = {
     hero: ky.hero, kymys: ky.heroKymys, KYMYS, fill: fillChoron,
-    sprinkle: (fromW, dirW) => sprinkle(local(fromW), dirW.clone().applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()).invert())),
+    sprinkle: (fromW, velW, n) => sprinkle(local(fromW), velW.clone().applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()).invert()), n),
+    offer: (fromW, n) => offer(fromW, fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top + 0.05, 0)), n), // drops set down on the fire
     hearth: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)),
     flare: (game) => { sound(game, 'fire-feed', fire.group); fire.flare(); },
     inside: (p) => { const l = root.worldToLocal(p.clone()); return Math.hypot(l.x, l.z) < R0 - 0.2; },
