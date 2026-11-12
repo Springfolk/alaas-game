@@ -39,7 +39,7 @@ export class Hints {
     this.split = jobs.find((j) => j.axe); this.fish = jobs.find((j) => j.trap); this.hays = jobs.filter((j) => j.scythe); this.tuos = jobs.find((j) => j.rest && j.thing);
     this.fires = its.filter((i) => i.fireplace);
     this.heap = its.find((i) => i.rounds); this.tymtay = its.find((i) => i.tymtay); this.stone = its.find((i) => i.offering);
-    this.blank = its.find((i) => i.target?.userData.forge); this.forge = its.find((i) => i.act?.id === 'bellows');
+    this.blank = its.find((i) => i.target?.userData.forge); this.forge = its.find((i) => i.act?.id === 'forge');
     this.patches = its.filter((i) => i.berries !== undefined); this.pile = its.find((i) => i.take === 'woodpile');
     const home = this.heap ? this.centre(this.heap) : new THREE.Vector3();
     // the pool, made before the warm-up (layer 1: not in the lake mirror or the shadows); in play only uniforms,
@@ -97,33 +97,13 @@ export class Hints {
   next() {
     const g = this.game, h = this.hands, held = h?.held, P = g.player.pos;
     if (!h || g.acting || g.interact.seat.on || g.choosing) return null;
-    for (const r of g.interact.rites) {
-      if (!r.held) continue;
-      if (r.fillAct) return this.fireHint(this.hearth()); // the guest's choron: the first drops are the fire's
-      if (r.pourAct) return r.milk > 0 ? { kind: 'ripple', at: this.shore(this.centre(this.stone)) } : null; // the lake's milk: to the water
-      return null;
-    }
+    if (g.interact.rites.some((r) => r.held)) return null; // (the khomus)
     const S = this.split;
-    if (S && !S.sw) {
-      const c = S.onBlock;
-      if (S.axeHeld) {
-        if (c) { if (c.state === 'block') return this.sheen(c.pieces[0].obj); } else {
-          const rest = this.nearest(S.chunks.filter((x) => x.state === 'rest'), (x) => x.pos);
-          if (rest) return this.sheen(rest.pieces[0].obj); // a half lies there: back onto the block
-          if (S.freeRound() !== undefined) return this.sheen(this.heap.target);
-          const loose = this.nearest(S.pieces.filter((p) => p.state === 'ground'), (p) => p.obj.position); // every round is in billets: carry them off
-          if (loose) return this.sheen(loose.obj);
-        }
-      } else if (!held && P.distanceTo(S.block) < 8) {
-        if (c?.state === 'block') return { kind: 'glint', at: S.axe.obj.localToWorld(new THREE.Vector3(0.02, 0.66, 0)) }; // a round stands ready: the sun on the axe's edge
-        const rest = !c && this.nearest(S.chunks.filter((x) => x.state === 'rest'), (x) => x.pos);
-        if (rest) return this.sheen(rest.pieces[0].obj);
-      }
-    }
+    if (S && !S.working && !held && P.distanceTo(S.block) < 8 && (S.restHalf() || S.freeRound() !== undefined)) return { kind: 'glint', at: S.axe.obj.localToWorld(new THREE.Vector3(0.02, 0.66, 0)) }; // wood waits: the sun on the axe's edge
     const F = this.fish;
-    if (F && !F.busy) {
-      if (F.held) return F.n > 0 ? this.sheen(this.tymtay.target) : { kind: 'ripple', at: this.wet(F.gap.clone().add(_v.set(0.5, 0, 0))), lap: true }; // fish rising where the trap goes
-      if (F.state === 'set' && F.n >= 3 && !held && P.distanceTo(F.trap.obj.position) < 45) return { kind: 'splash', at: this.wet(F.trap.obj.position.clone()), lap: true }; // the catch thrashing in the trap
+    if (F && !F.busy && !held) {
+      if (F.state === 'shore' && P.distanceTo(F.gap) < 12) return { kind: 'ripple', at: this.wet(F.gap.clone().add(_v.set(0.5, 0, 0))), lap: true }; // fish rising where the trap goes
+      if (F.state === 'set' && F.n >= 3 && P.distanceTo(F.trap.obj.position) < 45) return { kind: 'splash', at: this.wet(F.trap.obj.position.clone()), lap: true }; // the catch thrashing in the trap
     }
     const H = this.hays.find((h) => h.held);
     if (H?.held && !H.sw) {
@@ -133,18 +113,16 @@ export class Hints {
     }
     const T = this.tuos;
     if (T && !T.busy) {
-      if (T.held && !T.made) return T.warm > 0 ? null : this.fireHint(this.hearth()); // soft: it is folded in the hands, the bark shows it
+      if (T.held && !T.made) return this.fireHint(this.hearth()); // made by a fire
       if (T.held && T.made) { // a тордуйа in the hands: the nearest ripe berries
         const full = this.nearest(this.patches.filter((i) => (g.interact.patches.get(i.berries)?.n ?? 1) > 0), (i) => this.centre(i));
         const at = full && this.centre(full);
         return at && at.distanceTo(P) < 80 ? { kind: 'berries', obj: full.target, at } : null;
       }
-      if (!held && !T.made && T.onHide && T.warm > 0 && P.distanceTo(T.rest.p) < 20) return this.sheen(T.thing.obj);
     }
     const W = this.blank?.target.userData.forge;
     if (W && W.at !== 'rest' && !held && this.forge && P.distanceTo(this.centre(this.forge)) < 14) {
-      if (W.fly || W.busy || W.at === 'tub') return null;
-      return this.blank.live()?.id !== 'bellows' ? { kind: 'ember', at: this.blank.target.getWorldPosition(new THREE.Vector3()) } : this.sheen(this.forge.target); // the iron spits when it is ready for the hands, else the bellows
+      return W.heat > 0.3 ? { kind: 'ember', at: this.blank.target.getWorldPosition(new THREE.Vector3()) } : this.sheen(this.forge.target); // a knife begun: the iron spits while it is hot, else the bellows
     }
     if (held?.kind === 'log') {
       const pile = h.pile.getWorldPosition(new THREE.Vector3()), fire = this.hearth(), fp = fire && (fire.fireplace.pos?.() || this.centre(fire));

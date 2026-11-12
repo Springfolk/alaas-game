@@ -9,7 +9,7 @@ import { makeTree } from '../nature/trees/gen.js';
 import { barkMaterial, leafMaterial, U } from '../nature/trees/materials.js';
 import { tube, merge, tris } from './yard/geo.js';
 import { rope, hair, cloth, plain } from './yard/mat.js';
-import { tuft, ribbon, choose, tween, ease, setColor, noSway } from './yard/bits.js';
+import { tuft, ribbon, tween, ease, setColor, noSway } from './yard/bits.js';
 import { section } from '../load/geocache.js';
 
 const RIBBONS = {
@@ -279,7 +279,7 @@ export default async function build(ctx, placement) {
   const trunkTarget = new THREE.Group(); trunkTarget.name = 'sacred-birch-target';
   object.remove(bark); trunkTarget.add(bark); object.add(trunkTarget);
 
-  const doneKey = 'sacred-birch:ribbon';
+
   const greet = {
     id: 'ribbon', once: true, freeze: true, // the bow moves the view
     label: { sah: 'эҕэрдэлээ, лиэнтэ баай', en: 'greet the tree and tie a ribbon', ru: 'поприветствовать дерево и повязать ленточку' },
@@ -301,9 +301,7 @@ export default async function build(ctx, placement) {
           requestAnimationFrame(f);
         });
       }
-      const pick = await choose(game, { sah: 'Ханнык өҥнөөх лиэнтэни баайаҕын?', en: 'Which ribbon will you tie?', ru: 'Какую ленточку повязать?' },
-        Object.entries(RIBBONS).map(([id, r]) => ({ id, label: r.label, swatch: r.swatch })));
-      if (!pick) { setTimeout(() => { game?.done?.delete(doneKey); game?.persist?.(); }, 0); return; }
+      const pick = 'white'; // one tap ties a white ribbon, the colour of the aiyy
       paint(RIBBONS[pick].c);
       mine.visible = true;
       game?.audio?.play('ribbon', object.localToWorld(mineAt.clone()));
