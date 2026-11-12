@@ -61,21 +61,26 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
   // fire: an ember bed, upright split billets, flame cards, a flickering light
   const F = [c0[0] + sw[0] * 0.12, h + 0.01, c0[1] + sw[1] * 0.12];
   M.fireAt.value.set(F[0], F[1], F[2]);
-  section(() => {
+  const angles = section(() => { // returns the billets' bearings round F (a laid billet leans in between two: src/interact/hands.js)
+    const out = [];
     B.add(M.embers, sheet(16, 16, (u, v) => {
       const a = u * Math.PI * 2, r = v * (winter ? 0.42 : 0.36);
       return [F[0] + Math.cos(a) * r, F[1] + (1 - v) * 0.05 + 0.025 * fbm2(Math.cos(a) * r * 10, Math.sin(a) * r * 10, 8), F[2] + Math.sin(a) * r];
     }, { face: () => [0, 1, 0] }));
     const billets = winter ? 2 : 5;
     for (let i = 0; i < billets; i++) {
-      const a = (i / billets) * Math.PI * 2 + rng();
+      const a = (i / billets) * Math.PI * 2 + rng(); out.push(a);
       const bx = F[0] + Math.cos(a) * 0.17, bz = F[2] + Math.sin(a) * 0.17;
       const tx = F[0] + ne[0] * 0.06 + Math.cos(a) * 0.03, tz = F[2] + ne[1] * 0.06 + Math.sin(a) * 0.03;
       if (winter) B.add(M.char, log([bx, h + 0.04, bz], [bx + Math.cos(a) * 0.35, h + 0.06, bz + Math.sin(a) * 0.35], 0.045, 0.035, rng, { caps: true, seg: 6 }), { color: [1, 1, 1] });
       else B.add(M.char, log([bx, h + 0.02, bz], [tx, h + 0.55 + rng() * 0.12, tz], 0.05, 0.035, rng, { caps: true, seg: 6, knob: 0.15 }), { color: [1, 1, 1] });
     }
+    return out;
   });
-  const fire = { pos: new THREE.Vector3(F[0], F[1] + 0.35, F[2]), cards: null, light: null };
+  // the gaps between them that face the mouth (a billet laid there stands in the open, not against the clay)
+  const gaps = angles.map((a) => a % (Math.PI * 2)).sort((x, y) => x - y).map((a, i, A) => (a + (i + 1 < A.length ? A[i + 1] : A[0] + Math.PI * 2)) / 2)
+    .sort((x, y) => Math.abs(Math.atan2(Math.sin(x - mouthTh), Math.cos(x - mouthTh))) - Math.abs(Math.atan2(Math.sin(y - mouthTh), Math.cos(y - mouthTh)))).slice(0, 2);
+  const fire = { pos: new THREE.Vector3(F[0], F[1] + 0.35, F[2]), gaps, cards: null, light: null };
   if (!winter) {
     const cards = [];
     for (let i = 0; i < 5; i++) {

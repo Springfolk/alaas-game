@@ -39,6 +39,7 @@ export function buildFire(rng, { holeY, holeR, coneR }) {
   }
 
   // ---- burning billets leaning together, charred with glowing cracks towards the fire
+  const angles = []; // their bearings (group space): a laid billet leans in between two (src/interact/hands.js)
   {
     const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.9, metalness: 0 });
     const p = positionLocal;
@@ -53,7 +54,8 @@ export function buildFire(rng, { holeY, holeR, coneR }) {
     m.normalNode = bump(w.mul(0.003).mul(charK).add(n.mul(0.002)));
     const logs = [];
     for (let k = 0; k < 5; k++) {
-      const a = (k / 5) * TAU + rng() * 0.4, len = 0.42 + rng() * 0.12, rr = 0.03 + rng() * 0.012;
+      const a = (k / 5) * TAU + rng() * 0.4; angles.push(a);
+      const len = 0.42 + rng() * 0.12, rr = 0.03 + rng() * 0.012;
       const foot = new THREE.Vector3(Math.cos(a) * 0.3, y0 + 0.02, Math.sin(a) * 0.3);
       const tip = new THREE.Vector3(Math.cos(a) * 0.04, y0 + 0.2 + rng() * 0.05, Math.sin(a) * 0.04);
       const dir = tip.clone().sub(foot).normalize();
@@ -222,5 +224,6 @@ export function buildFire(rng, { holeY, holeR, coneR }) {
     sg.attributes.position.needsUpdate = true;
     sg.attributes.aP.needsUpdate = true;
   }
-  return { group, update, light, flare: () => { flare = 1; }, stir: (k) => { flare = Math.max(flare, k); }, fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); } };
+  const gaps = angles.map((a, k) => { const b = angles[(k + 1) % angles.length] + (k === angles.length - 1 ? TAU : 0); return (a + b) / 2; });
+  return { group, update, light, gaps, flare: () => { flare = 1; }, stir: (k) => { flare = Math.max(flare, k); }, fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); } };
 }

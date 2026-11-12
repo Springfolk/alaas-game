@@ -61,7 +61,7 @@ export class Tuos {
       if (this.made || !this.onHide) return this.hands.takeAct;
       return this.warm > 0 ? this.foldOf() : this.hands.takeAct; // stiff: taken up (to the fire)
     }
-    if (this.held && !this.made && this.warm <= 0 && it.fireplace && !this.busy) return this.warmAct;
+    if (this.held && !this.made && it.fireplace) return this.busy ? this.noAct : this.warm > 0 ? this.foldOf() : this.warmAct; // (the sheet in the hands: never the fire's own feeding)
     if (this.held && !this.made && it.entry === 'birch-bark' && !this.busy && this.game.player.pos.distanceTo(this.rest.p) < 4) return this.layAct; // the craft spot
     if (it.entry === 'birch-bark' && !this.hands.held && this.onHide && it !== this.thing.it) { const a = this.actFor(this.thing.it); return a === this.hands.takeAct ? (this.takeSheet ||= { ...a, run: (game) => a.run(game, this.thing.it) }) : a; } // the craft spot: what the sheet on it would do
     return undefined;
