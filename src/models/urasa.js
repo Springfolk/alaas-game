@@ -78,7 +78,10 @@ export default async function build(ctx) {
   // ---- kymys corner and fire
   const ky = buildKymys(rng, M);
   root.add(ky.group);
-  const fire = buildFire(rng, { holeY, holeR: hole.r, coneR });
+  // the fire asks the cone's radius for every puff every frame: from a table (2 cm steps) instead of the profile's search
+  const coneTab = Float32Array.from({ length: Math.ceil(holeY / 0.02) + 2 }, (_, i) => coneR(i * 0.02));
+  const coneRFast = (y) => { const f = Math.min(coneTab.length - 1.001, Math.max(0, y / 0.02)), i = f | 0; return coneTab[i] + (coneTab[i + 1] - coneTab[i]) * (f - i); };
+  const fire = buildFire(rng, { holeY, holeR: hole.r, coneR: coneRFast });
   root.add(fire.group);
   root.traverse((o) => { if (o.isMesh) o.castShadow = !o.userData.noShadow && !o.material.transparent; });
   const BOUNCE = 0.13, bounce = new THREE.PointLight(0xffc9a0, 0, 7.5, 1);
