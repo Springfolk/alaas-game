@@ -211,7 +211,7 @@ export default async function build(ctx) {
     {
       entry: 'uot-ichchite', target: fireProxy,
       // src/interact lays carried firewood here
-      fireplace: { pos: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), upright: false, fuel: fire.fuel, stir: fire.stir },
+      fireplace: { pos: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), top: () => fire.group.localToWorld(new THREE.Vector3(0, holeY + 0.6, 0)), upright: false, fuel: fire.fuel, stir: fire.stir },
       act: {
         // a pinch from the hand: it flies to the hearth, and the fire takes it
         id: 'feed', label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
