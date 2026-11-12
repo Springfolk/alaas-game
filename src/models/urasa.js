@@ -207,9 +207,10 @@ export default async function build(ctx) {
     root.attach(ladle);
     const level = rootQi.clone().multiply(ky.sackRoot.getWorldQuaternion(new THREE.Quaternion())); // bowl upright, handle along the wall
     await flyTo(ladle, ladle.position.clone().add(new THREE.Vector3(0, 0.3, 0)), 0.4);
-    await flyTo(ladle, at.clone().add(new THREE.Vector3(-0.08, 0.37, 0)), 0.55, level);
+    // the bowl over the choron, a little to the side it tips to; poured by rolling it about the handle, which stays level
+    await flyTo(ladle, at.clone().add(new THREE.Vector3(0, 0.36, -0.03).applyQuaternion(level)), 0.55, level);
     sound(game, 'pour', hero);
-    const q1 = ladle.quaternion.clone(), q2 = q1.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.9));
+    const q1 = ladle.quaternion.clone(), q2 = q1.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.15));
     await tween(0.35, (k) => ladle.quaternion.slerpQuaternions(q1, q2, ease(k)));
     const v0 = kl.vol, v1 = Math.max(v0, kl.volAt(KYMYS.full));
     await tween(0.6, (k) => { kl.vol = v0 + (v1 - v0) * ease(k); });   // the choron fills

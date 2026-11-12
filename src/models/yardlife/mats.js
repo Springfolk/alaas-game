@@ -32,7 +32,7 @@ export function yardMats() {
     hide: pmat('fabric_leather_02', { scale: 0.6, tint: 0x8a6a4c, dirt: 0.4, double: true }),
     iron: pmat('rusty_metal_02', { scale: 0.4, tint: 0x4a4440, metal: 0.55, rough: 0.9, dirt: 0.2 }),
     soot: pmat('rusty_metal_02', { scale: 0.5, tint: 0x1e1c1b, metal: 0.3, rough: 1, dirt: 0 }),
-    tin: pmat('rusty_metal_02', { scale: 0.35, tint: 0x84888a, metal: 0.6, rough: 0.8, dirt: 0.25 }), // weathered tinned sheet iron (the kettle)
+    tin: pmat('canvas:silver', { scale: 0.3, tint: 0x7c8186, metal: 0.6, rough: 1.8, dirt: 0.45, vary: 0.4 }), // weathered tinned sheet iron (the kettle): grey, a little blue
     clay: pmat('clay_plaster', { scale: 0.7, tint: 0xbcab96, dirt: 0.6, vary: 0.3, normalScale: 1.5 }),
     stone: pmat('rock_ground', { scale: 0.8, tint: 0xd6d0c6, lichen: 0.6 }),
     rope: pmat('acg_rope', { scale: 0.08, tint: 0xa89a82, dirt: 0.2 }),

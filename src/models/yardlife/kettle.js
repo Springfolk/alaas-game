@@ -20,13 +20,13 @@ const DENTS = [[0.9, 0.06, 0.03, 0.006], [3.9, 0.085, 0.025, 0.0045], [5.2, 0.03
 
 // soot by height: black at the base, thinning in tongues up the wall (vertex colour × the iron's tint)
 const soot = (a, y) => {
-  const edge = 0.06 + 0.03 * valueNoise(Math.cos(a) * 3 + 5, Math.sin(a) * 3, 61) + 0.012 * valueNoise(a * 9, 2, 62);
-  const k = Math.min(1, Math.max(0, (y - edge + 0.02) / 0.05));
-  return 0.2 + 0.8 * k * k;
+  const edge = 0.075 + 0.035 * valueNoise(Math.cos(a) * 3 + 5, Math.sin(a) * 3, 61) + 0.015 * valueNoise(a * 9, 2, 62);
+  const k = Math.min(1, Math.max(0, (y - edge + 0.02) / 0.06));
+  return 0.16 + 0.72 * k * k;
 };
 const paint = (g, fn) => {
   const p = g.attributes.position, c = new Float32Array(p.count * 3);
-  for (let i = 0; i < p.count; i++) { const v = fn(p.getX(i), p.getY(i), p.getZ(i)); c[i * 3] = v * 1.02; c[i * 3 + 1] = v; c[i * 3 + 2] = v * 0.97; }
+  for (let i = 0; i < p.count; i++) { const v = fn(p.getX(i), p.getY(i), p.getZ(i)); c[i * 3] = v * 0.98; c[i * 3 + 1] = v; c[i * 3 + 2] = v * 1.02; }
   g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3));
   return g;
 };
@@ -78,7 +78,7 @@ export function kettle(T, B, M, m) {
       p.setXYZ(i, x * k, y, z * k);
     }
     body.computeVertexNormals(); }
-  add(paint(body, sootAt), M.tin, [0.95, 0.92, 0.88]);
+  add(paint(body, sootAt), M.tin, [0.95, 0.96, 0.98]);
   // ── the seam: an overlap strip up the back, riveted
   { const strip = [], n = 8;
     for (let i = 0; i <= n; i++) { const y = 0.018 + (0.098 - 0.018) * i / n; strip.push([y, rAt(y) + 0.0007]); }
@@ -86,18 +86,18 @@ export function kettle(T, B, M, m) {
     strip.forEach(([y, r], i) => { for (const s of [-1, 1]) { const a = SEAM_A + s * w / r; pos.push(Math.cos(a) * r, y, -Math.sin(a) * r); } if (i) { const b = (i - 1) * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); } });
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
     g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3 * 2), 2));
-    add(paint(g, sootAt), M.tin, [0.9, 0.87, 0.83]);
-    for (let i = 0; i < 6; i++) { const y = 0.024 + i * 0.0145; add(paint(rivet(SEAM_A, y, 0.0012), sootAt), M.tin, [0.85, 0.82, 0.78]); }
+    add(paint(g, sootAt), M.tin, [0.9, 0.91, 0.93]);
+    for (let i = 0; i < 6; i++) { const y = 0.024 + i * 0.0145; add(paint(rivet(SEAM_A, y, 0.0012), sootAt), M.tin, [0.85, 0.86, 0.88]); }
   }
   // ── the spout: from low on the front, tapering up and out, a rolled lip; a riveted collar where it joins
   { const pts = [[0.088, 0.045, 0], [0.122, 0.07, 0], [0.152, 0.104, 0], [0.172, 0.138, 0], [0.183, 0.158, 0]];
     const { g, curve } = taper(pts, 0.017, 0.0075, 10, 14);
-    add(paint(g, sootAt), M.tin, [0.95, 0.92, 0.88]);
+    add(paint(g, sootAt), M.tin, [0.95, 0.96, 0.98]);
     const tip = curve.getPointAt(1), d = curve.getTangentAt(1);
-    add(paint(ring(tip.toArray(), d.toArray(), 0.0075, 0.0018, 12, 4), sootAt), M.tin, [0.9, 0.87, 0.83]);
+    add(paint(ring(tip.toArray(), d.toArray(), 0.0075, 0.0018, 12, 4), sootAt), M.tin, [0.9, 0.91, 0.93]);
     const base = curve.getPointAt(0.06), d0 = curve.getTangentAt(0.06);
-    add(paint(ring(base.toArray(), d0.toArray(), 0.0185, 0.003, 14, 4), sootAt), M.tin, [0.9, 0.87, 0.83]);
-    for (const s of [-1, 1]) add(paint(rivet(s * 0.19, 0.047), sootAt), M.tin, [0.85, 0.82, 0.78]);
+    add(paint(ring(base.toArray(), d0.toArray(), 0.0185, 0.003, 14, 4), sootAt), M.tin, [0.9, 0.91, 0.93]);
+    for (const s of [-1, 1]) add(paint(rivet(s * 0.19, 0.047), sootAt), M.tin, [0.85, 0.86, 0.88]);
     // the spout's mouth inside: dark
     const cap = new THREE.CircleGeometry(0.0062, 10);
     cap.applyMatrix4(new THREE.Matrix4().compose(tip.clone().addScaledVector(d, -0.004), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), d), new THREE.Vector3(1, 1, 1)));
@@ -109,8 +109,8 @@ export function kettle(T, B, M, m) {
     const a = s * Math.PI / 2, r = rAt(0.098) + 0.002;
     const plate = new THREE.BoxGeometry(0.018, 0.024, 0.003);
     plate.translate(0, 0.008, 0); plate.rotateX(s * 0.12); plate.rotateY(a); plate.translate(0, EAR_Y - 0.01, -s * r);
-    add(paint(plate, sootAt), M.tin, [0.85, 0.82, 0.78]);
-    add(paint(rivet(a, 0.1, 0.003), sootAt), M.tin, [0.8, 0.77, 0.74]);
+    add(paint(plate, sootAt), M.tin, [0.85, 0.86, 0.88]);
+    add(paint(rivet(a, 0.1, 0.003), sootAt), M.tin, [0.8, 0.81, 0.83]);
     add(ring([0, EAR_Y + 0.011, -s * (r + 0.004)], [1, 0, 0], 0.0055, 0.0016, 10, 4), M.iron, [0.75, 0.72, 0.68]);
   }
   { const bail = [], zr = rAt(0.098) + 0.006, top = 0.236;
@@ -125,7 +125,7 @@ export function kettle(T, B, M, m) {
   // ── the lid: a low dome with a skirt into the neck, a turned knob riveted on
   { const lid = lathe([[0.0, 0.0335], [0.012, 0.032], [0.028, 0.026], [0.042, 0.016], [0.053, 0.0075], [0.0595, 0.003], [0.06, 0.0005], [0.0545, 0.0002], [0.051, -0.008]].reverse(), 28); // from the skirt in: faces out
     lid.translate(0, 0.152, 0);
-    add(paint(lid, () => 0.8), M.tin, [0.95, 0.92, 0.88]);
+    add(paint(lid, () => 0.8), M.tin, [0.95, 0.96, 0.98]);
     const knob = lathe([[0.0, 0.0545], [0.008, 0.053], [0.0115, 0.048], [0.011, 0.043], [0.0065, 0.039], [0.0055, 0.033]].reverse(), 14);
     knob.translate(0, 0.152, 0);
     add(knob, M.darkwood, [0.7, 0.62, 0.55]);
