@@ -371,7 +371,7 @@ class Game {
   }
 
   key(e) {
-    if (this.title) return;
+    if (this.title || (e.repeat && !/^Key[WASD]$|^Arrow/.test(e.code))) return; // a held key steps once (E: the card, its text, closed)
     const ui = this.ui;
     if (e.code === 'KeyL') { this.setLang({ sah: 'en', en: 'ru', ru: 'sah' }[this.state.lang] || 'sah'); return; }
     if (e.code === 'F3') { e.preventDefault(); document.getElementById('fps').classList.toggle('on'); return; }

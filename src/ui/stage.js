@@ -103,7 +103,7 @@ export class Stage {
     this.s = s; this.on = true; this.closing = false;
     g.engine.closeLook = s.mode === 'near';
     if (s.mode === 'photo') { s.t = 1; return s.mode; }
-    if (s.cut) this.cut(() => { s.t = 1; });
+    if (s.cut) { s.hold = true; this.cut(() => { s.t = 1; s.hold = false; }); } // (the view stays put until the dip hides the cut)
     return s.mode;
   }
   // back to the body; `then` once the view is there
@@ -139,7 +139,9 @@ export class Stage {
     const s = this.s, cam = this.cam;
     if (!this.on || !s || s.mode === 'photo') return;
     s.time += dt; s.idle += dt;
-    if (this.closing) { s.t -= dt / 0.32; if (s.t <= 0) { this.closing(); return; } } else if (s.t < 1) s.t = Math.min(1, s.t + dt / 0.55);
+    // the glide's own step: a long frame (a hitch as the card first draws) slows it rather than skipping it
+    const step = Math.min(dt, 1 / 30);
+    if (this.closing) { s.t -= step / 0.32; if (s.t <= 0) { this.closing(); return; } } else if (s.t < 1 && !s.hold) s.t = Math.min(1, s.t + step / 0.55);
     // the thing's place on screen follows the layout (a reading sheet moves it up or aside)
     const a = this.area, k = s.time < 0.05 ? 1 : 1 - Math.exp(-7 * dt);
     this.ax += (a.x - this.ax) * k; this.ay += (a.y - this.ay) * k;
