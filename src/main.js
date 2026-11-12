@@ -535,13 +535,13 @@ class Game {
       // nothing in view the dot alone turns into a ring when the carried thing can be used
       const act = !live || this.acting ? null : f ? this.actOf(f) : this.interact?.idleAct();
       const e = f && BY_ID[f.entry];
-      const what = f ? (f.label ? this.ui.t(f.label) : e ? e.sah.split(/[;(]/)[0].trim() : f.entry) : null;
+      const what = f ? f.label || e || f.entry : null; // (src/ui/names.js)
       const can = !!act && act.id !== 'none';
       const put = live && !this.acting ? this.interact?.putAct() || null : null;
       this.doReady = can; this.doAct = can ? act : null; // (the touch hand button draws this act's tool)
       this.readReady = !!e;
       this.putReady = !!put; this.putAct = put;
-      const key = `${what}|${can ? act.id + this.ui.t(act.label) : ''}|${!!e}|${put?.id}`;
+      const key = `${what?.sah ?? what?.id ?? what}|${this.ui.state.lang}|${can ? act.id + this.ui.t(act.label) : ''}|${!!e}|${put?.id}`;
       if (key !== this.promptKey) {
         this.promptKey = key;
         const dot = document.getElementById('dot');

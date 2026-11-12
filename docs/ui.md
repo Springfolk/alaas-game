@@ -5,6 +5,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 ## Look
 - Aero glass, drawn: `.glass` (window frame: tint, gloss band, streaks, bright edge), `.pane` (small glass on the view), `.client` (light reading sheet), glossy `.btn`, key caps, the red caption close (`.win-close`). No backdrop blur anywhere.
 - Colours: blue = looking closer (inspect), green = the hands (do, and the next thing for them), gold = a place to go to.
+- Names (`src/ui/names.js`, `docs/content.md`): Sakha 0.9 s, then a 0.5 s fade into the chosen language's. The fade belongs to the surface (prompt, stage, journal, toast: `fade(el)` drives `--nm`), so names drawn later in it never replay it.
 - Glyphs: `src/ui/icons.js` (`icon`, `actIcon(act)` = an act's own tool, `actHeld(act)`, `glyph(control, touch)`, `MOUSE`).
 - Scale: `--ui` (`UI.fit`): 1 up to 1600×900 and on phones, then with the screen (2560×1440: 1.6); every surface has `zoom: var(--ui)` (the finder marker: its parts).
 - Select (`src/ui/select.js`, `.sel[data-sel]`): the current choice on a button, the list drops from it, the current one ticked. Language (`lang`: title, pause, stage, journal) and quality (`q`).
@@ -42,7 +43,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 
 ## Inspect stage (`src/ui/stage.js`, `ui.showEntry`)
 - The view leaves the body and goes to the thing in the live world; no copy, render target or shader.
-- Glass pane beside the thing (landscape: right; portrait: below): category, Sakha name, one line, the entry's saying (`say` in `views.json`), reference photographs as a strip (a tap puts one in the pane, again: full screen), `E` / "Read more" (the reading sheet: title, text, facts, related, sources), the language select, the close button. Names of found things round it on the view (a tap goes there).
+- Glass pane beside the thing (landscape: right; portrait: below): category, name, one line, the entry's saying (`say` in `views.json`), reference photographs as a strip (a tap puts one in the pane, again: full screen), `E` / "Read more" (the reading sheet: title, text, facts, related, sources), the language select, the close button. Names of found things round it on the view (a tap goes there).
 - Turning: drag (mouse under the drawn cursor, finger, ← →), wheel = nearer / further, a slow turn of its own unless camera motion is low.
 - Round a small thing the eye stops short of walls (thin long colliders, 16 cm clear) and of the ground.
 - `ui.layout()` gives the stage the part of the screen the pane leaves free; the pane's text scrolls inside it, its buttons stay in view.
@@ -60,12 +61,12 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 
 ## Journal (`src/ui/journal.js`, `ui.showJournal(tab, here)`, `ui.j`)
 - A glass window with three leaves (tabs centred): map, finds, work; found / total; language select; close.
-- Map: the alaas drawn from above, north up (`map.webp`, 2048 px for 820 m), the houses, pens and posts drawn from the placed models' bounds. Drag moves it, pinch / wheel / + − zoom (nearly the whole alaas to 10 cm a pixel), the arrow button centres on the player; opened in play it comes up round the player.
+- Map: the alaas drawn from above, north up (`map.webp`, 2048 px for 820 m; closer than 0.3 m a device pixel, 256 px squares at 0.2 / 0.1 / 0.05 m drawn in a worker for what is in view, `src/ui/maptiles.js`; the layer is its own only while it moves, so it is drawn sharp at rest), the houses, pens and posts drawn from the placed models' bounds. Drag moves it, pinch / wheel / + − zoom (nearly the whole alaas to 10 cm a pixel), the arrow button centres on the player; opened in play it comes up round the player.
 - Markers: red arrow = the player and where they face; blue dot = a found thing (a house or place with its name); gold "?" = one that waits; green square with its tool = a job; gold diamond = the destination. Markers that would overlap give way to the more important one until zoomed in.
 - A marker chosen: a pane with its picture and name (a job: what the hands have made), the eye (found: that thing on the stage, closing returns here) and the gold walk button = be led there (`game.guide.go`, again: off). A tap on the bare map puts the destination there.
 - Finds: square pictures by kind (found: the thing as the stage shows it → the stage; not found: a dim blur with "?" → its marker on the map).
 - Work: a picture per job with glyphs and counts of what was made (`WORKS` in `work/list.js`) → its marker on the map.
-- Pictures: `public/assets/ui/journal/<id>.webp` (320 px), `<id>.s.webp` (20 px), `work-<job>.webp`: `npm run bake-journal`. `map.webp` + its extent in `src/data/journal.json`: `npm run bake-map` (after a change to the terrain).
+- Pictures: `public/assets/ui/journal/<id>.webp` (320 px), `<id>.s.webp` (20 px), `work-<job>.webp`: `npm run bake-journal`. `map.webp` + its extent in `src/data/journal.json`: `npm run bake-map` (after a change to the terrain; both it and the squares draw with `src/ui/mapdraw.js`).
 
 ## Title and loading
 - Key art, the name, a glass dock: the loading bar and its status, then the start button; under it the language select. Version (`package.json`, `.ver`), source, credits and the ticket call beneath.

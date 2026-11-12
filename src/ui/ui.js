@@ -9,6 +9,7 @@ import { selectHTML } from './select.js';
 import { VirtualCursor } from './cursor.js';
 import { VIEWS } from './stage.js';
 import { Journal } from './journal.js';
+import { names, nameHTML, fade } from './names.js';
 
 export const BY_ID = Object.fromEntries(ENTRIES.map((e) => [e.id, e]));
 // { entryId: [{ src, w, h, caption: {sah,en,ru}, credit, license, url }] } — optional (src/data/images.json)
@@ -30,7 +31,6 @@ const L = {
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const head = (e) => e.sah.split(/[;(]/)[0].trim();
 const imgSrc = (s) => /^(https?:|data:|\/)/.test(s) ? s : versioned(import.meta.env.BASE_URL + s.replace(/^(\.\/|public\/)/, ''));
 
 // Title loading bar: mirrors main.js's `#go` status line ("45% · stage", then "preparing… 60%").
@@ -141,11 +141,17 @@ export class UI {
   // it can be looked at closer; to its right the green plate with the tool and the verb of what the hands would do
   // now (`act`; a bar by the mouse glyph: the motion lasts while held). `put`: what is carried can be put down.
   // Its parts stay in the page and only change their content: the touch controls take touches on them.
+  // `label`: the thing's name (an entry or a label: src/ui/names.js; a new one restarts the fade).
   setPrompt(label, { act = null, read = false, put = null } = {}) {
     const on = !!(label || act);
     this.prompt.className = `${on ? 'show' : ''}${act ? ' has-act' : ''}${read ? ' has-read' : ''}${actHeld(act) ? ' held' : ''}`;
     if (on) {
-      this.pName.textContent = label || '';
+      const lang = this.state.lang, key = `${typeof label === 'string' ? label : label ? names(label).sah : ''}|${lang}`;
+      if (key !== this.pKeyName) {
+        this.pKeyName = key;
+        this.pName.innerHTML = typeof label === 'string' ? label : nameHTML(label, lang);
+        if (label) fade(this.pName);
+      }
       const k = act ? actIcon(act) : '';
       if (k !== this.pIcon) { this.pIcon = k; this.pTool.innerHTML = k ? icon(k) : ''; }
       this.pVerb.textContent = act ? this.t(act.label) : '';
@@ -171,11 +177,12 @@ export class UI {
     const say = VIEWS[id]?.say;
     const rel = (e.related || []).filter((r) => BY_ID[r]).map((r) => {
       const known = this.state.found.has(r), told = !known && !this.placed.has(r);
-      if (told) return `<button class="chip told" data-entry="${r}" data-learn="1">${esc(head(BY_ID[r]))}</button>`;
-      return `<button class="chip${known ? '' : ' unknown'}" ${known ? `data-entry="${r}"` : 'disabled'}>${esc(known ? head(BY_ID[r]) : '· · ·')}</button>`;
+      if (told) return `<button class="chip told" data-entry="${r}" data-learn="1">${nameHTML(BY_ID[r], lang)}</button>`;
+      return `<button class="chip${known ? '' : ' unknown'}" ${known ? `data-entry="${r}"` : 'disabled'}>${known ? nameHTML(BY_ID[r], lang) : '· · ·'}</button>`;
     }).join('');
     const facts = (e.facts[lang] || e.facts.en || []).map((f) => `<li>${esc(f)}</li>`).join('');
-    const rest = e.sah.slice(head(e).length).replace(/^[;\s]+/, '');
+    const rest = e.sah.slice(e.sah.split(/[;(]/)[0].trim().length).replace(/^[;\s]+/, '');
+    const tl = this.t(e.title), th = names(e)[lang], title = !e.name && tl.startsWith(th) ? nameHTML(e, lang) + esc(tl.slice(th.length)) : esc(tl);
     this.card.innerHTML = `
       <div class="st-orbit" data-orbit>${photo && imgs.length ? '<img class="st-hero" alt="">' : ''}</div>
       <div class="st-marks"></div>
@@ -183,7 +190,7 @@ export class UI {
         <button class="win-close" data-act="close" title="${esc(this.t(L.close))}" aria-label="${esc(this.t(L.close))}"></button>
         <div class="st-head win-head">
           <div class="cat">${this.fresh ? '<i class="gmark"></i>' : ''}${esc(this.t(CATS[e.category]) || e.category)}</div>
-          <h2>${esc(head(e))}</h2>
+          <h2>${nameHTML(e, lang)}</h2>
           <div class="sub">${rest ? `<span class="more">${esc(rest)}</span> ` : ''}${esc(e.translit || '')}${e.ru ? ` · <span class="ru">${esc(e.ru)}</span>` : ''}</div>
         </div>
         <div class="st-body st-show">
@@ -193,7 +200,7 @@ export class UI {
         </div>
         ${imgs.length ? `<div class="st-strip">${imgs.map((m, k) => `<button data-img="${k}"><img src="${esc(imgSrc(m.src))}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}
         <div class="st-read"><div class="client">
-          <h3>${esc(this.t(e.title))}</h3>
+          <h3>${title}</h3>
           <p class="lead">${esc(this.t(e.short))}</p>
           ${say ? `<p class="say">${esc(this.t(say))}</p>` : ''}
           <p>${esc(this.t(e.body))}</p>
@@ -206,6 +213,7 @@ export class UI {
           ${this.langSelect()}
         </div>
       </div></div>`;
+    if (!again) fade(this.card);
     this.card.className = `layer stage show k-${kind || 'near'}${full ? ' read' : ''}${again ? ' again' : ''}`;
     document.documentElement.classList.add('carded');
     this.open = 'card';
@@ -257,7 +265,7 @@ export class UI {
     if (!box) return;
     if (!this.marks) {
       this.marks = st.marks(this.state.found);
-      box.innerHTML = this.marks.map((m, k) => `<button class="st-mark" data-mark="${k}"><i></i>${esc(m.label ? this.t(m.label) : head(BY_ID[m.entry]))}</button>`).join('');
+      box.innerHTML = this.marks.map((m, k) => `<button class="st-mark" data-mark="${k}"><i></i>${nameHTML(m.label || BY_ID[m.entry], this.state.lang)}</button>`).join('');
       this.markEls = [...box.children];
     }
     const f = this.free, o = {};
@@ -281,6 +289,7 @@ export class UI {
   showJournal(tab, here = false) {
     this.card.classList.remove('show');
     this.journal.classList.add('show');
+    if (this.open !== 'journal') fade(this.journal);
     this.open = 'journal';
     this.j.show(tab, here);
     this.cursor.sync();
@@ -289,6 +298,7 @@ export class UI {
   setMenu(on) { this.menu = on; this.cursor.sync(); }
 
   close() {
+    if (this.open === 'journal') this.j.tiles.clear(); // (their pictures go)
     this.card.classList.remove('show');
     this.journal.classList.remove('show');
     this.lightbox.classList.remove('show');
@@ -311,6 +321,7 @@ export class UI {
     const d = document.createElement('div');
     d.className = 'toast pane ' + cls;
     d.innerHTML = html;
+    if (d.querySelector('.nm')) fade(d);
     this.toasts.appendChild(d);
     while (this.toasts.children.length > 4) this.toasts.firstChild.remove();
     setTimeout(() => d.classList.add('out'), ms);
@@ -320,6 +331,6 @@ export class UI {
   discovered(id) {
     const e = BY_ID[id], v = VIEWS[id] || {}, im = this.images[id]?.[0];
     const src = v.photo ? im && imgSrc(im.src) : imgSrc(`assets/ui/journal/${id}.webp`);
-    this.toast(`<b>${esc(head(e))}</b>${src ? `<img src="${esc(src)}" alt="">` : '<span class="gmark"></span>'}`, 2600, 'found');
+    this.toast(`<b>${nameHTML(e, this.state.lang)}</b>${src ? `<img src="${esc(src)}" alt="">` : '<span class="gmark"></span>'}`, 2600, 'found');
   }
 }

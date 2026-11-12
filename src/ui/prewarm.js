@@ -24,11 +24,15 @@ export async function prewarmUI(game) {
   const pictures = (el) => { for (const im of el.querySelectorAll('img')) { if (art) { im.loading = 'eager'; im.src = art; } else im.remove(); } };
   root.classList.add('prewarm');
   if (!covered) root.classList.add('bare');
+  // names mid-fade (src/ui/names.js): a language that fades, both names part-way
+  const lang = ui.state.lang;
+  if (lang === 'sah') ui.state.lang = 'en';
+  root.style.setProperty('--nm', '.25');
   try {
     // each surface at rest first, then its other states (the stick at rest and pushed are different gradients)
     on('#fps', 'on'); on('#vcursor', 'on');
     if (touch) touch.show = 'play';
-    ui.setPrompt('Алаас', { act: { id: 'strike', label: { en: 'Алаас' } }, read: true, put: { id: 'down' } }); // with every part it can have
+    ui.setPrompt(BY_ID[id], { act: { id: 'strike', label: { en: 'Алаас' } }, read: true, put: { id: 'down' } }); // with every part it can have
     ui.toast('<b>Алаас</b><small>Алаас</small>', 1e9);
     ui.discovered(id);
     await frames(3);
@@ -36,6 +40,7 @@ export async function prewarmUI(game) {
     on('.toast', 'out'); // a beat fading: a layer of its own
     await frames();
     on('#dot', 'do');
+    root.style.setProperty('--nm', '.75');
     const choice = document.getElementById('choice'); // the ribbon choice (yard/bits.js)
     choice.innerHTML = '<button style="--c:#f1efe8"><i></i><span>Алаас</span></button><button class="on" style="--c:#8fb9e6"><i></i><span>Алаас</span></button><button class="x">✕</button>';
     on('#choice', 'show'); undo.push(() => { choice.innerHTML = ''; });
@@ -83,6 +88,7 @@ export async function prewarmUI(game) {
     await frames(3);
   } finally {
     for (const u of undo.reverse()) u();
+    ui.state.lang = lang; root.style.removeProperty('--nm');
     if (touch) touch.show = null;
     ui.close(); ui.setPrompt(null); ui.toasts.replaceChildren();
     ui.card.innerHTML = ui.lightbox.innerHTML = '';

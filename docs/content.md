@@ -7,10 +7,17 @@
 | Field | What |
 |---|---|
 | `id`, `category`, `related[]` | key, journal group (`CATS` in `src/ui/ui.js`), cross-links |
-| `sah`, `translit`, `ru` | the term in Sakha, Latin, Russian |
+| `sah`, `translit`, `ru` | the term in Sakha, Latin (BGN/PCGN, below), Russian |
+| `name` | `{sah, en, ru}`: the thing's name where the title's head is not one |
 | `title`, `short`, `body` | `{en, sah, ru}`: heading, one-liner, full text |
 | `facts` | `{en: [], sah: [], ru: []}`: same count and order in every language |
 | `sources[]`, `confidence`, `notes` | research trail (`confidence` high/medium/low); `notes` = English design guidance, never shown |
+
+## Names (`src/ui/names.js`)
+- A thing's name in a language: the head of `title.<lang>` (up to " — "), else `name`; a label's: its own text less a bracketed Sakha word.
+- English: the English name, else the Sakha word in BGN/PCGN 2012 Yakut romanisation (ҕ gh, ҥ ng, һ h, ө ö, ү ü, дь dj, нь ny, х kh, ч ch, ы y, й y, э e); never Cyrillic.
+- Russian: the Russian name, else the Sakha word as written («Балаҕан», not «Балаган»).
+- Shown Sakha first, then fading into the chosen language; with Sakha chosen, Sakha only.
 
 ## Language and voice
 - Sakha and Russian are written by hand (no machine translation); terms checked in sakhatyla.ru and sah.wikipedia.org (`docs/terms.md`). Russian is written from the EN.
