@@ -57,6 +57,7 @@ export async function prewarmUI(game) {
     pictures(ui.card);
     await frames(3);
     ui.showEntry(id, { mode: 'full', kind: 'near' });
+    pictures(ui.card); // (its photographs)
     on('#card .sel', 'open');
     await frames(3);
     ui.showEntry(id, { mode: 'peek', kind: 'photo' });

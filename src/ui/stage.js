@@ -69,6 +69,8 @@ export class Stage {
     const g = this.game, world = g.world, v = VIEWS[id] || {}, cam = this.cam, wasOn = this.on;
     if (!wasOn) this.body = { position: cam.position.clone(), quaternion: cam.quaternion.clone(), aspect: cam.aspect, fov: cam.fov };
     const inPerson = !!it;
+    // over the head with a view of its own (the swallows' nests on the beams): that fixed view, not a glide among the rafters
+    if (it?.target && v.cam && boundsOf(world, it).c.y > this.body.position.y + 0.2) it = null;
     it ||= v.cam || v.photo ? null : pickThing(world, id, v);
     const s = { id, it, t: 0, oy: 0, op: 0, zoom: 1, idle: 0, time: 0, yawMax: 50 * D2R, elMin: 6 * D2R, elMax: 68 * D2R, fov: this.portrait ? 56 : 40 };
     s.from = { pos: cam.position.clone(), quat: cam.quaternion.clone(), fov: cam.fov };
@@ -85,8 +87,10 @@ export class Stage {
       const to = _v.copy(eye).sub(b.c), dist = to.length();
       if (inPerson && b.r <= SMALL) { // gone up to, along the line it is seen on
         s.mode = 'near';
-        s.yaw = Math.atan2(to.x, to.z); s.el = clamp(Math.asin(clamp(to.y / dist, -1, 1)), 12 * D2R, 62 * D2R);
-        s.maxD = Math.max(dist, b.r * 2.2);
+        // (a thing above the eye, on a beam or a shelf: seen from below, never from inside the roof over it)
+        const up = b.c.y > eye.y + 0.2;
+        s.yaw = Math.atan2(to.x, to.z); s.el = clamp(Math.asin(clamp(to.y / dist, -1, 1)), up ? -50 * D2R : 12 * D2R, up ? -8 * D2R : 62 * D2R);
+        s.maxD = Math.max(dist, b.r * 2.2); if (up) s.yawMax = 30 * D2R; // (against a wall: turned no further than it can be seen from inside)
       } else if (inPerson && b.box?.clone().expandByScalar(0.3).containsPoint(eye)) { // inside it: look round from here
         Object.assign(s, { mode: 'here', eye: eye.clone(), yaw: g.player.yaw, el: g.player.pitch, fov: this.body.fov, yawMax: Math.PI });
       } else {
@@ -95,6 +99,7 @@ export class Stage {
         else { s.yaw = Math.atan2(to.x, to.z); s.el = 14 * D2R; }
       }
       if (s.mode === 'out') { s.elMin = 3 * D2R; s.elMax = 55 * D2R; }
+      if (s.el < 0) { s.elMin = s.el - 25 * D2R; s.elMax = 0; } // seen from below: it turns under, never over into the roof
     }
     // a small thing indoors: the walls the eye must stay within (thin long colliders; not one the thing itself is on)
     if (s.mode === 'near') s.walls = world.colliders.filter((k) => k.kind === 'box' && Math.min(k.hw, k.hd) <= 0.2 && Math.max(k.hw, k.hd) >= 0.5
@@ -165,6 +170,7 @@ export class Stage {
       this.pos.copy(s.eye);
       const el = clamp(s.el + s.op, -80 * D2R, 80 * D2R);
       this.quat.setFromEuler(_e.set(el, s.yaw + s.oy + sway, 0, 'YXZ'));
+      if (s.cut) this.quat.multiply(_q.setFromEuler(_e.set(-Math.atan(this.ay * tv), Math.atan(this.ax * tv * aspect), 0, 'YXZ'))); // a view of its own: what it aims at sits in the part the type leaves free
     } else {
       const el = clamp(s.el + s.op, s.elMin, s.elMax);
       s.op = el - s.el;

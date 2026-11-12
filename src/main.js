@@ -631,6 +631,7 @@ class Game {
     this.world.update(dt, ctx);
     this.audio?.update(dt, ctx);
     this.hints?.update(dt); // before the render: its light at the view's edge sits on this frame's camera
+    this.engine.govHold = paused || this.ui.open === 'journal'; // (src/engine/pacing.js govern)
     this.engine.update(dt);
     this.engine.render();
     this.guide?.update(dt);

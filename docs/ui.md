@@ -44,16 +44,16 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 
 ## Inspect stage (`src/ui/stage.js`, `ui.showEntry`)
 - The view leaves the body and goes to the thing in the live world; no copy, render target or shader.
-- Glass pane beside the thing (landscape: right; portrait: below): category, name, one line, the entry's saying (`say` in `views.json`), reference photographs as a strip (a tap puts one in the pane, again: full screen), `E` / "Read more" (the reading sheet: title, text, facts, related, sources), the language select, the close button. Names of found things round it on the view (a tap goes there).
+- Glass pane beside the thing (landscape: right; portrait: below): category, name, one line, the entry's saying (`say` in `views.json`), reference photographs as a strip (a tap puts one in the pane, again: full screen), `E` / "Read more" (the reading sheet: title, lead, the photographs (a tap: full screen), text, facts, related, sources), the language select, the close button. Names of found things round it on the view (a tap goes there).
 - Turning: drag (mouse under the drawn cursor, finger, ← →), wheel = nearer / further, a slow turn of its own unless camera motion is low.
 - Round a small thing the eye stops short of walls (thin long colliders, 16 cm clear) and of the ground.
 - `ui.layout()` gives the stage the part of the screen the pane leaves free; the pane's text scrolls inside it, its buttons stay in view.
 
 | Kind (`Stage.open` → `s.mode`) | When | The view |
 |---|---|---|
-| `near` | a thing ≤ 1.5 m in radius | glides up to it along the line it was seen on (0.55 s); orbit ±50°; `engine.closeLook`: the eye adapts fully |
+| `near` | a thing ≤ 1.5 m in radius | glides up to it along the line it was seen on (0.55 s); orbit ±50°; over the eye: seen from below, orbit ±30°; `engine.closeLook`: the eye adapts fully |
 | `out` | a house, tree, fence, seen from outside | cut (dip to dark 0.4 s) to the baked side (`dir`), framed whole; orbit all round where `free` |
-| `here` | inside the thing, or an entry with a `cam` | stays (or cuts to `cam`) and looks round |
+| `here` | inside the thing, or an entry with a `cam` (in person too when the thing is over the eye) | stays (or cuts to `cam`, its aim in the free part of the screen) and looks round |
 | `photo` | an idea with no place (`photo`) | the view stays; its photograph fills the free part |
 
 - From the journal or a related link the view goes to the entry's own thing (`pickThing`: `it` = index or a piece of its English label; `as` = another entry's thing); closing returns to the journal.
@@ -63,7 +63,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 ## Journal (`src/ui/journal.js`, `ui.showJournal(tab, here)`, `ui.j`)
 - A glass window with three leaves (tabs centred): map, finds, work; found / total; language select; close.
 - Map: the alaas drawn from above, north up (`map.webp`, 2048 px for 820 m; closer than 0.3 m a device pixel, 256 px squares at 0.2 / 0.1 / 0.05 m drawn in a worker for what is in view, `src/ui/maptiles.js`; the layer is its own only while it moves, so it is drawn sharp at rest), the houses, pens and posts drawn from the placed models' bounds. Drag moves it, pinch / wheel / + − zoom (nearly the whole alaas to 10 cm a pixel), the arrow button centres on the player; opened in play it comes up round the player.
-- Markers: red arrow = the player and where they face; blue dot = a found thing (a house or place with its name); gold "?" = one that waits; green square with its tool = a job; gold diamond = the destination. Markers that would overlap give way to the more important one until zoomed in.
+- Markers: red arrow = the player and where they face; blue dot = a found thing (a house or place with its name); gold "?" = one that waits; green square with its tool = a job; gold diamond = the destination. Markers that would overlap give way to the more important one until zoomed in; a name sits below, above, right or left of its marker, wherever it covers no marker or name, else waits for a closer look (`label`).
 - A marker chosen: a pane with its picture and name (a job: what the hands have made), the eye (found: that thing on the stage, closing returns here) and the gold walk button = be led there (`game.guide.go`, again: off). A tap on the bare map puts the destination there.
 - Finds: square pictures by kind (found: the thing as the stage shows it → the stage; not found: a dim blur with "?" → its marker on the map).
 - Work: a picture per job with glyphs and counts of what was made (`WORKS` in `work/list.js`) → its marker on the map.
