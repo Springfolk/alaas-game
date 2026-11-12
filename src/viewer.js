@@ -7,12 +7,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Engine } from './engine/engine.js';
 import { pbr, maps, tex } from './engine/materials.js';
 import { mulberry32, strHash } from './util.js';
+import { shareShadowShaders } from './load/shadows.js';
 
 const q = new URLSearchParams(location.search);
 const v3 = (s, d) => (s ? s.split(',').map(Number) : d);
 const models = import.meta.glob('./models/*.js');
 
 const engine = await new Engine(document.getElementById('c'), { webgl: q.has('webgl'), post: !q.has('nopost') }).init();
+shareShadowShaders(engine.renderer); // as in the game: pmat's material-reference maps never reach three's own shadow copy
 const sun = v3(q.get('sun'), [38, 200]);
 engine.setSun(sun[0], sun[1]);
 engine.haze.density.value = 0.0002;
