@@ -26,8 +26,8 @@ function run({ hz = 60, fps = 60, js = 5, gpu = 3, px = 8, floor = 0.55, start =
     if (!pace(e, now, fps)) continue;
     if (last != null) { govern(e, (now - last) / 1000, T); if (T > 3000) iv.push([T - lastT, e.paceIv, T]); }
     last = now; lastT = T;
-    const m = load(T / 1000), shadow = e.sun.shadow.camera.far < 100 ? 0.9 : 1, mirror = e.reflector.resolutionScale < 0.25 ? 0.95 : 1;
-    const J = js * shadow * m ** 0.5 * (1 + (rnd() - 0.5) * 2 * noise), G = (gpu * shadow + px * e.resScale ** 2 * mirror) * m * (1 + (rnd() - 0.5) * 2 * noise);
+    const m = load(T / 1000), shadow = e.sun.shadow.camera.far < 100 ? 0.9 : 1, mirror = e.reflector.resolutionScale < 0.25 ? 0.95 : 1, lazy = e.lazyKnob ? 0.88 : 1;
+    const J = js * shadow * lazy * m ** 0.5 * (1 + (rnd() - 0.5) * 2 * noise), G = (gpu * shadow * lazy + px * e.resScale ** 2 * mirror) * m * (1 + (rnd() - 0.5) * 2 * noise);
     busyUntil = T + J;
     const end = Math.max(T + J, gpuFree) + G;
     gpuFree = end;

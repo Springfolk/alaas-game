@@ -149,7 +149,7 @@ export class ShaderStream {
     try { fn(); } finally { delete r._renderObjectDirect; }
   }
 
-  // Queue every mesh in `scene`: everything shown (with its parents) and unculled for one render. One the
+  // Queue every mesh in `scene`: everything shown (with its parents), unculled and casting (`shadowCulled`: merge.js) for one render. One the
   // camera's layers miss (a part culled to a spare layer for now, a shadow-only proxy) joins layer 0 for it,
   // so every pass that will draw it later (the lake mirror, the shadow cascades) builds it now. Built ones are
   // drawn too (for one loading frame): a pipeline is only compiled for good once a draw has used it — one made
@@ -157,14 +157,14 @@ export class ShaderStream {
   collect(scene, camera, fn) {
     const objs = [], groups = [], seen = camera.layers.mask;
     scene.traverse((o) => {
-      if (o.isMesh || o.isPoints || o.isLine || o.isSprite) objs.push([o, o.visible, o.frustumCulled, o.layers.mask]);
+      if (o.isMesh || o.isPoints || o.isLine || o.isSprite) objs.push([o, o.visible, o.frustumCulled, o.layers.mask, o.castShadow]);
       else groups.push([o, o.visible]);
     });
-    for (const [o] of objs) { o.visible = true; o.frustumCulled = false; if (!(o.layers.mask & seen)) o.layers.mask |= 1; }
+    for (const [o] of objs) { o.visible = true; o.frustumCulled = false; if (!(o.layers.mask & seen)) o.layers.mask |= 1; if (o.userData.shadowCulled) o.castShadow = true; }
     for (const [o] of groups) o.visible = true;
     camera.layers.enableAll();
     try { this.render(fn, false); } finally {
-      for (const [o, v, f, m] of objs) { o.visible = v; o.frustumCulled = f; o.layers.mask = m; }
+      for (const [o, v, f, m, c] of objs) { o.visible = v; o.frustumCulled = f; o.layers.mask = m; o.castShadow = c; }
       for (const [o, v] of groups) o.visible = v;
       camera.layers.mask = seen;
     }

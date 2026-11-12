@@ -10,6 +10,7 @@
 - ≤16 sampled textures per shader stage (WebGPU); the ground splat shares maps.
 - Cut-out (`alphaTest`) homestead meshes draw after opaque ones: `world.js` gives them `renderOrder` 1 when unset, so leave it unset.
 - A part that moves or hides after load: `userData.dynamic` (else it is merged; the merge watchdog warns).
+- Objects not dynamic at the end of the load keep their local matrix (`merge.js`, `?nofreeze` off); one whose position, quaternion, scale or parent changes thaws before that frame's matrices. Write transforms through those, not `matrix`.
 - Look-at raycast: every 3rd frame, only targets within reach; meshes over 1500 triangles test a 16³ grid (`src/interact/raycast.js`).
 - Pure-CPU load work over ~50 ms: a worker job or a bake tool (`docs/loading.md`).
 - Interface: every surface, state and paint style is drawn in `src/ui/prewarm.js`; no own layer (`will-change`) inside a rounded clip; no always-on backdrop blur.
@@ -27,7 +28,7 @@
 - No tier renders under half the screen's own resolution (`MIN_RES`).
 - WebGPU wherever the browser gives an adapter, phones too; WebGL2 only with `?webgl`, without an adapter, or after 3 GPU losses within 2 min in the tab.
 - Read the tier from `engine.tier` or `TIER` (set before the world builds: `grassDensity`, `forest`, `ground`, `texMax`, `lite` …); `engine.opts.quality` is `high|medium|low` (mobile → `low`).
-- Lazy shadows: the sun's maps re-render on a 1.5 m move or 8° turn (≤8/s), else every 2 s; the warm-up forces them each round; `?nolazy` off.
+- Lazy shadows (phones; desktop as the last dynamic-quality knob): the sun's maps re-render on a 1.5 m move or 8° turn (≤8/s), else every 2 s; the warm-up forces them each round; `?nolazy` off.
 - Model impostors from max(110 m, 6× size); phones max(45 m, 3× size), the homestead atlas at full size.
 - Battery saver (30 fps): default on phones and on a battery ≤20% unplugged (Battery Status API); the setting overrides.
 
