@@ -107,6 +107,6 @@ export default async function build(ctx, placement) {
   object.add(swath);
 
   object.userData.mown = [{ x: 0, z: 0, rx: 1.3, rz: 1.3 }];
-  object.userData.work = { job: 'hay', object, scythe, swath, max: SWATH };
+  object.userData.work = { job: 'hay', object, scythe, post, swath, max: SWATH };
   return { object, colliders, floors: [], interactables };
 }
