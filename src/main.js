@@ -26,6 +26,7 @@ import { icon, glyph } from './ui/icons.js';
 import { fillSelects, watchSelects } from './ui/select.js';
 import { version } from '../package.json';
 import { instrument, event } from './load/prof.js';
+const _gen = new THREE.Vector3(); // (pickFocus)
 
 const KEY = 'alaas-v1';
 const params = new URLSearchParams(location.search);
@@ -447,10 +448,12 @@ class Game {
   // taking play input: not on the title, in a menu or under a centred window
   get playing() { return !this.title && !this.paused && !this.ui.modal && this.input.active; }
   // Acting (the do input goes down): the act of the thing in view, or with nothing in view what the carried
-  // thing does by itself. Acts that last read `input.doing` (held) themselves. It never opens a card.
+  // thing does by itself (also when the thing in view has nothing for the hands: a job's tool works at its
+  // object from anywhere near it). Every act is a tap; a running act may take the next taps (`act.tap`). It
+  // never opens a card.
   act(it) {
-    if (this.acting) return;
-    const act = it ? this.actOf(it) : this.interact?.idleAct();
+    if (this.acting) { this.acting.tap?.(); return; }
+    const act = (it && this.actOf(it)) || this.interact?.idleAct();
     if (act && act.id !== 'none') this.teach.note('do');
     if (act) return this.run(act, it);
   }
@@ -504,6 +507,19 @@ class Game {
       if (o && (!best || r < bestR)) { bestR = r; best = o.userData.interactable; bestD = h.distance; this.focusHit = { ...h, it: best }; }
     }
     if (!best) {
+      // nothing hit: a small thing the look passes close to (a thin tool, a sheet): no pixel-hunting
+      const ray = this.ray.ray;
+      let bk = 1;
+      for (const t of targets) {
+        const sp = t.userData.sphere, it = t.userData.interactable;
+        if (!sp || !it || sp.radius > 1.2) continue;
+        const along = _gen.copy(sp.center).sub(cp).dot(ray.direction);
+        if (along < 0 || along > this.ray.far + sp.radius) continue;
+        const k = ray.distanceToPoint(sp.center) / Math.max(0.3, sp.radius * 0.8);
+        if (k < bk) { bk = k; best = it; }
+      }
+    }
+    if (!best) {
       const p = this.player.pos;
       for (const it of this.world.interactables) {
         if (!it.zone || it.off) continue;
@@ -533,7 +549,7 @@ class Game {
     if (pick || this.promptKey == null) {
       // the prompt names the thing in view, what the hands would do with it and whether it has a card; with
       // nothing in view the dot alone turns into a ring when the carried thing can be used
-      const act = !live || this.acting ? null : f ? this.actOf(f) : this.interact?.idleAct();
+      const act = !live || this.acting ? null : (f && this.actOf(f)) || this.interact?.idleAct();
       const e = f && BY_ID[f.entry];
       const what = f ? f.label || e || f.entry : null; // (src/ui/names.js)
       const can = !!act && act.id !== 'none';

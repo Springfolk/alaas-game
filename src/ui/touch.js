@@ -8,7 +8,7 @@
 // Windows, toasts and buttons keep their touches.
 // Auto-enabled on coarse-pointer devices; `?touch` forces it, `?notouch` disables it.
 // Self-contained: every class is `tc-` prefixed and the stylesheet is injected here.
-import { icon, actIcon, actHeld } from './icons.js';
+import { icon, actIcon } from './icons.js';
 
 const CSS = `
 .tc-root{position:fixed;inset:0;z-index:15;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
@@ -221,7 +221,6 @@ export class TouchControls {
     const k = g.doAct ? actIcon(g.doAct) : 'hand', pk = g.putAct ? actIcon(g.putAct) : 'put';
     if (k !== this.actK) { this.actK = k; this.act.innerHTML = icon(k); }
     if (pk !== this.putK) { this.putK = pk; this.putBtn.innerHTML = icon(pk); }
-    this.act.classList.toggle('held', !!this.show || actHeld(g.doAct));
     this.eye.classList.toggle('ready', !!(this.show || g.readReady));
     this.putBtn.classList.toggle('ready', !!(this.show || g.putReady));
     this.crouchBtn.classList.toggle('on', !!g.player?.crouch);

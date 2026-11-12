@@ -186,8 +186,6 @@
   .p-act .verb { font: 600 14px/1.2 var(--sans); max-width: min(250px, calc(50vw / var(--ui) - 104px)); text-shadow: 0 1px 2px rgba(0,20,0,.9); }
   .p-act .verb:empty { display: none; }
   .p-key { display: flex; align-items: center; gap: 3px; }
-  .p-key .hold { display: none; width: 16px; height: 5px; border-radius: 3px; background: #1a2c40; }
-  .held .p-key .hold { display: block; } /* a bar beside the glyph: keep it held */
   .p-act .p-key { padding: 2px 5px; border-radius: 5px; background: linear-gradient(180deg, #fff, #dde4ec); border: 1px solid #7d91a8; }
   /* what is carried can be put down: by the hands, low on the right */
   #puthint { position: fixed; z-index: 4; right: 19vw; bottom: 9vh; zoom: var(--ui); display: none; align-items: center; gap: 7px; padding: 5px 7px 5px 9px; }
@@ -540,7 +538,6 @@
   .t-btn.read { background-color: rgb(var(--read)); }
   .t-btn.do { background-color: rgb(58,156,28); }
   .t-btn .ic { width: 24px; height: 24px; }
-  .t-hold { width: 24px; height: 6px; border-radius: 3px; background: #fff; }
   #teach-ghost { position: fixed; z-index: 6; left: 50%; top: 40%; width: 0; height: 0; display: none; pointer-events: none; color: #fff; filter: drop-shadow(0 2px 5px rgba(0,10,30,.7)); }
   #teach-ghost.on { display: block; animation: t-slide 2.2s ease-in-out infinite; }
   #teach-ghost.g-turn { top: 30%; z-index: 11; }

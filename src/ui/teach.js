@@ -3,7 +3,7 @@
 // One card (`#teach`, index.html), DOM only; on a phone the real button it is about also gets a ring.
 // `note(id)`: the player did that (shown or not: someone who presses E unasked needs no lesson).
 import { control } from './i18n.js';
-import { icon, actIcon, actHeld, MOUSE } from './icons.js';
+import { icon, actIcon, MOUSE } from './icons.js';
 
 const key = (k, cls = '') => `<kbd class="${cls}">${k}</kbd>`;
 const btn = (k, cls = '') => `<span class="t-btn ${cls}">${icon(k)}</span>`;
@@ -15,7 +15,7 @@ const ART = {
   aim: () => { const a = '<span class="t-aim"><i class="thing"></i><i class="dot"></i></span>'; return [a, a]; },
   read: () => [`${key('E', 'lit')}<span class="t-btn read">${icon('eye')}</span>`, btn('eye', 'read tap')],
   turn: () => [SWAY.replace('%', `<span class="t-sway">${MOUSE.left}</span>`), SWAY.replace('%', `<span class="t-sway">${icon('finger')}</span>`)],
-  do: (g) => { const k = actIcon(g.doAct), h = actHeld(g.doAct) ? '<i class="t-hold"></i>' : ''; return [`<span class="t-press">${MOUSE.left}</span>${h}${btn(k, 'do sq')}`, `${btn(k, 'do sq tap')}${h}`]; },
+  do: (g) => { const k = actIcon(g.doAct); return [`<span class="t-press">${MOUSE.left}</span>${btn(k, 'do sq')}`, btn(k, 'do sq tap')]; },
   put: (g) => { const k = actIcon(g.putAct || { id: 'down' }); return [`<span class="t-press">${MOUSE.right}</span>${icon(k)}`, btn(k, 'tap')]; },
   journal: () => [`${key('J', 'lit')}${icon('book')}`, btn('book', 'sq tap')],
   pause: () => [`${key('P', 'lit')}${icon('pause')}`, btn('pause', 'sq tap')],
@@ -68,7 +68,7 @@ export class Teach {
   // draw a lesson (tools and the load-time paint: any of them, by id)
   show(L, lang = this.game.state.lang) {
     if (typeof L === 'string') L = LESSONS.find((x) => x.id === L);
-    const key = L ? `${L.id}|${lang}|${L.id === 'do' ? actIcon(this.game.doAct) + actHeld(this.game.doAct) : ''}` : '';
+    const key = L ? `${L.id}|${lang}|${L.id === 'do' ? actIcon(this.game.doAct) : ''}` : '';
     if (key === this.key) return;
     this.key = key;
     if (this.ring) { this.ring.classList.remove('tc-teach'); this.ring = null; }

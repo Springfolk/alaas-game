@@ -4,7 +4,7 @@
 import ENTRIES from '../data/entries.json';
 import { versioned } from '../load/assetv.js';
 import { T, LANGS, LANG_NAMES } from './i18n.js';
-import { icon, actIcon, actHeld, MOUSE } from './icons.js';
+import { icon, actIcon, MOUSE } from './icons.js';
 import { selectHTML } from './select.js';
 import { VirtualCursor } from './cursor.js';
 import { VIEWS } from './stage.js';
@@ -139,12 +139,12 @@ export class UI {
 
   // The look prompt (index.html `#prompt`): the thing's name under the dot; to the dot's left the blue lens (E) when
   // it can be looked at closer; to its right the green plate with the tool and the verb of what the hands would do
-  // now (`act`; a bar by the mouse glyph: the motion lasts while held). `put`: what is carried can be put down.
+  // now (`act`, a tap). `put`: what is carried can be put down.
   // Its parts stay in the page and only change their content: the touch controls take touches on them.
   // `label`: the thing's name (an entry or a label: src/ui/names.js; a new one restarts the fade).
   setPrompt(label, { act = null, read = false, put = null } = {}) {
     const on = !!(label || act);
-    this.prompt.className = `${on ? 'show' : ''}${act ? ' has-act' : ''}${read ? ' has-read' : ''}${actHeld(act) ? ' held' : ''}`;
+    this.prompt.className = `${on ? 'show' : ''}${act ? ' has-act' : ''}${read ? ' has-read' : ''}`;
     if (on) {
       const lang = this.state.lang, key = `${typeof label === 'string' ? label : label ? names(label).sah : ''}|${lang}`;
       if (key !== this.pKeyName) {
@@ -155,7 +155,7 @@ export class UI {
       const k = act ? actIcon(act) : '';
       if (k !== this.pIcon) { this.pIcon = k; this.pTool.innerHTML = k ? icon(k) : ''; }
       this.pVerb.textContent = act ? this.t(act.label) : '';
-      if (!this.pKey.firstChild) this.pKey.innerHTML = `${MOUSE.left}<i class="hold"></i>`;
+      if (!this.pKey.firstChild) this.pKey.innerHTML = MOUSE.left;
     }
     const pk = put ? actIcon(put) : '';
     if (pk !== this.putIcon) { this.putIcon = pk; this.putHint.innerHTML = pk ? `${icon(pk)}<span class="p-key">${MOUSE.right}</span>` : ''; this.putHint.classList.toggle('show', !!pk); }

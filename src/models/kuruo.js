@@ -225,8 +225,7 @@ export default async function build(ctx, placement) {
     gateMesh.position.set(0, 0, slide);
     gate.rotation.y = swing;
   };
-  // Opening: the rails are drawn out of the south post for as long as the hands hold them (let go early and they
-  // slide back in); once free they swing aside by their own weight and knock to a stop. Closing: a push swings
+  // Opening: a tap draws the rails out of the south post; once free they swing aside by their own weight and knock to a stop. Closing: a push swings
   // them back, and they are run home into the mortises.
   const LABEL = [{ sah: 'сүрдьүгэһи ас', en: 'draw the gate rails', ru: 'отодвинуть жерди ворот' }, { sah: 'сүрдьүгэһи сап', en: 'close the gate rails', ru: 'задвинуть жерди ворот' }];
   const mid = () => object.localToWorld(new THREE.Vector3(gN.x, 1, (GATE.z0 + GATE.z1) / 2));
@@ -239,14 +238,12 @@ export default async function build(ctx, placement) {
       const S = { a: open ? 1 : 0, v: 0, to: open ? 0 : 1 };
       if (!open) {
         game?.audio?.play('gate', mid());
-        let s = 0, t = 0;
+        let s = 0;
         await frames((dt) => {
-          t += dt;
-          s = Math.max(0, Math.min(1, s + (game?.input.doing || t < 0.15 ? dt / 0.8 : -dt / 0.45)));
+          s = Math.min(1, s + dt / 0.8);
           pose(SLIDE * ease(s), 0);
-          return s >= 1 || s <= 0;
+          return s >= 1;
         });
-        if (s < 1) { game?.audio?.play('wood-take', mid()); busy = false; return; } // let go: back in the mortises
       } else game?.audio?.play('gate', mid());
       await frames((dt) => { const r = swing(S, dt, 2.4, 1.2); pose(SLIDE, SWING * S.a); if (r === 'knock') game?.audio?.play('wood-take', mid()); return r === 'rest'; });
       if (open) { await tween(0.7, (t) => pose(SLIDE * (1 - ease(t)), 0)); game?.audio?.play('wood-lay', mid()); }

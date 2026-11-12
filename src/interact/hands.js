@@ -178,14 +178,15 @@ export class Hands {
       game.audio?.play('wood-take', t.obj.position); // the pail is wood too: a handle knock
     },
   };
-  // billets off the woodpile: one for a press, and one more every third of a second while the hands stay on it,
-  // up to an armful
+  // billets off the woodpile: one a tap; taps that follow in rhythm add one each, up to an armful
   takeLogAct = {
     id: 'take-log', label: ACT.takeLog,
+    tap: () => { this.more_ = true; },
     run: async (game) => {
       if (this.held) return;
       this.busy = true;
       for (let n = 0; n < ARMFUL; n++) {
+        this.more_ = false;
         // a billet from the pool, or the one set down longest ago
         let t = this.logs.find((l) => l.pool && l.state === 'pool');
         if (!t) t = this.logs.filter((l) => l.pool && l.state === 'ground').sort((a, b) => a.t - b.t)[0];
@@ -200,20 +201,20 @@ export class Hands {
         game.audio?.play('wood-take', o.position);
         this.weigh(0.25);
         let w = 0;
-        await this.until((dt) => (w += dt) > 0.36);
-        if (!game.input.doing || game.focus?.take !== 'woodpile') break;
+        await this.until((dt) => (w += dt) > 0.3 && (this.more_ || w > 0.9));
+        if (!this.more_) break;
       }
       this.busy = false;
     },
   };
   downAct = { id: 'down', label: ACT.down, run: () => this.setDown() };
-  // back onto the woodpile: a billet for a press, the next ones while the hands stay on it
+  // back onto the woodpile: a billet a tap
   stackAct = {
     id: 'stack', label: ACT.stack,
     run: async (game) => {
       if (this.held?.kind !== 'log' || this.busy) return;
       this.busy = true;
-      do { await this.stackOne(); } while (this.held && game.input.doing && game.focus?.take === 'woodpile');
+      await this.stackOne();
       this.busy = false;
       game.promptKey = null;
     },
@@ -238,8 +239,7 @@ export class Hands {
     this.stacked++;
     g.work?.count('stacked');
   }
-  // The pail goes down into the water and fills for as long as the hands hold it there: a quick dip brings up a
-  // little, a patient one a full pail.
+  // A tap dips the pail: it comes up half full, a second dip fills it.
   fillAct = {
     id: 'fill', label: ACT.fill,
     run: async (game) => {
@@ -250,19 +250,18 @@ export class Hands {
       const yaw = game.player.yaw;
       await this.fly(t, w.clone().add(_v.set(0, -0.2, 0)), new THREE.Quaternion().setFromEuler(_e.set(0.5, yaw, 0, 'YXZ')), 0.42);
       game.audio?.play('water-pour', w);
-      let s = 0;
+      const to = Math.min(1, t.level + 0.5);
       await this.until((dt) => {
-        s += dt;
-        this.setLevel(t.level + dt / 1.15);
+        this.setLevel(Math.min(to, t.level + dt / 0.6));
         t.obj.quaternion.setFromEuler(_e.set(0.5 * (1 - t.level), yaw, 0, 'YXZ')); // it rights itself as it grows heavy
-        return t.level >= 1 || (s > 0.3 && !game.input.doing);
+        return t.level >= to;
       });
       this.hold(t);
       this.weigh(0.3 + 0.5 * t.level);
       this.busy = false;
     },
   };
-  // tipped forward while the hands hold it so: the water runs out, and what is left stays in
+  // a tap tips it forward: a third of a pail runs out, and what is left stays in
   pourAct = {
     id: 'pour', label: ACT.pour,
     run: async (game) => {
@@ -271,15 +270,16 @@ export class Hands {
       this.busy = true;
       const pl = game.player, at = this.waterAhead() || _v.set(pl.pos.x + fwdX(pl.yaw) * 0.8, pl.pos.y, pl.pos.z + fwdZ(pl.yaw) * 0.8).clone();
       let s = 0, sounded = false;
+      const to = Math.max(0, t.level - 0.34);
       await this.until((dt) => {
         s += dt;
         this.dip = -ease(Math.min(1, s / 0.35));
         if (this.dip < -0.75) {
           if (!sounded) { sounded = true; game.audio?.play('water-pour-2', at); }
-          this.setLevel(t.level - dt / 1.1);
+          this.setLevel(Math.max(to, t.level - dt / 1.1));
           this.pourFrom(t.obj, at.y);
         }
-        return t.level <= 0 || (s > 0.45 && !game.input.doing);
+        return t.level <= to;
       });
       this.stream.visible = false;
       const d0 = this.dip;

@@ -1,7 +1,7 @@
 // Small things with a place of their own that are taken into the hands, used with the do input and put back
 // (they never lie on the ground: `Hands.homed`): the guest's choron in the uraha (a tap sprinkles a few drops of
-// kymys where you look, a hold drinks), the cup of milk on the lake's offering stone (held tipped over the water,
-// it pours), the khomus on its peg in the balagan (a tap plucks it, a hold plays on). The respectful gestures that
+// kymys towards the fire, the earth or the sky, else it is a sip), the cup of milk on the lake's offering stone (a tap
+// over the water pours a little), the khomus on its peg in the balagan (a tap plucks it, taps in rhythm play on). The respectful gestures that
 // were there before, now done by the player's own hands and look; nothing here can go wrong (docs/interactions.md).
 // Props and their own animations stay in the models (`userData.guest`, `.offering`, `.khomus`).
 import * as THREE from 'three/webgpu';
@@ -35,24 +35,31 @@ class Homed {
 }
 
 // ── the guest's choron ──
-const TAP = 0.24; // s: let go sooner and it is a sprinkle, held on it is a drink
 export class Choron extends Homed {
   constructor(game, hands, parts) {
     super(game, hands, 'choron', parts.hero, L('чороон', 'choron', 'чорон'), { p: [0.15, -0.27, -0.44], r: [0, 0, 0] });
     this.parts = parts;
     this.it = game.world.interactables.find((i) => i.guest);
     this.thing.it = this.it;
-    this.useAct = { id: 'choron', label: L('ыс эбэтэр ис', 'sprinkle, or drink', 'окропить или выпить'), run: () => this.use() };
+    this.sprinkleAct = { id: 'choron', label: L('ыс', 'sprinkle', 'окропить'), run: () => this.use(true) };
+    this.drinkAct = { id: 'drink', label: L('ис', 'drink', 'выпить'), run: () => this.use(false) };
     this.fillAct = { id: 'fill-choron', label: L('кымыста кут', 'ladle kymys into it', 'налить кумыса'), run: () => this.fill() };
     this.tilt = new THREE.Quaternion(); this.off = V(0, 0, 0); // the held cup's lean and shift (world lean, camera shift)
     this.P = { p: V(0, 0, 0), q: new THREE.Quaternion(), world: true };
   }
   actFor(it) {
-    if (this.held) return this.busy ? null : it.entry === 'choron' ? this.backAct : this.useAct; // with the choron in the hands they do nothing else
+    if (this.held) return this.busy ? null : it.entry === 'choron' ? this.backAct : this.useAct(); // with the choron in the hands they do nothing else
     if (it.guest) return this.hands.held || this.busy ? null : this.fillAct;
     return undefined;
   }
-  idleAct() { return this.held && !this.busy ? this.useAct : null; }
+  idleAct() { return this.held && !this.busy ? this.useAct() : null; }
+  // aimed at the fire, down at the earth or up at the sky: drops for it; else a sip
+  useAct() {
+    const g = this.game, cam = g.engine.camera, pitch = g.player.pitch;
+    const h = this.parts.hearth(), to = _w.copy(h).sub(cam.position), d = to.length();
+    const fire = d < 7 && to.normalize().dot(cam.getWorldDirection(_v)) > 0.86;
+    return fire || pitch < -0.6 || pitch > 0.5 ? this.sprinkleAct : this.drinkAct;
+  }
   // the ladle fills it from the симиир, then it is in the hands
   async fill() {
     if (this.busy || this.hands.held) return;
@@ -68,13 +75,11 @@ export class Choron extends Homed {
     P.q.setFromAxisAngle(Y, this.game.player.yaw).premultiply(this.tilt);
     return P;
   }
-  async use() {
+  async use(sprinkle) {
     if (!this.held || this.busy) return;
-    const g = this.game, inp = g.input, kl = this.parts.kymys;
+    const kl = this.parts.kymys;
     this.busy = true;
-    let t = 0;
-    await this.until((dt) => (t += dt) > TAP || !inp.doing);
-    if (inp.doing) await this.drink(); else if (kl.vol > kl.volAt(this.parts.KYMYS.left) * 1.001) await this.sprinkle();
+    if (!sprinkle) await this.drink(); else if (kl.vol > kl.volAt(this.parts.KYMYS.left) * 1.001) await this.sprinkle();
     this.busy = false;
   }
   // A flick of the cup towards the look: a few drops fly that way. Into the fire, it answers.
@@ -95,17 +100,18 @@ export class Choron extends Homed {
     await this.until((dt) => { k = Math.max(0, k - dt / 0.3); const e = ease(k); this.tilt.setFromAxisAngle(axis, lean * e); this.off.set(0, rise * e, -0.07 * e); return k <= 0; });
     this.tilt.identity(); this.off.set(0, 0, 0);
   }
-  // The near rim comes to the lips and the choron tips towards the face for as long as it is held there; what it
-  // held at the start stays in (the guest does not drain it).
+  // A sip: the near rim comes to the lips, the choron tips towards the face and comes down again; what it held at
+  // the start stays in (the guest does not drain it).
   async drink() {
-    const g = this.game, inp = g.input, cam = g.engine.camera, P = this.parts, kl = P.kymys;
+    const g = this.game, cam = g.engine.camera, P = this.parts, kl = P.kymys;
     const th0 = 0.25, th1 = Math.max(th0, kl.tiltFor(kl.volAt(P.KYMYS.left)));
     const mouth = V(0, -0.1, -0.11), H = V(0.15 * Math.min(1, cam.aspect * 0.8), -0.27, -0.44);
-    let up = 0, th = th0, sipped = false;
+    let up = 0, th = th0, sipped = false, t = 0;
     await this.until((dt) => {
-      up = clamp(up + (inp.doing ? dt / 0.55 : -dt / 0.5), 0, 1);
-      if (up >= 1 && inp.doing) { th = Math.min(th1, th + dt * (th1 - th0) / 1.5); if (!sipped) { sipped = true; g.player.springV += 0.25; } }
-      if (!inp.doing) th = Math.max(th0, th - dt * 2);
+      const on = (t += dt) < 2.3; // up, the sip, a breath, down
+      up = clamp(up + (on ? dt / 0.55 : -dt / 0.5), 0, 1);
+      if (up >= 1 && on) { th = Math.min(th1, th + dt * (th1 - th0) / 1.2); if (!sipped) { sipped = true; g.player.springV += 0.25; } }
+      if (!on) th = Math.max(th0, th - dt * 2);
       const e = ease(up), a = th * e;
       // lean about the rim nearest the face: the axis is the view's right, turned level
       const right = _v.set(1, 0, 0).applyQuaternion(cam.quaternion).setY(0).normalize();
@@ -114,7 +120,7 @@ export class Choron extends Homed {
       const lip = face.clone().multiplyScalar(kl.rTop).addScaledVector(Y, kl.top).applyQuaternion(this.tilt); // rim, from the cup's foot (world axes)
       const want = mouth.clone().applyQuaternion(cam.quaternion).sub(lip).applyQuaternion(_q.copy(cam.quaternion).invert()); // the foot, in view space
       this.off.copy(want.sub(H)).multiplyScalar(e);
-      return up <= 0 && !inp.doing;
+      return up <= 0 && !on;
     });
     this.tilt.identity(); this.off.set(0, 0, 0);
   }
@@ -149,17 +155,17 @@ export class Cup extends Homed {
     return P;
   }
   async pour() {
-    const g = this.game, inp = g.input, P = this.parts, cup = P.cup, w = this.hands.waterAhead();
+    const g = this.game, P = this.parts, cup = P.cup, w = this.hands.waterAhead();
     if (!w || this.busy) return;
     this.busy = true;
-    let t = 0, rings = 9, sounded = false;
+    const to = Math.max(0, this.milk - 0.34); // a tap: a third of the cup
+    let rings = 9, sounded = false;
     await this.until((dt) => {
-      t += dt;
-      const on = (inp.doing || t < 0.5) && this.milk > 0;
+      const on = this.milk > to;
       this.tip = clamp(this.tip + (on ? dt / 0.5 : -dt / 0.4), 0, 1);
       const flowing = this.tip > 0.8 && this.milk > 0;
       if (flowing) {
-        this.milk = Math.max(0, this.milk - dt / 1.6);
+        this.milk = Math.max(to, this.milk - dt / 1.6);
         P.milkTop.scale.setScalar(0.45 + 0.55 * this.milk); P.milkTop.visible = this.milk > 0;
         if (!sounded) { sounded = true; g.audio?.play('pour', w); }
         // the strand from the far rim down to the water, rings where it lands
@@ -201,20 +207,18 @@ export class Khomus extends Homed {
     P.q.copy(AT_LIPS.q).multiply(_q.setFromAxisAngle(X, s * 0.05));
     return P;
   }
-  // a tap: one pluck. Held on: the playing goes on for as long as the hands stay, and stops with them.
+  // a tap: one pluck. Taps that follow in rhythm play on, and the playing stops a moment after the last.
   async play() {
     if (!this.held || this.busy) return;
-    const g = this.game, inp = g.input, at = g.engine.camera.position;
+    const g = this.game, at = g.engine.camera.position;
     this.busy = true;
-    g.audio?.play('khomus-pluck', at) || g.audio?.play('discover', at);
-    this.ring = 1;
-    let t = 0;
-    await this.until((dt) => (t += dt) > 0.3 || !inp.doing);
-    if (inp.doing) {
-      const song = g.audio?.sustain?.('khomus', at);
-      await this.until(() => { this.ring = 0.6; return !inp.doing || !this.held; });
-      song?.stop();
-    }
+    const pluck = () => { g.audio?.play('khomus-pluck', at) || g.audio?.play('discover', at); this.ring = 1; };
+    pluck();
+    let t = 0, song = null;
+    this.playAct.tap = () => { t = 0; if (!song) song = g.audio?.sustain?.('khomus', at) || true; else pluck(); };
+    await this.until((dt) => { if (song) this.ring = Math.max(this.ring, 0.6); return (t += dt) > (song ? 0.9 : 0.7) || !this.held; });
+    this.playAct.tap = null;
+    song?.stop?.();
     this.busy = false;
   }
   update(dt) {

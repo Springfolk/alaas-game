@@ -109,7 +109,7 @@ export class Hints {
     }
     const T = this.tuos;
     if (T && !T.busy) {
-      if (T.held && !T.made) return T.warm > 0 ? { kind: 'sheen', at: T.rest.p.clone().setY(T.rest.p.y + 0.02) } : this.fireHint(this.hearth()); // warm: the hide
+      if (T.held && !T.made) return T.warm > 0 ? null : this.fireHint(this.hearth()); // soft: it is folded in the hands, the bark shows it
       if (T.held && T.made) { // a тордуйа in the hands: the nearest ripe berries
         const full = this.nearest(this.patches.filter((i) => (g.interact.patches.get(i.berries)?.n ?? 1) > 0), (i) => this.centre(i));
         const at = full && this.centre(full);
@@ -120,7 +120,7 @@ export class Hints {
     const W = this.blank?.target.userData.forge;
     if (W && W.at !== 'rest' && !held && this.forge && P.distanceTo(this.centre(this.forge)) < 14) {
       if (W.fly || W.busy || W.at === 'tub') return null;
-      return this.blank.live() ? { kind: 'ember', at: this.blank.target.getWorldPosition(new THREE.Vector3()) } : this.sheen(this.forge.target); // the iron spits when it is ready for the hands, else the bellows
+      return this.blank.live()?.id !== 'bellows' ? { kind: 'ember', at: this.blank.target.getWorldPosition(new THREE.Vector3()) } : this.sheen(this.forge.target); // the iron spits when it is ready for the hands, else the bellows
     }
     if (held?.kind === 'log') {
       const pile = h.pile.getWorldPosition(new THREE.Vector3()), fire = this.hearth(), fp = fire && (fire.fireplace.pos?.() || this.centre(fire));

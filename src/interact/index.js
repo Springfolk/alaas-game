@@ -45,13 +45,22 @@ export class Interactions {
   idleAct() {
     if (this.seat.on) return this.seat.standAct;
     for (const r of this.rites) { const a = r.idleAct(); if (a) return a; }
-    return this.work.idleAct() || this.hands?.idleAct() || null;
+    return this.work.idleAct() || this.hands?.idleAct() || this.aroundAct();
+  }
+  // empty hands within a work place's reach (`it.around` = { at(), r }): its act of the moment (`it.live`)
+  aroundAct() {
+    if (this.hands?.held) return null;
+    const p = this.game.player.pos;
+    for (const it of (this.arounds ||= this.game.world.interactables.filter((i) => i.around && i.live))) {
+      const c = it.around.at();
+      if (Math.hypot(c.x - p.x, c.z - p.z) < it.around.r) return it.live();
+    }
+    return null;
   }
   // putting down what is carried (src/interact/hands.js)
   putAct() { return this.seat.on ? null : this.hands?.putAct() || null; }
 
-  // Berries come off one by one for as long as the hands stay in the patch: a press takes one, a patient hold
-  // strips it. They go into the тордуйа if one is carried (src/interact/work/tuos.js), else they are eaten.
+  // A tap takes a small handful of berries off the crown, one by one. They go into the тордуйа if one is carried (src/interact/work/tuos.js), else they are eaten.
   pickAct = {
     id: 'pick', label: { sah: 'дьэдьэн хомуй', en: 'pick berries', ru: 'собрать ягоды' },
     run: async (game, it) => {
@@ -66,7 +75,7 @@ export class Interactions {
           if (got % 3 === 1) game.audio?.step?.('grass', 0.8); // a rustle in the leaves
           this.work.jobs.some((j) => j.picked?.(1));
         }
-        if (P.n > 0 && game.input.doing && game.focus === it) return false;
+        if (P.n > 0 && got < 3) return false;
         res(); return true;
       }));
       for (const j of this.work.jobs) j.gathered?.(got);

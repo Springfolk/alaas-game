@@ -138,9 +138,9 @@ export default async function build(ctx) {
   const wait = (s) => tween(s, () => {});
   const ease = (k) => k * k * (3 - 2 * k);
   const local = (v) => root.worldToLocal(v.clone());
-  // Churning: the хамнатар is lifted for as long as the do input is held on the sack and plunges when it is let
-  // go. A stroke from the top counts whole, a short one in part; strokes one after another raise a froth at the
-  // collar (12 whole ones: it foams over, `save.work.kymys`), a long rest lets it fall again.
+  // Churning: a tap on the sack is a stroke: the хамнатар comes up and plunges. Taps in rhythm: a tap before the
+  // plunge is kept, and its stroke is short and counts in part; strokes one after another raise a froth at the
+  // collar (8 whole ones: it foams over, `save.work.kymys`), a long rest lets it fall again.
   const churn = { up: 0, top: 0, fall: 0, lifting: false, t: 0, score: 0, idle: 9, bulge: 0, foamed: 0, base: ky.stirrer.position.y };
   const froth = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 8).scale(1, 0.42, 1), M.kymys);
   { const uv = froth.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, 0.9); } // all froth (uv.x: `kymys` in urasa/mats.js)
@@ -231,9 +231,10 @@ export default async function build(ctx) {
       entry: 'kymys', target: ky.sackRoot,
       act: {
         id: 'churn', label: { sah: 'Хамнат', en: 'Churn the kymys', ru: 'Покачать мутовку в кумысе' },
+        tap: () => { churn.next = 0.55; },
         run: async () => {
-          if (churn.lifting || churn.fall > 0) return;
-          churn.lifting = true; churn.t = 0;
+          if (churn.lifting || churn.fall > 0) { churn.next = 0.55; return; }
+          churn.lifting = true; churn.t = 0; churn.to = 1;
           await new Promise((res) => { churn.res = res; });
         },
       },
@@ -251,18 +252,19 @@ export default async function build(ctx) {
   const update = (dt, c) => {
     // the dasher
     if (churn.lifting) {
-      churn.t += dt; churn.up = Math.min(1, churn.up + dt / 0.34);
-      if (!c.game?.input.doing && churn.t > 0.08) { churn.lifting = false; churn.top = churn.up; churn.fall = 1; }
+      churn.t += dt; churn.up = Math.min(churn.to, churn.up + dt / 0.34);
+      if (churn.up >= churn.to) { churn.lifting = false; churn.top = churn.up; churn.fall = 1; }
     } else if (churn.fall > 0) {
       churn.fall = Math.max(0, churn.fall - dt / (0.08 + 0.12 * churn.top));
       churn.up = churn.top * churn.fall * churn.fall;
       if (churn.fall === 0) { // the plunge
         sound(c.game, 'churn', ky.sack);
-        churn.score = Math.min(12, churn.score + (churn.top > 0.7 ? 1 : churn.top * 0.5));
+        churn.score = Math.min(12, churn.score + (churn.top > 0.7 ? 1.5 : churn.top * 0.75));
         churn.idle = 0; churn.bulge = 0.5 + 0.5 * churn.top;
         c.game?.work?.count('churn');
         if (churn.score >= 12 && !churn.foamed) { churn.foamed = 90; c.game?.work?.count('kymys'); }
         churn.res?.();
+        if (churn.next) { churn.lifting = true; churn.t = 0; churn.to = churn.next; churn.next = 0; } // the early tap's short stroke
       }
     } else if ((churn.idle += dt) > 1.6 && !churn.foamed) churn.score = Math.max(0, churn.score - dt * 1.5); // left alone, the froth falls
     if (churn.foamed && (churn.foamed -= dt) <= 0) { churn.foamed = 0; churn.score = 0; }
