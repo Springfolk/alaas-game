@@ -148,6 +148,6 @@ export function buildInterior(rng) {
   const geoms = {};
   for (const [k, list] of Object.entries(G)) geoms[k] = merge(list, k === 'hide' ? ['aHide'] : []);
   // what a thing set down rests on: the earth floor as drawn, the horse-hide mat on it
-  const rests = [{ x: 0, z: 0, r: makeProfile().rAtY(0) - 0.1, h: 0.017, y: floorAt }, { x: -1.42, z: 0.05, hw: 0.33, hd: 0.56, h: 0.028, loose: true }];
+  const rests = [{ x: 0, z: 0, r: makeProfile().rAtY(0) - 0.1, h: 0.017, floor: true }, { x: -1.42, z: 0.05, hw: 0.33, hd: 0.56, h: 0.028, loose: true }];
   return { geoms, colliders, benchTargets, rests };
 }

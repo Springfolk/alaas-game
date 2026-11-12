@@ -7,7 +7,7 @@ import * as THREE from 'three/webgpu';
 import { uv, vec3, mix, fract, float, step, min, abs, faceDirection, mx_fractal_noise_float } from 'three/tsl';
 import { makeProfile, buildFrame, R_POST, POST_H, DOOR } from './urasa/frame.js';
 import { buildCover, buildCurtain, CURTAIN_W } from './urasa/cover.js';
-import { buildInterior, BENCH, HEARTH } from './urasa/interior.js';
+import { buildInterior, BENCH, HEARTH, floorAt } from './urasa/interior.js';
 import { buildKymys, KYMYS } from './urasa/kymys.js';
 import { buildFire } from './urasa/fire.js';
 import { makeMats, smoothstep, uDoorOpen } from './urasa/mats.js';
@@ -349,5 +349,6 @@ export default async function build(ctx) {
   root.userData.paths = [{ w: 2.6, pts: ring }];
   root.userData.bare = [{ x: 0, z: 0, r: R0 }];
 
-  return { object: root, colliders, floors: [], rests: inside.rests, interactables, update };
+  const rests = inside.rests.map((f) => (f.floor ? { ...f, y: floorAt } : f)); // the earth floor as drawn (a section bakes plain data only)
+  return { object: root, colliders, floors: [], rests, interactables, update };
 }
