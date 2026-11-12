@@ -45,7 +45,7 @@ No sentence and no mark says the next step: light catches the thing, as in a pho
 | fish trap | empty: fish rise and jump in the weir's gap, sun glitter on the rings, water laps; with fish: the тымтай's bark glints |
 | nothing, trap set with ≥ 3 fish, ≤ 45 m | the catch splashes in the trap, sun glitter on the water |
 | scythe, standing off the standing grass | dew catches the sun on the nearest standing grass: a low sheen and sparkles |
-| bark sheet | cold: the nearest hearth's light swells; warm: a glint on the hide where it lies |
+| bark sheet | cold: the nearest hearth's light swells; soft: none (folded in the hands, it shows itself) |
 | warm bark on the hide, nothing held | the sheet's satin glints |
 | тордуйа | the nearest full дьэдьэн patch ≤ 80 m: its berries glint and glare, a thrush calls from there |
 | nothing, forge begun, ≤ 14 m | the blank spits an ember and glows when it is ready for the hands, else the bellows glint |
