@@ -27,7 +27,8 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 ## Hooks
 - Interactable: `off` (not focusable), `take`, `berries`, `sit`, `fireplace: { pos(), upright, fuel(), stir(k) }`. Things with a home (`hands.homed`): `guest` (choron), `offering` (lake stone), `khomus` flags; parts in the model's `userData`.
 - `game.interact.actFor(it)` overrides `it.act` while carrying; `idleAct()` = the do input with nothing in focus; `putAct()` = put down. `game.doReady` / `readReady` / `putReady` light the touch buttons; `game.choosing` = a `choose()` strip is up (touch hides its controls).
-- Aim: when the look hits nothing, a thing within reach whose bounds it passes close to is in view (`pickFocus`: ≤ 0.8 × its radius, at least 0.3 m).
+- Aim (`pickFocus`): among hits within 0.6 m behind the first, the smallest thing wins.
+- Aim, near misses (things ≤ 1.2 m radius): with nothing hit, a thing whose centre the look passes within 0.8 × its radius (≥ 0.3 m); smaller than what was hit and in front of it, within half its radius (≥ 0.12 m).
 - Work places: `it.around = { at(), r }` with `it.live()`: empty hands within `r` get its act of the moment (the forge).
 - Jobs: a placed model names its job in `object.userData.work.job` (`JOBS` in `work/index.js`). `Work` (`game.work`) is asked before the carrying code: `actFor(it)` → act, `null` = nothing, `undefined` = not mine; `count(key)` → `save.work`; `say()` = a saying, once.
 - Tools are carried things: `hands.addKind(kind, hold, lie)`, `hands.addThing({ kind, obj, it, name })`, `it.thing`, `thing.put()`; `hands.pose(dt, cam)` → `{ p, q, world? }` drives a held tool. Carried things have weight: they trail the turning view, sit nearer the middle on a narrow screen, and `weigh()` dips the view.

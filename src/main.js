@@ -560,16 +560,18 @@ class Game {
       const r = o?.userData.sphere?.radius ?? Infinity;
       if (o && (!best || r < bestR)) { bestR = r; best = o.userData.interactable; bestD = h.distance; this.focusHit = { ...h, it: best }; }
     }
-    if (!best) {
-      // nothing hit: a small thing the look passes close to (a thin tool, a sheet): no pixel-hunting
-      const ray = this.ray.ray;
+    {
+      // a small thing the look passes close to (a thin tool, a sheet): no pixel-hunting. With nothing hit, within
+      // 0.8 of its radius (at least 0.3 m); smaller than what was hit and in front of it, within half its radius
+      // (at least 0.12 m)
+      const ray = this.ray.ray, hit = best;
       let bk = 1;
       for (const t of targets) {
         const sp = t.userData.sphere, it = t.userData.interactable;
-        if (!sp || !it || sp.radius > 1.2) continue;
+        if (!sp || !it || it === hit || sp.radius > (hit ? bestR : 1.2)) continue;
         const along = _gen.copy(sp.center).sub(cp).dot(ray.direction);
-        if (along < 0 || along > this.ray.far + sp.radius) continue;
-        const k = ray.distanceToPoint(sp.center) / Math.max(0.3, sp.radius * 0.8);
+        if (along < 0 || along > (hit ? bestD - 0.1 : this.ray.far + sp.radius)) continue;
+        const k = ray.distanceToPoint(sp.center) / (hit ? Math.max(0.12, sp.radius * 0.5) : Math.max(0.3, sp.radius * 0.8));
         if (k < bk) { bk = k; best = it; }
       }
     }

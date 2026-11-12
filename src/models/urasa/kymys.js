@@ -240,11 +240,12 @@ export function buildKymys(rng, M) {
     const handle = tube(path, (t, an) => Math.hypot(Math.cos(an) * 0.007, Math.sin(an) * 0.012) * (t < 0.08 ? 1.25 : 1) * (1 - t * 0.25), 8, { capEnd: true });
     const rings = [0.075, 0.085, 0.095].map((x) => xf(lathe([[0.012, -0.002], [0.0145, 0], [0.012, 0.002]], 10), { r: [0, 0, Math.PI / 2 - 0.3], p: [x, 0.012 + (x - 0.05) * 0.4, 0] }));
     add(merge([plain(bowl), plain(handle), ...rings.map((g) => plain(g))]), M.birch, ladle);
-    // hang it on the room side (−z): the hook's curl (centre at handle-local (0.35, 0.0705)) over the collar rim,
-    // the handle leaning out over the sack's shoulder, the bowl hanging clear of the belly
+    // hang it on the side (−x, along the wall): the hook's curl (centre at handle-local (0.35, 0.0705)) over the
+    // collar rim, the handle leaning out over the sack's shoulder, the bowl hanging clear of the belly; the room
+    // side stays clear for the look that churns
     const th = 0.89, cx = 0.35 * Math.cos(th) - 0.0705 * Math.sin(th), cy = 0.35 * Math.sin(th) + 0.0705 * Math.cos(th);
-    ladle.rotation.set(0, -Math.PI / 2, th);
-    ladle.position.set(0, neckY + 0.068 - cy, -0.0485 - cx);
+    ladle.rotation.set(0, 0, th);
+    ladle.position.set(-0.0485 - cx, neckY + 0.068 - cy, 0);
     sackRoot.add(ladle);
   }
 
