@@ -14,6 +14,7 @@ import { makeMats, smoothstep, uDoorOpen } from './urasa/mats.js';
 import { merge, lathe } from './urasa/geom.js';
 import { section } from '../load/geocache.js';
 import { noSun, noLocalLights } from '../engine/master.js';
+import { offerFrom, offerPath, offerTime } from '../util.js';
 
 const EXPO_IN = 1.5, EXPO_OUT = 0.62;
 
@@ -164,14 +165,14 @@ export default async function build(ctx) {
       d.t = 1.4; d.o.visible = true;
     }
   };
-  // An offering put into the fire: n drops carried slowly from a world point to just over the embers, then
-  // lowered onto them: put, never thrown
-  const offer = (fromW, toW, n, dur) => {
-    const from = local(fromW), to = local(toW), put = drops.slice(0, n);
-    put.forEach((d, i) => { d.held = true; d.o.visible = true; d.o.scale.setScalar(1.8); d.off = new THREE.Vector3((i - 1) * 0.012, 0, ((i * 7) % 3 - 1) * 0.01); });
-    return tween(dur, (k) => {
-      const e = ease(Math.min(1, k / 0.75)), low = ease(Math.max(0, (k - 0.75) / 0.25)); // carried over, then set down
-      for (const d of put) { d.o.position.lerpVectors(from, to, e).add(d.off); d.o.position.y += 0.12 * (1 - low) * e; }
+  // An offering put into the fire: n drops come up from low by the player and are set down slowly on the embers
+  // (src/util.js offerPath): put, never thrown
+  const offer = (fromW, toW, n) => {
+    const from = local(fromW), to = local(toW), put = drops.slice(0, n), p = new THREE.Vector3();
+    put.forEach((d, i) => { d.held = true; d.o.visible = true; d.o.scale.setScalar(0.01); d.off = new THREE.Vector3((i - 1) * 0.012, 0, ((i * 7) % 3 - 1) * 0.01); });
+    return tween(offerTime(fromW, toW), (k) => {
+      offerPath(from, to, k, p);
+      for (const d of put) { d.o.position.copy(p).add(d.off); d.o.scale.setScalar(1.8 * ease(Math.min(1, k / 0.15))); }
       if (k >= 1) for (const d of put) { d.held = false; d.o.visible = false; d.o.scale.setScalar(1); }
     });
   };
@@ -225,12 +226,11 @@ export default async function build(ctx) {
         lean: (() => { let n = 0; return () => { const a = fire.gaps[n++ % fire.gaps.length], o = fire.group.localToWorld(new THREE.Vector3()), d = fire.group.localToWorld(new THREE.Vector3(Math.cos(a), 0, Math.sin(a))).sub(o); return Math.atan2(d.z, d.x); }; })(),
       },
       act: {
-        // a pinch from the hand, carried slowly to the hearth and set down on it; the fire takes it
+        // a pinch from low by the hand, set down slowly on the hearth; the fire takes it
         id: 'feed', empty: true, label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
         run: async (game) => {
-          const cam = game.engine.camera, hearth = fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top + 0.1, 0));
-          const hand = new THREE.Vector3(0.14, -0.2, -0.35).applyQuaternion(cam.quaternion).add(cam.position);
-          await offer(hand, hearth, 3, 1.3 + Math.min(1, hearth.distanceTo(hand) * 0.25));
+          const hearth = fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top + 0.05, 0));
+          await offer(offerFrom(game.engine.camera, hearth, new THREE.Vector3()), hearth, 3);
           sound(game, 'fire-feed', fire.group);
           fire.flare();
         },

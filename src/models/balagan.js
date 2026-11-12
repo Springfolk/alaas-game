@@ -15,6 +15,7 @@ import { buildWinterGear } from './balagan/winter.js';
 import { PlantBatch, sodRoof } from './balagan/plants.js';
 import { groundOf, troddenPatch, blob, leaf } from './yard/bits.js';
 import { trodden } from './yard/mat.js';
+import { offerFrom, offerPath, offerTime, ease } from '../util.js';
 import { FX, FZ, H, ZD, DW, DH, XD, ROOF, HEARTH, WIN, KH, inner } from './balagan/dims.js';
 
 const OUTSIDE_EXPOSURE = 0.62, INSIDE_EXPOSURE = 1.9;
@@ -226,19 +227,20 @@ export default async function build(ctx, placement) {
   const world = (v) => root.localToWorld(v.clone());
 
   // the hearth: in the summer house the player may feed the fire (a pinch of butter, respectfully)
-  let flare = 0, morselT = -1, fuel = 0;
+  let flare = 0, morselT = -1, morselDur = 1, fuel = 0;
   const morselFrom = new THREE.Vector3();
   const hearthIt = { entry: 'ohokh', target: hearthT };
   if (!winter) {
     hearthIt.act = {
-      // a pinch of butter from the hand, carried slowly into the hearth's mouth and set down there; the fire takes it
+      // a pinch of butter from low by the hand, set down slowly in the hearth's mouth (src/util.js offerPath); the fire takes it
       id: 'feed', empty: true, label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
       run: async (game) => {
-        const cam = game.engine.camera;
-        morselFrom.set(0.14, -0.2, -0.35).applyQuaternion(cam.quaternion).add(cam.position);
+        const to = world(fire.pos), sw = world(fire.pos.clone().add(new THREE.Vector3(-Math.SQRT1_2, 0, Math.SQRT1_2))).sub(to); // the mouth faces SW
+        offerFrom(game.engine.camera, to, morselFrom, { a: Math.atan2(sw.z, sw.x), half: 0.55 });
+        morselDur = offerTime(morselFrom, to);
         root.worldToLocal(morselFrom);
-        morselT = 0; morsel.visible = true;
-        await wait(1500);
+        morselT = 0; morsel.scale.setScalar(0.01); morsel.visible = true;
+        await wait(morselDur * 1000);
         flare = 1;
         game.audio?.play('fire-feed', world(fire.pos));
       },
@@ -298,8 +300,8 @@ export default async function build(ctx, placement) {
       M.flare.value = Math.max(flare, fk * 0.45);
       if (morselT >= 0) {
         morselT += dt;
-        const k = Math.min(1, morselT / 1.5), e = k * k * (3 - 2 * k), low = Math.max(0, (k - 0.7) / 0.3); // carried level, then lowered
-        morsel.position.lerpVectors(morselFrom, fire.pos, e); morsel.position.y += 0.1 * (1 - low * low) * e;
+        const k = Math.min(1, morselT / morselDur);
+        offerPath(morselFrom, fire.pos, k, morsel.position); morsel.scale.setScalar(ease(Math.min(1, k / 0.15)));
         if (k >= 1) { morsel.visible = false; morselT = -1; }
       }
     }
