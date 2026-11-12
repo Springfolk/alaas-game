@@ -526,7 +526,7 @@ class Game {
     this.acting = act;
     this.promptKey = null;
     const doneKey = act === it?.act && act.once ? `${it.entry}:${act.id || 'act'}` : null;
-    if (act.freeze) this.player.frozen = true; // only acts that move the view or ask a choice
+    if (act.freeze) this.player.frozen = true; // only acts that move the view
     try { await act.run(this, it); } finally {
       if (act.freeze) this.player.frozen = false;
       this.acting = null; this.promptKey = null;

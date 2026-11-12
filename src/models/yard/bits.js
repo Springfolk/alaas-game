@@ -1,5 +1,5 @@
 // Small shared pieces for the yard models: ground following, trodden-earth patches, horsehair tufts,
-// cloth ribbons, uncut grass at post feet, colour helpers, and an on-screen three-way choice.
+// cloth ribbons, uncut grass at post feet, and colour helpers.
 import * as THREE from 'three/webgpu';
 import { strip, tube } from './geo.js';
 import { fbm } from '../../util.js';
@@ -179,55 +179,6 @@ export function grassClump(rng, ground, cx, cz, { n = 40, r = 0.25, h = 0.45 } =
   for (let i = 0; i < sw.length; i++) sw[i] = ((i % 10) >> 1) / 4;
   g.setAttribute('sway', new THREE.BufferAttribute(sw, 1));
   return g;
-}
-
-// A choice of ribbons shown under the look (`#choice`, index.html): each option is a strip of its colour. Moving
-// the mouse (or 1 2 3) goes along them, the do input ties the one picked out, put down or Esc leaves; on touch a
-// strip is tapped. Resolves the option's id, or null.
-export function choose(game, title, options) {
-  return new Promise((resolve) => {
-    const t = (o) => game?.ui?.t ? game.ui.t(o) : o.en;
-    const d = document.getElementById('choice');
-    if (!d) { resolve(options[0]?.id ?? null); return; }
-    let sel = Math.floor(options.length / 2), acc = 0;
-    d.innerHTML = options.map((o, i) => `<button data-i="${i}" style="--c:${o.swatch}"><i></i><span>${t(o.label)}</span></button>`).join('') + '<button data-i="x" class="x">✕</button>';
-    d.setAttribute('aria-label', t(title));
-    const show = () => { [...d.children].forEach((b, i) => b.classList.toggle('on', i === sel)); };
-    show();
-    d.classList.add('show');
-    if (game) game.choosing = true; // touch hides its play controls
-    const done = (v) => {
-      for (const [type, fn] of Object.entries(on)) removeEventListener(type, fn, true);
-      d.classList.remove('show');
-      if (game) game.choosing = false;
-      resolve(v);
-    };
-    const pick = (b) => { const i = b?.dataset.i; if (i === 'x') done(null); else if (i != null) done(options[+i].id); };
-    const on = {
-      keydown: (e) => {
-        if (e.repeat) return;
-        const n = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code];
-        if (n !== undefined && n < options.length) { e.stopPropagation(); done(options[n].id); }
-        else if (e.code === 'Escape' || e.code === 'KeyQ') { e.stopPropagation(); done(null); }
-        else if (e.code === 'KeyF' || e.code === 'Enter') { e.stopPropagation(); done(options[sel].id); }
-        else if (e.code === 'ArrowLeft' || e.code === 'KeyA') { sel = Math.max(0, sel - 1); show(); }
-        else if (e.code === 'ArrowRight' || e.code === 'KeyD') { sel = Math.min(options.length - 1, sel + 1); show(); }
-      },
-      mousemove: (e) => { // (pointer locked: the look is held still, the mouse goes along the ribbons)
-        if (!document.pointerLockElement) return;
-        acc += e.movementX;
-        const s = Math.max(0, Math.min(options.length - 1, Math.floor(options.length / 2) + Math.round(acc / 70)));
-        if (s !== sel) { sel = s; show(); }
-      },
-      mousedown: (e) => {
-        if (!document.pointerLockElement) { pick(e.target.closest?.('#choice button')); return; }
-        e.stopPropagation();
-        if (e.button === 0) done(options[sel].id); else if (e.button === 2) done(null);
-      },
-      touchstart: (e) => { const b = e.target.closest?.('#choice button'); if (b) { e.preventDefault(); e.stopPropagation(); pick(b); } },
-    };
-    for (const [type, fn] of Object.entries(on)) addEventListener(type, fn, { capture: true, passive: false });
-  });
 }
 
 // A hinged leaf with weight (a door, gate rails). s = { a: 0…1, v, to: 0 | 1 }: pushed towards `to` it gathers

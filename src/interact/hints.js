@@ -96,7 +96,7 @@ export class Hints {
   // What the hands should go to next, and how the world says it: { at, kind, … } or null. The rules, job by job.
   next() {
     const g = this.game, h = this.hands, held = h?.held, P = g.player.pos;
-    if (!h || g.acting || g.interact.seat.on || g.choosing) return null;
+    if (!h || g.acting || g.interact.seat.on) return null;
     if (g.interact.rites.some((r) => r.held)) return null; // (the khomus)
     const S = this.split;
     if (S && !S.working && !held && P.distanceTo(S.block) < 8 && (S.restHalf() || S.freeRound() !== undefined)) return { kind: 'glint', at: S.axe.obj.localToWorld(new THREE.Vector3(0.02, 0.66, 0)) }; // wood waits: the sun on the axe's edge

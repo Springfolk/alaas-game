@@ -311,7 +311,7 @@ export function smithy(K, x, z, yaw) {
   const [ax, az] = F.tw(-0.5, 0.95), anvilY = K.b.ground(ax, az) + 0.39 + 0.075;
   const SPOT = {
     fire: { p: new THREE.Vector3(...Wy(FX, fy + FTOP - 0.012, 0.08)), yaw: yaw + Math.PI / 2 + 0.2 },
-    anvil: { p: new THREE.Vector3(ax, anvilY + 0.008, az), yaw: yaw + 1.1 }, // the bar (1.3 cm thick) on the anvil's face
+    anvil: { p: new THREE.Vector3(ax, anvilY + 0.008, az), yaw: yaw + 1.1 }, // on the anvil's face (setShape: by the shape's thickness)
     over: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.36, -0.85)), yaw: yaw + 0.4 }, // held over the quench tub
     tub: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.207, -0.85)), yaw: yaw + 0.4 }, // in the water, its top at the surface
   };
@@ -369,7 +369,13 @@ export function smithy(K, x, z, yaw) {
   const spark = () => { for (const s of sparks) { s.o.position.copy(SPOT.anvil.p); s.v.set((Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3); s.t = 0.3 + Math.random() * 0.3; s.o.visible = true; } };
   const world = (v) => K.group.localToWorld(v.clone());
   const sound = (game, name, v) => game.audio?.play(name, world(v));
-  const setShape = (i) => shapes.forEach((m, k) => { m.visible = k === i; });
+  const FACE = anvilY - 0.0053, HALF = [0.013, 0.012, 0.006, 0.0055].map((t) => t * 0.75); // the anvil's face; half of each shape's thickness (×1.5 scale)
+  SPOT.anvil.p.y = FACE + HALF[0];
+  const setShape = (i) => {
+    shapes.forEach((m, k) => { m.visible = k === i; });
+    SPOT.anvil.p.y = FACE + HALF[i]; // lying on the face
+    if (Wk.at === 'anvil' && !Wk.fly) { blank.position.y = SPOT.anvil.p.y; blank.userData.sphere = undefined; }
+  };
   const move = (to, dur = 0.7) => new Promise((res) => { Wk.fly = { from: blank.position.clone(), to: SPOT[to].p, y0: blank.rotation.y, y1: SPOT[to].yaw, k: 0, dur, res }; Wk.at = to; });
   let energy = 0;
   K.ups.push((dt, c) => {

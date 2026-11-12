@@ -3,7 +3,8 @@
 // On it: a салама (two-ply white/black horsehair rope) wrapped at 1.7 m with seven hangings
 // (3 white hair tufts, 2 ribbons, a birch-bark horse, a duck feather), and cloth strips (old and faded, a few
 // fresh) tied all round the low branches at 1.8–2.5 m. A footpath leads to it from the homestead. Exposed root flares at the foot (Aal Luuk Mas: roots to the
-// Lower World). Act: greet the tree (a slight bow, a short silence) and tie one ribbon.
+// Lower World). Act: three fresh ribbons (white, blue, red) lie draped over a low limb; the one aimed at is tied
+// after a bow (head down a breath, up).
 import * as THREE from 'three/webgpu';
 import { makeTree } from '../nature/trees/gen.js';
 import { barkMaterial, leafMaterial, U } from '../nature/trees/materials.js';
@@ -13,9 +14,9 @@ import { tuft, ribbon, tween, ease, setColor, noSway } from './yard/bits.js';
 import { section } from '../load/geocache.js';
 
 const RIBBONS = {
-  white: { c: [0.86, 0.86, 0.82], swatch: '#f1efe8', label: { sah: 'үрүҥ', en: 'white', ru: 'белая' } },
-  blue: { c: [0.38, 0.6, 0.86], swatch: '#8fb9e6', label: { sah: 'халлаан күөҕэ', en: 'light blue', ru: 'голубая' } },
-  green: { c: [0.2, 0.5, 0.18], swatch: '#6fa860', label: { sah: 'от күөҕэ', en: 'green', ru: 'зелёная' } },
+  white: { c: [0.86, 0.86, 0.82], label: { sah: 'үрүҥ лиэнтэ', en: 'white ribbon', ru: 'белая ленточка' } },
+  blue: { c: [0.3, 0.5, 0.86], label: { sah: 'күөх лиэнтэ', en: 'blue ribbon', ru: 'синяя ленточка' } },
+  red: { c: [0.72, 0.15, 0.12], label: { sah: 'кыһыл лиэнтэ', en: 'red ribbon', ru: 'красная ленточка' } },
 };
 // old, sun-faded strips already on the tree
 const FADED = [[0.8, 0.79, 0.74], [0.56, 0.66, 0.76], [0.5, 0.6, 0.45], [0.82, 0.78, 0.6], [0.78, 0.77, 0.72], [0.6, 0.7, 0.8], [0.55, 0.62, 0.5]];
@@ -252,15 +253,26 @@ export default async function build(ctx, placement) {
     g.push(ribbon(rng, at.toArray(), { len: 0.4 + rng() * 0.3, width: 0.036 + rng() * 0.012, color }));
     g.push(ribbon(rng, at.clone().add(new THREE.Vector3(0.01, 0, 0.004)).toArray(), { len: 0.3 + rng() * 0.2, width: 0.032, color }));
   };
-  const FRESH = Object.values(RIBBONS).map((r) => r.c);
+  const FRESH = [[0.86, 0.86, 0.82], [0.38, 0.6, 0.86], [0.2, 0.5, 0.18]]; // white, light blue, green
   const prefs = [0.0, 0.5, -0.6, 1.3, -1.2, 2.2, -2.3, 0.25, -0.3, 0.9, -0.9, 1.75, -1.75, 2.7, -2.75, 3.1];
-  prefs.forEach((pref, i) => { const s = pickSpot(pref); if (s) tie(s, i % 3 === 2 ? FRESH[((i / 3) | 0) % FRESH.length] : FADED[i % FADED.length]); });
+  const stripAt = prefs.map((pref) => pickSpot(pref));
+  // the player's ribbon: tied at the free spot nearest the meadow side, hidden until the act
+  const mineSpot = pickSpot(0.3) || spots[0], mineAt = mineSpot.p.clone();
+  // the three to choose from: draped over the same limb farther out, at eye height
+  const limb = v.skeleton.low.find((l) => l.pts.includes(mineSpot))?.pts;
+  const k0 = limb ? limb.indexOf(mineSpot) : -1;
+  const along = (f) => { // a point, its radius and the limb's direction, f limb points out from the knot spot
+    if (!limb) return { p: mineAt.clone().add(new THREE.Vector3(0, -0.25 * f, 0)), r: mineSpot.r, d: mineSpot.d };
+    const t = Math.min(limb.length - 1.05, k0 + f), i = Math.floor(t), a = limb[i], b = limb[i + 1];
+    return { p: a.p.clone().lerp(b.p, t - i), r: a.r + (b.r - a.r) * (t - i), d: b.p.clone().sub(a.p).normalize() };
+  };
+  const drapes = [0, 1, 2].map((i) => along(0.5 + i * 0.42));
+  // old strips keep clear of the three
+  stripAt.forEach((s, i) => { if (s && !drapes.some((d) => d.p.distanceTo(s.p) < 0.35)) tie(s, i % 3 === 2 ? FRESH[((i / 3) | 0) % FRESH.length] : FADED[i % FADED.length]); });
   const strips = new THREE.Mesh(merge([...stripParts, ...knots.map(noSway)]), cloth('sacred-birch-strips', 0.04));
   strips.castShadow = false;
   object.add(strips);
 
-  // the player's ribbon: tied at the free spot nearest the meadow side, hidden until the act
-  const mineSpot = pickSpot(0.3) || spots[0];
   const mineParts = [];
   tie(mineSpot, [1, 1, 1], mineParts);
   const mineGeo = merge([...mineParts, noSway(knots.pop())]);
@@ -274,15 +286,33 @@ export default async function build(ctx, placement) {
     for (let i = 0; i < a.count; i++) a.setXYZ(i, mineBase[i * 3] * c[0], mineBase[i * 3 + 1] * c[1], mineBase[i * 3 + 2] * c[2]);
     a.needsUpdate = true;
   };
-  const mineAt = mineSpot.p.clone();
+
+  // one mesh each, centred on its fold over the limb
+  const picks = Object.entries(RIBBONS).map(([id, R], i) => {
+    const s = drapes[i], side = new THREE.Vector3(-s.d.z, 0, s.d.x).normalize(), parts = [];
+    parts.push(noSway(setColor(tube([s.p.clone().addScaledVector(s.d, -0.018), s.p.clone().addScaledVector(s.d, 0.018)], s.r + 0.004, { radial: 7 }), R.c)));
+    for (const sd of [-1, 1]) { // the two halves hang down either side of the limb
+      const at = s.p.clone().addScaledVector(side, sd * (s.r + 0.002)).add(new THREE.Vector3(0, s.r * 0.4, 0));
+      parts.push(ribbon(rng, at.toArray(), { len: 0.22 + rng() * 0.05, width: 0.04, color: R.c, dir: [side.x * sd * 0.2, -1, side.z * sd * 0.2] }));
+    }
+    const g = merge(parts); g.translate(-s.p.x, -s.p.y, -s.p.z);
+    const m = new THREE.Mesh(g, cloth('sacred-birch-mine', 0.045));
+    m.position.copy(s.p); m.castShadow = false; m.name = 'sacred-birch-' + id; m.userData.dynamic = true;
+    object.add(m);
+    return { id, m };
+  });
   // ── interactions ──
   const trunkTarget = new THREE.Group(); trunkTarget.name = 'sacred-birch-target';
   object.remove(bark); trunkTarget.add(bark); object.add(trunkTarget);
 
-
-  const greet = {
-    id: 'ribbon', once: true, freeze: true, // the bow moves the view
-    label: { sah: 'эҕэрдэлээ, лиэнтэ баай', en: 'greet the tree and tie a ribbon', ru: 'поприветствовать дерево и повязать ленточку' },
+  const label = { sah: 'эҕэрдэлээ, лиэнтэ баай', en: 'greet the tree and tie a ribbon', ru: 'поприветствовать дерево и повязать ленточку' };
+  const offered = (game, on) => { for (const it of game?.world?.interactables || []) if (picks.some((q) => q.m === it.target)) it.off = !on; };
+  const settled = (game, pick) => { // tied: the others stay draped, none is offered again
+    offered(game, false);
+    const p = picks.find((q) => q.id === pick); if (p) p.m.visible = false;
+  };
+  const greet = (P) => ({
+    id: 'ribbon', once: true, freeze: true, label, // the bow moves the view
     run: async (game) => {
       const pl = game?.player;
       // the bow is the player's own: a tap, the head goes down, stays a breath and rises
@@ -301,7 +331,12 @@ export default async function build(ctx, placement) {
           requestAnimationFrame(f);
         });
       }
-      const pick = 'white'; // one tap ties a white ribbon, the colour of the aiyy
+      const pick = P.id;
+      offered(game, false);
+      // the chosen one is lifted from the limb to its place nearer the trunk
+      const from = P.m.position.clone();
+      await tween(1.1, (t) => { const e = ease(t); P.m.position.lerpVectors(from, mineAt, e); P.m.scale.setScalar(1 - 0.5 * e); });
+      P.m.visible = false; P.m.userData.sphere = undefined;
       paint(RIBBONS[pick].c);
       mine.visible = true;
       game?.audio?.play('ribbon', object.localToWorld(mineAt.clone()));
@@ -314,7 +349,7 @@ export default async function build(ctx, placement) {
       mine.scale.setScalar(1); mine.position.set(0, 0, 0);
       if (game?.save) { game.save.sacredBirch = { ribbon: pick }; game.persist?.(); }
     },
-  };
+  });
 
   let restored = false;
   const update = (dt, { game }) => {
@@ -322,7 +357,7 @@ export default async function build(ctx, placement) {
     if (!restored && game) {
       restored = true;
       const c = game.save?.sacredBirch?.ribbon;
-      if (c && RIBBONS[c]) { paint(RIBBONS[c].c); mine.visible = true; }
+      if (c) { paint((RIBBONS[c] || RIBBONS.white).c); mine.visible = true; settled(game, c); }
     }
   };
 
@@ -349,7 +384,8 @@ export default async function build(ctx, placement) {
     floors: [],
     lows,
     interactables: [
-      { entry: 'sacred-birch', target: trunkTarget, act: greet },
+      { entry: 'sacred-birch', target: trunkTarget },
+      ...picks.map((P) => ({ entry: 'sacred-birch', target: P.m, label: RIBBONS[P.id].label, act: greet(P) })),
       { entry: 'salama', target: salama },
       { entry: 'aal-luuk-mas', target: rootsGroup, label: { sah: 'Аал Луук Мас — силистэр', en: 'the roots — Aal Luuk Mas', ru: 'корни — Аал Луук Мас' } },
     ],

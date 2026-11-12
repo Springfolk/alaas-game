@@ -12,10 +12,10 @@ Every act is a tap of the do input and one tap plays the whole act; nothing is h
 | Дьэдьэн | the crowns of 24 colonies: yard margins, the slope above, the forest's edge | the whole crown, berry by berry | berries leave the plant (into a carried тордуйа); full again 4 min after the last |
 | Tar tub lid | ampaar | once | the lid stays aside |
 | Feed the fire | uraha hearth, summer balagan hearth (empty hands) | a pinch | rises from below the view, glides low and slowly to the fire and is set down in it (`offerPath`, src/models/yard/offer.js); it flares softly |
-| The guest's choron (`rites.js` `Choron`) | the board in the kymys corner | the ladle fills it, it comes into the hands, a few drops for the fire, a sip, back on its board | held upright, its kymys level; the fire flares as the drops reach it; the sip stops at what it held before the ladle |
+| The guest's choron (`rites.js` `Choron`) | the board in the kymys corner | the ladle fills it, it comes into the hands; the view is led to the fire, the earth, the sky: the cup tips slowly, a few drops each (for the fire set down on it like the pinch); a sip; back on its board | held upright, its kymys level; the fire flares as the drops reach it; sky drops rise a hand's breadth and fall; the sip stops at what it held before the ladle |
 | Lake milk (`Cup`) | the cup on the offering stone | carried from the stone out over the nearest open water, tipped until empty, set back | a white strand, rings on the water; empty for the rest of the visit |
 | Khomus (`Khomus`) | its peg in the summer balagan | takes it to the lips; then one pluck, taps in rhythm play on; put down: back on the peg | the frame hums after a stroke; not after dark (the card says why) |
-| Ribbon | salama on the serge; the sacred birch | serge: ties a white ribbon. Birch: the bow (head down a breath, up), then a white ribbon | the ribbon unrolls from the knot; kept in the save |
+| Ribbon | salama on the serge; the sacred birch: a white, a blue and a red ribbon draped over a low limb at eye height, each its own target | serge: ties a white ribbon. Birch: the one aimed at; the bow (head down a breath, up), it glides to its place nearer the trunk | the ribbon unrolls from the knot; the other two stay draped, no longer offered; kept in the save |
 
 ## Jobs (`src/interact/work/`)
 - A job starts with one tap at any of its things, or with free hands near it (`idleAct`, `it.around`). Watched jobs play in a framed work view (`docs/interactions.md`); leaving stops at the next step and the next tap goes on from there.
