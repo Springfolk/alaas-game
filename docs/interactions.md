@@ -56,7 +56,7 @@ No sentence and no mark says the next step: light catches the thing, as in a pho
 - Glint: a sun star ≤ 45 m on a point of the thing's surface picked by a ray from the eye (dew, water: round the spot), ≥ 5.5 % of the view's height; a beat every 1.1–3.6 s, some kinds 2–4 sparkles.
 - Bloom: swells and fades over 1.8 s each beat: ≤ 14 m (hearth 7 m) a glare at the thing (hearth: a faint halo; water, dew: flat), farther a soft shaft of sunlight leaning from the sun's side (hearth: the glow in the smoke over the roof).
 - Edge glare: the thing out of view: the same swell flares in at the view's edge on its side (behind: the nearer shoulder).
-- Ripples are the lake's own (`world.life.water.ring`); the fire's lift is `fireplace.stir(k)`, its smoke top `fireplace.top()`.
+- Ripples are the lake's own (`world.life.water.ring`); the fire's lift is `fireplace.stir(k)`.
 
 ## Finder (`src/ui/guide.js`, DOM only)
 - `game.guide.go({ key, id, at })` (the journal's map; `clear()`, `dest`): a gold diamond with the distance over the destination, at the screen edge with an arrow when out of view, a soft shimmer within 7 m. An entry (`id`): its nearest place, until found. A job or a spot (`at`): until within 3 m.

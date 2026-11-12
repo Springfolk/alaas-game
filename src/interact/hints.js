@@ -85,7 +85,12 @@ export class Hints {
     for (let s = 0; s < 6 && T.lakeDist(p.x, p.z) - LAKE.r > -0.5; s++) { p.x += dx / d * 0.25; p.z += dz / d * 0.25; }
     return p;
   }
-  fireHint(it) { return it ? { kind: 'fire', it, at: it.fireplace.pos?.() || this.centre(it), top: it.fireplace.top?.() } : null; }
+  // a hearth, and where its smoke leaves the roof (the urasa's smoke hole, the balagan's chimney top)
+  fireHint(it) {
+    if (!it) return null;
+    const at = it.fireplace.pos?.() || this.centre(it);
+    return { kind: 'fire', it, at, top: at.clone().setY(at.y + (it.fireplace.upright ? 3.3 : 10.5)) };
+  }
   sheen(obj, at) { return { kind: 'sheen', obj, at: at || _b.setFromObject(obj).getCenter(new THREE.Vector3()) }; }
 
   // What the hands should go to next, and how the world says it: { at, kind, … } or null. The rules, job by job.
