@@ -52,6 +52,9 @@ export class Hay {
     hands.pose = (dt, cam) => (hands.held === this.scythe ? this.posed(dt, cam) : own?.(dt, cam));
     game.engine.scene.attach(parts.swath); // world space: wisps are placed by world coordinates
     parts.swath.position.set(0, 0, 0); parts.swath.quaternion.identity(); parts.swath.updateMatrixWorld();
+    // the mowing kept in the save (`save.work.swaths`: per blow x, z (dm), yaw, power (/100), side) is cut again
+    // once the meadow's texels are in; it is shared by every scythe (one meadow mask)
+    if (!work.mowReplayed) { work.mowReplayed = true; const S = game.save.work.swaths; if (S?.length) this.mask?.whenLoaded(() => { for (let i = 0; i + 4 < S.length; i += 5) this.cut(S[i + 3] / 100, S[i + 4], { x: S[i] / 10, z: S[i + 1] / 10, yaw: S[i + 2] / 100 }); }); }
   }
   get held() { return this.hands.held === this.scythe; }
   get mask() { return this.game.world._field?.mask; }
@@ -96,10 +99,12 @@ export class Hay {
   }
 
   // the blade's half-circle: every tall texel within reach and in front goes down
-  cut(power, side = 1) {
+  // `again`: a saved blow cut again at load ({ x, z, yaw }: quiet, not counted)
+  cut(power, side = 1, again = null) {
     const g = this.game, pl = g.player, m = this.mask;
+    const at = again || { x: pl.pos.x, z: pl.pos.z, yaw: pl.yaw };
     // from a low swing the blade has little way: a short, narrow cut
-    const R = REACH * (0.42 + 0.58 * power), half = HALF * (0.45 + 0.55 * power), fx = fwdX(pl.yaw), fz = fwdZ(pl.yaw), x0 = pl.pos.x, z0 = pl.pos.z;
+    const R = REACH * (0.42 + 0.58 * power), half = HALF * (0.45 + 0.55 * power), fx = fwdX(at.yaw), fz = fwdZ(at.yaw), x0 = at.x, z0 = at.z;
     const sx = -fz * side, sz = fx * side; // towards where the blade ends (the blow's far side)
     const cells = [];
     const n = m.mow(x0 - R, z0 - R, x0 + R, z0 + R, (x, z) => {
@@ -108,9 +113,9 @@ export class Hay {
       if (Math.acos(clamp((dx * fx + dz * fz) / d, -1, 1)) > half) return false;
       cells.push(x, z);
       return true;
-    });
-    g.player.springV -= 0.25 + 0.6 * power;
-    if (n && power > 0.3) g.audio?.play('scythe', _v.set(x0 + fx, pl.pos.y, z0 + fz)); else g.audio?.step?.('grass', 1 + 2 * power);
+    }, !!again);
+    if (!again) g.player.springV -= 0.25 + 0.6 * power;
+    if (again) { /* quiet */ } else if (n && power > 0.3) g.audio?.play('scythe', _v.set(x0 + fx, pl.pos.y, z0 + fz)); else g.audio?.step?.('grass', 1 + 2 * power);
     if (!n) return;
     // wisps of cut grass, lying across the blade's path, carried towards the side the blade ends on
     const sw = this.parts.swath, M4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
@@ -123,6 +128,8 @@ export class Hay {
       this.next = (this.next + 1) % this.parts.max;
     }
     sw.instanceMatrix.needsUpdate = true;
+    if (again) return;
+    (g.save.work.swaths ||= []).push(Math.round(x0 * 10), Math.round(z0 * 10), Math.round(at.yaw * 100), Math.round(power * 100), side);
     this.work.count('mown', Math.round(n * m.texel * m.texel * 10) / 10);
     this.work.count('blows');
   }
