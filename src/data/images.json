@@ -1018,5 +1018,93 @@
    "license": "Public domain",
    "url": "https://commons.wikimedia.org/wiki/File:301_Fragaria_viridis,_Fragaria_vesca.jpg"
   }
+ ],
+ "annyy": [
+  {
+   "src": "assets/ref/annyy-1.webp",
+   "w": 1200,
+   "h": 274,
+   "caption": {
+    "sah": "Саха анньыытын тимирэ (Серошевскай, 1902)",
+    "en": "The iron head of a Sakha ice chisel (Sieroszewski, 1902)",
+    "ru": "Железный наконечник якутской пешни (Серошевский, 1902)"
+   },
+   "credit": "Wacław Sieroszewski",
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Wac%C5%82aw_Sieroszewski_-_12_lat_w_kraju_Jakut%C3%B3w_(page_206c_crop).jpg"
+  }
+ ],
+ "winter-clothing": [
+  {
+   "src": "assets/ref/winter-clothing-1.webp",
+   "w": 504,
+   "h": 1200,
+   "caption": {
+    "sah": "Саҥыйах (Серошевскай, 1902)",
+    "en": "A саҥыйах, the long fur coat (Sieroszewski, 1902)",
+    "ru": "Саҥыйах, длинная шуба (Серошевский, 1902)"
+   },
+   "credit": "Wacław Sieroszewski",
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Wac%C5%82aw_Sieroszewski_-_12_lat_w_kraju_Jakut%C3%B3w_(page_169_crop).jpg"
+  },
+  {
+   "src": "assets/ref/winter-clothing-2.webp",
+   "w": 1200,
+   "h": 996,
+   "caption": {
+    "sah": "Биэ тириититтэн сон (Серошевскай, 1902)",
+    "en": "A сон of mare skin (Sieroszewski, 1902)",
+    "ru": "Сон из кобыльей шкуры (Серошевский, 1902)"
+   },
+   "credit": "Wacław Sieroszewski",
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Wac%C5%82aw_Sieroszewski_-_12_lat_w_kraju_Jakut%C3%B3w_(page_175a_crop).jpg"
+  }
+ ],
+ "kharangachchy": [
+  {
+   "src": "assets/ref/kharangachchy-1.webp",
+   "w": 1200,
+   "h": 790,
+   "caption": {
+    "sah": "Хараҥаччылар сабыы анныгар уйаларыгар",
+    "en": "Barn swallows at their nest under the eaves",
+    "ru": "Деревенские ласточки у гнезда под стрехой"
+   },
+   "credit": "Jon Gudorf Photography",
+   "license": "CC BY-SA 2.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Swallows_in_next_under_eaves,_Georgia.jpg"
+  }
+ ],
+ "otuu": [
+  {
+   "src": "assets/ref/otuu-1.webp",
+   "w": 1200,
+   "h": 1130,
+   "caption": {
+    "sah": "Саха хотуурунан от охсооччу, кэннигэр кыраабыллааччылар (Серошевскай, 1902)",
+    "en": "A mower with the Sakha scythe, rakers behind (Sieroszewski, 1902)",
+    "ru": "Косец с якутской косой-горбушей, за ним гребельщицы (Серошевский, 1902)"
+   },
+   "credit": "Wacław Sieroszewski",
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Wac%C5%82aw_Sieroszewski_-_12_lat_w_kraju_Jakut%C3%B3w_(page_135_crop).jpg"
+  }
+ ],
+ "khayyhar": [
+  {
+   "src": "assets/ref/khayyhar-1.webp",
+   "w": 714,
+   "h": 1200,
+   "caption": {
+    "sah": "Тыстаах булчут хайыһара, Коми сирэ (майгынныыр хайыһар)",
+    "en": "Hunting skis lined with kamus, Komi (the same kind of ski)",
+    "ru": "Охотничьи лыжи на камусе, Коми (лыжи того же рода)"
+   },
+   "credit": "Лапоть",
+   "license": "CC0",
+   "url": "https://commons.wikimedia.org/wiki/File:Hunting_skis_-_Komi_-_Vorgashor_Local_Museum.jpg"
+  }
  ]
 }

@@ -107,7 +107,11 @@
    "balagan",
    "urasa",
    "khoton",
-   "hay-making"
+   "hay-making",
+   "syarga",
+   "khayyhar",
+   "annyy",
+   "winter-clothing"
   ],
   "sources": [
    "https://sah.wikipedia.org/wiki/Сайылык",
@@ -170,7 +174,8 @@
    "khoton",
    "khappakhchy",
    "kuruo",
-   "homestead-layout"
+   "homestead-layout",
+   "kharangachchy"
   ],
   "sources": [
    "https://ru.wikipedia.org/wiki/Балаган_(жилище)",
@@ -837,7 +842,8 @@
    "alaas",
    "sayylyk-kystyk",
    "kuruo",
-   "urasa"
+   "urasa",
+   "otuu"
   ],
   "sources": [
    "https://digitallibrary.amnh.org/handle/2246/138",
@@ -2994,5 +3000,333 @@
   ],
   "confidence": "medium",
   "notes": "Written by the lead from general ethnographic knowledge; no source fetched."
+ },
+ {
+  "id": "syarga",
+  "category": "calendar",
+  "sah": "сыарҕа",
+  "translit": "syarga",
+  "ru": "сани",
+  "title": {
+   "en": "Syarga — the ox sledge",
+   "sah": "Сыарҕа — оҕус сыарҕата",
+   "ru": "Сыарҕа — воловьи сани"
+  },
+  "short": {
+   "en": "In summer the hay sledge waits on blocks by the winter house; from autumn an ox hauls hay on it from the stacks to the barn.",
+   "sah": "Сайын от сыарҕата кыстык балаҕан аттыгар маска ууруллан турар; күһүнүттэн оҕус бу сыарҕанан кэбиһиилээх оту хотоҥҥо тиэйэр.",
+   "ru": "Летом сани для сена стоят на подкладках у зимнего балагана; с осени бык возит на них сено от стогов к хотону."
+  },
+  "body": {
+   "en": "A Sakha working sledge has two birch runners turned up at the front, short stanchions (сыарҕа атаҕа) set into them carrying two rails, and no body: hay or firewood is roped onto the rails. The ox walks between two shafts (ураҕас) joined over its neck by a light yoke (бурҕалдьы). The driver does not sit on the sledge but rides the ox, steering it by a cord tied to a ring in its nose. Horses, faster but dearer to keep, were hitched by their traces to the saddle. All winter the family hauled hay from the stacks on the meadows, firewood from the forest and ice from the lake.",
+   "sah": "Сыарҕа икки хатыҥ сыҥаахтаах, сыҥаахтара иннилэригэр өрө токуруйбуттар. Сыҥаахха кылгас сыарҕа атахтара батары охсуллаллар, атахтар үрдүлэригэр икки уһун мас сытар. Сыарҕа эттиитэ суох: оту эбэтэр маһы ол мастарга быанан баайаллар. Оҕус икки ураҕас икки ардыгар хаамар, моонньугар чэпчэки бурҕалдьы кэтэрдиллэр. Киһи сыарҕаҕа олорбот, оҕуһу миинэн, муннугар баайыллыбыт быанан салайар. Сылгыны, түргэн да буоллар, иитэргэ ыараханын иһин, быатын ыҥыырга баайан көлүйэллэрэ. Кыһыны быһа ыал ходуһаттан оту, тыаттан маһы, күөлтэн мууһу сыарҕанан тиэйэрэ.",
+   "ru": "У рабочих саней саха два берёзовых полоза с загнутыми вверх передками; в полозья врублены короткие копылья (сыарҕа атаҕа), на копыльях лежат два бруса. Кузова нет: сено или дрова увязывают верёвками прямо на брусья. Бык идёт между двух оглобель (ураҕас), соединённых над шеей лёгким ярмом (бурҕалдьы). Погонщик едет не на санях, а верхом на быке и правит им верёвкой, привязанной к кольцу в носу. Лошадей, более быстрых, но дорогих в прокорме, запрягали, привязывая постромки к седлу. Всю зиму семья возила на санях сено со стогов на лугах, дрова из леса и лёд с озера."
+  },
+  "facts": {
+   "en": [
+    "Runners were always of birch; where birch was poor, they were bought from the south for 3–5 roubles a pair.",
+    "A Sakha ox hauls 330–410 kg; for a long road it was loaded lighter.",
+    "Even in summer heavy loads went on sledges over the grass."
+   ],
+   "sah": [
+    "Сыҥаах куруутун хатыҥтан оҥоһуллара; хатыҥа мөлтөх сиргэ сыҥааҕы соҕуруу 3–5 солкуобайга атыылаһаллара.",
+    "Саха оҕуһа 330–410 кг таһаҕаһы тиэйэр; ыраах айаҥҥа чэпчэкитик тиэйэллэрэ.",
+    "Сайын даҕаны ыарахан таһаҕаһы от үрдүнэн сыарҕанан тиэйэллэрэ."
+   ],
+   "ru": [
+    "Полозья всегда делали из берёзы; где берёза плохая, их покупали на юге по 3–5 рублей.",
+    "Якутский бык тянет 330–410 кг; в дальнюю дорогу его грузили легче.",
+    "Даже летом тяжёлые грузы возили на санях прямо по траве."
+   ]
+  },
+  "related": [
+   "sayylyk-kystyk",
+   "hay-making",
+   "horse-and-cow",
+   "annyy",
+   "otuu"
+  ],
+  "sources": [
+   "https://pl.wikisource.org/wiki/12_lat_w_kraju_Jakut%C3%B3w/ca%C5%82o%C5%9B%C4%87",
+   "https://digitallibrary.amnh.org/items/45d93b43-6241-4f90-a523-47ef842f71e3",
+   "https://sakhatyla.ru/translate?q=сыарҕа",
+   "https://sakhatyla.ru/translate?q=ураҕас",
+   "https://sakhatyla.ru/translate?q=бурҕалдьы"
+  ],
+  "confidence": "medium",
+  "notes": "Form from Jochelson 1933 Figs. 27, 78 (ox sledge model and photo; their licence is unverified, so no image). Sizes in the model are a working sledge's, not measured. Sieroszewski names the yoke halves \"ara\" (upper) and \"bułgali\" (lower); the dictionary has бурҕалдьы as the upper bar: the text says only бурҕалдьы for the yoke."
+ },
+ {
+  "id": "khayyhar",
+  "category": "calendar",
+  "sah": "туут хайыһар",
+  "translit": "tuut khayyhar",
+  "ru": "охотничьи лыжи",
+  "title": {
+   "en": "Tuut khayyhar — hunting skis lined with leg skin",
+   "sah": "Туут хайыһар — булчут хайыһара",
+   "ru": "Туут хайыһар — охотничьи лыжи на камусе"
+  },
+  "short": {
+   "en": "Wide wooden skis lined underneath with skin from the legs of elk or reindeer, the hair lying back: they glide forward and do not slip back on a climb.",
+   "sah": "Туут хайыһар — кэтит мас хайыһар, анныгар тайах эбэтэр таба тыһа тигиллэр. Түүтэ кэннинэн сытар: инники сыҕарыйар, өрө тахсарга төттөрү халтарыйбат.",
+   "ru": "Широкие деревянные лыжи, подбитые снизу камусом — шкурой с ног лося или оленя, ворсом назад: вперёд скользят, а на подъёме не съезжают."
+  },
+  "body": {
+   "en": "In winter Sakha hunters went after elk and wild reindeer on foot over the deep snow, on skis. The hunting ski (туут) is a wide board with its tip turned up and a strap for the foot. Underneath it is lined with kamus (тыс), the skin from the lower legs of elk, reindeer or horse, sewn on with the hair lying back along the ski. The ski staff has a ring (хаалык) near its foot so that it does not sink into the snow. Through the summer the skis stand in the shut winter house until the first snow.",
+   "sah": "Кыһын саха булчуттара халыҥ хаарынан тайаҕы, кыыл табаны сатыы, хайыһарынан эккирэтэллэрэ. Туут хайыһар — кэтит мас, иннэ өрө токуруйбут, атах угар быалаах. Анныгар тайах, таба эбэтэр сылгы атаҕын тириитэ — тыс — тигиллэр, түүтэ кэннинэн сытар. Хайыһар тайаҕын анныгар хаалык диэн төгүрүк баар, тайах хаарга батыллыбатын диэн. Сайын хайыһар сабыылаах кыстык балаҕаҥҥа бастакы хаарга диэри турар.",
+   "ru": "Зимой охотники саха гонялись за лосем и диким оленем пешком, на лыжах, по глубокому снегу. Охотничья лыжа (туут) — широкая доска с загнутым носком и ремнём для ноги. Снизу её подбивают камусом (тыс) — шкурой с нижней части ног лося, оленя или лошади — ворсом назад. У лыжной палки внизу кольцо (хаалык), чтобы она не проваливалась в снег. Всё лето лыжи стоят в закрытом зимнем балагане до первого снега."
+  },
+  "facts": {
+   "en": [
+    "Kamus is the skin of the lower leg: its short, stiff hair wears well and lies one way.",
+    "Хайыһар is any ski; туут is the hunting ski lined with hide.",
+    "In spring, over crusted snow, wild reindeer were also chased on skis."
+   ],
+   "sah": [
+    "Тыс — атах аллараа өттүн тириитэ: кылгас, хатан түүтэ уһуннук тулуйар, биир хайысханан сытар.",
+    "Хайыһар — бары хайыһар аата, туут — тыстаах булчут хайыһара.",
+    "Саас, сойуо хаарынан, кыыл табаны эмиэ хайыһарынан эккирэтэллэрэ."
+   ],
+   "ru": [
+    "Камус — шкура с нижней части ног: короткий жёсткий ворс прочен и лежит в одну сторону.",
+    "Хайыһар — лыжи вообще, туут — охотничьи лыжи, подбитые камусом.",
+    "Весной, по насту, на лыжах гонялись и за диким оленем."
+   ]
+  },
+  "related": [
+   "sayylyk-kystyk",
+   "baay-bayanay",
+   "winter-clothing"
+  ],
+  "sources": [
+   "https://pl.wikisource.org/wiki/12_lat_w_kraju_Jakut%C3%B3w/ca%C5%82o%C5%9B%C4%87",
+   "https://sakhatyla.ru/translate?q=хайыһар",
+   "https://sakhatyla.ru/translate?q=туут",
+   "https://sakhatyla.ru/translate?q=хаалык",
+   "https://sakhatyla.ru/translate?q=тыс",
+   "https://ru.wikipedia.org/wiki/Камус",
+   "https://commons.wikimedia.org/wiki/File:Hunting_skis_-_Komi_-_Vorgashor_Local_Museum.jpg"
+  ],
+  "confidence": "medium",
+  "notes": "No Sakha museum piece or measured ski found; the model follows the dictionary's туут and a Komi kamus ski (CC0, Vorgashor museum) as the nearest analogue. Size ~1.7 × 0.17 m is an estimate."
+ },
+ {
+  "id": "winter-clothing",
+  "category": "clothing",
+  "sah": "кыһыҥҥы таҥас",
+  "translit": "kyhyngngy tangas",
+  "ru": "зимняя одежда",
+  "title": {
+   "en": "Kyhyngngy tangas — the winter furs",
+   "sah": "Кыһыҥҥы таҥас",
+   "ru": "Кыһыҥҥы таҥас — зимняя одежда"
+  },
+  "short": {
+   "en": "The family's winter furs wait on the bench of the shut house: the long саҥыйах coat, the pointed cap, mittens and boots of leg skins.",
+   "sah": "Ыал кыһыҥҥы таҥаһа сабыылаах балаҕан оронугар сытар: уһун саҥыйах, чомпой бэргэһэ, үтүлүк, тыс этэрбэс.",
+   "ru": "Зимние меха семьи ждут на лежанке закрытого балагана: длинный саҥыйах, островерхая шапка, рукавицы и торбаса из камуса."
+  },
+  "body": {
+   "en": "Winter frosts in Central Yakutia go below −50 °C, and clothing was fur. The саҥыйах is a long coat reaching the ground, fur outside, slit at the back for riding and trimmed with otter or lynx. The everyday сон reaches the knee and is of reindeer skin or cloth lined with hare or fox. The cap (бэргэһэ) is pointed, with ear tabs. Mittens (үтүлүк) have only the thumb parted and hang on thongs. Boots of leg skins with the hair outside (тыс этэрбэс) reach the thigh, and fur knee-guards (сутуруо) are tied over them.",
+   "sah": "Киин Сахаҕа кыһын тымныы 50 кыраадыһы ааһар, онон таҥас түүлээх буолара. Саҥыйах — сиргэ тиийэ уһун, түүтэ таһыгар сон, атынан айаннырга кэннэ хайа быһыллыбыт, кытыытыгар быыдара эбэтэр бэдэр тириитин тигэллэр. Күннээҕи сон тобукка тиийэр, таба тириититтэн эбэтэр сукунаттан тигиллэр, иһигэр куобах эбэтэр саһыл түүлээх. Бэргэһэ чомпой, кулгаахтаах. Үтүлүк эрбэҕэ эрэ арахсар, тирии быаҕа ыйанар. Тыс этэрбэс өттүккэ тиийэр, үрдүгэр түүлээх сутуруо баайыллар.",
+   "ru": "Зимой в Центральной Якутии морозы опускаются ниже −50 °C, и одежда была меховой. Саҥыйах — длинная, до земли, шуба мехом наружу, с разрезом сзади для верховой езды, отороченная выдрой или рысью. Повседневный сон — до колен, из оленьей шкуры или сукна на меху зайца или лисы. Шапка (бэргэһэ) островерхая, с наушниками. Рукавицы (үтүлүк) — с отдельным только большим пальцем, висят на ремешках. Торбаса из камуса мехом наружу (тыс этэрбэс) доходят до бедра, поверх них подвязывают меховые наколенники (сутуруо)."
+  },
+  "facts": {
+   "en": [
+    "The best knee-guards were of wolf leg skin; fox, reindeer and mare skin were thought poorer.",
+    "Hunters wore double fur mittens reaching the elbow and a squirrel-tail scarf (моойторук) over chin and nose.",
+    "The poor wore coats of mare, cow or calf skin."
+   ],
+   "sah": [
+    "Ордук үчүгэй сутуруо бөрө тыһыттан буолар; саһыл, таба, биэ тыһа мөлтөх диэн ааҕыллара.",
+    "Булчуттар тоҥолохторугар тиийэ икки хос түүлээх үтүлүгү кэтэллэрэ, сэҥийэлэригэр, муннуларыгар тииҥ кутуругуттан моойторук баайаллара.",
+    "Дьадаҥы дьон биэ, ынах, торбос тириититтэн сон кэтэрэ."
+   ],
+   "ru": [
+    "Лучшие наколенники шили из камуса волка; лисьи, оленьи и кобыльи считались хуже.",
+    "Охотники надевали двойные меховые рукавицы до локтя и шарф из беличьих хвостов (моойторук) на подбородок и нос.",
+    "Бедные носили сон из шкуры кобылы, коровы или телёнка."
+   ]
+  },
+  "related": [
+   "clothing",
+   "khayyhar",
+   "sayylyk-kystyk"
+  ],
+  "sources": [
+   "https://digitallibrary.amnh.org/items/45d93b43-6241-4f90-a523-47ef842f71e3",
+   "https://pl.wikisource.org/wiki/12_lat_w_kraju_Jakut%C3%B3w/ca%C5%82o%C5%9B%C4%87",
+   "https://sakhatyla.ru/translate?q=саҥыйах",
+   "https://sakhatyla.ru/translate?q=этэрбэс",
+   "https://sakhatyla.ru/translate?q=үтүлүк",
+   "https://sakhatyla.ru/translate?q=сутуруо",
+   "https://catalog.ethnomuseum.ru/entity/OBJECT/522117"
+  ],
+  "confidence": "medium",
+  "notes": "Jochelson (pp. 145–155) says the poor man's сон has the hair inward; Sieroszewski says usually outward: the text names no side for the сон. No source on how winter clothing was kept over the summer: the bench is the game's choice. Sakha: сэҥийэ (chin) to check with a speaker."
+ },
+ {
+  "id": "annyy",
+  "category": "calendar",
+  "sah": "анньыы",
+  "translit": "annyy",
+  "ru": "пешня",
+  "title": {
+   "en": "Annyy — the ice chisel and the ice hole",
+   "sah": "Анньыы уонна ойбон",
+   "ru": "Анньыы — пешня и прорубь"
+  },
+  "short": {
+   "en": "A long iron point on a wooden shaft for cutting through the lake ice: water for the house and the cattle, and fishing under the ice.",
+   "sah": "Уһун укка олордуллубут сытыы тимир: күөл мууһугар ойбон алларарга, дьиэҕэ, сүөһүгэ уу ыларга, муус анныттан балыктыырга.",
+   "ru": "Длинный железный наконечник на деревянном древке, чтобы прорубать лёд на озере: вода для дома и скота, подлёдная рыбалка."
+  },
+  "body": {
+   "en": "A winter place was chosen by where the cattle could drink in winter. With the анньыы the family cut watering holes (ойбон) in the lake ice, round, 30–45 cm across and banked with snow so the cattle would not slip; as the water fell, new ones were cut farther out. For drinking water, ice was cut from the lake in blocks in autumn and stacked by the house or the storehouse, to be melted at the fire all winter. In winter the whole neighbourhood fished with a big seine (муҥха) drawn under the ice from hole to hole, and the catch was shared among everyone there.",
+   "sah": "Кыстык сири кыһын сүөһү уу иһэр сиринэн талаллара. Күөл мууһугар анньыынан ойбон аллараллара: төгүрүк, 30–45 см кэтиттээх, сүөһү халтарыйбатын диэн тулатын хаарынан өрө кутан оҥороллоро; уу намтаатаҕына, саҥа ойбону ортоҕо чугас аллараллара. Иһэр ууга күһүн күөлтэн мууһу көйөн, дьиэ эбэтэр ампаар аттыгар чөмөхтөөн уураллара, кыһыны быһа уокка ууллараллара. Кыһын нэһилиэк дьоно бары муҥхалыыллара: улахан муҥханы муус анныгар ойбонтон ойбоҥҥо тардаллара, балыгы онно баар дьоҥҥо барыларыгар үллэстэллэрэ.",
+   "ru": "Место для зимника выбирали по тому, где скоту можно пить зимой. Пешнёй во льду озера прорубали проруби (ойбон) — круглые, 30–45 см в поперечнике, обложенные снегом, чтобы скот не поскользнулся; когда вода убывала, новые рубили ближе к середине. Для питьевой воды осенью с озера кололи лёд глыбами и складывали у дома или амбара, а всю зиму растапливали у огня. Зимой всей округой ловили рыбу большим неводом (муҥха): его тянули подо льдом от проруби к проруби, а улов делили на всех, кто был."
+  },
+  "facts": {
+   "en": [
+    "A cord at the shaft's end goes round the wrist, so the chisel cannot drop through the hole.",
+    "In the 20th century ice was cut in the second half of October, in blocks of about 100 × 35 × 20 cm.",
+    "The seine is pulled along by poles 10–20 m long (үтүмэх), pushed under the ice from hole to hole with a forked pole, the атырдьах."
+   ],
+   "sah": [
+    "Анньыы угун төбөтүгэр быа баар, илиигэ кэтэрдиллэр — анньыы ойбоҥҥо түспэтин диэн.",
+    "20-с үйэҕэ мууһу алтынньы иккис аҥарыгар 100 × 35 × 20 см кэриҥэ гына көйөллөрө.",
+    "Муҥханы 10–20 м уһун үтүмэхтэринэн тардаллар: үтүмэҕи муус анныгар ойбонтон ойбоҥҥо атырдьаҕынан анньаллар."
+   ],
+   "ru": [
+    "Верёвку на конце древка надевают на запястье, чтобы пешня не ушла в прорубь.",
+    "В XX веке лёд кололи во второй половине октября глыбами около 100 × 35 × 20 см.",
+    "Невод тянут прогонными жердями (үтүмэх) длиной 10–20 м: их толкают подо льдом от проруби к проруби вилами-атырдьахом."
+   ]
+  },
+  "related": [
+   "munkha",
+   "syarga",
+   "sayylyk-kystyk"
+  ],
+  "sources": [
+   "https://pl.wikisource.org/wiki/12_lat_w_kraju_Jakut%C3%B3w/ca%C5%82o%C5%9B%C4%87",
+   "https://sakhatyla.ru/translate?q=анньыы",
+   "https://sakhatyla.ru/translate?q=ойбон",
+   "https://sakhatyla.ru/translate?q=үтүмэх",
+   "https://sah.wikipedia.org/wiki/Муҥха",
+   "https://doi.org/10.24866/1997-2857/2024-3/18-27",
+   "https://ru.wikipedia.org/wiki/Пешня",
+   "https://commons.wikimedia.org/wiki/File:Wac%C5%82aw_Sieroszewski_-_12_lat_w_kraju_Jakut%C3%B3w_(page_206c_crop).jpg"
+  ],
+  "confidence": "medium",
+  "notes": "Head after Sieroszewski Rys. 89; length of head and shaft from the Russian пешня (Brockhaus), not a Sakha measurement. Ice-block size and date: Suleymanov 2024 (1950s–70s). The wrist cord is the Russian practice."
+ },
+ {
+  "id": "kharangachchy",
+  "category": "land",
+  "sah": "хараҥаччы",
+  "translit": "kharangachchy",
+  "ru": "ласточка",
+  "title": {
+   "en": "Kharangachchy — swallows in the empty house",
+   "sah": "Хараҥаччы — иччитэх балаҕан олохтоохторо",
+   "ru": "Хараҥаччы — ласточки в пустом доме"
+  },
+  "short": {
+   "en": "Barn swallows nest on the beams of the shut winter house and dart out by the door when it opens.",
+   "sah": "Сабыылаах кыстык балаҕан маһыгар хараҥаччылар уйа туттубуттар; аан аһылларын кытта аанынан көтөн тахсаллар.",
+   "ru": "Деревенские ласточки вьют гнёзда на балках закрытого зимнего балагана и вылетают в дверь, как только её откроют."
+  },
+  "body": {
+   "en": "The barn swallow (Hirundo rustica) builds a cup of mud and straw on a beam under a roof and comes back to it every summer. It is one of the three swallows of Yakutia, with the sand martin and the house martin. Sakha call the swallow the little bird of the Mother of God and do not let children harm its nest, a belief of the Christian era; in an older tale of the world's making, the evil spirit takes the shape of a swallow. While the family lives at the summer place, the empty house is the swallows'.",
+   "sah": "Хараҥаччы бадараантан, от сыыһыттан уйатын тутар, хас сайын аайы ол уйатыгар төннөн кэлэр. Саха сиригэр үс хараҥаччы баар. Саха хараҥаччыны Буҕараадьысса чыычааҕа диир, оҕолорго уйатын алдьаттарбат — бу христианскай кэмҥэ үөскээбит итэҕэл; былыргы номоххо, сир айыллыытыгар, абааһы хараҥаччы буолан кубулуйар. Ыал сайылыкка олордоҕуна, иччитэх балаҕан хараҥаччылар дьиэлэрэ буолар.",
+   "ru": "Деревенская ласточка (Hirundo rustica) лепит гнездо-чашку из грязи и соломы на балке под крышей и каждое лето возвращается к нему. Это одна из трёх ласточек Якутии, вместе с береговушкой и воронком. Саха называют ласточку птичкой Богородицы и не дают детям разорять её гнёзда — это поверье христианского времени; в более древнем сказании о сотворении мира злой дух принимает облик ласточки. Пока семья живёт на летнике, пустой балаган принадлежит ласточкам."
+  },
+  "facts": {
+   "en": [
+    "Хараҥаччы names both the swallow and the swift.",
+    "A swallow's nest is хараҥаччы уйата; уйа is any nest or burrow."
+   ],
+   "sah": [
+    "Хараҥаччы диэн ласточканы да, стрижи да ааттыыллар.",
+    "Хараҥаччы уйата — чыычаах уйата; уйа — ханнык баҕарар уйа, хорооп."
+   ],
+   "ru": [
+    "Хараҥаччы называют и ласточку, и стрижа.",
+    "Ласточкино гнездо — хараҥаччы уйата; уйа — любое гнездо или нора."
+   ]
+  },
+  "related": [
+   "balagan",
+   "sayylyk-kystyk"
+  ],
+  "sources": [
+   "https://pl.wikisource.org/wiki/12_lat_w_kraju_Jakut%C3%B3w/ca%C5%82o%C5%9B%C4%87",
+   "https://sakhatyla.ru/translate?q=хараҥаччы",
+   "https://sakhatyla.ru/translate?q=уйа",
+   "https://sah.wikipedia.org/wiki/Хараҥаччы",
+   "https://commons.wikimedia.org/wiki/File:Swallows_in_next_under_eaves,_Georgia.jpg"
+  ],
+  "confidence": "medium",
+  "notes": "No source says swallows nest in or on balagans, or that a nest is a good sign for a house: the owner chose the scene; the card states only the Christian-era belief Sieroszewski records. Sakha fact 1 uses Russian bird names: rewrite with a speaker. Sound: Commons XC83449 (CC BY-SA 3.0)."
+ },
+ {
+  "id": "otuu",
+  "category": "calendar",
+  "sah": "отуу",
+  "translit": "otuu",
+  "ru": "стан на покосе",
+  "title": {
+   "en": "Otuu — the haymakers' camp",
+   "sah": "Отуу — ходуһаҕа олорор сир",
+   "ru": "Отуу — стан на покосе"
+  },
+  "short": {
+   "en": "By the winter place the hay crew made camp for the mowing: a fire, a kettle for tea, forks and rakes, poles for the stacks.",
+   "sah": "Кыстык аттыгар от үлэтигэр отуу тэриллэр: уот, чэй чаанньыга, атырдьахтар, кыраабыллар, кэбиһии мастара.",
+   "ru": "У зимника сенокосчики разбивали стан: костёр, чайник, вилы и грабли, жерди для стогов."
+  },
+  "body": {
+   "en": "Winter places stood by the hay meadows, so in July, от ыйа, the month of grass, the family came back from the summer place to mow. The rich began on Peter's Day (12 July); the poor waited for the grass to grow thick. Mowers lived out on the meadows and went home only for holidays: they built huts thatched with hay, lit fires in the evening, and food came from home in leather and birch-bark vessels. Even the poor saved tea all year for the haying. Women raked the hay into small cocks (бугул); in autumn neighbours stacked it together.",
+   "sah": "Кыстык ходуһа аттыгар турар, онон от ыйыгар ыал сайылыктан от охсо кэлэр. Баай дьон от ыйын 12 күнүгэр, Бөтүрүөпкэ, саҕалыыллара, дьадаҥылар от хойдуутун кэтэһэллэрэ. От охсооччулар ходуһаҕа олороллоро, бырааһынньыкка эрэ дьиэлэригэр бараллара: оттон отуу тутталлара, киэһэ уот оттоллоро, дьиэттэн тирии, туос иһиккэ ас аҕалаллара. Дьадаҥы да дьон чэйи сыл устата от үлэтигэр харыстыыллара. Дьахталлар оту кыраабыллаан бугуллууллара; күһүн ыаллар бииргэ кэбиһэллэрэ.",
+   "ru": "Зимники стояли у сенокосных лугов, и в июле — от ыйа, «месяц травы» — семья возвращалась с летника косить. Богатые начинали в Петров день (12 июля), бедные ждали, пока трава загустеет. Косцы жили на лугах и уходили домой только на праздники: ставили шалаши, крытые сеном, вечером жгли костры, а еду привозили из дома в кожаной и берестяной посуде. Чай даже бедные берегли весь год к покосу. Женщины сгребали сено граблями в копны (бугул); осенью соседи вместе метали стога."
+  },
+  "facts": {
+   "en": [
+    "July is от ыйа, the month of grass; August is атырдьах ыйа, the month of the hay fork.",
+    "Хотуур ортото, the middle of the mowing, falls on 21 August.",
+    "The атырдьах is a dry-larch shaft with a pointed branch of about 30 cm bound beside it with willow."
+   ],
+   "sah": [
+    "От ыйын кэнниттэн атырдьах ыйа кэлэр: оттуур кэм аата ыйдар ааттарыгар хаалбыт.",
+    "Хотуур ортото — атырдьах ыйын 21 күнэ.",
+    "Атырдьах — кураанах тиит ук, аттыгар 30-ча см сытыы мутугу үөтүнэн баайаллар."
+   ],
+   "ru": [
+    "Июль — от ыйа, «месяц травы», август — атырдьах ыйа, «месяц вил».",
+    "Хотуур ортото, середина косовицы, приходится на 21 августа.",
+    "Атырдьах — древко из сухой лиственницы, к которому ивовыми прутьями привязан заострённый сук около 30 см."
+   ]
+  },
+  "related": [
+   "hay-making",
+   "sayylyk-kystyk",
+   "syarga",
+   "sakha-calendar"
+  ],
+  "sources": [
+   "https://pl.wikisource.org/wiki/12_lat_w_kraju_Jakut%C3%B3w/ca%C5%82o%C5%9B%C4%87",
+   "https://digitallibrary.amnh.org/items/45d93b43-6241-4f90-a523-47ef842f71e3",
+   "https://sakhatyla.ru/translate?q=отуу",
+   "https://sakhatyla.ru/translate?q=атырдьах",
+   "https://sakhatyla.ru/translate?q=кыраабыл",
+   "https://sakhatyla.ru/translate?q=бөтүрүөп",
+   "https://sakhatyla.ru/translate?q=хотуур",
+   "https://sakhatyla.ru/translate?q=чаанньык",
+   "https://commons.wikimedia.org/wiki/File:Wac%C5%82aw_Sieroszewski_-_12_lat_w_kraju_Jakut%C3%B3w_(page_135_crop).jpg"
+  ],
+  "confidence": "medium",
+  "notes": "Camp, tea and dates from Sieroszewski ch. IX (pp. 138–141); the kettle on cold ashes and the rail for the tools are the game's staging. тырыбына (rake) not in the dictionary: кыраабыл."
  }
 ]

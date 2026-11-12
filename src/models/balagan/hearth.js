@@ -103,6 +103,15 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
     fill.position.set(2.5, 1.1, 0.5);
     root.add(fill);
     fire.fill = fill;
+  } else {
+    // the shut-up winter house: daylight through the door (bright when open, a glow through the gaps when shut)
+    // and through the windows and the cracks in the old plaster, from overhead
+    const fill = new THREE.PointLight(0xc4d4ea, 0.5, 6, 1.4);
+    fill.position.set(2.5, 1.1, 0.5);
+    const sky = new THREE.PointLight(0xdde5ef, 0.9, 7.5, 1.1);
+    sky.position.set(-0.6, 1.95, 0.6);
+    root.add(fill, sky);
+    fire.fill = fill;
   }
   section(() => {
     // firewood: split larch billets stacked against the east wall behind the hearth

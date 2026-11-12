@@ -11,6 +11,7 @@ import { Buckets, rrect } from './balagan/geo.js';
 import { buildShell } from './balagan/shell.js';
 import { buildHearth } from './balagan/hearth.js';
 import { buildInterior } from './balagan/interior.js';
+import { buildWinterGear } from './balagan/winter.js';
 import { PlantBatch, sodRoof } from './balagan/plants.js';
 import { groundOf, troddenPatch, blob, leaf } from './yard/bits.js';
 import { trodden } from './yard/mat.js';
@@ -35,6 +36,7 @@ export default async function build(ctx, placement) {
   const B = new Buckets();
   const hearth = buildHearth({ B, M, rng, winter, root, chTop: shell.chim.chTop });
   const inside = buildInterior({ B, M, rng, winter, root });
+  const gear = winter ? buildWinterGear({ B, M, rng, root, ground: groundOf(ctx, placement) }) : null;
   M.interior.push(M.clayMat);
 
   // ---------- sod: grass blades and fireweed on both roofs, the canopy and the berm ----------
@@ -159,7 +161,7 @@ export default async function build(ctx, placement) {
 
   // ---------- colliders ----------
   const lift = (c) => (c.y0 !== undefined ? { ...c, y0: c.y0 + Y, y1: c.y1 + Y } : c);
-  const colliders = [...shell.colliders, ...hearth.colliders, ...inside.colliders].map(lift);
+  const colliders = [...shell.colliders, ...hearth.colliders, ...inside.colliders, ...(gear?.colliders || [])].map(lift);
   const DOOR_TAG = Y - 0.5 - 0.0137 * (winter ? 2 : 1);
   // the leaf (planks and battens, 9.5 cm) is solid wherever it stands, and stops at the player as it swings
   const doorLeaf = leaf(placement, { hinge: [shell.door.pivot.position.x, shell.door.pivot.position.z], len: DW, th: 0.095, off: -0.019, angle: (a) => a * shell.door.maxAngle });
@@ -208,6 +210,13 @@ export default async function build(ctx, placement) {
     its.push({ entry: 'knife', target: T.knife });
   } else {
     its.push({ entry: 'sayylyk-kystyk', zone: { x: XD + 3.2, z: ZD, r: 3.2 } });
+    const G = gear.targets;
+    its.push({ entry: 'syarga', target: G.sledge }, { entry: 'syarga', target: G.shafts });
+    its.push({ entry: 'khayyhar', target: G.skis }, { entry: 'annyy', target: G.chisel });
+    its.push({ entry: 'winter-clothing', target: G.clothing }, { entry: 'winter-clothing', target: G.boots });
+    its.push({ entry: 'kharangachchy', target: G.nests });
+    // the swallows nesting on the beams fly out by the door (src/nature/life/birds.js reads this)
+    root.userData.swallows = { nests: gear.nests, door: [XD + 0.4, 1.0, ZD], inside: [XD - 1.4, 1.25, ZD], open: () => shell.door.open };
   }
   hearthT.userData.isHearth = true;
   const fire = hearth.fire;
@@ -283,14 +292,6 @@ export default async function build(ctx, placement) {
       const fk = Math.min(1, fuel * 4);
       const f = 0.78 + 0.12 * Math.sin(t * 11.3) * Math.sin(t * 7.1 + 1) + 0.1 * Math.sin(t * 23.7 + Math.sin(t * 3));
       fire.light.intensity = 6 * f * (1 + flare * 1.6 + fk * 0.6);
-      // the door's daylight; while a thing is looked at closely (the inspect stage, `closeLook`) it comes from beside
-      // the eye instead, so a thing in a dark corner is modelled by light rather than lifted flat by exposure
-      const near = !!eng?.closeLook && wasInside && camera;
-      if (near) lookAt.set(0.28, 0.22, 0.1).applyQuaternion(camera.quaternion).add(camera.position), root.worldToLocal(lookAt);
-      else lookAt.copy(FILL_HOME);
-      const k = 1 - Math.exp(-dt * 7);
-      fire.fill.position.lerp(lookAt, k);
-      fire.fill.intensity += ((near ? NEAR_FILL : door.open > 0.5 ? 1.4 : 0.2) - fire.fill.intensity) * k;
       M.flare.value = Math.max(flare, fk * 0.45);
       if (morselT >= 0) {
         morselT += dt;
@@ -298,6 +299,16 @@ export default async function build(ctx, placement) {
         morsel.position.lerpVectors(morselFrom, fire.pos, k); morsel.position.y += Math.sin(k * Math.PI) * 0.22 - k * 0.2;
         if (k >= 1) { morsel.visible = false; morselT = -1; }
       }
+    }
+    if (fire.fill) {
+      // the door's daylight; while a thing is looked at closely (the inspect stage, `closeLook`) it comes from beside
+      // the eye instead, so a thing in a dark corner is modelled by light rather than lifted flat by exposure
+      const near = !!eng?.closeLook && wasInside && camera;
+      if (near) lookAt.set(0.28, 0.22, 0.1).applyQuaternion(camera.quaternion).add(camera.position), root.worldToLocal(lookAt);
+      else lookAt.copy(FILL_HOME);
+      const k = 1 - Math.exp(-dt * 7);
+      fire.fill.position.lerp(lookAt, k);
+      fire.fill.intensity += ((near ? NEAR_FILL : door.open > 0.5 ? (winter ? 2 : 1.4) : (winter ? 0.5 : 0.2)) - fire.fill.intensity) * k;
     }
     // smoke drifting off the chimney top
     for (const p of smoke) {
