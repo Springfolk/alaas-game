@@ -96,11 +96,16 @@ export function makeSmoke(origin, wind, opts = {}) {
   const m = new THREE.Matrix4(), qt = new THREE.Quaternion(), qz = new THREE.Quaternion(), sc = new THREE.Vector3(), pv = new THREE.Vector3();
   const Z = new THREE.Vector3(0, 0, 1);
   const parentInv = new THREE.Matrix4(), rel = new THREE.Matrix4(), camQ = new THREE.Quaternion(), eye = new THREE.Vector3();
+  let still = false; // every puff gone and drawn as gone: nothing to step or upload until `rate` is raised
   function update(dt, camera) {
+    if (still && !ctl.rate) return;
+    let alive = 0;
     for (const p of P) {
       if (p.dead) { acc = Math.min(2, acc + dt * ctl.rate); if (acc >= 1) { acc -= 1; spawn(p); } else continue; }
       step(p, dt);
+      alive += !p.dead;
     }
+    still = !alive && !ctl.rate;
     // camera rotation and position in the mesh's parent frame
     mesh.parent?.updateWorldMatrix(true, false);
     if (mesh.parent) parentInv.copy(mesh.parent.matrixWorld).invert(); else parentInv.identity();

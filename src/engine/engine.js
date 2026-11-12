@@ -18,6 +18,7 @@ import { pace, govern, knob, frameDone } from './pacing.js';
 
 // exposure for a sunlit scene; METER_REF = its metered mean log2 luminance (post.js meter)
 const EXPOSURE = 0.75, METER_REF = -1.75;
+const NOLAZY = urlFlag('nolazy'); // ?nolazy: every frame's shadow maps (A/B)
 const SUN_DAY = new THREE.Color(0xfff5ea), SUN_LOW = new THREE.Color(0xffa060);
 
 export class Engine {
@@ -223,7 +224,7 @@ export class Engine {
   // towards light than towards dark. Without the meter, the houses' exposureTarget hints drive it.
   update(dt) {
     this.dynamicResolution(dt);
-    if ((this.opts.lazyShadows || this.lazyKnob) && !KEYART && !urlFlag('nolazy')) this.lazyShadows(dt); // ?nolazy: A/B; lazyKnob: dynamic quality (pacing.js)
+    if ((this.opts.lazyShadows || this.lazyKnob) && !KEYART && !NOLAZY) this.lazyShadows(dt); // ?nolazy: A/B; lazyKnob: dynamic quality (pacing.js)
     this.cloudMap?.render(this.renderer, this.camera, this.sky.sunPosition.value);
     this.syncInteriors?.();
     this.meterDt = dt;
@@ -266,7 +267,7 @@ export class Engine {
     let dirty = s.t > 2 || viewed;
     for (let i = 0; !dirty && i < s.list.length; i++) {
       const w = s.list[i], o = w.o;
-      dirty = o.castShadow !== w.c || o.layers.mask !== w.l || shown(o) !== w.v || shape(o) !== w.g || moved(o.matrixWorld.elements, w.m);
+      dirty = o.castShadow !== w.c || o.layers.mask !== w.l || shown(o) !== w.v || (w.c && (shape(o) !== w.g || moved(o.matrixWorld.elements, w.m)));
     }
     if (!dirty) return;
     this.sun.shadow.needsUpdate = true; s.n++;
