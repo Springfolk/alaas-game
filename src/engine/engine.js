@@ -294,6 +294,7 @@ export class Engine {
   render() {
     // world matrices once a frame, not once per pass (shadows, mirror, AO pre-pass: each render walked the whole graph)
     const s = this.scene;
+    this.beforeMatrices?.();
     s.updateMatrixWorld();
     s.matrixWorldAutoUpdate = false;
     try {

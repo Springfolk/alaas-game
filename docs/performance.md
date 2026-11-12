@@ -10,6 +10,7 @@
 - ≤16 sampled textures per shader stage (WebGPU); the ground splat shares maps.
 - Cut-out (`alphaTest`) homestead meshes draw after opaque ones: `world.js` gives them `renderOrder` 1 when unset, so leave it unset.
 - A part that moves or hides after load: `userData.dynamic` (else it is merged; the merge watchdog warns).
+- Objects not dynamic at the end of the load keep their local matrix (`merge.js`, `?nofreeze` off); one whose position, quaternion, scale or parent changes thaws before that frame's matrices. Write transforms through those, not `matrix`.
 - Look-at raycast: every 3rd frame, only targets within reach; meshes over 1500 triangles test a 16³ grid (`src/interact/raycast.js`).
 - Pure-CPU load work over ~50 ms: a worker job or a bake tool (`docs/loading.md`).
 - Interface: every surface, state and paint style is drawn in `src/ui/prewarm.js`; no own layer (`will-change`) inside a rounded clip; no always-on backdrop blur.

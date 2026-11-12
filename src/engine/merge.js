@@ -131,7 +131,7 @@ export function optimizePlaced(world, camera, sun) {
   for (const it of world.interactables) if (it.target && Object.keys(it).some((k) => !PLAIN.has(k))) dynamic.add(it.target);
   const isDynamic = (o) => { for (let p = o; p; p = p.parent) if (dynamic.has(p) || p.userData.dynamic) return true; return false; };
   // built in slices (a model per task) while the rest loads; World.build awaits `ready`
-  const proxies = [], parts = [];
+  const proxies = [], parts = [], frozen = [];
   let imp = null, far = null, baked = false; // until the impostors are baked (late in the load stream) the real meshes stay
   const breathe = () => new Promise((r) => setTimeout(r, 0));
   const init = async () => {
@@ -176,12 +176,28 @@ export function optimizePlaced(world, camera, sun) {
       if (_s.radius >= 3 && cl < 0) return;
       parts.push({ o, parent: o.parent, x: _s.center.x, y: _s.center.y, z: _s.center.z, r: _s.radius, cl, live, mask: o.layers.mask, culled: false, cast: o.castShadow, shade: o.castShadow });
     });
+    // static objects keep their matrices (no per-frame compose and multiply; `?nofreeze` off); one that moves after all thaws at once
+    if (!urlFlag('nofreeze')) world.scene.traverse((o) => {
+      if (o === world.scene || !o.matrixAutoUpdate || isDynamic(o) || o.isLight || o.isCamera) return;
+      o.updateMatrix();
+      frozen.push({ o, parent: o.parent, s: [...o.position.toArray(), ...o.quaternion.toArray(), ...o.scale.toArray()] });
+      o.matrixAutoUpdate = false;
+    });
     imp = built;
     built.baked.then(() => { baked = true; });
   };
   const ready = init();
 
   let t = 0, cursor = 0, warned = 0;
+  // before the frame's world matrices (Engine.render): a frozen part moved, turned, scaled or re-parented thaws
+  const thaw = () => {
+    for (let i = frozen.length - 1; i >= 0; i--) {
+      const { o, parent, s } = frozen[i], p = o.position, q = o.quaternion, c = o.scale;
+      if (o.parent === parent && p.x === s[0] && p.y === s[1] && p.z === s[2] && q._x === s[3] && q._y === s[4] && q._z === s[5] && q._w === s[6] && c.x === s[7] && c.y === s[8] && c.z === s[9]) continue;
+      o.matrixAutoUpdate = true; o.matrixWorldNeedsUpdate = true;
+      frozen[i] = frozen[frozen.length - 1]; frozen.pop();
+    }
+  };
   const update = (dt) => {
     if (!imp || KEYART) return; // ?keyart: every mesh at every distance, no impostors
     const cam = camera.position;
@@ -223,5 +239,5 @@ export function optimizePlaced(world, camera, sun) {
   };
   // for the lake mirror (lake.js): the model meshes an impostor stands in for there
   const mirrored = () => (imp ? parts.filter((p) => p.cl >= 0 && imp.clusters[p.cl].mirror && !p.gone).map((p) => p.o) : []);
-  return { update, ready, proxies, mirrored, get impostors() { return imp; } };
+  return { update, thaw, ready, proxies, mirrored, get impostors() { return imp; } };
 }

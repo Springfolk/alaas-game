@@ -109,6 +109,7 @@ export class World {
     if (!urlFlag('nomerge')) { // ?nomerge: A/B
       const opt = this.optimized = optimizePlaced(this, this.engine.camera, this.engine.sun);
       this.updaters.push(opt.update);
+      this.engine.beforeMatrices = opt.thaw; // frozen static matrices (merge.js)
       opt.ready.catch((e) => console.error('merge failed', e));
     }
     // nature after the models; a failing module is logged and skipped, never blocks the load
