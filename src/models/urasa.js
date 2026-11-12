@@ -29,7 +29,7 @@ export default async function build(ctx) {
 
   // the shell's geometry and data (baked: src/load/geocache.js)
   const frame = section(() => buildFrame(rng, P));
-  const cover = section(() => buildCover(rng, P));
+  const cover = section(() => buildCover(rng, P, frame.innerPoles));
   const inside = section(() => buildInterior(rng));
   const hole = P.at(cover.sTop), holeY = hole.y;
   const coneR = (y) => P.rAtY(Math.max(0, y)); // inner radius of the cone at height y

@@ -189,7 +189,7 @@ export function buildFrame(rng, P) {
     }
     return pts;
   };
-  const NIN = 96;
+  const NIN = 96, innerPoles = []; // { a, sEnd }: the cover rests on them (urasa/cover.js sag)
   for (let k = 0; k < NIN; k++) {
     const a = (k / NIN) * TAU + (rng() - 0.5) * 0.02;
     const inDoor = Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < doorA;
@@ -199,6 +199,7 @@ export function buildFrame(rng, P) {
     const long = kind === 0 && k % 2 === 0;
     const extra = long ? 0.35 + rng() * 0.5 : 0.05 + rng() * 0.1;
     const lateral = (rng() - 0.5) * 0.12;
+    innerPoles.push({ a: (a + TAU) % TAU, sEnd });
     const pts = polePath(a, 0, s0, sEnd, extra, lateral, rng() * 9);
     const rb = POLE_R * (0.9 + rng() * 0.25), rt = kind === 0 ? 0.016 + rng() * 0.005 : 0.022 + rng() * 0.006, seed = rng() * 50;
     G.poleIn.push(tube(pts, (t, an) => (rb + (rt - rb) * Math.pow(t, 0.8)) * (1 + valueNoise(an * 1.5 + seed, t * 30, 3) * 0.07), 6, { capEnd: true }));
@@ -258,5 +259,5 @@ export function buildFrame(rng, P) {
 
   const geoms = {};
   for (const [k, list] of Object.entries(G)) geoms[k] = merge(list);
-  return { geoms, colliders, postAngles, outerAngles, doorA, hoopY1, midS, topS };
+  return { geoms, colliders, postAngles, outerAngles, innerPoles, doorA, hoopY1, midS, topS };
 }
