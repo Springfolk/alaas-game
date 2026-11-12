@@ -7,7 +7,6 @@ import { Seat } from './seat.js';
 import { Glint } from './glint.js';
 import { Work } from './work/index.js';
 import { Choron, Cup, Khomus } from './rites.js';
-import { Arms } from './arms.js';
 
 const REGROW = 240; // s after the last berry was picked until a дьэдьэн patch is full again
 
@@ -24,7 +23,6 @@ export class Interactions {
     // the guest's choron, the lake's cup of milk, the khomus: taken from their place and put back (rites.js)
     const part = (k) => w.placed.find((p) => p.object?.userData[k])?.object.userData[k];
     this.rites = !this.hands ? [] : [[Choron, 'guest'], [Cup, 'offering'], [Khomus, 'khomus']].filter(([, k]) => part(k)).map(([C, k]) => new C(game, this.hands, part(k)));
-    this.arms = this.hands && parts.arms ? new Arms(game, { ...parts.arms, mats: parts.armMats, lights: parts.armLights }, this.hands) : null; // the hands shown on what is carried
     this.seat = new Seat(game);
     this.glint = new Glint(game); // the winter place's sun glint
     for (const it of w.interactables) if (it.entry === 'oron' && it.target && !it.act) it.sit = true;
@@ -81,7 +79,6 @@ export class Interactions {
     this.work.update(dt);
     for (const r of this.rites) r.update(dt);
     this.hands?.update(dt);
-    this.arms?.update(dt);
     for (let i = this.ticks.length - 1; i >= 0; i--) if (this.ticks[i](dt)) this.ticks.splice(i, 1);
     for (const [k, P] of this.patches) {
       if ((P.t += dt) > REGROW) { this.patches.delete(k); this.parts.setPatch(k, this.parts.perPatch); }

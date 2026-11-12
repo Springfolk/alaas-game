@@ -173,8 +173,6 @@ export function smithy(K, x, z, yaw) {
     const loop = mk(new THREE.TorusGeometry(0.04, 0.007, 5, 12, Math.PI), M.leather, 0.7, 0.3);
     loop.position.set(0, 0.012, 0); loop.rotation.set(0, Math.PI / 2, 0);
     upper.add(loop);
-    upper.userData.grips = [{ hand: side > 0 ? 'L' : 'R', p: [0, 0.012, 0], axis: [0, 0, side > 0 ? 1 : -1], r: 0.014, out: [0, 1, 0] }];
-    { const [sx, sz] = F.tw(-1.78, 0); upper.userData.stand = { of: K.group, x: sx, z: sz, low: true }; } // kneeling behind the handles
     loop.castShadow = false;
     grp.add(bag, lower, upper);
     K.group.add(grp);
@@ -336,8 +334,6 @@ export function smithy(K, x, z, yaw) {
     eg.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(eg.attributes.position.count).fill(1), 1));
     hammer.add(head, haft, new THREE.Mesh(eg, M.fresh));
   }
-  hammer.userData.grips = [{ hand: 'R', p: [0, 0.07, 0], axis: [0, 1, 0], r: 0.013 }];
-  hammer.userData.stand = { of: K.group, x: ax - 0.05, z: az + 0.82 }; // the smith's place, the anvil before him
   const hamRest = { p: new THREE.Vector3(ax + 0.16, anvilY - 0.055, az + 0.12), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, yaw + 0.5, 0, 'YXZ')) };
   hammer.position.copy(hamRest.p); hammer.quaternion.copy(hamRest.q);
   hammer.userData.dynamic = true;
@@ -349,7 +345,6 @@ export function smithy(K, x, z, yaw) {
     t.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(t.attributes.position.count).fill(1), 1));
     const m = new THREE.Mesh(t, M.iron); m.castShadow = true; tongs.add(m);
   }
-  tongs.userData.grips = [{ hand: 'R', p: [0, 0.5, 0], axis: [0, -1, 0], r: 0.02 }];
   tongs.userData.dynamic = true;
   const tongsRest = { p: new THREE.Vector3(), q: new THREE.Quaternion(), from: { p: new THREE.Vector3(), q: new THREE.Quaternion() }, k: 1 };
   along(Wy(-0.05, fy + 0.004, 0.72), Wy(FX - FD / 2 - 0.012, fy + 0.58, 0.55), 0.5).decompose(tongsRest.p, tongsRest.q, new THREE.Vector3());
@@ -386,7 +381,6 @@ export function smithy(K, x, z, yaw) {
       const sc = 0.62 + 0.3 * (1 - pressed) - 0.07;
       b.bag.scale.set(1, sc, 0.85 + 0.15 * sc);
       b.upper.position.y = 0.035 + 0.13 * sc;
-      b.upper.userData.inHands = Wk.press[i] > 0.02;
     });
     K.M.glow.value = 0.22 + energy * 2.6 + (Wk.pressing ? 0.45 : 0);
     light.intensity = 0.15 + energy * 9;
@@ -403,13 +397,11 @@ export function smithy(K, x, z, yaw) {
       blank.userData.sphere = undefined;
       if (c.camera) {
         // the smith stands within a tongs' length of where the blank goes; the reins run to below the right of the view
-        if (!f.stand) { K.group.worldToLocal(_th.copy(c.camera.position)).sub(f.to).setY(0); _th.setLength(Math.min(0.85, Math.max(0.6, _th.length()))); f.stand = tongs.userData.stand = { of: K.group, x: f.to.x + _th.x, z: f.to.z + _th.z }; }
         _tj.set(-0.07, 0.004, 0).applyAxisAngle(_ty, blank.rotation.y).add(blank.position);
         K.group.worldToLocal(_th.set(0.22, -0.3, -0.55).applyQuaternion(c.camera.quaternion).add(c.camera.position));
         tongs.position.copy(_tj); tongs.quaternion.setFromUnitVectors(_ty, _th.sub(_tj).normalize());
-        tongs.userData.inHands = true;
       }
-      if (f.k >= 1) { Wk.fly = null; tongs.userData.inHands = false; tongsRest.from.p.copy(tongs.position); tongsRest.from.q.copy(tongs.quaternion); tongsRest.k = 0; f.res(); }
+      if (f.k >= 1) { Wk.fly = null; tongsRest.from.p.copy(tongs.position); tongsRest.from.q.copy(tongs.quaternion); tongsRest.k = 0; f.res(); }
     } else if (tongsRest.k < 1) { // set back against the forge
       tongsRest.k = Math.min(1, tongsRest.k + dt / 0.45); const e = tongsRest.k * tongsRest.k * (3 - 2 * tongsRest.k);
       tongs.position.lerpVectors(tongsRest.from.p, tongsRest.p, e); tongs.quaternion.slerpQuaternions(tongsRest.from.q, tongsRest.q, e);
@@ -424,7 +416,6 @@ export function smithy(K, x, z, yaw) {
       H.up = H.top * (1 - H.k * H.k);
       if (H.k >= 1) { H.phase = 'rest'; H.t = 0; H.done?.(); }
     } else if (H.phase === 'rest' && (H.t += dt) > 0.3) { H.phase = null; hammer.position.copy(hamRest.p); hammer.quaternion.copy(hamRest.q); }
-    hammer.userData.inHands = !!H.phase && H.phase !== 'rest';
     if (H.phase) {
       hammer.position.set(ax - 0.02, anvilY + 0.02 + H.up * 0.32, az + 0.3);
       hammer.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2 + 0.25 + H.up * 0.9, yaw + 0.1, 0, 'YXZ'));

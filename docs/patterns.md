@@ -41,6 +41,6 @@ Every drawn ornament, its source and how faithful it is. Rule: an ornament is tr
 - Urasa cover, top garland band (Suntar photo: motifs ~6 px, unreadable).
 - Balagan хаппахчы curtain (`balagan/mats.js` `birch-curtain`): boiled bark sewn of strips, stitched, no ornament; Sieroszewski's interiors (Rys. 65, 68) show no ornamented curtain.
 - Urasa door: the Suntar urasa has a plank door, no curtain to trace; no mica chips in the cover bands; ornamented sheets are cut straight (as the Suntar sheets).
-- Not ornamented: `canvas_birch*`, `canvas_endgrain`, `canvas_cloth`, `canvas_silver`, `canvas_skin` (bark, grain, twill, sheet, skin); `index.html` UI.
+- Not ornamented: `canvas_birch*`, `canvas_endgrain`, `canvas_cloth`, `canvas_silver` (bark, grain, twill, sheet); `index.html` UI.
 
 Sources: Jochelson W., «The Yakut», AMNH Anthropological Papers 33(2), 1933 ([AMNH digital library](https://digitallibrary.amnh.org/items/45d93b43-6241-4f90-a523-47ef842f71e3)); US publication of 1933, public domain if its copyright was not renewed (not checked against the renewal records): measurements only, no pixels shipped · Sieroszewski W., «12 lat w kraju Jakutów», 1902, public domain (Commons; traced paths shipped) · Russian Museum of Ethnography (REM) catalogue photos, collection.ethnomuseum.ru: study only, motif shapes and measurements traced, pixels never shipped · Trevbus, Tabaga-cape сэргэ, Commons, CC0 · Il-Gil, Suntar urasa, Commons, CC BY-SA 4.0 · V. Kirillin, silver set of 1884 and late 19th c., Commons, CC BY-SA 4.0 · ZinaZM, festive costume, Commons, CC0.

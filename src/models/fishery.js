@@ -57,9 +57,6 @@ export default async function build(ctx, placement) {
 
   // ── the trap (туу): larch laths on four hoops, an inner funnel at the mouth, the tail shut by a clamp of two sticks ──
   const trap = new T.Group(); trap.name = 'tuu';
-  // by two hoops, on the side that is up and towards the body when it is carried
-  const gr = (hand, y, k) => ({ hand, p: [0.6 * (TUU.r * k + 0.006), y, -0.8 * (TUU.r * k + 0.006)], axis: [0.8, 0, 0.6], r: 0.0075, out: [0.6, 0, -0.8] });
-  trap.userData.grips = [gr('L', 0.32, 1), gr('R', 0.62, 0.82)];
   {
     const Bt = new Bucket(() => -1);
     const L = TUU.len, prof = [[TUU.r, 0], [TUU.r * 0.98, 0.3], [TUU.r * 0.82, 0.6], [TUU.r * 0.5, 0.88], [0.05, L - 0.06], [0.04, L]];

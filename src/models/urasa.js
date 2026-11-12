@@ -250,7 +250,6 @@ export default async function build(ctx) {
   const _p = new THREE.Vector3(), _lp = new THREE.Vector3(), _iq = new THREE.Quaternion(), _sun = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
   const update = (dt, c) => {
     // the dasher
-    ky.stirrer.userData.inHands = churn.lifting || churn.fall > 0 || churn.idle < 1.2;
     if (churn.lifting) {
       churn.t += dt; churn.up = Math.min(1, churn.up + dt / 0.34);
       if (!c.game?.input.doing && churn.t > 0.08) { churn.lifting = false; churn.top = churn.up; churn.fall = 1; }

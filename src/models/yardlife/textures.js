@@ -156,17 +156,6 @@ const SETS = {
       return [c, c, c, tw * 0.2 + n, 0.92];
     }, 1);
   },
-  // Skin of a hand: pale, with the fine criss-cross of its lines and a little mottling; the tone comes from the tint.
-  skin() {
-    const W = 128, H = 128;
-    return bake(W, H, (x, y) => {
-      const l1 = Math.abs(tfbm((x + y) / 4, (x - y) / 16, 8, 51, 2) - 0.5), l2 = Math.abs(tfbm((x - y) / 4, (x + y) / 16, 8, 57, 2) - 0.5);
-      const line = Math.max(0, 1 - Math.min(l1, l2) * 14);
-      const mot = tfbm(x / 32, y / 32, 4, 61, 3) - 0.5, pore = tfbm(x / 2, y / 2, 64, 67, 2) - 0.5;
-      const c = 0.9 - line * 0.07 + pore * 0.03;
-      return [c + mot * 0.05, c - mot * 0.02, c - mot * 0.05, -line * 0.5 + pore * 0.15, 0.62 + line * 0.1];
-    }, 1.4);
-  },
 };
 
 // The sets are baked to public/assets/tex/canvas_<name>/ by tools/bake-canvas-tex.mjs (painting them here

@@ -70,7 +70,6 @@ export default async function build(ctx, placement) {
     const x = new T.Vector3(-1, 0, 0);
     scythe.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(x, up, new T.Vector3().crossVectors(x, up)));
   }
-  scythe.userData.grips = [{ hand: 'R', p: [0, 0.34, 0], axis: [0, 1, 0], r: 0.017 }, { hand: 'L', p: [0, 0.1, 0], axis: [0, 1, 0], r: 0.017 }];
   scythe.userData.dynamic = true;
   object.add(scythe);
   interactables.push({ target: scythe, khotuur: true, entry: 'hay-making', label: { sah: 'саха хотуура', en: 'Sakha scythe (саха хотуура)', ru: 'якутская коса (саха хотуура)' } });

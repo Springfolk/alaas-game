@@ -6,8 +6,6 @@
 import { Bucket, boxUV, lathe, tube, splitGeo, jitterTint } from './yardlife/kit.js';
 import { yardMats } from './yardlife/mats.js';
 import { buildDyedyen } from './chores/dyedyen.js';
-import { buildHand, buildForearm } from './chores/arms.js';
-import { useLights } from '../engine/master.js';
 import { DOOR } from './urasa/frame.js';
 import { PLACEMENTS } from '../world/layout.js';
 import { HOME } from '../world/terrain.js';
@@ -62,7 +60,6 @@ export default async function build(ctx, placement) {
     stream.visible = false; stream.castShadow = false; stream.name = 'pail-stream'; stream.userData.dynamic = true;
     object.add(stream);
     pail.userData.stream = stream; pail.userData.rim = [R1 - W, H];
-    pail.userData.grips = [{ hand: 'R', p: [0, H + 0.262, 0], axis: [0, 0, -1], r: 0.008, out: [0, 1, 0] }]; // hanging from the fist
   }
   pail.position.set(PAIL_AT[0], ground(...PAIL_AT), PAIL_AT[1]);
   pail.rotation.y = 0.6;
@@ -78,8 +75,6 @@ export default async function build(ctx, placement) {
     const t = jitterTint(rng, 0.12);
     B.add(pc.bark, M.bark, null, t); B.add(pc.split, M.split, null, t); B.add(pc.ends, M.endFresh, null, t);
     B.build(g);
-    g.userData.grips = [{ hand: 'R', p: [0, 0.12, 0], axis: [0, 1, 0], r: 0.075 }, { hand: 'L', p: [0, 0.4, 0], axis: [0, 1, 0], r: 0.075 },
-      { hand: 'L', over: [0, 1, 0.1], p: [0, 0.15, 0], axis: [0, -1, 0], r: 0.075, elbow: [-0.3, -0.27, -0.2] }]; // the top billet of an armful: the left forearm lies along it, the hand towards its right end
     g.visible = false;
     object.add(g);
     logs.push(g);
@@ -102,20 +97,8 @@ export default async function build(ctx, placement) {
   });
   const mown = dy.colonies.flatMap((C) => C.short); // grass kept short so the colony shows
 
-  // ── the player's hands (src/interact/arms.js): a closed and a cupping hand and a forearm per side ──
-  const arms = {};
-  for (const [s, side] of [['R', 1], ['L', -1]]) {
-    arms[s] = { fist: buildHand(T, M, 0.017, side), cup: buildHand(T, M, 0.075, side), forearm: buildForearm(T, M) };
-    for (const o of Object.values(arms[s])) { o.name = 'hand'; o.visible = false; o.userData.dynamic = true; object.add(o); }
-  }
   object.userData.mown = mown;
-  // they are lit by the fires nearest the eye: stand-ins filled from those lights each frame
-  const armLights = [0, 1].map(() => ({ color: new T.Color(), intensity: 0, matrixWorld: new T.Matrix4(), distance: 1, decay: 2 }));
-  for (const m of [M.skin, M.sleeve]) useLights(m, armLights);
-  object.userData.chores = { pail, logs, pile, arms, armMats: [M.skin, M.sleeve], armLights, setPatch: dy.setPatch, perPatch: dy.perPatch };
-  // the hands take the sky light through their own map, so it can be dimmed indoors (src/interact/arms.js)
-  const setEnv = (env) => { for (const m of [M.skin, M.sleeve]) if (env && m.envMap !== env) { m.envMap = env; m.envMapIntensity = 1; m.needsUpdate = true; } };
-  setEnv(ctx.world?.engine?.scene.environment);
-  const update = (dt, { camera, game }) => { setEnv(game?.engine.scene.environment); dy.cull(camera.position.x - px, camera.position.z - pz); };
+  object.userData.chores = { pail, logs, pile, setPatch: dy.setPatch, perPatch: dy.perPatch };
+  const update = (dt, { camera }) => dy.cull(camera.position.x - px, camera.position.z - pz);
   return { object, colliders: [], floors: [], interactables, update };
 }
