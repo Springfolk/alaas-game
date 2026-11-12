@@ -5,18 +5,18 @@
   "model:ampaar": "2d18f275cf14",
   "model:balagan": "2317ffecb06b",
   "model:barkwork": "631772518237",
-  "model:chores": "b7c1bfcb2adb",
+  "model:chores": "d32dfdde8145",
   "model:drywood": "fa295aa052f7",
   "model:fishery": "b588417b617f",
   "model:haybase": "75cd2be6dd68",
   "model:hayfield": "3b0197823497",
-  "model:kuruo": "2881699aab13",
+  "model:kuruo": "03c4aeac7d64",
   "model:lakeside": "784140f39a97",
   "model:sacred-birch": "e10e5213d576",
   "model:sele": "04dc72937a30",
   "model:serge": "26db5eb646bc",
   "model:urasa": "0fcd2dee26be",
-  "model:work": "dc318bc9d84c",
+  "model:work": "62d501760005",
   "model:yardlife": "281d12477188"
  },
  "packs": {
@@ -97,7 +97,7 @@
   },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "b7c1bfcb2adb",
+   "key": "d32dfdde8145",
    "file": "chores-753cb87c.bin",
    "bytes": 11650,
    "raw": 47444
@@ -139,7 +139,7 @@
   },
   "model:kuruo#9296aa7a": {
    "group": "model:kuruo",
-   "key": "2881699aab13",
+   "key": "03c4aeac7d64",
    "file": "kuruo-9296aa7a.bin",
    "bytes": 213955,
    "raw": 1076544
@@ -179,7 +179,7 @@
   },
   "model:work#9d148979": {
    "group": "model:work",
-   "key": "dc318bc9d84c",
+   "key": "62d501760005",
    "file": "work-9d148979.bin",
    "bytes": 24064,
    "raw": 83736
