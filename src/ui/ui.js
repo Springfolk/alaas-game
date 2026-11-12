@@ -67,8 +67,9 @@ export class UI {
       if (e.target.closest('.sel')) return;
       const act = e.target.closest('[data-act]')?.dataset.act;
       if (act) { this.onAction?.(act); return; }
-      const t = e.target.closest('[data-entry],[data-img],[data-mark],.hero,.st-hero');
+      const t = e.target.closest('[data-entry],[data-img],[data-big],[data-mark],.hero,.st-hero');
       if (!t) return;
+      if (t.dataset.big) { this.enlarge(+t.dataset.big); return; } // the reading sheet's photographs
       if (t.dataset.learn) this.onAction?.('learn', t.dataset.entry); // told of only in cards: reading the link finds it
       if (t.dataset.entry) this.onAction?.('open', t.dataset.entry);
       else if (t.dataset.mark) { const m = this.marks?.[+t.dataset.mark]; if (m) this.onAction?.('open', m.entry, m.it); }
@@ -201,6 +202,7 @@ export class UI {
           <h3>${title}</h3>
           <p class="lead">${esc(this.t(e.short))}</p>
           ${say ? `<p class="say">${esc(this.t(say))}</p>` : ''}
+          ${imgs.length ? `<div class="rd-gal">${imgs.map((m, k) => `<button data-big="${k}"><img src="${esc(imgSrc(m.src))}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}
           <p>${esc(this.t(e.body))}</p>
           ${facts ? `<ul class="facts">${facts}</ul>` : ''}
           ${rel ? `<div class="rel"><span>${esc(this.t(L.related))}</span>${rel}</div>` : ''}
@@ -233,15 +235,19 @@ export class UI {
     i = (i + imgs.length) % imgs.length;
     if (show && this.pic && i === this.img && !photo && this.card.classList.contains('pic')) show = false;
     this.img = i; this.pic = show;
-    const im = imgs[i], lang = this.state.lang, cap = im.caption?.[lang] || im.caption?.en || '';
-    const credit = [im.credit, im.license && (im.url ? `<a href="${esc(im.url)}" target="_blank" rel="noopener">${esc(im.license)}</a>` : esc(im.license))].filter(Boolean);
+    const im = imgs[i], cap = im.caption?.[this.state.lang] || im.caption?.en || '';
     const hero = this.card.querySelector('.st-hero');
     if (hero) hero.src = imgSrc(im.src);
     fig.innerHTML = show ? `${photo ? '' : `<button class="hero"><img src="${esc(imgSrc(im.src))}" ${im.w ? `width="${im.w}" height="${im.h}"` : ''} alt="${esc(cap)}"></button>`}
-      <figcaption>${esc(cap)}${credit.length ? `<span class="credit">${credit.map((c, k) => k ? c : esc(c)).join(' · ')}</span>` : ''}</figcaption>` : '';
+      <figcaption>${this.capHTML(im)}</figcaption>` : '';
     this.card.classList.toggle('pic', show && !photo);
     for (const b of this.card.querySelectorAll('.st-strip button')) b.classList.toggle('on', show && +b.dataset.img === i);
     this.layout();
+  }
+  capHTML(im) {
+    const cap = im.caption?.[this.state.lang] || im.caption?.en || '';
+    const credit = [im.credit, im.license && (im.url ? `<a href="${esc(im.url)}" target="_blank" rel="noopener">${esc(im.license)}</a>` : esc(im.license))].filter(Boolean);
+    return `${esc(cap)}${credit.length ? `<span class="credit">${credit.map((c, k) => k ? c : esc(c)).join(' · ')}</span>` : ''}`;
   }
   // Where the thing sits on screen: the part of the view the type leaves free (the stage frames it there).
   layout() {
@@ -274,11 +280,11 @@ export class UI {
       if (on) el.style.transform = `translate(${Math.round(p.x)}px,${Math.round(p.y)}px)`;
     }
   }
-  enlarge() {
-    const im = (this.images[this.current] || [])[this.img];
+  // the photograph `i` (the one shown) over everything, with its caption and credit
+  enlarge(i = this.img) {
+    const im = (this.images[this.current] || [])[i];
     if (!im) return;
-    const fig = this.card.querySelector('.st-fig figcaption');
-    this.lightbox.innerHTML = `<img src="${esc(imgSrc(im.src))}" alt=""><div class="cap">${fig ? fig.innerHTML : ''}</div>`;
+    this.lightbox.innerHTML = `<img src="${esc(imgSrc(im.src))}" alt=""><div class="cap">${this.capHTML(im)}</div>`;
     this.lightbox.classList.add('show');
   }
 

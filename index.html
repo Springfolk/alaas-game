@@ -248,6 +248,11 @@
   .read .st-read { display: flex; }
   .read .st-body, .read .st-strip { display: none; }
   .st-read .client { max-height: min(56vh, 620px); }
+  /* the entry's photographs in the reading sheet: a tap enlarges one */
+  .rd-gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin: 12px 0; }
+  .rd-gal button { aspect-ratio: 4 / 3; padding: 0; border-radius: 4px; overflow: hidden; cursor: zoom-in; border: 1px solid rgba(255,255,255,.7); background: #1a2632; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  .rd-gal button:hover, .rd-gal button.vh { border-color: var(--live-l); box-shadow: 0 0 8px rgba(var(--glow),.8); }
+  .rd-gal img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .st-go { flex: none; display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 8px 2px 1px; }
   .st-go .btn.primary { font-size: 15px; padding: 8px 20px 8px 10px; min-height: 40px; display: inline-flex; align-items: center; gap: 9px; }
   .st-go kbd { box-shadow: none; }
