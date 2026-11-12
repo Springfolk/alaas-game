@@ -64,7 +64,7 @@ export default async function build(ctx, placement) {
   pail.position.set(PAIL_AT[0], ground(...PAIL_AT), PAIL_AT[1]);
   pail.rotation.y = 0.6;
   object.add(pail);
-  interactables.push({ entry: 'mas-yagas', target: pail, take: 'pail', label: { sah: 'мас ыаҕас', en: 'wooden water pail (mas eghas)', ru: 'деревянное ведро (мас ыаҕас)' } });
+  interactables.push({ entry: 'mas-yagas', target: pail, take: 'pail', label: { sah: 'мас ыаҕас', en: 'wooden water pail (mas ïaghas)', ru: 'деревянное ведро (мас ыаҕас)' } });
 
   // ── firewood billets: split larch, built along +Y (base at 0), hidden until taken from the pile ──
   const logs = [];

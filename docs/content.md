@@ -16,7 +16,7 @@
 ## Names (`src/ui/names.js`)
 - A thing's name in a language: the head of `title.<lang>` (up to " — "), else `name`; a label's: its own text less a bracketed Sakha word.
 - English: the English name, else the Sakha word in Latin (`translit`); never Cyrillic.
-- English text has no Cyrillic: every Sakha word in it, quoted ones included, in a phonetic Latin: ө ö, ү ü (үө üö), ыа e (Ыаҕас Eghas, Ыһыах Yhekh), иэ ie, уо uo, ҥ ng, ҕ gh, һ h, дь dj, нь ny (ni before ы: Anniyy), х kh, ч ch, ы y, й y, э e, the rest as usual, long vowels doubled; proper names capitalised (Ürüng Aar Toyon).
+- English text has no Cyrillic: every Sakha word in it, quoted ones included, in a phonetic Latin: ө ö, ү ü (үө üö), ыа ïa (Ыаҕас Ïaghas, Ыһыах Yhïakh), иэ ie, уо uo, ҥ ng, ҕ gh, һ h, дь dj, нь ny (ni before ы: Anniyy), х kh, ч ch, ы y, й y, э e, the rest as usual, long vowels doubled; proper names capitalised (Ürüng Aar Toyon).
 - Places in Sakha land: the Sakha form in every language, as the Sakha text names it (Мүрү / Mürü, Үс Хатыҥ / Üs Khatyng, Мэҥэ Хаҥалас / Menge Khangalas, Сунтаар / Suntaar); Russian adds Russian endings («в Сунтааре»). English and Russian keep the official names of Yakutsk, the Lena and Nikolsky.
 - Russian: the Russian name, else the Sakha word as written («Балаҕан», not «Балаган»).
 - Sakha words in Russian text, everywhere, keep Sakha spelling with Russian endings («в балаҕане», «ураһы», «чороона»); real Russian words stay (кумыс, амбар, камелёк).
