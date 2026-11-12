@@ -228,14 +228,14 @@ export default async function build(ctx, placement) {
   const hearthIt = { entry: 'ohokh', target: hearthT };
   if (!winter) {
     hearthIt.act = {
-      // a pinch of butter from the hand: it flies into the hearth's mouth, and the fire takes it
+      // a pinch of butter from the hand, carried slowly into the hearth's mouth and set down there; the fire takes it
       id: 'feed', label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
       run: async (game) => {
         const cam = game.engine.camera;
         morselFrom.set(0.14, -0.2, -0.35).applyQuaternion(cam.quaternion).add(cam.position);
         root.worldToLocal(morselFrom);
         morselT = 0; morsel.visible = true;
-        await wait(600);
+        await wait(1500);
         flare = 1;
         game.audio?.play('fire-feed', world(fire.pos));
       },
@@ -295,8 +295,8 @@ export default async function build(ctx, placement) {
       M.flare.value = Math.max(flare, fk * 0.45);
       if (morselT >= 0) {
         morselT += dt;
-        const k = Math.min(1, morselT / 0.6);
-        morsel.position.lerpVectors(morselFrom, fire.pos, k); morsel.position.y += Math.sin(k * Math.PI) * 0.22 - k * 0.2;
+        const k = Math.min(1, morselT / 1.5), e = k * k * (3 - 2 * k), low = Math.max(0, (k - 0.7) / 0.3); // carried level, then lowered
+        morsel.position.lerpVectors(morselFrom, fire.pos, e); morsel.position.y += 0.1 * (1 - low * low) * e;
         if (k >= 1) { morsel.visible = false; morselT = -1; }
       }
     }
