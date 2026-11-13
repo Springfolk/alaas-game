@@ -35,7 +35,7 @@ const LOOK = {
   fire: { glow: { m: 1.6, col: C(1, 0.55, 0.25, 0.7), ring: 1 }, near: 7 }, // the hearth's light swelling in the smoke
   ripple: { px: 14, col: C(1, 0.96, 0.88, 4), glow: { m: 1.2, asp: 0.35, col: C(1, 0.95, 0.85, 0.55) } }, // the sun on the risen water
   splash: { px: 14, col: C(1, 0.96, 0.88, 4), glow: { m: 1.2, asp: 0.35, col: C(1, 0.95, 0.85, 0.55) }, sparks: 2 },
-  door: { px: 14, col: C(1, 0.95, 0.86, 4), glow: { m: 0.9, tall: 1.9, col: C(1, 0.93, 0.8, 0.6) } }, // daylight in a doorway, the jambs catching it
+  door: { px: 14, col: C(1, 0.93, 0.8, 3), glow: { m: 0.9, tall: 1.9, col: C(1, 0.82, 0.6, 0.6) } }, // daylight in a doorway, the jambs catching it
 };
 // seconds between a hint's beats
 const BEAT = { glint: [1.8, 3.2], sheen: [1.4, 2.6], ember: [1.2, 2.4], ripple: [1.6, 3], splash: [1.1, 2.4], fire: [2.4, 3.6], door: [1.6, 2.8], berries: [1.6, 2.8] };
@@ -65,7 +65,7 @@ export class Hints {
     this.edge = this.sprite(lightMaterial(this.eOp, this.eCol, uniform(0), uniform(0), true), home, 11);
     this.cur = null; this.t = 0; this.beat = 0.5; this.flash = -1; this.again = 0; this.left = 0; this.swell = -1;
     this.lit = null; this.spot = new THREE.Vector3(); this.need = 1;
-    this.gain = { bloom: 1, shaft: 0.25, edge: 0.8 }; // the lights' strengths
+    this.gain = { glint: 0.7, bloom: 0.5, shaft: 0.15, edge: 0.22 }; // the lights' strengths: barely there, a curious eye finds them
     this.rooms = [];
     for (const p of game.world.placed) for (const r of ROOMS[p.model] || []) {
       const c = Math.cos(p.yaw || 0), s = Math.sin(p.yaw || 0), tw = (x, z) => new THREE.Vector3(p.x + x * c + z * s, 0, p.z - x * s + z * c);
@@ -232,7 +232,7 @@ export class Hints {
       const k = this.flash / 0.5, d = cam.position.distanceTo(this.spot);
       if (k >= 1 || !L?.px || d > FAR) { this.flash = -1; this.glint.visible = false; } else {
         this.gCol.value.copy(L.col);
-        this.gOp.value = Math.sin(Math.PI * k) ** 2 * (0.75 + 0.25 * Math.sin(this.flash * 70)) * need;
+        this.gOp.value = Math.sin(Math.PI * k) ** 2 * (0.75 + 0.25 * Math.sin(this.flash * 70)) * need * this.gain.glint;
         const s = this.m(Math.max(L.px, 0.025 * H), d) * THREE.MathUtils.clamp(5 / d, 1, 1.3); // larger close by
         this.glint.scale.set(s, s, 1);
         this.glint.visible = true;
@@ -277,9 +277,9 @@ export class Hints {
     this.edge.position.set(THREE.MathUtils.lerp(ex * th * 1.02, sx, k), THREE.MathUtils.lerp(ey * tv * 1.02, sy, k), -1).applyMatrix4(cam.matrixWorld);
     const eh = Math.min(tv, th) * 2 * 0.95, side = Math.abs(ex) > Math.abs(ey); // by the view's short side (a portrait phone)
     const blob = Math.min(eh * 0.5, bw / d * 1.5);
-    this.edge.scale.set(THREE.MathUtils.lerp(eh * (side ? 0.3 : 2.4), blob, k), THREE.MathUtils.lerp(eh * (side ? 1.6 : 0.3), blob, k), 1); // a band of light along that edge
+    this.edge.scale.set(THREE.MathUtils.lerp(eh * (side ? 0.24 : 2.4), blob, k), THREE.MathUtils.lerp(eh * (side ? 1.6 : 0.24), blob, k), 1); // a band of light along that edge
     const top3 = Math.max(G.col.r, G.col.g, G.col.b) || 1;
-    this.eCol.value.setRGB(G.col.r / top3, G.col.g / top3, G.col.b / top3); // the thing's own light
+    this.eCol.value.setRGB(G.col.r / top3, G.col.g / top3 * 0.8, G.col.b / top3 * 0.6); // the thing's own light, warmed (daylight on wood)
     this.eOp.value = env * this.gain.edge * (1 - k);
     this.edge.visible = true;
   }
