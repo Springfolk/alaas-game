@@ -98,7 +98,7 @@ export class Stage {
         if (preset) { s.yaw = preset[0] * D2R; s.el = preset[1] * D2R; s.k = v.dist || 1; if (v.free) s.yawMax = Math.PI; }
         else { s.yaw = Math.atan2(to.x, to.z); s.el = 14 * D2R; }
       }
-      if (s.mode === 'out') { s.elMin = 3 * D2R; s.elMax = 55 * D2R; }
+      if (s.mode === 'out') { s.elMin = 3 * D2R; s.elMax = 55 * D2R; world.optimized?.hold(b.box || new THREE.Box3().setFromCenterAndSize(b.c, new THREE.Vector3().setScalar(b.r * 2))); } // seen from above: the house itself, not its impostor
       if (s.el < 0) { s.elMin = s.el - 25 * D2R; s.elMax = 0; } // seen from below: it turns under, never over into the roof
     }
     // a small thing indoors: the walls the eye must stay within (thin long colliders; not one the thing itself is on)
@@ -128,7 +128,7 @@ export class Stage {
   close(then) {
     const s = this.s;
     if (!this.on) { then?.(); return; }
-    const end = () => { this.on = false; this.s = null; this.body = null; this.closing = false; this.game.engine.closeLook = false; this.game.player.update(0); then?.(); };
+    const end = () => { this.game.world.optimized?.hold(null); this.on = false; this.s = null; this.body = null; this.closing = false; this.game.engine.closeLook = false; this.game.player.update(0); then?.(); };
     if (!s || s.mode === 'photo') { end(); return; }
     if (s.cut || (s.mode !== 'near' && s.mode !== 'work')) { this.cut(end); return; }
     this.closing = end; // glides back (update)

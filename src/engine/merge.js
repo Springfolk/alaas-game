@@ -132,7 +132,8 @@ export function optimizePlaced(world, camera, sun) {
   const isDynamic = (o) => { for (let p = o; p; p = p.parent) if (dynamic.has(p) || p.userData.dynamic) return true; return false; };
   // built in slices (a model per task) while the rest loads; World.build awaits `ready`
   const proxies = [], parts = [], frozen = [];
-  let imp = null, far = null, baked = false; // until the impostors are baked (late in the load stream) the real meshes stay
+  let imp = null, far = null, baked = false;
+  const held = new Set(); // clusters shown as their real meshes at any distance (`hold`) // until the impostors are baked (late in the load stream) the real meshes stay
   const breathe = () => new Promise((r) => setTimeout(r, 0));
   const init = async () => {
     for (const { object } of world.placed) { proxies.push(...shadowProxies(object, dynamic)); await breathe(); }
@@ -203,7 +204,7 @@ export function optimizePlaced(world, camera, sun) {
     const cam = camera.position;
     for (let i = 0; i < far.length; i++) {
       const c = imp.clusters[i], d = Math.hypot(c.x - cam.x, c.z - cam.z);
-      far[i] = !baked ? 0 : d > c.far ? 1 : d < c.far - 2 ? 0 : far[i]; // 2 m hysteresis
+      far[i] = !baked || held.has(i) ? 0 : d > c.far ? 1 : d < c.far - 2 ? 0 : far[i]; // 2 m hysteresis
     }
     // a slice per frame: tiny = under ~2.5 px at the current FOV and height; a caster under SHADOW_PX casts nothing
     // (castShadow is read per draw in the shadow pass: no shader); a castShadow set elsewhere is taken as the part's own
@@ -239,5 +240,24 @@ export function optimizePlaced(world, camera, sun) {
   };
   // for the lake mirror (lake.js): the model meshes an impostor stands in for there
   const mirrored = () => (imp ? parts.filter((p) => p.cl >= 0 && imp.clusters[p.cl].mirror && !p.gone).map((p) => p.o) : []);
-  return { update, thaw, ready, proxies, mirrored, get impostors() { return imp; } };
+  // the stage's house seen from outside: its clusters (centres within `box`, a Box3) keep their real meshes at any
+  // distance, their impostors out (the impostors are baked level with the eye; the stage looks down); null: release
+  const hold = (box) => {
+    if (!imp) return;
+    const isz = imp.mesh.geometry.attributes.isz;
+    const was = new Set(held);
+    for (const i of held) isz.array[i * 4 + 3] = imp.clusters[i].mirror ? imp.clusters[i].far : -imp.clusters[i].far;
+    held.clear();
+    if (box) imp.clusters.forEach((c, i) => { if (c.x >= box.min.x && c.x <= box.max.x && c.z >= box.min.z && c.z <= box.max.z) { held.add(i); isz.array[i * 4 + 3] = c.mirror ? 1e5 : -1e5; } });
+    isz.needsUpdate = true;
+    // at once, not over the per-frame slices: the held clusters' parts shown, the released ones' hidden when far
+    const cam = camera.position;
+    for (const p of parts) {
+      if (p.gone || p.cl < 0 || !(held.has(p.cl) || was.has(p.cl))) continue;
+      const c = imp.clusters[p.cl], out = !held.has(p.cl) && baked && Math.hypot(c.x - cam.x, c.z - cam.z) > c.far;
+      far[p.cl] = out ? 1 : 0;
+      if (out !== p.culled) { p.culled = out; p.o.layers.mask = out ? 1 << CULL_LAYER : p.mask; }
+    }
+  };
+  return { update, thaw, ready, proxies, mirrored, hold, get impostors() { return imp; } };
 }
