@@ -86,8 +86,9 @@ const q = (v, f) => v[Math.min(v.length - 1, Math.floor(v.length * f))];
 //         knob comes back, last first, after `knobWait` (4 s; doubled, ≤ 2 min, when a restored one fails within
 //         20 s); a slower beat comes back first, and only when the faster one is measured to fit.
 //   else  nothing changes: a frame rate held with little to spare is left alone, not probed.
-// Without GPU timing (no fence, or Safari's WebGL2 where it costs 5 ms a frame): over by late frames alone, room =
-// none late and the average under 2% over; so resolution is probed there, each failed step waiting longer.
+// Without GPU timing (no fence; Safari: WebGL2 fences cost 5 ms a frame, WebGPU reports a frame done a paced frame
+// later at any load): over by late frames alone, room = none late and the average under 2% over; so resolution is
+// probed there, each failed step waiting longer.
 export function govern(e, dt, now = performance.now()) {
   const iv = e.paceIv || 1000 / 60, ms = dt * 1000;
   if (dt <= 0) return;
@@ -128,7 +129,8 @@ export function govern(e, dt, now = performance.now()) {
   const prev = e.resScale, floor = e.resFloor();
   const sure = !timed || deep > 0.1 || gpu > iv * 1.6; // the GPU is seen to be behind (late frames alone can be a hitch)
   // acted on in the second window running (a hitch looks the same for one, and a change is not free), far over at once
-  const need = avg > iv * 1.4 || deep > 0.5 ? 1 : 2;
+  // (also at once when a step up was just taken: the probe failed)
+  const fresh = now - Math.max(e.resUpAt ?? -1e9, e.knobUpAt ?? -1e9) < 2500, need = avg > iv * 1.4 || deep > 0.5 || fresh ? 1 : 2;
   if (over) {
     if (!cpu && e.resScale > floor + 1e-3) {
       if (g.over >= need) {
@@ -140,7 +142,7 @@ export function govern(e, dt, now = performance.now()) {
         e.resScale = Math.max(floor, e.resScale * Math.min(0.95, Math.max(0.8, Math.sqrt(0.9 / ratio))));
         g.over = 0;
       }
-    } else if ((g.over >= need || edge) && knob(e, -1, now, cpu, g.over < need * 2 && !edge)) g.over = 0; // (a slower beat: after twice as many windows)
+    } else if ((g.over >= need || edge) && knob(e, -1, now, cpu, g.over < need * 2 && !edge && !fresh)) g.over = 0; // (a slower beat: after twice as many windows)
   } else if (room && g.room >= 2) {
     g.room = 0;
     const on = e.knobs, top = on?.[on.length - 1];
@@ -169,6 +171,7 @@ export function knob(e, dir, now, cpu = false, gentle = false) {
   } else {
     const k = e.knobUp = on.pop();
     k.set(e, false);
+    e.knobUpAt = now;
   }
   e.knobAt = now;
   return true;
@@ -191,7 +194,7 @@ const slower = (name) => ({
     const fix = k > 0 ? Math.min(0.85, Math.max(0.15, 1 - k * e.resScale ** 2 / Math.max(gpu, 1e-3))) : 0.5;
     const to = iv * (e.paceN - 1) / e.paceN;
     if (!(js < to * 0.7 && gpu * (fix + (1 - fix) * (floor / e.resScale) ** 2) < to * 0.55)) return false;
-    this.scale = e.resScale * Math.sqrt(Math.min(1, Math.max(0, (to * 0.55 / Math.max(gpu, 1e-3) - fix) / (1 - fix)))); // as many pixels as still fit
+    this.scale = !gpu ? floor : e.resScale * Math.sqrt(Math.min(1, Math.max(0, (to * 0.55 / Math.max(gpu, 1e-3) - fix) / (1 - fix)))); // as many pixels as still fit (untimed: the floor's)
     return true;
   },
 });
