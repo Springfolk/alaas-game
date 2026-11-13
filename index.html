@@ -362,11 +362,18 @@
   .j-pin.off { display: none; }
   .j-pin.on { z-index: 2; box-shadow: 0 0 0 3px #fff, 0 0 12px 4px rgba(var(--glow),.95); }
   .j-pin.vh, .j-pin:hover { z-index: 3; box-shadow: 0 0 0 3px rgba(255,255,255,.75); }
-  .j-pin.dest { display: none; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 2px; pointer-events: none; z-index: 4; background: var(--gold); border: 2px solid #7a5210; transform: scale(var(--k)) rotate(45deg); box-shadow: 0 0 10px 3px rgba(255,200,90,.9); }
+  /* the destination: a gold map pin, its tip on the spot */
+  .j-pin.dest { display: none; width: 0; height: 0; margin: 0; border: 0; border-radius: 0; background: none; box-shadow: none; pointer-events: none; z-index: 4; }
+  .j-pin.dest::before { content: ''; position: absolute; inset: auto; left: -11px; top: -26.5px; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+    background: linear-gradient(135deg, #ffe7a8, var(--gold) 55%, #c98a1c); border: 2px solid #7a5210; box-shadow: 0 0 10px 2px rgba(255,200,90,.7); }
+  .j-pin.dest::after { content: ''; position: absolute; left: -4px; top: -19.5px; width: 8px; height: 8px; border-radius: 50%; background: #6a440c; }
   .j-pin.dest.on { display: block; }
   .j-pin.me { width: 0; height: 0; margin: 0; border: 0; background: none; box-shadow: none; pointer-events: none; z-index: 5; transform: scale(var(--k)) rotate(var(--r, 0rad)); }
-  .j-pin.me::before { content: ''; position: absolute; inset: auto; left: -11px; top: -15px; width: 22px; height: 26px; background: #fff; clip-path: polygon(50% 0, 100% 100%, 50% 74%, 0 100%); }
-  .j-pin.me::after { content: ''; position: absolute; left: -8px; top: -10.5px; width: 16px; height: 19px; background: #e8452c; clip-path: polygon(50% 0, 100% 100%, 50% 74%, 0 100%); }
+  /* the player: a location dot in a soft halo, with a beam the way they face */
+  .j-pin.me::before { content: ''; position: absolute; inset: auto; left: -24px; top: -46px; width: 48px; height: 46px; clip-path: polygon(50% 100%, 0 0, 100% 0);
+    background: radial-gradient(circle at 50% 100%, rgba(232,69,44,.85), rgba(232,69,44,.45) 55%, rgba(232,69,44,0) 100%); }
+  .j-pin.me::after { content: ''; position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; border-radius: 50%; background: #e8452c; border: 3px solid #fff;
+    box-shadow: 0 0 0 8px rgba(232,69,44,.16), 0 0 12px 9px rgba(232,69,44,.12), 0 1px 4px 1px rgba(0,0,0,.45); }
   .j-ctl { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 7px; }
   .j-ctl button, .j-do { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; cursor: pointer; border-radius: 9px; color: #12263c; border: 1px solid #6f8aa8;
     background: linear-gradient(180deg, #fdfeff 0%, #eef4fa 48%, #dbe6f1 52%, #e9f1f9 100%); box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(0,20,50,.4); }
@@ -405,7 +412,7 @@
     .jg { grid-template-columns: repeat(6, 1fr); } .jg.work { grid-template-columns: repeat(4, 1fr); }
   }
   /* the finder's marker: a small gold diamond over the place, or at the screen edge with an arrow */
-  .gmark { display: inline-block; width: 10px; height: 10px; flex: none; transform: rotate(45deg); background: var(--gold); border: 1px solid #a8741c; }
+  .gmark { display: inline-block; width: 10px; height: 10px; flex: none; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--gold); border: 1px solid #a8741c; }
   #guide { position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none; display: none; will-change: transform; }
   #guide.on { display: block; }
   #guide > * { zoom: var(--ui); }

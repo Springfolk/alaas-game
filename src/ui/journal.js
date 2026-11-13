@@ -1,9 +1,9 @@
 // The journal (docs/ui.md): a glass window with three leaves. The map: the alaas drawn from above (baked by
 // tools/bake-map.mjs), dragged and zoomed (finger, pinch, wheel, the drawn cursor), with the buildings, the player's
-// place and facing, a blue dot where a found thing is, a gold ring where one waits, a green square where a job is
-// done, the names of the found houses and places; choosing a marker shows what it is, with a button to look at it
-// closer (found) and one to be led there (the finder, src/ui/guide.js); a tap on the bare map puts the gold marker there. Finds: the entries as pictures,
-// by kind. Work: each job as a picture with what the hands have made. DOM only; built once, filled when shown.
+// place and facing, a blue dot where a found thing is, a gold ring where one waits, a green square at each place of
+// a job, the names of the found houses and places; choosing a marker shows what it is, with a button to look at it
+// closer (found) and one to be led there (the finder, src/ui/guide.js); a tap on the bare map puts the gold pin
+// there. Finds: the entries as pictures, by kind. Work: each job as a picture with what the hands have made. DOM only; built once, filled when shown.
 import ENTRIES from '../data/entries.json';
 import JOURNAL from '../data/journal.json';
 import { versioned } from '../load/assetv.js';
@@ -25,6 +25,8 @@ const TABS = [
   ['work', 'hand', { sah: 'Үлэ', en: 'Work', ru: 'Работа' }],
 ];
 const JOB_PICS = { split: 'work-split', hay: 'work-hay', tuos: 'work-tuos', gather: 'work-gather' }; // a job's own picture; the others show their entry's
+// open shelters drawn round the thing they cover: half width and depth along it, m
+const SHEDS = { blacksmith: [1.8, 1.9], saddle: [1.05, 1.15] };
 // how a placed model is drawn on the map (its footprint from its bounds)
 const SHAPES = { urasa: 'round', balagan: 'box', ampaar: 'box', kuruo: 'pen', sele: 'pen', hayfield: 'pen', serge: 'post', 'sacred-birch': 'tree' };
 
@@ -68,8 +70,12 @@ export class Journal {
     this.places = {};
     for (const e of ENTRIES) { const p = game.guide.places(e.id)[0]; if (p) this.places[e.id] = p; }
     this.named = new Set(['alaas', ...game.world.placed.map((p) => p.model)]);
-    this.jobAt = {};
-    for (const j of WORKS) { const it = its.find(j.find); if (it?.target) this.jobAt[j.id] = game.guide.pos(it); }
+    this.jobAt = {}; // a job's places: each one standing apart from the others (the scythe at home and at the hay camp)
+    for (const j of WORKS) {
+      const at = [];
+      for (const it of its.filter(j.find)) if (it.target) { const p = game.guide.pos(it); if (at.every((q) => Math.hypot(q.x - p.x, q.z - p.z) > 40)) at.push(p); }
+      if (at.length) this.jobAt[j.id] = at;
+    }
     // the buildings, from their bounds
     const shapes = [];
     for (const p of game.world.placed) {
@@ -82,6 +88,16 @@ export class Journal {
       else if (kind === 'pen') shapes.push(`<rect class="m-pen" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx=".5"/>`);
       else if (kind === 'post') shapes.push(`<circle class="m-post" cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r=".9"/>`);
       else shapes.push(`<circle class="m-tree" cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${Math.max(3, Math.min(w, h) / 2).toFixed(2)}"/>`);
+    }
+    // open shelters (the smithy, the saddle's): their roofs round the thing they cover, turned as it stands
+    for (const it of its) {
+      const r = SHEDS[it.entry];
+      if (!r || !it.target?.isMesh) continue;
+      const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => {
+        const w = it.target.localToWorld(it.target.position.clone().set(a * r[0], 0, b * r[1])), [u, v] = toMap(w.x, w.z);
+        return `${(u * U).toFixed(2)},${(v * U).toFixed(2)}`;
+      });
+      shapes.push(`<polygon class="m-house" points="${pts.join(' ')}"/>`);
     }
     this.svg.innerHTML = shapes.join('');
   }
@@ -131,7 +147,7 @@ export class Journal {
   // every marker: { key, kind: 'found' | 'q' | 'job', id, p (world), rank }
   collect() {
     const found = this.ui.state.found, out = [];
-    for (const j of WORKS) if (this.jobAt?.[j.id]) out.push({ key: 'job:' + j.id, kind: 'job', id: j.id, p: this.jobAt[j.id], rank: 1, icon: j.icon });
+    for (const j of WORKS) (this.jobAt?.[j.id] || []).forEach((p, k) => out.push({ key: 'job:' + j.id + (k ? '#' + k : ''), kind: 'job', id: j.id, p, rank: 1, icon: j.icon }));
     for (const e of ENTRIES) {
       const p = this.places?.[e.id];
       if (!p) continue;
@@ -220,7 +236,7 @@ export class Journal {
   // no other name (the more important first); with no room, none until a closer look.
   label(kept) {
     const sc = this.view.sc, R = 2, boxes = kept.map(([x, y, k]) => { const h = this.pins[k].kind === 'job' ? 13 : 10; return [x - h, y - h, x + h, y + h]; });
-    for (const el of [this.meEl, this.destEl]) if (el && (el === this.meEl || el.classList.contains('on'))) { const x = parseFloat(el.style.left) / 100 * U * sc, y = parseFloat(el.style.top) / 100 * U * sc; if (x === x) boxes.push([x - 12, y - 14, x + 12, y + 12]); }
+    for (const el of [this.meEl, this.destEl]) if (el && (el === this.meEl || el.classList.contains('on'))) { const x = parseFloat(el.style.left) / 100 * U * sc, y = parseFloat(el.style.top) / 100 * U * sc; if (x === x) boxes.push(el === this.meEl ? [x - 15, y - 15, x + 15, y + 15] : [x - 12, y - 30, x + 12, y + 2]); }
     const hit = (a) => boxes.some((b) => a[0] < b[2] + R && a[2] > b[0] - R && a[1] < b[3] + R && a[3] > b[1] - R);
     for (const [x, y, k] of kept) {
       const m = this.pins[k], el = this.pinEls[k], sp = el.querySelector(':scope > span');
@@ -258,7 +274,8 @@ export class Journal {
   // show a marker on the map (from the lists): the map leaf, centred on it, chosen
   find(key) {
     this.show('map');
-    const m = this.pins.find((x) => x.key === key);
+    const me = this.game?.player.pos, d = (x) => (me ? Math.hypot(x.p.x - me.x, x.p.z - me.z) : 0);
+    const m = this.pins.filter((x) => x.key === key || x.key.startsWith(key + '#')).sort((a, b) => d(a) - d(b))[0]; // (a job's nearest place)
     if (!m) return;
     this.centre(m.p, 70);
     this.apply(true);
