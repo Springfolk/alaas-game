@@ -45,21 +45,23 @@ No sentence and no mark says the next step: light catches the thing, as in a pho
 
 | In the hands / state | The world's hint |
 |---|---|
-| empty pail | a fish rises in open water off the nearest shore: sun glitter and a glare on the rings |
+| empty pail | a fish rises in open water off the nearest shore: sun glitter (seen ≤ 220 m) and a glare on the rings |
+| pail with water, > 2.5 m from its place, not in the uraha | the uraha's doorway |
 | billets | the nearer of: the woodpile (resin glints and glares on the billet ends), a hearth (the fire lifts with a knock; its light swells round the hearth, from outside in the smoke over the roof) |
 | nothing, ≤ 8 m from the block, a round or a half to split | the sun glints on the axe's edge |
 | nothing, ≤ 12 m from the weir, trap on the shore | fish rise and jump in the weir's gap, sun glitter on the rings, water laps |
 | nothing, trap set with ≥ 3 fish, ≤ 45 m | the catch splashes in the trap, sun glitter on the water |
 | player and thing in different rooms (uraha, balagan, khoton, ampaar) | the doorway first: daylight in it, its jamb glints (from inside the player's room, from outside the thing's); a hearth from beyond 14 m keeps its smoke glow |
-| bark sheet | the nearest hearth's light swells |
+| nothing, ≤ 8 m from the bark sheet, no тордуйа yet | its satin catches the light |
+| bark sheet | the nearest hearth by the way there (kept until another is a fifth nearer); in its room within 7 m: firelight settles on the rim before the player (the frame's front; the ohokh: the lip before its mouth), beating faster until within 3.2 m; aimed at, it stays |
 | тордуйа | the nearest full дьэдьэн patch ≤ 80 m: its berries glint and glare, a thrush calls from there |
 | nothing, a knife begun, ≤ 14 m | hot iron: the blank spits an ember and glows; cold: the bellows glint |
 
 - Lights: three additive sprites on layer 1 made before the warm-up (`glintMaterial`, `lightMaterial`, `src/interact/glint.js`); in play only uniforms, transforms and `visible` change. `LOOK` sets each hint's colours and sizes, `gain` the strengths: all kept faint, a catch of light a curious eye finds, never a beacon.
 - Glint: a sun star ≤ 45 m on a point of the thing's surface picked by a ray from the eye (water: round the spot; doorway: along the jamb), ≥ 2.5 % of the view's height; a beat every 1.1–3.6 s, some kinds 2 sparkles.
-- Bloom: swells and fades over 1.8 s each beat: ≤ 14 m (hearth 7 m) a glare at the thing (hearth: a faint halo; water: flat; doorway: tall), farther a soft shaft of sunlight leaning from the sun's side (hearth: the glow in the smoke over the roof).
-- Edge glare: the thing out of view: the same swell in the thing's colour warmed, a thin faint band at the view's edge on its side (behind: the nearer shoulder); as the thing comes into view it slides from the edge onto it, shrinks and hands over to the bloom.
-- Strength by need (eased 0.4 s): full from 18 m, 30 % within 2 m (a doorway: by the thing's distance), × 0.15 with the thing within ~4° of the view's middle (fading out to 13°).
+- Bloom: swells and fades over 1.8 s each beat: ≤ 14 m (hearth 7 m) a glare at the thing (hearth: a faint halo; water: flat; doorway: tall), farther a soft shaft of sunlight leaning from the sun's side, stronger from 30 m to 120 m (hearth: the glow in the smoke over the roof).
+- Edge glare: the thing out of view: the same swell in the thing's colour warmed, a thin faint band at the view's edge on its side (stronger from 30 m to 120 m) (behind: the nearer shoulder); as the thing comes into view it slides from the edge onto it, shrinks and hands over to the bloom.
+- Strength by need (eased 0.4 s): full from 18 m, 30 % within 2 m (a doorway: by the thing's distance), × 0.15 with the thing within ~4° of the view's middle (fading out to 13°); the hearth's rim: 80 %, × 0.75 aimed at.
 - Rooms: `ROOMS` in `hints.js`, in each placement's local space; doorways from `urasa/frame.js` and `balagan/dims.js`.
 - Ripples are the lake's own (`world.life.water.ring`); the fire's lift is `fireplace.stir(k)`.
 

@@ -68,21 +68,21 @@ export class Tuos {
     return this.nearFire() ? this.makeAct : null;
   }
   nearFire() {
-    const pl = this.game.player.pos;
+    const pl = this.game.player.pos, H = this.game.hints, room = H?.room(pl);
     for (const i of this.game.world.interactables) {
       if (!i.fireplace) continue;
       const f = i.fireplace.pos();
-      if (Math.hypot(f.x - pl.x, f.z - pl.z) < 3.2) return i;
+      if (Math.hypot(f.x - pl.x, f.z - pl.z) < 3.2 && (!H || H.room(f) === room)) return i; // (not through a wall)
     }
     return null;
   }
   noAct = { id: 'none', label: L('', '', ''), run: async () => {} };
 
-  makeAct = { id: 'make-bark', label: TXT.make, run: () => this.make() };
+  makeAct = { id: 'make-bark', label: TXT.make, run: (g, it) => this.make(it?.fireplace ? it : null) }; // (the hearth aimed at, from wherever it is in reach)
   // Watched by the fire: held over the hearth's rim, its face to the viewer (world poses: `hands.pose`, with a
   // worker's eye there so it stays in the picture); the view frames it and the fire.
-  async make() {
-    const fire = this.nearFire();
+  async make(at = null) {
+    const fire = at || this.nearFire();
     if (!fire || !this.held || this.busy || this.made) return;
     const g = this.game, F = g.framed, h = this.hands, fp = fire.fireplace.pos(), pl = g.player.pos;
     const away = Math.atan2(pl.x - fp.x, pl.z - fp.z), a = V(Math.sin(away), 0, Math.cos(away)), side = V(a.z, 0, -a.x); // from the fire towards the player; across
