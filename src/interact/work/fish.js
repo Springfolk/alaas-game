@@ -7,6 +7,7 @@
 // Props: src/models/fishery.js.
 import * as THREE from 'three/webgpu';
 import { ease } from '../../util.js';
+import { restY } from '../rest.js';
 
 const L = (sah, en, ru) => ({ sah, en, ru });
 const TXT = {
@@ -31,17 +32,51 @@ export class Fish {
     this.parts = parts;
     const o = parts.trap;
     this.trap = { obj: o, it: find(o) };
-    this.home = { p: o.getWorldPosition(new THREE.Vector3()), q: o.getWorldQuaternion(new THREE.Quaternion()) }; // on the shore
     game.engine.scene.attach(o); // moved in world space
+    this.home = this.lie(o); // on the shore
+    o.position.copy(this.home.p); o.quaternion.copy(this.home.q);
     this.gap = parts.object.localToWorld(parts.gap.clone());
     this.gapIt = game.world.interactables.find((i) => i.gap);
     this.tyIt = game.world.interactables.find((i) => i.tymtay);
     this.basket = parts.basket.getWorldPosition(new THREE.Vector3());
-    this.sets = { p: this.gap.clone().add(V(0.5, 0, 0)), q: basisQ(V(-1, 0, 0), V(0, 1, 0)) }; // across the gap, the mouth to the open water on the weir's east side
+    this.sets = this.clear(o, { p: this.gap.clone().add(V(0.5, 0, 0)), q: basisQ(V(-1, 0, 0), V(0, 1, 0)) }); // across the gap, the mouth to the open water on the weir's east side, on the bed
     this.state = 'shore'; // 'shore' | 'set' | 'lifted'
     this.t = 0; this.n = 0; this.luck = 1;
     this.total = 0;
     this.drip = 0; // 0…1: water running off the trap
+  }
+
+  // Lying on the shore as a body comes to rest on this tier's drawn ground: of the tilts along its length, the one
+  // that lets it sink lowest (on its widest hoops, the tail down a little or up a slope), every point on or over it
+  lie(o) {
+    const w = this.game.world, p = o.position, q0 = o.quaternion.clone();
+    o.updateMatrixWorld(true);
+    const across = V(0, 1, 0).applyQuaternion(q0).cross(V(0, 1, 0)).normalize(), q = new THREE.Quaternion(), r = new THREE.Quaternion();
+    // its weight's middle (its own frame): the mean of its vertices (laths and hoops, evenly divided)
+    const mid = V(0, 0, 0), inv = o.matrixWorld.clone().invert(); let n = 0;
+    o.traverse((m) => { if (!m.isMesh || m.isInstancedMesh) return; const a = m.geometry.attributes.position; _m.multiplyMatrices(inv, m.matrixWorld); for (let i = 0; i < a.count; i++, n++) mid.add(_w.fromBufferAttribute(a, i).applyMatrix4(_m)); });
+    mid.divideScalar(n || 1);
+    let best = null, low = Infinity;
+    for (let a = -0.25; a <= 0.25; a += 0.01) {
+      q.setFromAxisAngle(across, a).multiply(q0);
+      const y = restY(w, o, q, p.x, p.z), c = y + _w.copy(mid).applyQuaternion(q).y;
+      if (c < low) { low = c; best = { p: V(p.x, y, p.z), q: r.copy(q).clone() }; }
+    }
+    return this.clear(o, best);
+  }
+  // pose `at` ({ p, q }) raised until every vertex of the trap (not only its hull's) is on or over the drawn ground
+  clear(o, at) {
+    const w = this.game.world, p0 = o.position.clone(), q0 = o.quaternion.clone();
+    o.position.copy(at.p); o.quaternion.copy(at.q); o.updateMatrixWorld(true);
+    let up = -Infinity;
+    o.traverse((m) => {
+      if (!m.isMesh || m.isInstancedMesh) return;
+      const a = m.geometry.attributes.position;
+      for (let i = 0; i < a.count; i++) { _w.fromBufferAttribute(a, i).applyMatrix4(m.matrixWorld); up = Math.max(up, w.drawnAt(_w.x, _w.z) + 0.002 - _w.y); }
+    });
+    at.p.y += Math.max(0, up);
+    o.position.copy(p0); o.quaternion.copy(q0); o.updateMatrixWorld(true);
+    return at;
   }
 
   actFor(it) {
