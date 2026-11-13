@@ -155,7 +155,8 @@ export class UI {
       }
       const k = act ? actIcon(act) : '';
       if (k !== this.pIcon) { this.pIcon = k; this.pTool.innerHTML = k ? icon(k) : ''; }
-      this.pVerb.textContent = act ? this.t(act.label) : '';
+      const verb = act ? this.t(act.label) : '';
+      this.pVerb.textContent = verb.charAt(0).toUpperCase() + verb.slice(1); // (labels are written in either case)
       if (!this.pKey.firstChild) this.pKey.innerHTML = MOUSE.left;
     }
     const pk = put ? actIcon(put) : '';
