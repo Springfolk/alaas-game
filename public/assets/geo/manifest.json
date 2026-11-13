@@ -8,7 +8,7 @@
   "model:chores": "6dddb0986c94",
   "model:drywood": "a74c7f34b16a",
   "model:fishery": "caf2b48b192e",
-  "model:haybase": "c2b46edb27c2",
+  "model:haybase": "2c962bfe3f7a",
   "model:hayfield": "c9a2fd5ae8f0",
   "model:kuruo": "1de125ef24e6",
   "model:lakeside": "c013a160e3a3",
@@ -54,12 +54,12 @@
    "raw": 3625996,
    "lazy": true
   },
-  "job:mask#cfc29f6b": {
+  "job:mask#2f7c7b30": {
    "group": "jobs",
    "key": "*",
    "empty": true
   },
-  "job:mask#e6dcf186": {
+  "job:mask#7b1460cd": {
    "group": "jobs",
    "key": "*",
    "empty": true
@@ -118,10 +118,10 @@
   },
   "model:haybase#8aab9ed9": {
    "group": "model:haybase",
-   "key": "c2b46edb27c2",
+   "key": "2c962bfe3f7a",
    "file": "haybase-8aab9ed9.bin",
-   "bytes": 189519,
-   "raw": 638620
+   "bytes": 203887,
+   "raw": 691000
   },
   "model:hayfield#cc1cc42c": {
    "group": "model:hayfield",

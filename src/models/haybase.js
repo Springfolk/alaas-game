@@ -133,33 +133,35 @@ export default async function build(ctx, placement) {
     pailT = proxy(T, object, 0.34, 0.4, 0.34, [YX, yg + 0.2, YZ]);
   }
 
-  // ── the stack begun (кэбиһии): a bed of poles, the stack pole, hay built ~1.5 m up round it; forks and rakes
+  // ── the stack begun (кэбиһии): a bed of poles, the stack pole, hay built ~2.4 m up round it in courses; forks and rakes
   //    leaning on the pole, one fork left standing in the hay ──
-  const KX2 = 3.3, KZ2 = -1.4, KR = 1.25, KH = 1.75, kg = ground(KX2, KZ2);
+  const KX2 = 3.3, KZ2 = -1.4, BR = 1.1, KR = 1.0, KH = 2.45, kg = ground(KX2, KZ2);
   for (let k = 0; k < 6; k++) { // the bed: poles laid side by side, keeping the hay off the damp
-    const o = -1.25 + k * 0.5 + (rng() - 0.5) * 0.08, L = Math.sqrt(KR * KR - o * o * 0.8) + 0.2 + rng() * 0.25;
+    const o = (-1 + k * 0.4) * BR + (rng() - 0.5) * 0.08, L = Math.sqrt(BR * BR - o * o * 0.8) + 0.2 + rng() * 0.25;
     const a = [KX2 + o, 0, KZ2 - L], b = [KX2 + o + (rng() - 0.5) * 0.2, 0, KZ2 + L];
     addLog(B, at(a[0], a[2], 0.035), at(b[0], b[2], 0.035), 0.045, 0.038, rng, M.wood, M.end, { seg: 6, step: 0.4, bend: 0 }, jitterTint(rng, 0.08, [0.85, 0.82, 0.78]));
   }
-  {
-    const { g } = roundStack(KR, KH, rng, { cone: 0.25, point: 0 });
-    const sm = mtx([KX2, kg + 0.02, KZ2], [0, rng() * 6.3, 0]);
-    B.add(g, M.hay, sm); B.add(strawFringe(g, 700, 213, { len: 0.34, out: 0.12 }), M.hay, sm);
+  // the hay built up in forkfuls: three courses, each a little narrower and set a little off the last, loose
+  // straw at every rim, and a loose heap trodden round the pole on top where the stacker stands
+  for (const [k, [r, h, y, cone]] of [[1, 1.05, 0, 0.12], [0.97, 1, 0.55, 0.14], [0.92, 0.95, 1.1, 0.16], [0.68, 0.6, 1.75, 0.7]].entries()) {
+    const { g } = roundStack(KR * r, h, rng, { seg: 32, rings: 12, cone, point: 0 });
+    const sm = mtx([KX2 + (rng() - 0.5) * 0.08, kg + 0.02 + y, KZ2 + (rng() - 0.5) * 0.08], [0, rng() * 6.3, 0]);
+    B.add(g, M.hay, sm, jitterTint(rng, 0.05, [1, 1, 1])); B.add(strawFringe(g, 260, 213 + k * 7, { len: 0.3, out: 0.12 }), M.hay, sm);
   }
   const pTop = [KX2 + 0.08, kg + 4.6, KZ2 - 0.05];
   addLog(B, [KX2, kg - 0.4, KZ2], pTop, 0.075, 0.04, rng, M.wood, M.end, { seg: 7, step: 0.45, bend: 0.008 });
   colliders.push({ x: KX2, z: KZ2, r: KR + 0.1 });
-  const stackT = proxy(T, object, KR * 2, 2.2, KR * 2, [KX2, kg + 1.1, KZ2]);
+  const stackT = proxy(T, object, KR * 2, KH, KR * 2, [KX2, kg + KH / 2, KZ2]);
   // leaning on the hay, heads on its shoulder, feet out on the meadow (the tines a little into the hay)
   const onStack = (ang, kind) => {
     const fx = KX2 + Math.cos(ang) * (KR + 0.95), fz = KZ2 + Math.sin(ang) * (KR + 0.95), foot = [fx, ground(fx, fz) + 0.01, fz];
-    const top = [KX2 + Math.cos(ang) * 0.95, kg + 1.5, KZ2 + Math.sin(ang) * 0.95];
+    const top = [KX2 + Math.cos(ang) * 0.88, kg + 1.55, KZ2 + Math.sin(ang) * 0.88];
     const l = Math.hypot(top[0] - foot[0], top[1] - foot[1], top[2] - foot[2]);
     tool(foot, top, kind === 'fork' ? l - 0.18 : l, kind);
   };
   onStack(0.25, 'rake'); onStack(0.62, 'fork'); onStack(-0.4, 'fork');
   { // a fork left standing in the hay by the pole, tines down
-    const butt = [KX2 - 0.3, kg + KH + 1.5, KZ2 + 0.62], tip = [KX2 - 0.12, kg + KH - 0.15, KZ2 + 0.28];
+    const butt = [KX2 - 0.45, kg + KH + 1.3, KZ2 + 0.7], tip = [KX2 - 0.2, kg + KH - 0.3, KZ2 + 0.32];
     tool(butt, tip, Math.hypot(tip[0] - butt[0], tip[1] - butt[1], tip[2] - butt[2]) - 0.25, 'fork');
   }
   // and two lying back on the hut's thatch by its door
