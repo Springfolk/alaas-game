@@ -20,7 +20,7 @@ Targets: desktop 60 fps, phones 30. Priorities in order: no late frame, then a s
 | Uncapped ms per frame at every area in 12 directions (`RES=1` full resolution; `WHY=n` what the n worst spend it on) | `COST=1 npm run smooth -- …` |
 | Look latency: event age, how far the view trails the aim | `LAT=1 npm run smooth -- chrome\|phone` |
 | 1.2 km walk through every area: interval p50/p95/p99/max, hitches, pipelines after the fade | `npm run hitch -- chrome\|webkit\|phone` (`UNCAPPED=1`: frame cost) |
-| Pacing logic on modelled devices (60–240 Hz, jitter, Safari's late callbacks, GPU- and CPU-bound, phones) | `node tools/pace-sim.mjs [name]`: rerun after touching `pacing.js`; the last third stays at 0 dips |
+| Pacing logic on modelled devices (60–240 Hz, jitter, Safari's late callbacks, GPU- and CPU-bound, phones) | `node tools/pace-sim.mjs [name]`: rerun after touching `pacing.js`; the last third stays at 0 dips (untimed Safari GPU-bound cases: a few, from probing) |
 
 - `smooth` env: `THROTTLE=4` (CPU ×4), `AREAS`, `MOVES`, `SECS`, `SIZE=1728x1117@2` (a Retina laptop), `JSON=file`. `lite` = a phone reporting 2 GB.
 - Late = a drawn frame a display refresh late or more. `gpu` = ms from the end of the frame's JS until the GPU finished it (≈7 ms at any load; near the paced interval = frames queueing).
