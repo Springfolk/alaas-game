@@ -6,6 +6,7 @@
 // armful to the woodpile or a fire). A tap before the axe is back is kept for when it is. Walking away leaves; the
 // axe goes back into the block. Props: src/models/work.js (two rounds of four mating quarters).
 import * as THREE from 'three/webgpu';
+import { settledBy } from '../../world/settle.js';
 import { ease, fwdX, fwdZ } from '../../util.js';
 import { footprint, hullOf, overlaps, restSpot } from '../rest.js';
 
@@ -54,8 +55,10 @@ export class Split {
     this.axe.it.thing = this.axe;
     // put down by the free block: back into it
     this.axe.put = () => (!this.onBlock && !this.sw && game.player.pos.distanceTo(this.block) < 2.6 ? this.stickAct : undefined);
-    this.axeHome = { p: parts.axe.position.clone(), q: parts.axe.quaternion.clone() }; // in the block (world, after addThing)
     this.block = parts.object.localToWorld(parts.block.clone()); // the top's middle, world
+    const dy = settledBy(game.world, this.block.x, this.block.z, this.block.y - game.world.terrain.height(this.block.x, this.block.z)); // the block's top as this tier draws it
+    this.block.y += dy; parts.axe.position.y += dy; parts.axe.updateMatrixWorld();
+    this.axeHome = { p: parts.axe.position.clone(), q: parts.axe.quaternion.clone() }; // in the block (world, after addThing)
     this.blockIt = game.world.interactables.find((i) => i.block);
     this.heapIt = game.world.interactables.find((i) => i.rounds);
     this.pieces = parts.pieces.map((p, i) => {

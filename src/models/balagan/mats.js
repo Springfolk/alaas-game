@@ -329,10 +329,10 @@ export function makeMats(maps, { winter = false } = {}) {
     const m = new THREE.MeshBasicNodeMaterial({ name: 'shaft', transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
     m.userData.noShadow = true;
     const u = uv();
-    const edge = smoothstep(0.0, 0.25, u.x).mul(smoothstep(1.0, 0.75, u.x));
+    const edge = smoothstep(0.0, 0.5, u.x).mul(smoothstep(1.0, 0.5, u.x)); // each face brightest down its middle: a round beam, no slab edges
     const along = smoothstep(0.0, 0.08, u.y).mul(smoothstep(1.0, 0.55, u.y));
     const dust = fz(positionLocal.mul(5).add(vec3(0, time.mul(0.05), time.mul(0.03))), 3).mul(0.7).add(0.5);
-    m.colorNode = vec4(vec3(1.0, 0.86, 0.66).mul(edge.mul(along).mul(dust).mul(0.035)), 1);
+    m.colorNode = vec4(vec3(1.0, 0.86, 0.66).mul(edge.mul(along).mul(dust).mul(0.03)), 1);
     return m;
   })();
 

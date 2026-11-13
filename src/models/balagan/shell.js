@@ -289,13 +289,16 @@ export function buildShell({ M, rng, winter, root }) {
     for (const sg of [-1, 1]) B.add(M.beams, box(kD, 1.6, 0.05, { p: [kxd - kD / 2 - 0.02, 0.8, KZD + sg * (kIn - 0.03)] }), { color: [0.35, 0.3, 0.26] });
     B.add(M.beams, box(kD + 0.05, 0.05, 2 * kIn, { p: [kxd - kD / 2 - 0.02, 1.52, KZD] }), { color: [0.25, 0.2, 0.17] });
     B.add(M.logs, log([kxd - 1.45, 0.35, KZD - kIn + 0.06], [kxd - 1.45, 0.38, KZD + kIn - 0.06], 0.11, 0.1, rng, { caps: true }), { color: [0.6, 0.55, 0.5], extra: { outw: [0, 1, 0] } });
+    // the barn's ceiling under its earth roof, from wall to wall and up to the house's north wall
+    const kyc = KH.top - 0.32, kcx = klin(KH.hx, kyc) + 0.1, kz0 = kcz - klin(KH.hz, kyc) - 0.1, kz1 = -hp(FZ, kyc);
+    B.add(M.beams, box(2 * kcx, 0.06, kz1 - kz0, { p: [0, kyc, (kz0 + kz1) / 2] }), { color: [0.25, 0.2, 0.17] });
   });
   // barn door: summer propped open, winter shut
   const kd = new THREE.Group();
-  kd.position.set(kxd + 0.08, 0.02, KZD - 0.5);
+  kd.position.set(kxd + 0.08, 0.07, KZD - 0.5); // hung clear of the trodden sill (the berm's slump differs by tier)
   const KB = new Buckets();
   section(() => {
-    for (let i = 0; i < 4; i++) KB.add(M.doorWood, box(0.05, 1.4 - rng() * 0.05, 0.245, { p: [0, 0.7, 0.125 + i * 0.25], r: [0, 0, (rng() - 0.5) * 0.02] }), { color: [0.7 + rng() * 0.1, 0.67, 0.62] });
+    for (let i = 0; i < 4; i++) KB.add(M.doorWood, box(0.05, 1.35 - rng() * 0.05, 0.245, { p: [0, 0.675, 0.125 + i * 0.25], r: [0, 0, (rng() - 0.5) * 0.02] }), { color: [0.7 + rng() * 0.1, 0.67, 0.62] });
     KB.add(M.doorWood, box(0.04, 0.1, 0.95, { p: [-0.04, 0.35, 0.5], r: [0.25, 0, 0] }), { color: [0.6, 0.57, 0.52] });
   });
   KB.build(kd);

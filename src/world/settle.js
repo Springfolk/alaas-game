@@ -12,7 +12,8 @@
 import * as THREE from 'three/webgpu';
 import { restY } from '../interact/rest.js';
 import { work } from '../load/workers.js';
-import { settleMeshes } from './settle-data.js';
+import { settleMeshes, settleWeight } from './settle-data.js';
+import { urlFlag } from '../util.js';
 
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
 
@@ -57,4 +58,10 @@ function rest(world, o) {
   const y = restY(world, o, _q, _v.x, _v.z, 0.001);
   o.position.y += y - _v.y;
   o.updateMatrixWorld(true);
+}
+
+// How far a draped yard mesh's point `h` m over the terrain at (x, z) is moved (?nosettle: 0): what stands on it follows.
+export function settledBy(world, x, z, h) {
+  if (urlFlag('nosettle')) return 0;
+  return settleWeight(h) * (world.drawnAt(x, z, world.rests.filter((f) => !f.loose), null) - world.terrain.height(x, z));
 }
