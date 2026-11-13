@@ -15,7 +15,7 @@ import { launch, pageOptions, PORT as port } from './browser.mjs';
 
 // [x, z, yaw] — yaw 0 looks north (−Z), π/2 west
 export const AREAS = {
-  start: [62, -211, 1.69], yard: [9, -214, 1.2], urasa: [0.4, -205.6, -1.4], balagan: [-17, -200.5, 1.5], khoton: [-19, -205.5, 0],
+  start: [62, -211, 1.69], yard: [9, -214, 1.2], urasa: [0.4, -205.6, -1.4], balagan: [-17, -200.5, 1.5], khoton: [-13.8, -205.5, 1.571],
   ampaar: [3, -187, Math.PI], pen: [22, -222, 0.8], mares: [43, -206, -0.6], smithy: [24.5, -193.5, -1], woodpile: [-3.75, -214.6, 1.57],
   craft: [12, -199, -0.8], meadow: [-4.6, -146.6, 0.9], shore: [6, -66, Math.PI], shallows: [24.5, -47.5, 0.9], edge: [-60, -330, 0.3],
   forest: [0, -400, 0.5], birch: [-240, -128, 1.57], winter: [262, -98, -1.57],

@@ -6,6 +6,8 @@ import { drawnSampler } from './ground-data.js';
 import { smooth } from '../util.js';
 
 const FULL = 0.35, FADE = 0.8;
+// how much of the ground's shift a vertex `h` m over its reference takes
+export const settleWeight = (h) => (h > FADE || h < -FADE ? 0 : h < FULL ? 1 : 1 - smooth(FULL, FADE, h));
 
 // the height at local (x, z) on a polar grid drawn linear over each cell's two triangles: { FN, FR, rim, nodes },
 // nodes (FN + 1) × (FR + 1) by angle then ring, ring j at radius 0.0001 + j / FR × rim
@@ -49,8 +51,8 @@ export function settleMeshes({ N, mm, pads, rests, meshes }) {
       const lx = A[i], ly = A[i + 1], lz = A[i + 2];
       const x = e[0] * lx + e[8] * lz + e[12], y = ly + e[13], z = e[2] * lx + e[10] * lz + e[14];
       const h = G ? G[i / 3] : terr ? y - terr.heightFast(x, z) : y - level; // height over the reference
-      if (h > FADE || h < -FADE) continue;
-      const w = h < FULL ? 1 : 1 - smooth(FULL, FADE, h);
+      const w = settleWeight(h);
+      if (!w) continue;
       let s = ground(x, z);
       for (const f of rs) { const r = restAt(f, x, z); if (r > s) s = r; }
       const d = s - (y - h);
