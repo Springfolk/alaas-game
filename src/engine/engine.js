@@ -304,6 +304,10 @@ export class Engine {
   // After a frame's draw (main.js): its JS time, and a watch on when the GPU has finished it.
   frameDone(jsMs) {
     const b = this.renderer.backend, dev = b.device, gl = b.gl;
+    // Safari's WebGPU resolves onSubmittedWorkDone about one paced frame after the submit at any load (60 fps: 17 ms at
+    // full and at two-thirds resolution; 30 fps: 34 ms) and paces rAF to the GPU (never 2 frames queued): the governor
+    // goes without GPU timing there, as on Safari's WebGL2
+    if (dev && WEBKIT) this.gpuSilent = 2;
     frameDone(this, jsMs, dev ? (cb) => dev.queue.onSubmittedWorkDone().then(cb, cb) : gl?.fenceSync ? (cb) => {
       const t = performance.now(), s = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
       gl.flush();
@@ -362,6 +366,7 @@ function narrowIndex(a) {
 
 // No tier or dynamic resolution renders under half the screen's own resolution (per axis).
 const MIN_RES = 0.5;
+const WEBKIT = typeof navigator !== 'undefined' && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|Edg|Firefox/.test(navigator.userAgent); // Safari, any browser on iOS
 
 // The coarse cloud field (sky.js cloudField, what cloud shadows use) over CLOUD_SPAN m of the cloud plane
 // around where the view's ground looks up to through the sun, in a 512² half-float texture (16 m texels;
