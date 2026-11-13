@@ -1,18 +1,30 @@
 // The next thing to do, told by the world itself (docs/interactions.md "Hints"): while a job is under way or something
 // is carried, the thing the hands should go to next answers as it would in life: the axe's edge catches the sun,
 // resin on the rounds and billets or the bark's satin glints, a fish rises where the trap goes, the hearth's fire
-// settles with a knock and a lift of sparks, grasshoppers chirr in the standing grass, a thrush calls from the ripe
-// berries. No mark, no sentence. One table of rules (`next()`), read from the jobs' own state. The glint sprite is
+// settles with a knock and a lift of sparks, a thrush calls from the ripe berries. No mark, no sentence. Indoors
+// (or with the thing indoors) the light leads to the doorway first. One table of rules (`next()`), read from the jobs' own state. The glint sprite is
 // made before the warm-up; only its uniforms, transform and `visible` change in play; the ripples are the lake's own
 // (`world.life.water.ring`), the fire's lift its own flare (`fireplace.stir`).
 import * as THREE from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { LAKE } from '../world/terrain.js';
 import { glintMaterial, lightMaterial } from './glint.js';
+import { DOOR as URASA_DOOR } from '../models/urasa/frame.js';
+import { XD, ZD, KH, GAP, PL } from '../models/balagan/dims.js';
 
 const FAR = 45; // m: glints show within this
 const NEAR = 14; // m: farther off (the hearth: 7 m) the light at the thing rises as a shaft, seen over roofs and trees
 const C = (r, g, b, k) => new THREE.Color(r, g, b).multiplyScalar(k);
+const smooth = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+// rooms in a placement's local space (+X east): who is inside (x, z), the doorway's middle and its outward normal
+const ROOMS = {
+  urasa: [{ in: (x, z) => Math.hypot(x, z) < URASA_DOOR.r - 0.15, door: [URASA_DOOR.r, 0], n: [1, 0] }], // the door faces +X
+  balagan: [
+    { in: (x, z) => x > -3.7 && x < XD && Math.abs(z) < 3.15, door: [XD, ZD], n: [1, 0] },
+    { in: (x, z) => Math.abs(x) < KH.hx + 0.6 && z < -3.3 && z > KH.zc - KH.hz, door: [KH.hx + GAP + 0.65 + PL + 0.05, -5.4], n: [1, 0] }, // the khoton's barn door (balagan/shell.js `kxd`, `KZD`)
+  ],
+  ampaar: [{ in: (x, z) => Math.abs(x) < 1.8 && Math.abs(z) < 1.8, door: [1.9, 0], n: [1, 0] }], // walls at ±1.9 (ampaar.js `HW`)
+};
 // each hint's light: `px` its glint's least size on screen, `col` its colour (HDR), `glow` the bloom at the thing
 // (`m` across in metres, `asp` height/width, `ring` a halo's ring), `sparks` glints per beat
 const LOOK = {
@@ -23,10 +35,10 @@ const LOOK = {
   fire: { glow: { m: 1.6, col: C(1, 0.55, 0.25, 0.7), ring: 1 }, near: 7 }, // the hearth's light swelling in the smoke
   ripple: { px: 14, col: C(1, 0.96, 0.88, 4), glow: { m: 1.2, asp: 0.35, col: C(1, 0.95, 0.85, 0.55) } }, // the sun on the risen water
   splash: { px: 14, col: C(1, 0.96, 0.88, 4), glow: { m: 1.2, asp: 0.35, col: C(1, 0.95, 0.85, 0.55) }, sparks: 2 },
-  dew: { px: 12, col: C(1, 0.97, 0.9, 3.5), glow: { m: 4, asp: 0.22, col: C(1, 0.95, 0.8, 0.7) }, sparks: 4 }, // dew on the standing grass
+  door: { px: 14, col: C(1, 0.95, 0.86, 4), glow: { m: 0.9, tall: 1.9, col: C(1, 0.93, 0.8, 0.6) } }, // daylight in a doorway, the jambs catching it
 };
 // seconds between a hint's beats
-const BEAT = { glint: [1.8, 3.2], sheen: [1.4, 2.6], ember: [1.2, 2.4], ripple: [1.6, 3], splash: [1.1, 2.4], fire: [2.4, 3.6], dew: [1.8, 3], berries: [1.6, 2.8] };
+const BEAT = { glint: [1.8, 3.2], sheen: [1.4, 2.6], ember: [1.2, 2.4], ripple: [1.6, 3], splash: [1.1, 2.4], fire: [2.4, 3.6], door: [1.6, 2.8], berries: [1.6, 2.8] };
 const SWELL = 1.8; // s: a bloom's swell and fade
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _b = new THREE.Box3(), _ray = new THREE.Raycaster();
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -36,7 +48,7 @@ export class Hints {
     this.game = game;
     const its = game.world.interactables, jobs = game.work?.jobs || [];
     this.hands = game.interact.hands;
-    this.split = jobs.find((j) => j.axe); this.fish = jobs.find((j) => j.trap); this.hays = jobs.filter((j) => j.scythe); this.tuos = jobs.find((j) => j.rest && j.thing);
+    this.split = jobs.find((j) => j.axe); this.fish = jobs.find((j) => j.trap); this.tuos = jobs.find((j) => j.rest && j.thing);
     this.fires = its.filter((i) => i.fireplace);
     this.heap = its.find((i) => i.rounds); this.tymtay = its.find((i) => i.tymtay); this.stone = its.find((i) => i.offering);
     this.blank = its.find((i) => i.target?.userData.forge); this.forge = its.find((i) => i.act?.id === 'forge');
@@ -52,8 +64,25 @@ export class Hints {
     this.eOp = uniform(0); this.eCol = uniform(new THREE.Color(1, 0.84, 0.62));
     this.edge = this.sprite(lightMaterial(this.eOp, this.eCol, uniform(0), uniform(0), true), home, 11);
     this.cur = null; this.t = 0; this.beat = 0.5; this.flash = -1; this.again = 0; this.left = 0; this.swell = -1;
-    this.lit = null; this.spot = new THREE.Vector3();
+    this.lit = null; this.spot = new THREE.Vector3(); this.need = 1;
     this.gain = { bloom: 1, shaft: 0.25, edge: 0.8 }; // the lights' strengths
+    this.rooms = [];
+    for (const p of game.world.placed) for (const r of ROOMS[p.model] || []) {
+      const c = Math.cos(p.yaw || 0), s = Math.sin(p.yaw || 0), tw = (x, z) => new THREE.Vector3(p.x + x * c + z * s, 0, p.z - x * s + z * c);
+      const at = (k) => { const v = tw(r.door[0] + r.n[0] * k, r.door[1] + r.n[1] * k); v.y = game.world.groundAt(v.x, v.z) + 1; return v; };
+      this.rooms.push({ in: (v) => { const dx = v.x - p.x, dz = v.z - p.z; return r.in(dx * c - dz * s, dx * s + dz * c); }, doorIn: at(-0.45), doorOut: at(0.6) });
+    }
+  }
+  room(v) { return this.rooms.find((r) => r.in(v)) || null; }
+  // a thing in another room than the player: the way there, through the doorway (a hearth seen from afar keeps its
+  // smoke over the roof)
+  route(c) {
+    if (!c) return c;
+    const P = this.game.player.pos, rp = this.room(P), rt = this.room(c.at);
+    if (rp === rt) return c;
+    if (rp) return { kind: 'door', at: rp.doorIn, to: c };
+    if (c.top && P.distanceTo(c.at) > LOOK.fire.near * 2) return c;
+    return { kind: 'door', at: rt.doorOut, to: c };
   }
   sprite(m, at, order) {
     const s = new THREE.Sprite(m);
@@ -105,12 +134,6 @@ export class Hints {
       if (F.state === 'shore' && P.distanceTo(F.gap) < 12) return { kind: 'ripple', at: this.wet(F.gap.clone().add(_v.set(0.5, 0, 0))), lap: true }; // fish rising where the trap goes
       if (F.state === 'set' && F.n >= 3 && P.distanceTo(F.trap.obj.position) < 45) return { kind: 'splash', at: this.wet(F.trap.obj.position.clone()), lap: true }; // the catch thrashing in the trap
     }
-    const H = this.hays.find((h) => h.held);
-    if (H?.held && !H.sw) {
-      const mask = H.mask;
-      if (mask?.tall && !mask.tall(P.x, P.z)) { const at = this.meadow(H, mask); return at && { kind: 'dew', at }; }
-      return null;
-    }
     const T = this.tuos;
     if (T && !T.busy) {
       if (T.held && !T.made) return this.fireHint(this.hearth()); // made by a fire
@@ -131,19 +154,6 @@ export class Hints {
     if (held === h.pail && h.pail.level < 0.02) return { kind: 'ripple', at: this.shore(P) };
     return null;
   }
-  // standing grass nearest the mower: looked for round the scythe's post
-  meadow(H, mask) {
-    const P = this.game.player.pos, c = H.home.p;
-    let best = null, bd = Infinity;
-    for (let r = 4; r <= 28; r += 4) for (let a = 0; a < 12; a++) {
-      const x = c.x + Math.cos(a * Math.PI / 6) * r, z = c.z + Math.sin(a * Math.PI / 6) * r;
-      if (!mask.tall(x, z)) continue;
-      const d = (x - P.x) ** 2 + (z - P.z) ** 2;
-      if (d < bd) { bd = d; best = [x, z]; }
-    }
-    return best ? new THREE.Vector3(best[0], this.game.world.groundAt(best[0], best[1]) + 0.4, best[1]) : null;
-  }
-
   // One beat of the hint `c`: what the world does now and then.
   pulse(c) {
     const g = this.game, a = g.audio, water = g.world.life?.water, L = LOOK[c.kind];
@@ -169,8 +179,8 @@ export class Hints {
   }
 
   // where this glint sits: a point of the thing's surface seen from the eye (its upper half, where the sun falls),
-  // ~15 cm proud of it towards the eye (clear of its own surface, still behind walls); dew: anywhere on the grass
-  // round it; water: round the rise; a point thing (`at` only) as it is
+  // ~15 cm proud of it towards the eye (clear of its own surface, still behind walls);
+  // water: round the rise; a doorway: along its jamb; a point thing (`at` only) as it is
   place(c) {
     const cam = this.game.engine.camera;
     this.spot.copy(c.at);
@@ -182,11 +192,10 @@ export class Hints {
         const hit = _ray.intersectObject(c.obj, true)[0];
         if (hit) { this.spot.copy(hit.point); break; }
       }
-    } else if (c.kind === 'dew' || c.kind === 'ripple' || c.kind === 'splash') {
-      const r = c.kind === 'dew' ? 2.2 : 0.6, a = rand(0, 7), q = Math.sqrt(Math.random()) * r;
+    } else if (c.kind === 'ripple' || c.kind === 'splash') {
+      const a = rand(0, 7), q = Math.sqrt(Math.random()) * 0.6;
       this.spot.x += Math.cos(a) * q; this.spot.z += Math.sin(a) * q;
-      if (c.kind === 'dew') this.spot.y = this.game.world.groundAt(this.spot.x, this.spot.z) + rand(0.25, 0.5);
-    }
+    } else if (c.kind === 'door') this.spot.y += rand(-0.35, 0.55); // up and down the jamb
     this.glint.position.copy(this.spot).addScaledVector(_w.subVectors(cam.position, this.spot).normalize(), Math.min(0.18, this.spot.distanceTo(cam.position) * 0.1));
   }
 
@@ -199,7 +208,7 @@ export class Hints {
       this.t = 0.2;
       const live = !g.title && !g.paused && !g.ui.modal && !g.stage?.on;
       let c = null;
-      try { c = live ? this.next() : null; } catch (e) { if (!this.warned) { this.warned = true; console.warn('hints: a rule no longer fits its job', e); } } // a job reworked under the table never stops the frame
+      try { c = live ? this.route(this.next()) : null; } catch (e) { if (!this.warned) { this.warned = true; console.warn('hints: a rule no longer fits its job', e); } } // a job reworked under the table never stops the frame
       if (c?.kind !== this.cur?.kind) { this.beat = c?.kind === 'fire' ? 0.6 : 0.3; this.call = 0; this.left = 0; }
       this.cur = c;
     }
@@ -207,52 +216,71 @@ export class Hints {
     if (c && BEAT[c.kind] && (this.beat -= dt) <= 0) { const [lo, hi] = BEAT[c.kind]; this.beat = rand(lo, hi); this.pulse(c); }
     const lit = this.lit, L = lit && LOOK[lit.kind];
     if (lit && this.left > 0 && (this.again -= dt) <= 0) { this.left--; this.again = rand(0.3, 0.6); this.flash = 0; this.place(lit); }
+    // how much the hint is needed: full far off, fading on the way in, faint once the eye is on it (eased: no pop)
+    const tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), th = tv * cam.aspect;
+    if (lit) {
+      _v.copy(lit.at).applyMatrix4(cam.matrixWorldInverse);
+      const aim = 1 - smooth(0.07, 0.22, Math.atan2(Math.hypot(_v.x, _v.y), -_v.z)); // within ~4–13° of the view's middle
+      const far = lit.to ? cam.position.distanceTo(lit.to.at) : _v.length(); // a doorway on the way: as far as the thing
+      const want = (0.3 + 0.7 * smooth(2, 18, far)) * (1 - 0.85 * aim);
+      this.need += (want - this.need) * (1 - Math.exp(-dt / 0.4));
+    }
+    const need = this.need;
     // the glint: a quick rise, a flicker and out (~0.5 s), on the thing's surface seen from here
     if (this.flash >= 0) {
       this.flash += dt;
       const k = this.flash / 0.5, d = cam.position.distanceTo(this.spot);
       if (k >= 1 || !L?.px || d > FAR) { this.flash = -1; this.glint.visible = false; } else {
         this.gCol.value.copy(L.col);
-        this.gOp.value = Math.sin(Math.PI * k) ** 2 * (0.75 + 0.25 * Math.sin(this.flash * 70));
+        this.gOp.value = Math.sin(Math.PI * k) ** 2 * (0.75 + 0.25 * Math.sin(this.flash * 70)) * need;
         const s = this.m(Math.max(L.px, 0.025 * H), d) * THREE.MathUtils.clamp(5 / d, 1, 1.3); // larger close by
         this.glint.scale.set(s, s, 1);
         this.glint.visible = true;
       }
     }
-    // the bloom at the thing and the glare at the view's edge: a slow swell and fade with each beat
+    // the bloom at the thing and the glare at the view's edge: one light, a slow swell and fade with each beat
     let env = 0;
     if (this.swell >= 0) { this.swell += dt; const k = this.swell / SWELL; if (k >= 1 || !L?.glow) this.swell = -1; else env = Math.sin(Math.PI * Math.sqrt(k)) ** 2; }
     this.bloom.visible = this.edge.visible = false;
     if (env <= 0) return;
+    env *= need;
+    // where the thing is in the view: `inV` 1 well inside, 0 at the edge or out of it
+    _v.copy(lit.at).applyMatrix4(cam.matrixWorldInverse);
+    const sx = _v.x / -_v.z, sy = _v.y / -_v.z;
+    const inV = _v.z < 0 ? 1 - smooth(0.45, 1.1, Math.max(Math.abs(sx) / th, Math.abs(sy) / tv)) : 0;
     const G = L.glow, far = cam.position.distanceTo(lit.at) > (L.near ?? NEAR), top = far && lit.top;
     const at = top || lit.at, d = cam.position.distanceTo(at); // a hearth from afar: its light in the smoke over the roof
+    let bw; // the bloom's width (m)
     if (far && !top) { // a shaft of sunlight falling on it
-      const w = Math.max(3, this.m(0.09 * H, d));
+      const w = bw = Math.max(3, this.m(0.09 * H, d));
       _w.copy(g.engine.sun.position).transformDirection(cam.matrixWorldInverse); // the sun's side of the view
       this.bRot.value = THREE.MathUtils.clamp(-_w.x * 0.6, -0.35, 0.35);
       this.bloom.scale.set(w, w * 2.5, 1); this.bloom.center.set(0.5, 0.03); this.bloom.position.copy(at);
-      this.bShaft.value = 1; this.bOp.value = env * this.gain.shaft;
+      this.bShaft.value = 1; this.bOp.value = env * this.gain.shaft * inV;
     } else {
-      const w = Math.max(G.m, this.m(0.06 * H, d) * (G.asp ? 1.6 : 1));
-      this.bloom.scale.set(w, w * (G.asp || 1), 1); this.bloom.center.set(0.5, 0.5); this.bRot.value = 0;
+      const w = bw = Math.max(G.m, this.m(0.06 * H, d) * (G.asp ? 1.6 : 1));
+      this.bloom.scale.set(w, w * (G.asp || G.tall || 1), 1); this.bloom.center.set(0.5, 0.5); this.bRot.value = 0;
       this.bloom.position.copy(at).addScaledVector(_w.subVectors(cam.position, at).normalize(), Math.min(0.3, d * 0.1));
       if (G.asp) this.bloom.position.y += w * G.asp * 0.3; // lying on the water or the grass, not sunk in it
-      this.bShaft.value = 0; this.bOp.value = env * this.gain.bloom;
+      this.bShaft.value = 0; this.bOp.value = env * this.gain.bloom * inV;
     }
     this.bCol.value.copy(G.col); this.bRing.value = G.ring || 0;
-    this.bloom.visible = true;
-    // out of view: sunlight flaring in at the edge of the view on its side
-    _v.copy(lit.at).applyMatrix4(cam.matrixWorldInverse);
-    const tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), th = tv * cam.aspect;
-    if (_v.z < 0 && Math.abs(_v.x / -_v.z) < th * 0.95 && Math.abs(_v.y / -_v.z) < tv * 0.95) return;
+    this.bloom.visible = inV > 0;
+    if (inV >= 1) return;
+    // out of view: the same light flaring in at the view's edge on its side; as the thing comes into view it slides
+    // in from the edge onto the thing and shrinks to its bloom, handing over to it
     let ex = _v.x / th, ey = _v.y * 0.35 / tv;
     if (_v.z > 0 && Math.abs(ex) < 0.2 * Math.abs(_v.z / th)) ex = Math.sign(ex || 1) * Math.abs(_v.z / th); // right behind: the nearer shoulder
     const n = Math.max(Math.abs(ex), Math.abs(ey)) || 1;
     ex /= n; ey /= n;
-    this.edge.position.set(ex * th * 1.02, ey * tv * 1.02, -1).applyMatrix4(cam.matrixWorld);
+    const k = inV * inV * (3 - 2 * inV);
+    this.edge.position.set(THREE.MathUtils.lerp(ex * th * 1.02, sx, k), THREE.MathUtils.lerp(ey * tv * 1.02, sy, k), -1).applyMatrix4(cam.matrixWorld);
     const eh = Math.min(tv, th) * 2 * 0.95, side = Math.abs(ex) > Math.abs(ey); // by the view's short side (a portrait phone)
-    this.edge.scale.set(eh * (side ? 0.3 : 2.4), eh * (side ? 1.6 : 0.3), 1); // a band of light along that edge
-    this.eOp.value = env * this.gain.edge;
+    const blob = Math.min(eh * 0.5, bw / d * 1.5);
+    this.edge.scale.set(THREE.MathUtils.lerp(eh * (side ? 0.3 : 2.4), blob, k), THREE.MathUtils.lerp(eh * (side ? 1.6 : 0.3), blob, k), 1); // a band of light along that edge
+    const top3 = Math.max(G.col.r, G.col.g, G.col.b) || 1;
+    this.eCol.value.setRGB(G.col.r / top3, G.col.g / top3, G.col.b / top3); // the thing's own light
+    this.eOp.value = env * this.gain.edge * (1 - k);
     this.edge.visible = true;
   }
 }

@@ -4,7 +4,7 @@
 // standing over them) and runner plants between. A crown is the thing picked from. Instanced per region of
 // ~45 m, drawn within sight range; berries and flowers swell with distance so they stay a dot of colour.
 // Local frame: HOME.
-import { attribute, positionLocal, positionPrevious, cameraPosition, modelWorldMatrix, vec4, clamp, Fn } from 'three/tsl';
+import { attribute, positionLocal, positionPrevious, cameraPosition, modelWorldMatrix, vec4, smoothstep, Fn } from 'three/tsl';
 import { TIER } from '../../engine/tier.js';
 import { CULL_LAYER } from '../../engine/merge.js';
 import { mulberry32 } from '../../util.js';
@@ -19,14 +19,14 @@ export const COLONIES = [
 
 const STALK = 0.1;
 export const CROWN = 0.3;     // m: a crown's radius
-const SWELL = [3, 3];         // berries and flowers keep their true size to 3 m, then grow with distance up to ×3
+const SWELL = [3, 12, 2.2];   // berries and flowers keep their true size to 3 m, then grow eased with distance to ×2.2 at 12 m
 const TRUSS_TOP = [0.012, 0.16, 0.004]; // a flower truss's head (its centre for the swell)
 
 // one graph for berries and flowers: the instance grows about its own centre (`aC`, model-local) with distance
 const swell = Fn(() => {
   const c = attribute('aC', 'vec3');
   const d = modelWorldMatrix.mul(vec4(c, 1)).xyz.distance(cameraPosition);
-  const p = c.add(positionLocal.sub(c).mul(clamp(d.div(SWELL[0]), 1, SWELL[1])));
+  const p = c.add(positionLocal.sub(c).mul(smoothstep(SWELL[0], SWELL[1], d).mul(SWELL[2] - 1).add(1)));
   positionPrevious.assign(p);
   return p;
 });
@@ -198,7 +198,7 @@ export function buildDyedyen(T, { ground, forest }) {
   };
   for (const P of patches) P.n = PER;
 
-  // berries and flowers (at most ~1 px, swollen ×3) end nearer than the leaves: fewer draws over the yard
+  // berries and flowers (at most ~1 px, swollen ×2.2) end nearer than the leaves: fewer draws over the yard
   const far = phone ? 45 : 80, fruitFar = phone ? 25 : 40;
   for (const m of meshes) if (!m.userData.near) m.userData.far = /dyedyen(-flowers)?$/.test(m.name) ? fruitFar : far;
   return {
