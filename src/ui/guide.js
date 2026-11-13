@@ -4,6 +4,7 @@
 // their own (told of in other cards) point at the nearest card that links to them.
 import * as THREE from 'three/webgpu';
 import { BY_ID } from './ui.js';
+import { WORKS } from '../interact/work/list.js';
 
 const NEAR = 7; // m: the shimmer shows inside this
 const ARRIVE = 3; // m: a place or a found thing is reached
@@ -45,17 +46,38 @@ export class Guide {
 
   box(obj) { return new THREE.Box3().setFromObject(obj); }
 
-  // Be led somewhere (the journal's map): `d` = { key, id } an entry (its nearest place; gone once it is found)
-  // or { key, at } a point (gone on arrival); `at` with an `id` only says where the map draws it.
+  // a job's places now, the nearest led to: mowing: the scythes where they are, or with one in the hands the
+  // standing grass nearest the player (else nearest a scythe post); any other job: every thing it is done at
+  jobPlaces(id) {
+    const g = this.game, hay = id === 'hay' ? g.work?.jobs.filter((j) => j.scythe) || [] : [];
+    if (hay.some((j) => j.held)) { const t = this.tall(g.player.pos); return t ? [t] : hay.map((j) => this.tall(j.home.p)).filter(Boolean); }
+    if (hay.length) return hay.map((j) => j.scythe.obj.getWorldPosition(new THREE.Vector3()));
+    const W = WORKS.find((j) => j.id === id);
+    return g.world.interactables.filter((i) => (i.target || i.zone) && W?.find(i)).map((i) => this.pos(i));
+  }
+  // the grass still standing nearest `p` (within 40 m), at eye height
+  tall(p) {
+    const mask = this.game.world._field?.mask;
+    if (!mask) return null;
+    for (let r = 0; r < 40; r += 1) for (let n = Math.max(1, Math.ceil(r * 6.3)), k = 0; k < n; k++) {
+      const a = k / n * 6.2832, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
+      if (mask.tall(x, z)) return new THREE.Vector3(x, this.game.world.groundAt(x, z) + 1, z);
+    }
+    return null;
+  }
+
+  // Be led somewhere (the journal's map): `d` = { key, id } an entry (its nearest place; gone once it is found),
+  // { key, job, at } a job (its nearest place now; mowing: gone at the grass with a scythe in the hands)
+  // or { key, at } a point (gone on arrival); `at` with an `id` or a `job` only says where the map draws it.
   go(d) {
-    this.dest = d; this.id = d.id || null;
-    this.targets = d.id ? this.places(d.id) : [d.at];
+    this.dest = d; this.id = d.id || null; this.job = d.job || null;
+    this.targets = d.id ? this.places(d.id) : this.job ? this.jobPlaces(this.job) : [d.at];
     this.target = null; this.t = 0;
     if (!this.targets.length) return this.clear();
     this.update();
     return d;
   }
-  clear() { this.dest = null; this.id = null; this.targets = []; this.target = null; this.update(); return null; }
+  clear() { this.dest = null; this.id = null; this.job = null; this.targets = []; this.target = null; this.update(); return null; }
   // choose (or, with the same id, drop) the entry to be guided to
   set(id) {
     if (!id || id === this.id) return this.clear();
@@ -70,10 +92,12 @@ export class Guide {
     const p = g.player.pos, cam = g.engine.camera;
     if ((this.t -= dt) <= 0 || !this.target) { // the nearest of its places, re-chosen now and then
       this.t = 0.5;
+      if (this.job) { const t = this.jobPlaces(this.job); if (t.length) this.targets = t; }
       this.target = this.targets.reduce((a, b) => (a && a.distanceToSquared(p) < b.distanceToSquared(p) ? a : b), null);
     }
     const d = Math.hypot(this.target.x - p.x, this.target.z - p.z);
-    if (d < ARRIVE && !(this.id && !g.state.found.has(this.id))) { this.clear(); return; } // there (a thing not yet found: until it is)
+    const wait = this.id ? !g.state.found.has(this.id) : this.job === 'hay' && !g.work?.jobs.some((j) => j.scythe && j.held); // a thing not yet found: until it is; a scythe: until taken
+    if (d < ARRIVE && !wait) { this.clear(); return; } // there
     this.dist.textContent = d < 10 ? `${d.toFixed(1)} m` : `${Math.round(d)} m`;
     // camera space: in front when z < 0
     const v = this.v.copy(this.target).applyMatrix4(cam.matrixWorldInverse);

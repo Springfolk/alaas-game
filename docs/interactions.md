@@ -64,7 +64,7 @@ No sentence and no mark says the next step: light catches the thing, as in a pho
 - Ripples are the lake's own (`world.life.water.ring`); the fire's lift is `fireplace.stir(k)`.
 
 ## Finder (`src/ui/guide.js`, DOM only)
-- `game.guide.go({ key, id, at })` (the journal's map; `clear()`, `dest`): a gold diamond with the distance over the destination, at the screen edge with an arrow when out of view, a soft shimmer within 7 m. An entry (`id`): its nearest place, until found. A job or a spot (`at`): until within 3 m.
+- `game.guide.go({ key, id, at })` (the journal's map; `clear()`, `dest`): a gold diamond with the distance over the destination, at the screen edge with an arrow when out of view, a soft shimmer within 7 m. An entry (`id`): its nearest place, until found. A job: the nearest of its things, re-chosen as you go (mowing: the nearer scythe; with one in the hands, the standing grass nearest you); a spot (`at`) or a job: until within 3 m.
 - Places: `world.interactables` (bounding-box centre; zones at their centre). Entries with no place (`mogol-urasa`, `ornament`, `urung-aar-toyon-aiyy`, `baay-bayanay`, `algys`, `ysyakh`, `osuokhai`, `olonkho`) are found through the dashed related link in a card that names them (`.chip.told`); their marker is that card's place.
 - Winter place (`sayylyk-kystyk`): no marker unless chosen; `src/interact/glint.js` flashes a star on the winter balagan's west window every 5–12 s, seen from 40–400 m while the sun lights that wall and it faces you, until found (one sprite added before the warm-up).
 - First visit: language from `navigator.languages` (`detectLang`: `sah` anywhere → Sakha; first language ru/be/uk → Russian; else English); a pick on the title or in settings sets `save.langSet` and wins.
