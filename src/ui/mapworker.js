@@ -6,7 +6,9 @@ const T = new Terrain();
 onmessage = async ({ data: m }) => {
   if (m.pads) { T.pads = m.pads; return; }
   const { key, x0, z0, span, size, M } = m;
-  const c = new OffscreenCanvas(size, size);
-  c.getContext('2d').putImageData(new ImageData(drawMap(T, x0, z0, span, size, M), size), 0, 0);
-  postMessage({ key, blob: await c.convertToBlob({ type: 'image/png' }) });
+  try {
+    const c = new OffscreenCanvas(size, size);
+    c.getContext('2d').putImageData(new ImageData(drawMap(T, x0, z0, span, size, M), size), 0, 0);
+    postMessage({ key, blob: await c.convertToBlob({ type: 'image/png' }) });
+  } catch { postMessage({ key, blob: null }); } // (src/ui/maptiles.js leaves that square to the baked picture)
 };
