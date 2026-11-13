@@ -6,15 +6,17 @@ import * as THREE from 'three/webgpu';
 import { mulberry32 } from '../../util.js';
 import { addLog, decalMat, fence, frame, geoPiece, jitterTint, mtx, patchGeo, TAU, wobbler } from './kit.js';
 
-// colour a stack: weathered grey-brown on top and on the north-west, golden where sheltered
-function stackColors(g, rng, ageTop = 0.4) {
+// colour a stack: sun-bleached straw (the hay texture is dark, so the colours lift it to hay's albedo), the
+// weather greying the top and the north-west, golden where sheltered
+export const HAY = [3.0, 3.1, 2.6];
+export function stackColors(g, rng, ageTop = 0.4, base = HAY) {
   const p = g.attributes.position, n = g.attributes.normal;
   const c = new Float32Array(p.count * 3);
   for (let i = 0; i < p.count; i++) {
     const ny = n.getY(i), nx = n.getX(i), nz = n.getZ(i);
-    const weather = Math.max(0, -nz * 0.6 - nx * 0.4) * 0.5 + Math.max(0, ny) * ageTop;
-    const s = 0.92 + Math.sin(p.getX(i) * 3.1 + p.getY(i) * 5.3) * 0.06;
-    c[i * 3] = (1 - weather * 0.35) * s; c[i * 3 + 1] = (1 - weather * 0.32) * s; c[i * 3 + 2] = (1 - weather * 0.12) * s;
+    const weather = Math.min(1, Math.max(0, -nz * 0.6 - nx * 0.4) * 0.5 + Math.max(0, ny) * ageTop);
+    const s = 0.92 + Math.sin(p.getX(i) * 3.1 + p.getY(i) * 5.3) * 0.06, k = 1 - weather * 0.12, grey = (base[0] + base[1] + base[2]) / 3;
+    for (let j = 0; j < 3; j++) c[i * 3 + j] = (base[j] + (grey - base[j]) * weather * 0.6) * k * s;
   }
   g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3));
 }
@@ -92,15 +94,17 @@ function longStack(L, W, H, rng) {
   return g;
 }
 
-// round stack (стог) or heap (копна): radius R at the bulge, height H, slight lean
-function roundStack(R, H, rng, { seg = 40, rings = 22, point = 0.12 } = {}) {
+// round stack (кэбиһии) or heap (бугул): radius R at the bulge, height H, slight lean; above the bulge it draws
+// in as a full cone (`cone` 1) or holds out as a drum with a rounded top (`cone` → 0: a stack just begun)
+export function roundStack(R, H, rng, { seg = 40, rings = 22, point = 0.12, cone = 0.8 } = {}) {
   const nz = wobbler(rng, 5);
   const pos = [], uvs = [], idx = [];
   const lean = [(rng() - 0.5) * 0.08 * H, (rng() - 0.5) * 0.08 * H];
   for (let i = 0; i <= rings; i++) {
     const t = i / rings, y = t * H;
     // narrower foot, bulge at a third, domed top drawn into a point
-    let r = t < 0.33 ? R * (0.86 + 0.14 * Math.sin(t / 0.33 * Math.PI / 2)) : R * Math.sqrt(Math.max(0, 1 - ((t - 0.33) / 0.67) ** 2.2));
+    const u = (t - 0.33) / 0.67;
+    let r = t < 0.33 ? R * (0.86 + 0.14 * Math.sin(t / 0.33 * Math.PI / 2)) : R * Math.pow(Math.max(0, 1 - u ** (1 + 1.5 * (1 - cone))), cone) * (1 + 0.14 * cone * Math.sin(u * Math.PI));
     r = Math.max(r, R * point * (1 - t));
     for (let j = 0; j <= seg; j++) {
       const a = (j % seg) / seg * TAU;
@@ -125,15 +129,15 @@ function roundStack(R, H, rng, { seg = 40, rings = 22, point = 0.12 } = {}) {
 }
 
 // a windrow: a low wavy loaf of cut grass along a line
-function windrow(ground, x0, z0, x1, z1, rng) {
+export function windrow(ground, x0, z0, x1, z1, rng) {
   const L = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(L / 0.6), m = 6;
   const dx = (x1 - x0) / L, dz = (z1 - z0) / L;
   const nz = wobbler(rng, 4);
   const pos = [], uvs = [], idx = [];
   for (let i = 0; i <= n; i++) {
     const t = i / n;
-    const wob = nz(t * 20, 0) * 0.35;
-    const w = 0.45 * (1 + 0.3 * nz(t * 31, 2)), h = 0.22 * (1 + 0.35 * nz(t * 27, 4)) * Math.min(1, Math.min(t, 1 - t) * L / 0.8);
+    const wob = nz(t * L * 0.55, 0) * 0.35; // the waver per metre, whatever the length
+    const w = 0.45 * (1 + 0.3 * nz(t * L * 0.86, 2)), h = 0.22 * (1 + 0.35 * nz(t * L * 0.75, 4)) * Math.min(1, Math.min(t, 1 - t) * L / 0.8);
     const cx = x0 + (x1 - x0) * t - dz * wob, cz = z0 + (z1 - z0) * t + dx * wob;
     for (let j = 0; j <= m; j++) {
       const v = j / m * Math.PI;
@@ -196,11 +200,13 @@ export function hayMeadow(K) {
       boxes.push([cx, y0 + 1.5, cz, L, 3, W, -rot]);
     }
     // round stacks with their central pole (and two pairs of tie sticks over the top)
-    for (const [cx, cz, R, H] of [[19, 97, 2.0, 3.7], [-8, 124, 1.8, 3.3]]) {
+    for (const [cx, cz, R, H] of [[19, 97, 1.8, 4.0], [-8, 124, 1.6, 3.7]]) {
       const y0 = gr(cx, cz);
       const { g, lean } = roundStack(R, H, rng);
       { const sm = mtx([cx, y0, cz], [0, rng() * TAU, 0]); B.add(g, M.hay, sm); B.add(strawFringe(g, 2400, 73 + cx), M.hay, sm); }
       addLog(B, [cx, y0 - 0.3, cz], [cx + lean[0] * 0.9, y0 + H + 0.9, cz + lean[1] * 0.9], 0.06, 0.035, rng, M.darkwood, M.end, { seg: 7, bend: 0.01 });
+      // the top bound round the pole with a twist of willow, so wind cannot lift the cap
+      B.add(new THREE.TorusGeometry(0.2, 0.035, 5, 12).rotateX(Math.PI / 2), M.lash, mtx([cx + lean[0] * 0.8, y0 + H - 0.1, cz + lean[1] * 0.8]), [0.8, 0.74, 0.62]);
       for (let k = 0; k < 2; k++) {
         const a = rng() * TAU;
         for (const sd of [-1, 1]) {
@@ -234,7 +240,7 @@ export function hayMeadow(K) {
       mown.push({ x: -38, z: 113, rx: 11, rz: 21 });
       for (let k = 0; k < 5; k++) {
         const wx = -46 + k * 4 + (rng() - 0.5);
-        B.add(windrow(gr, wx, 95 + rng() * 2, wx + (rng() - 0.5) * 2, 131 - rng() * 3, rng), M.hayGreen, null, jitterTint(rng, 0.1));
+        B.add(windrow(gr, wx, 95 + rng() * 2, wx + (rng() - 0.5) * 2, 131 - rng() * 3, rng), M.hayGreen, null, jitterTint(rng, 0.1, [2.6, 3.7, 4.0])); // lifted from the dark texture to wilting grass
       }
     }
     return { boxes, mown };

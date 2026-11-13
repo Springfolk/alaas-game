@@ -4,20 +4,20 @@
   "jobs": "161c46be7ef0",
   "model:ampaar": "a81766e27c41",
   "model:balagan": "ea16e583da0c",
-  "model:barkwork": "f6f924f94174",
-  "model:chores": "e7fe37ae0808",
-  "model:drywood": "d0efd5fe1ad1",
-  "model:fishery": "dbf58776d335",
-  "model:haybase": "62e607ac2263",
-  "model:hayfield": "fa875b4197e5",
+  "model:barkwork": "2565f2df20a4",
+  "model:chores": "e14dbe369f4f",
+  "model:drywood": "a74c7f34b16a",
+  "model:fishery": "caf2b48b192e",
+  "model:haybase": "c2b46edb27c2",
+  "model:hayfield": "c9a2fd5ae8f0",
   "model:kuruo": "1de125ef24e6",
-  "model:lakeside": "fa4fbd90d79d",
+  "model:lakeside": "c013a160e3a3",
   "model:sacred-birch": "56b5cf43ba39",
   "model:sele": "81399b06ce4b",
   "model:serge": "5ad310dd22e9",
   "model:urasa": "c7dc13e12bf0",
-  "model:work": "c84cdcb48b0a",
-  "model:yardlife": "bea2ff80d2fe"
+  "model:work": "d7b28476f977",
+  "model:yardlife": "e2d3537ec469"
  },
  "packs": {
   "forest#c904aa13": {
@@ -54,12 +54,12 @@
    "raw": 3625996,
    "lazy": true
   },
-  "job:mask#2b8c65ae": {
+  "job:mask#cfc29f6b": {
    "group": "jobs",
    "key": "*",
    "empty": true
   },
-  "job:mask#bd7f0930": {
+  "job:mask#e6dcf186": {
    "group": "jobs",
    "key": "*",
    "empty": true
@@ -92,47 +92,47 @@
   },
   "model:barkwork#12dda7fb": {
    "group": "model:barkwork",
-   "key": "f6f924f94174",
+   "key": "2565f2df20a4",
    "empty": true
   },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "e7fe37ae0808",
+   "key": "e14dbe369f4f",
    "file": "chores-753cb87c.bin",
    "bytes": 11650,
    "raw": 47444
   },
   "model:drywood#080c0846": {
    "group": "model:drywood",
-   "key": "d0efd5fe1ad1",
+   "key": "a74c7f34b16a",
    "file": "drywood-080c0846.bin",
    "bytes": 18461,
    "raw": 57576
   },
   "model:fishery#cf8d7711": {
    "group": "model:fishery",
-   "key": "dbf58776d335",
+   "key": "caf2b48b192e",
    "file": "fishery-cf8d7711.bin",
    "bytes": 55767,
    "raw": 217312
   },
   "model:haybase#8aab9ed9": {
    "group": "model:haybase",
-   "key": "62e607ac2263",
+   "key": "c2b46edb27c2",
    "file": "haybase-8aab9ed9.bin",
-   "bytes": 58634,
-   "raw": 205744
+   "bytes": 189519,
+   "raw": 638620
   },
   "model:hayfield#cc1cc42c": {
    "group": "model:hayfield",
-   "key": "fa875b4197e5",
+   "key": "c9a2fd5ae8f0",
    "file": "hayfield-cc1cc42c.bin",
    "bytes": 6255,
    "raw": 21164
   },
   "model:hayfield#feed2c58": {
    "group": "model:hayfield",
-   "key": "fa875b4197e5",
+   "key": "c9a2fd5ae8f0",
    "file": "hayfield-feed2c58.bin",
    "bytes": 6198,
    "raw": 21156
@@ -146,7 +146,7 @@
   },
   "model:lakeside#6c7e420d": {
    "group": "model:lakeside",
-   "key": "fa4fbd90d79d",
+   "key": "c013a160e3a3",
    "file": "lakeside-6c7e420d.bin",
    "bytes": 129382,
    "raw": 377104
@@ -179,17 +179,17 @@
   },
   "model:work#9d148979": {
    "group": "model:work",
-   "key": "c84cdcb48b0a",
+   "key": "d7b28476f977",
    "file": "work-9d148979.bin",
    "bytes": 24064,
    "raw": 83736
   },
   "model:yardlife#8f2bbc3c": {
    "group": "model:yardlife",
-   "key": "bea2ff80d2fe",
+   "key": "e2d3537ec469",
    "file": "yardlife-8f2bbc3c.bin",
-   "bytes": 1365022,
-   "raw": 4601188
+   "bytes": 1362943,
+   "raw": 4607500
   }
  }
 }
