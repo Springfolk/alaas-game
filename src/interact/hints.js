@@ -34,12 +34,13 @@ const LOOK = {
   berries: { px: 12, col: C(1, 0.88, 0.82, 3.5), glow: { m: 0.6, col: C(1, 0.75, 0.62, 0.6) }, sparks: 2 }, // a ripe berry's skin
   ember: { px: 14, col: C(1, 0.5, 0.16, 4), glow: { m: 0.4, col: C(1, 0.45, 0.15, 1) } }, // a spit off hot iron
   fire: { glow: { m: 1.6, col: C(1, 0.55, 0.25, 0.7), ring: 1 }, near: 7 }, // the hearth's light swelling in the smoke
-  ripple: { px: 14, col: C(1, 0.96, 0.88, 4), glow: { m: 1.2, asp: 0.35, col: C(1, 0.95, 0.85, 0.55) } }, // the sun on the risen water
+  rim: { px: 16, col: C(1, 0.74, 0.45, 4), glow: { m: 0.5, col: C(1, 0.62, 0.32, 1.2) }, sparks: 2, need: 0.8, aim: 0.25 }, // the firelight settling on the hearth's rim where the bark is warmed
+  ripple: { px: 14, col: C(1, 0.96, 0.88, 4), glow: { m: 1.2, asp: 0.35, col: C(1, 0.95, 0.85, 0.55) }, far: 220 }, // the sun on the risen water (its glitter seen from wherever the water is)
   splash: { px: 14, col: C(1, 0.96, 0.88, 4), glow: { m: 1.2, asp: 0.35, col: C(1, 0.95, 0.85, 0.55) }, sparks: 2 },
   door: { px: 14, col: C(1, 0.93, 0.8, 3), glow: { m: 0.9, tall: 1.9, col: C(1, 0.82, 0.6, 0.6) } }, // daylight in a doorway, the jambs catching it
 };
 // seconds between a hint's beats
-const BEAT = { glint: [1.8, 3.2], sheen: [1.4, 2.6], ember: [1.2, 2.4], ripple: [1.6, 3], splash: [1.1, 2.4], fire: [2.4, 3.6], door: [1.6, 2.8], berries: [1.6, 2.8] };
+const BEAT = { rim: [0.9, 1.5], glint: [1.8, 3.2], sheen: [1.4, 2.6], ember: [1.2, 2.4], ripple: [1.6, 3], splash: [1.1, 2.4], fire: [2.4, 3.6], door: [1.6, 2.8], berries: [1.6, 2.8] };
 const SWELL = 1.8; // s: a bloom's swell and fade
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _b = new THREE.Box3(), _ray = new THREE.Raycaster();
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -68,11 +69,12 @@ export class Hints {
     this.lit = null; this.spot = new THREE.Vector3(); this.need = 1;
     this.gain = { glint: 0.7, bloom: 0.5, shaft: 0.15, edge: 0.22 }; // the lights' strengths: barely there, a curious eye finds them
     this.rooms = [];
+    this.pailHome = this.hands?.pail.obj.position.clone();
     for (const p of game.world.placed) for (const r of ROOMS[p.model] || []) {
       const c = Math.cos(p.yaw || 0), s = Math.sin(p.yaw || 0), tw = (x, z) => new THREE.Vector3(p.x + x * c + z * s, 0, p.z - x * s + z * c);
       const at = (k) => { const v = tw(r.door[0] + r.n[0] * k, r.door[1] + r.n[1] * k); v.y = game.world.groundAt(v.x, v.z) + 1; return v; };
       const gy = game.world.groundAt(p.x, p.z);
-      this.rooms.push({ in: (v) => { const dx = v.x - p.x, dz = v.z - p.z; return r.in(dx * c - dz * s, dx * s + dz * c); }, free: (v) => { const dx = v.x - p.x, dz = v.z - p.z; return r.free(dx * c - dz * s, v.y - gy, dx * s + dz * c); }, doorIn: at(-0.45), doorOut: at(0.6) });
+      this.rooms.push({ model: p.model, in: (v) => { const dx = v.x - p.x, dz = v.z - p.z; return r.in(dx * c - dz * s, dx * s + dz * c); }, free: (v) => { const dx = v.x - p.x, dz = v.z - p.z; return r.free(dx * c - dz * s, v.y - gy, dx * s + dz * c); }, doorIn: at(-0.45), doorOut: at(0.6) });
     }
   }
   room(v) { return this.rooms.find((r) => r.in(v)) || null; }
@@ -100,7 +102,26 @@ export class Hints {
     for (const x of list) { const p = pos(x); if (!p) continue; const d = p.distanceToSquared(P); if (d < bd) { bd = d; best = x; } }
     return best;
   }
-  hearth() { return this.nearest(this.fires, (i) => i.fireplace.pos?.() || this.centre(i)); }
+  // the nearest hearth by the way there (through the doorway when it is in another room); the one led to now is
+  // kept until another is clearly nearer
+  hearth() {
+    const P = this.game.player.pos, rp = this.room(P);
+    let best = null, bd = Infinity, kept = Infinity;
+    for (const i of this.fires) {
+      const f = i.fireplace.pos?.() || this.centre(i), rf = this.room(f), door = rp !== rf && (rp ? rp.doorIn : rf?.doorOut);
+      const d = door ? P.distanceTo(door) + door.distanceTo(f) : P.distanceTo(f);
+      if (i === this.fire) kept = d;
+      if (d < bd) { bd = d; best = i; }
+    }
+    if (best !== this.fire && bd > kept * 0.8) best = this.fire;
+    return (this.fire = best);
+  }
+  // the spot on the hearth's rim before the player where a thing is held to the heat (src/interact/work/tuos.js)
+  rim(it) {
+    const f = it.fireplace.pos?.() || this.centre(it), P = this.game.player.pos, dx = P.x - f.x, dz = P.z - f.z, d = Math.hypot(dx, dz) || 1;
+    const r = it.fireplace.upright ? 0.95 : 0.75; // the front of the frame; the ohokh: its hearth's lip before the mouth
+    return { kind: 'rim', it, at: new THREE.Vector3(f.x + dx / d * r, f.y, f.z + dz / d * r), near: d < 3.2 };
+  }
   // open water ~1.5 m out from the lake's edge on the way from `from` to its middle
   shore(from) {
     const terrain = this.game.world.terrain, dx = LAKE.x - from.x, dz = LAKE.z - from.z, d = Math.hypot(dx, dz) || 1;
@@ -138,7 +159,11 @@ export class Hints {
     }
     const T = this.tuos;
     if (T && !T.busy) {
-      if (T.held && !T.made) return this.fireHint(this.hearth()); // made by a fire
+      if (!held && !T.made && P.distanceTo(T.thing.obj.position) < 8) return this.sheen(T.thing.obj); // the sheet waits: its satin catches the light
+      if (T.held && !T.made) { // made by a fire: from afar the hearth; in its room within 7 m the spot on its rim
+        const f = this.hearth(), fp = f && (f.fireplace.pos?.() || this.centre(f));
+        return fp && this.room(fp) === this.room(P) && Math.hypot(fp.x - P.x, fp.z - P.z) < LOOK.fire.near ? this.rim(f) : this.fireHint(f);
+      }
       if (T.held && T.made) { // a тордуйа in the hands: the nearest ripe berries
         const full = this.nearest(this.patches.filter((i) => (g.interact.patches.get(i.berries)?.n ?? 1) > 0), (i) => this.centre(i));
         const at = full && this.centre(full);
@@ -153,7 +178,11 @@ export class Hints {
       const pile = h.pile.getWorldPosition(new THREE.Vector3()), fire = this.hearth(), fp = fire && (fire.fireplace.pos?.() || this.centre(fire));
       return fp && fp.distanceTo(P) < pile.distanceTo(P) ? this.fireHint(fire) : this.sheen(this.pile.target);
     }
-    if (held === h.pail && h.pail.level < 0.02) return { kind: 'ripple', at: this.shore(P) };
+    if (held === h.pail) {
+      if (h.pail.level < 0.02) return { kind: 'ripple', at: this.shore(P) };
+      const u = this.rooms.find((r) => r.model === 'urasa'); // water carried home: the uraha's doorway, its place beside it
+      return u && this.room(P) !== u && P.distanceTo(this.pailHome) > 2.5 ? { kind: 'door', at: u.doorOut } : null;
+    }
     return null;
   }
   // One beat of the hint `c`: what the world does now and then.
@@ -165,6 +194,7 @@ export class Hints {
     switch (c.kind) {
       case 'ripple': water?.ring(c.at.x + rand(-0.4, 0.4), c.at.z + rand(-0.4, 0.4), 1, Math.random() < 0.3 ? 2 : 1); break; // a fish rises, now and then jumps
       case 'splash': water?.ring(c.at.x + rand(-0.3, 0.3), c.at.z + rand(-0.3, 0.3), 1, Math.random() < 0.6 ? 2 : 1); break;
+      case 'rim': c.it?.fireplace.stir?.(c.near ? 0.12 : 0.22); break; // the fire breathes
       case 'fire': c.it?.fireplace.stir?.(0.45); a?.shot('wood-lay', c.at, 0.22, 1.5, a.near, rand(0.7, 0.85)); break; // a log settles: a knock, the fire lifts
     }
     if (c.lap && Math.random() < 0.5) this.sound('lake', c.at, 0.5, 1.8); // water lapping at the weir
@@ -215,7 +245,7 @@ export class Hints {
       this.cur = c;
     }
     const c = this.cur, cam = g.engine.camera, H = innerHeight;
-    if (c && BEAT[c.kind] && (this.beat -= dt) <= 0) { const [lo, hi] = BEAT[c.kind]; this.beat = rand(lo, hi); this.pulse(c); }
+    if (c && BEAT[c.kind] && (this.beat -= dt) <= 0) { const [lo, hi] = BEAT[c.kind]; this.beat = rand(lo, hi) * (c.near ? 2 : 1); this.pulse(c); } // (there: slower)
     const lit = this.lit, L = lit && LOOK[lit.kind];
     if (lit && this.left > 0 && (this.again -= dt) <= 0) { this.left--; this.again = rand(0.3, 0.6); this.flash = 0; this.place(lit); }
     // how much the hint is needed: full far off, fading on the way in, faint once the eye is on it (eased: no pop)
@@ -224,7 +254,7 @@ export class Hints {
       _v.copy(lit.at).applyMatrix4(cam.matrixWorldInverse);
       const aim = 1 - smooth(0.07, 0.22, Math.atan2(Math.hypot(_v.x, _v.y), -_v.z)); // within ~4–13° of the view's middle
       const far = lit.to ? cam.position.distanceTo(lit.to.at) : _v.length(); // a doorway on the way: as far as the thing
-      const want = (0.3 + 0.7 * smooth(2, 18, far)) * (1 - 0.85 * aim);
+      const want = (L.need ?? 0.3 + 0.7 * smooth(2, 18, far)) * (1 - (L.aim ?? 0.85) * aim); // (a spot to go to: stays, settled on it)
       this.need += (want - this.need) * (1 - Math.exp(-dt / 0.4));
     }
     const need = this.need;
@@ -232,7 +262,7 @@ export class Hints {
     if (this.flash >= 0) {
       this.flash += dt;
       const k = this.flash / 0.5, d = cam.position.distanceTo(this.spot);
-      if (k >= 1 || !L?.px || d > FAR) { this.flash = -1; this.glint.visible = false; } else {
+      if (k >= 1 || !L?.px || d > (L.far || FAR)) { this.flash = -1; this.glint.visible = false; } else {
         this.gCol.value.copy(L.col);
         this.gOp.value = Math.sin(Math.PI * k) ** 2 * (0.75 + 0.25 * Math.sin(this.flash * 70)) * need * this.gain.glint;
         const s = this.m(Math.max(L.px, 0.025 * H), d) * THREE.MathUtils.clamp(5 / d, 1, 1.3); // larger close by
@@ -258,7 +288,7 @@ export class Hints {
       _w.copy(g.engine.sun.position).transformDirection(cam.matrixWorldInverse); // the sun's side of the view
       this.bRot.value = THREE.MathUtils.clamp(-_w.x * 0.6, -0.35, 0.35);
       this.bloom.scale.set(w, w * 2.5, 1); this.bloom.center.set(0.5, 0.03); this.bloom.position.copy(at);
-      this.bShaft.value = 1; this.bOp.value = env * this.gain.shaft * inV;
+      this.bShaft.value = 1; this.bOp.value = env * this.gain.shaft * (1 + 4 * smooth(30, 120, d)) * inV; // brighter the farther: over a rise or roofs
     } else {
       const w = bw = Math.max(G.m, this.m(0.06 * H, d) * (G.asp ? 1.6 : 1));
       this.bloom.scale.set(w, w * (G.asp || G.tall || 1), 1); this.bloom.center.set(0.5, 0.5); this.bRot.value = 0;
@@ -282,7 +312,7 @@ export class Hints {
     this.edge.scale.set(THREE.MathUtils.lerp(eh * (side ? 0.24 : 2.4), blob, k), THREE.MathUtils.lerp(eh * (side ? 1.6 : 0.24), blob, k), 1); // a band of light along that edge
     const top3 = Math.max(G.col.r, G.col.g, G.col.b) || 1;
     this.eCol.value.setRGB(G.col.r / top3, G.col.g / top3 * 0.8, G.col.b / top3 * 0.6); // the thing's own light, warmed (daylight on wood)
-    this.eOp.value = env * this.gain.edge * (1 - k);
+    this.eOp.value = env * this.gain.edge * (1 + smooth(30, 120, d)) * (1 - k); // (brighter the farther)
     this.edge.visible = true;
   }
 }

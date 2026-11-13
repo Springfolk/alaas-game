@@ -285,7 +285,7 @@ export class Journal {
   go(key) {
     const g = this.game, m = this.pins.find((x) => x.key === key);
     if (!g || !m) return;
-    if (g.guide.dest?.key === key) g.guide.clear(); else if (m.kind === 'q' || m.kind === 'found') g.guide.go({ key, id: m.id, at: m.p }); else g.guide.go({ key, at: m.p });
+    if (g.guide.dest?.key === key) g.guide.clear(); else if (m.kind === 'q' || m.kind === 'found') g.guide.go({ key, id: m.id, at: m.p }); else g.guide.go({ key, job: m.kind === 'job' ? m.id : undefined, at: m.p });
     this.placeDest(g.guide.dest);
     this.select(m);
   }

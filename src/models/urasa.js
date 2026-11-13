@@ -301,7 +301,11 @@ export default async function build(ctx) {
     { const s = Math.sin(churn.bulge * Math.PI) * 0.03; ky.sack.scale.set(1 + s, 1 - s * 0.6, 1 + s); }
     const fk = churn.score / 12;
     froth.visible = fk > 0.04;
-    if (froth.visible) { const k = (0.3 + 1.25 * fk) * (1 + 0.04 * Math.sin((c.time || 0) * 3.1)); froth.scale.set(k, k * (0.8 + 0.7 * fk), k); froth.position.y = ky.neckY + 0.05 + 0.025 * fk; } // full: it rises over the collar's rim
+    if (froth.visible) { // the surface in the collar's mouth (inside r 3.5 cm, top neckY + 3 cm) rises to its rim with the strokes, then foams over it
+      const lvl = ky.neckY + 0.03 * ease(Math.min(1, fk / 0.75)), over = ease(Math.max(0, (fk - 0.7) / 0.3)), wob = 1 + 0.04 * Math.sin((c.time || 0) * 3.1);
+      const rx = (0.034 + 0.05 * over) * wob, hy = 0.004 + 0.036 * over; // m: its radius; half its height
+      froth.scale.set(rx / 0.06, hy / (0.06 * 0.42), rx / 0.06); froth.position.y = lvl - hy * 0.3 * over; // (over the rim: a dome, its foot on the wood)
+    }
     for (let i = tweens.length - 1; i >= 0; i--) {
       const tw = tweens[i];
       tw.t += dt;

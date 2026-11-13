@@ -30,7 +30,7 @@ export default async function build(ctx, placement) {
 - `envMapIntensity` works only with `material.envMap` set; to dim sky light indoors assign `scene.environment` as `envMap` (`balagan/mats.js`).
 - Grass hints, local coords: `object.userData.paths = [{ w, pts: [[x, z], …] }]` (cut, a short sparse sward stays), `.mown = [{ x, z, rx, rz }]` (short), `.bare = [{ x, z, r } | { x, z, hw, hd }]` (earth floors: no blade or flower).
 - Scale: eye 1.62 m (stoop/crouch 1.05). Low doors on purpose (stoop via `lows`): balagan 0.86 × 1.55 m, ampaar ~1.4 m over its threshold.
-- Resting things (`docs/architecture.md`, ground contact): yard Buckets over the terrain take `{ drape: true }`; meshes standing on a level floor `userData.ground = level`; loose takeable things `userData.rest = true`. Build them touching the terrain or level; the load settles them on every tier.
+- Resting things (`docs/architecture.md`, ground contact): yard Buckets over the terrain take `{ drape: true }`; meshes standing on a level floor `userData.ground = level`; loose takeable things `userData.rest = true`. Build them touching the terrain or level; the load settles them on every tier. The туу's shore and set poses are found at load (`Fish.lie`, `clear`): every vertex on or over the drawn ground, tilted along its length to lie lowest.
 - Budget: ≤150k triangles and ≤40 draw calls per building (merge static parts by material); small objects ≤10k triangles.
 
 ## Buildings
