@@ -14,7 +14,6 @@
   <img src="https://img.shields.io/badge/renderer-WebGPU-5f8f37?labelColor=21160f" alt="Renderer: WebGPU">
   <img src="https://img.shields.io/badge/languages-%D0%A1%D0%B0%D1%85%D0%B0%D0%BB%D1%8B%D1%8B%20%C2%B7%20English%20%C2%B7%20%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-b08a4a?labelColor=21160f" alt="Languages: Sakha, English, Russian">
   <img src="https://img.shields.io/badge/backend-none-b08a4a?labelColor=21160f" alt="No backend">
-  <img src="https://img.shields.io/badge/AI--assisted-Claude%20Opus%205.5-8a5a3a?labelColor=21160f" alt="AI-assisted with Claude Opus 5.5">
 </p>
 
 <p align="center">
@@ -41,10 +40,15 @@ first, then English and Russian, picked from your browser's language. You walk, 
 </table>
 
 ## Features
-- **51 explainer cards** in Sakha, English and Russian, with sources and 72 reference images. Look at a
+- **52 explainer cards** in Sakha, English and Russian, with sources and 72 reference images. Look at a
   thing, press E for a short note, E again for the full read; the journal collects what you have found and hints at where the rest are.
-- **Hands-on acts** done with respect: feed the fire, tie a ribbon on the serge, carry water, lay
-  firewood, sit on the орон, pick дьэдьэн. Sacred rites are only explained: the museum never has you perform them.
+- **Hands-on acts** done with respect, with the mouse buttons (or a hand button on a phone), apart from
+  reading: feed the fire, tie a ribbon on the serge, sprinkle and drink kymys as a guest, carry water, lay
+  firewood, sit on the орон, pick дьэдьэн, play the khomus. Sacred rites are only explained: the museum never has you perform them.
+- **Work with your hands**: take the axe from the block and split larch rounds along their cracks, then
+  carry the billets by the armful to the woodpile or a fire; set the wicker туу in the lake weir and come
+  back for the мунду; mow the meadow with the old Sakha scythe; work the dasher in the kymys sack; blow the bellows and forge a knife blank at the smithy; warm, fold and peg a birch-bark тордуйа and
+  fill it with дьэдьэн; bring dry wood from the forest.
 - **A living alaas**: procedural larch, birch and pine taiga, wind in the grass, birds, insects, a lake
   with reflections, a physical sky with drifting cloud shadows, and real field recordings.
 - **Runs in the browser**: three.js WebGPURenderer with TSL shaders, steady 60 fps, no backend, no
@@ -73,13 +77,14 @@ Node 20.19+ or 22.12+. The textures, audio and images are in the repository; no 
 |---|---|
 | W A S D · mouse | walk · look |
 | Shift · Space · C | run · jump / vault · crouch |
-| E | look closer / do |
-| 1 2 3 | choose |
+| left button or F · right button or Q | do (hold where the work asks) · put down |
+| E | look closer, then read |
+| 1 2 3 | choose a ribbon |
 | J · L · H | journal · language · controls |
 | P · F3 | pause and settings (keeps the mouse) · frame-rate meter |
 | Esc | pause (releases the mouse) |
 
-Phones: left thumb walks (push to the rim to run), right thumb looks, a tap is E.
+Phones: the left thumb walks (push the stick to its rim to run), a drag anywhere else looks, a tap on a thing does it; the hand, eye and put-down buttons do, look closer and put down.
 
 ## Project structure
 | Path | What |
@@ -101,7 +106,7 @@ to hello@springfolk.co; corrections are credited. For pull requests, read [`CONT
 first: it lists the checks to run and the content rules.
 
 ## Credits and licences
-- **AI-assisted**: the code, models, shaders, texts and research were made with the help of Claude Opus 5.5 (Anthropic), directed and reviewed by Georgii Antipin (Springfolk), who also checked every Sakha text.
+- **AI-assisted**, directed and reviewed by Georgii Antipin (Springfolk), who also checked every Sakha text.
 - **Code**: MIT, © Springfolk ([`LICENSE`](LICENSE)).
 - **Original content** (explainer and interface texts, the project's own baked textures): CC BY-SA 4.0.
 - **Third-party assets** keep their own licences: CC0 textures from Poly Haven and ambientCG, CC0 and

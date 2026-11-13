@@ -15,9 +15,16 @@ export const PLACEMENTS = [
   { model: 'sele', ...H(46, 2), yaw: 0 },                      // mare-milking line
   { model: 'yardlife', ...H(0, 0), yaw: 0 },                   // smudge fire, craft spot, woodpile, hay stacks
   { model: 'chores', ...H(0, 0), yaw: 0 },                     // water pail, firewood billets, дьэдьэн patches (src/interact)
+  { model: 'work', ...H(0, 0), yaw: 0 },                       // tools and materials of the hands-on work (src/interact/work)
+  { model: 'barkwork', ...H(0, 0), yaw: 0 },                    // the bark sheet that becomes a тордуйа, on the craft spot's hide (src/interact/work/tuos.js)
+  { model: 'drywood', ...H(0, 0), yaw: 0 },                     // dry branches at the forest's edge to the north (src/interact/work/gather.js)
+  { model: 'fishery', x: 22, z: -44, yaw: 0 },                 // fish weir, trap and carrier in the shallows (src/interact/work/fish.js)
   { model: 'lakeside', x: 6, z: -58, yaw: 0 },                 // mungkha net on poles, the lake's offering spot
   { model: 'sacred-birch', x: -248, z: -128, yaw: 0 },          // lone revered birch at the alaas edge
   { model: 'balagan', x: 268, z: -96, yaw: -0.35, pad: 8, variant: 'winter' }, // the empty winter place (кыстык)
+  { model: 'haybase', x: 257, z: -84, yaw: 0 },                // the hay crew's fire, forks and rakes, stack poles by the winter place's meadows
+  { model: 'hayfield', x: 253.4, z: -83.2, yaw: 0 },           // the scythe on its post beside them (src/interact/work/hay.js)
+  { model: 'hayfield', ...H(-6.5, 60), yaw: 0 },               // a second scythe on its post at the home meadow's edge
 ];
 
 // Where the walk starts: on the track coming in from the east, looking at the homestead.

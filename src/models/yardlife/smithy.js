@@ -1,10 +1,13 @@
 // The smith's lean-to (кыһа): pole frame under larch-bark slabs, open to the yard; a clay trench forge
 // on a log crib, twin leather bag-bellows with a Y nozzle, the anvil iron set in a larch stump,
 // tongs, hammer, a knife blank, the quench tub, a basket of charcoal, ore and slag by the door.
-// The smith is away. Pumping the bellows (the act) makes the coals flare.
+// The smith is away. One tap and a knife is made here as the player watches (`make`).
 import * as THREE from 'three/webgpu';
-import { addLog, blob, boxUV, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, sheetGeo, sleep, TAU } from './kit.js';
+import { addLog, along, blob, boxUV, Bucket, decalMat, fillLathe, frame, geoPiece, jitterTint, lathe, logGeo, mtx, patchGeo, sheetGeo, sleep, TAU } from './kit.js';
+import { anvilGeo, fileGeo, grainAlong, haftGeo, hammerHeadGeo, tongsGeo } from './forged.js';
 import { water } from './pieces.js';
+import { makeSmoke } from './smoke.js';
+import { uniform, color, mix } from 'three/tsl';
 
 export function smithy(K, x, z, yaw) {
   const { M, rng } = K;
@@ -14,6 +17,7 @@ export function smithy(K, x, z, yaw) {
   const Wy = (lx, y, lz) => { const [wx, wz] = F.tw(lx, lz); return [wx, y, wz]; };
   const y0 = g(0, 0);
 
+  K.lows.push({ ...F.col({ x: 1.85, z: 0, hw: 0.3, hd: 2.0 }), h: y0 + 1.5 }); // the back eave (1.6 m): the player stoops under it (behaviour: outside the baked piece)
   geoPiece(K, () => {
     // ground blackened by charcoal and ash under the roof, trodden in front
     K.b.add(patchGeo(g, 0, 0, 2.3, 2.1, 0, 18).applyMatrix4(F.F), decalMat('burned_ground_01', { scale: 1.4, tint: 0x8d8780 }));
@@ -121,11 +125,11 @@ export function smithy(K, x, z, yaw) {
     // coals heaped in the trench
     for (let i = 0; i < 46; i++) {
       const cx = FX + (rng() - 0.5) * 0.08, cz = (rng() - 0.5) * 0.66, s = 0.018 + rng() * 0.02;
-      F.add(blob(s, s * 0.8, s * 1.2, rng, { detail: 0, rough: 0.3 }), M.coal, mtx([cx, ty - 0.07 + rng() * 0.08, cz], [rng(), rng() * TAU, rng()]));
+      F.add(blob(s, s * 0.8, s * 1.2, rng, { detail: 1, rough: 0.34, facet: 0.45 }), M.coal, mtx([cx, ty - 0.07 + rng() * 0.08, cz], [rng(), rng() * TAU, rng()]));
     }
     for (let i = 0; i < 14; i++) {
       const cx = FX + (rng() < 0.5 ? -1 : 1) * (0.07 + rng() * 0.12), cz = (rng() - 0.5) * 0.8, s = 0.015 + rng() * 0.02;
-      F.add(blob(s, s * 0.7, s * 1.3, rng, { detail: 0, rough: 0.3 }), M.charcoal, mtx([cx, ty - 0.005, cz], [0, rng() * TAU, 0]));
+      F.add(blob(s, s * 0.7, s * 1.3, rng, { detail: 1, rough: 0.34, facet: 0.45 }), M.charcoal, mtx([cx, ty - 0.005, cz], [0, rng() * TAU, 0]));
     }
     K.colliders.push(F.col({ x: FX, z: 0, hw: FD / 2 + 0.1, hd: FL / 2 + 0.15 }));
   });
@@ -194,16 +198,14 @@ export function smithy(K, x, z, yaw) {
       const st = logGeo(0.42, 0.21, 0.2, rng, { seg: 12, caps: true, wob: 0.05 });
       K.b.add(st.side, M.darkwood, mtx([ax, ay - 0.03, az])); K.b.add(st.caps, M.end, mtx([ax, ay - 0.03, az]), [0.55, 0.5, 0.46]);
       const top = ay + 0.39;
-      F.add(boxUV(new THREE.BoxGeometry(0.12, 0.1, 0.08), 4), M.iron, mtx([-0.5, top + 0.02, 0.95], [0, 0.2, 0]), [0.65, 0.65, 0.68]);
-      // knife blank cooling on the anvil
-      const kb = new THREE.BoxGeometry(0.17, 0.005, 0.024, 6, 1, 1);
-      const kp = kb.attributes.position;
-      for (let i = 0; i < kp.count; i++) { const t = (kp.getX(i) + 0.085) / 0.17; kp.setZ(i, kp.getZ(i) * (1 - 0.7 * t ** 2) + 0.004 * t ** 2); }
-      kb.computeVertexNormals();
-      F.add(boxUV(kb, 6), M.iron, mtx([-0.47, top + 0.075, 0.93], [0, 1.1, 0]), [0.55, 0.5, 0.48]);
-      // hammer (head like a small axe with a heavy poll) lying on the stump
-      F.add(boxUV(new THREE.BoxGeometry(0.1, 0.034, 0.034), 6), M.iron, mtx([-0.36, top + 0.02, 1.08], [0, -0.4, 0]));
-      addLog(K.b, Wy(-0.36, top + 0.02, 1.08), Wy(-0.5, top - 0.1, 1.41), 0.014, 0.012, rng, M.fresh, M.end, { seg: 6, step: 0.1 }, [0.6, 0.5, 0.42]);
+      F.add(anvilGeo(0.12, 0.1, 0.085), M.iron, mtx([-0.5, top - 0.03, 0.95], [0, 0.2, 0]), [0.62, 0.62, 0.66]); // кыстык: its tang is in the stump
+      // the sledge (балта) stands against the stump, head on the ground
+      {
+        const sm = mtx([ax - 0.05, K.b.ground(ax - 0.05, az - 0.37), az - 0.37], [0.42, 0.3, 0]);
+        K.b.add(hammerHeadGeo(0.15, 0.058, false), M.iron, sm.clone().multiply(mtx([0, 0.04, 0])), [0.6, 0.6, 0.64]);
+        K.b.add(haftGeo(0.66, 0.016, 0.018), M.fresh, sm.clone().multiply(mtx([0, 0.012, 0])), [0.6, 0.52, 0.44]);
+      }
+      // (the knife blank and the hammer are separate things now: the forge work below)
       K.colliders.push({ x: ax, z: az, r: 0.27 });
       // low stool for the smith
       const [sx, sz] = F.tw(-1.0, 0.55);
@@ -211,11 +213,17 @@ export function smithy(K, x, z, yaw) {
       K.b.add(sg.side, M.darkwood, mtx([sx, K.b.ground(sx, sz) - 0.02, sz])); K.b.add(sg.caps, M.end, mtx([sx, K.b.ground(sx, sz) - 0.02, sz]), [0.7, 0.65, 0.6]);
     }
     // tongs (long reins, blackened jaws) leaning on the forge
-    for (const s of [-1, 1]) addLog(K.b, Wy(-0.05, fy + 0.005, 0.72 + s * 0.02), Wy(FX - FD / 2 - 0.02, fy + 0.58, 0.55 - s * 0.02), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2, bend: 0.01 });
+    const scrap = new Bucket(() => 0); // (keeps the yard's rng stream where it was: four thin logs stood for the tongs)
+    for (const s of [-1, 1]) addLog(scrap, Wy(-0.05, fy + 0.005, 0.72 + s * 0.02), Wy(FX - FD / 2 - 0.02, fy + 0.58, 0.55 - s * 0.02), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2, bend: 0.01 });
+    // (the pair itself is `tongs` below)
     // a second pair and a file hung on pegs on the back wall
-    for (const s of [-1, 1]) addLog(K.b, Wy(1.5, fy + 0.7, -0.75 + s * 0.015), Wy(1.52, fy + 1.25, -0.72 - s * 0.015), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2 });
-    addLog(K.b, Wy(1.48, fy + 1.27, -0.75), Wy(1.3, fy + 1.27, -0.75), 0.012, 0.012, rng, M.wood, M.end, { seg: 5 });
-    F.add(boxUV(new THREE.BoxGeometry(0.012, 0.3, 0.02), 6), M.iron, mtx([1.5, fy + 0.95, -0.45], [0, 0, 0.08]), [0.7, 0.7, 0.72]);
+    for (const s of [-1, 1]) addLog(scrap, Wy(1.5, fy + 0.7, -0.75 + s * 0.015), Wy(1.52, fy + 1.25, -0.72 - s * 0.015), 0.007, 0.006, rng, M.soot, M.soot, { seg: 5, step: 0.2 });
+    for (const t of tongsGeo(0.56)) F.add(t, M.iron, mtx([1.4, fy + 1.39, -0.75], [0, Math.PI / 2, Math.PI]), [0.75, 0.75, 0.79]); // astride the peg, jaws up
+    addLog(K.b, Wy(1.6, fy + 1.27, -0.75), Wy(1.3, fy + 1.27, -0.75), 0.012, 0.012, rng, M.wood, M.end, { seg: 5 }); // driven into a wall pole
+    // the file stood on a peg in a wall pole, leaning on the pole
+    F.add(fileGeo(0.28), M.iron, mtx([1.548, fy + 0.86, -0.3625], [0, Math.PI / 2, 0.08]), [0.75, 0.75, 0.8]); // игии, point up, in a birch handle
+    F.add(haftGeo(0.1, 0.013, 0.012), M.fresh, mtx([1.548, fy + 0.86 + 0.045, -0.3625], [0, 0, 0.08 + Math.PI]), [0.7, 0.6, 0.48]);
+    F.add(new THREE.CylinderGeometry(0.011, 0.011, 0.16, 7).rotateZ(Math.PI / 2), M.wood, mtx([1.53, fy + 0.86 + 0.045 - 0.1 - 0.013, -0.3625]), [0.8, 0.75, 0.7]);
     // quench tub (birch bark) with water
     {
       const tub = lathe([[0.19, 0], [0.2, 0.15], [0.205, 0.28], [0.19, 0.28], [0.185, 0.03]], 22, rng, 0.02);
@@ -235,14 +243,31 @@ export function smithy(K, x, z, yaw) {
       F.add(coal, M.charcoal, mtx([bx, by, bz]));
       for (let i = 0; i < 26; i++) {
         const a = rng() * TAU, r = Math.sqrt(rng()) * 0.18, s = 0.022 + rng() * 0.02;
-        F.add(blob(s, s * 0.8, s * 1.2, rng, { detail: 0, rough: 0.3 }), M.charcoal, mtx([bx + Math.cos(a) * r, by + 0.27 + (0.18 - r) * 0.3, bz + Math.sin(a) * r], [rng(), rng() * TAU, 0]));
+        F.add(blob(s, s * 0.8, s * 1.2, rng, { detail: 1, rough: 0.34, facet: 0.45 }), M.charcoal, mtx([bx + Math.cos(a) * r, by + 0.27 + (0.18 - r) * 0.3, bz + Math.sin(a) * r], [rng(), rng() * TAU, 0]));
       }
     }
     // outside: a heap of rust-brown bog ore, glassy slag cakes by the door
+    // the heap's body (fine ore under the lumps): a ragged outline, not a disc, so from above it reads as lying on the ground
+    const OH = 0.13, OR = 0.5, edge = (a) => 1 + 0.14 * Math.sin(3 * a + 1.3) + 0.08 * Math.sin(5 * a + 0.4) + 0.04 * Math.sin(9 * a + 2.1);
+    const mound = (r, a) => OH * Math.max(0, 1 - (r / (OR * edge(a))) ** 2);
+    {
+      const hg = new THREE.SphereGeometry(1, 36, 5, 0, TAU, 0, Math.PI / 2), hp = hg.attributes.position;
+      for (let i = 0; i < hp.count; i++) { const k = edge(Math.atan2(hp.getZ(i), hp.getX(i))); hp.setX(i, hp.getX(i) * k); hp.setZ(i, hp.getZ(i) * k); }
+      hg.computeVertexNormals();
+      F.add(hg, M.ore, mtx([-2.3, g(-2.3, 1.6) - 0.03, 1.6], [0, 0, 0], [OR, OH + 0.03, OR]), [0.8, 0.75, 0.7]);
+    }
     for (let i = 0; i < 30; i++) {
       const a = rng() * TAU, r = Math.sqrt(rng()) * 0.45, s = 0.035 + rng() * 0.035;
       const lx = -2.3 + Math.cos(a) * r, lz = 1.6 + Math.sin(a) * r;
-      F.add(blob(s, s * 0.85, s, rng, { detail: 1, rough: 0.35 }), M.ore, mtx([lx, g(lx, lz) + (0.45 - r) * 0.35, lz], [rng(), rng() * TAU, 0]), jitterTint(rng, 0.15));
+      F.add(blob(s, s * 0.85, s, rng, { detail: 1, rough: 0.35 }), M.ore, mtx([lx, Math.max(g(lx, lz), g(-2.3, 1.6) - 0.03 + mound(r, a)) + s * 0.3, lz], [rng(), rng() * TAU, 0]), jitterTint(rng, 0.15));
+    }
+    { // lumps rolled off into the grass round its foot (their own sequence: the yard's random draws stay as they were)
+      let seed = 91; const r2 = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 12; i++) {
+        const a = r2() * TAU, r = OR * edge(a) * (0.95 + r2() * 0.45), s = 0.025 + r2() * 0.03;
+        const lx = -2.3 + Math.cos(a) * r, lz = 1.6 + Math.sin(a) * r;
+        F.add(blob(s, s * 0.8, s, r2, { detail: 1, rough: 0.35 }), M.ore, mtx([lx, g(lx, lz) + s * 0.25, lz], [r2(), r2() * TAU, 0]), [0.85, 0.78, 0.72]);
+      }
     }
     for (let i = 0; i < 6; i++) {
       const lx = -2.1 + (rng() - 0.5) * 0.9, lz = -1.4 + (rng() - 0.5) * 0.6, s = 0.07 + rng() * 0.05;
@@ -253,36 +278,264 @@ export function smithy(K, x, z, yaw) {
   // light from the coals
   const light = new THREE.PointLight(0xff7a33, 0, 5.5, 2);
   light.position.set(...Wy(FX, fy + FTOP + 0.15, 0));
-  light.castShadow = false;
+  light.castShadow = false; light.userData.fire = true;
   K.group.add(light);
 
   // ---- animation: idle smoulder; pumping alternates the bags and the coals flare ----
-  let pumping = 0, energy = 0;
-  K.ups.push((dt) => {
-    pumping = Math.max(0, pumping - dt);
-    const target = pumping > 0 ? 1 : 0;
-    energy += (target - energy) * (1 - Math.exp(-(target ? 1.6 : 0.35) * dt));
-    for (const b of bags) {
-      if (pumping > 0) b.phase += dt * TAU * 0.75;
-      const s = pumping > 0 ? 0.62 + 0.38 * Math.sin(b.phase) : 0.55 + (b.bag.scale.y - 0.55) * Math.exp(-3 * dt);
-      b.bag.scale.set(1, s, 0.85 + 0.15 * s);
-      b.upper.position.y = 0.035 + 0.13 * s;
+  // ---- the forge work (docs/actions.md): watched, one tap (`make` below); the bellows, the blank's heat in its
+  // colour, the hammer, sparks, the tongs and the steam are driven here every frame.
+  const L3 = (sah, en, ru) => ({ sah, en, ru });
+  const TXT = { blank: L3('быһах тимирэ', 'knife blank', 'заготовка ножа') };
+
+  const heatU = uniform(0);
+  const hot = new THREE.MeshStandardNodeMaterial({ color: 0x4a4744, roughness: 0.5, metalness: 0.6 }); // catches the light, cold too
+  hot.name = 'hot-iron';
+  hot.emissiveNode = mix(color(0.75, 0.05, 0.0), color(1.0, 0.5, 0.1), heatU.smoothstep(0.5, 1)).mul(heatU.smoothstep(0.08, 0.7).pow(1.2)).mul(2.2); // vivid through the whole forging range
+  // the blank's four shapes along +X: bar, pointed, flattened, blade (straight spine, the edge drawn thin)
+  const blank = new THREE.Group(); blank.name = 'knife-blank';
+  const shape = (len, thick, wide, f) => {
+    const g = new THREE.BoxGeometry(len, thick, wide, 10, 1, 2), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const t = (p.getX(i) + len / 2) / len, [ky, kz, dz] = f(t, p.getZ(i) / (wide / 2)); p.setY(i, p.getY(i) * ky); p.setZ(i, p.getZ(i) * kz + dz); }
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, hot); m.castShadow = true; m.visible = false; blank.add(m);
+    return m;
+  };
+  const tang = (t) => (t < 0.22 ? 0.55 : 1);
+  const shapes = [
+    shape(0.17, 0.013, 0.016, () => [1, 1, 0]),
+    shape(0.19, 0.012, 0.016, (t) => [t > 0.6 ? 1 - (t - 0.6) / 0.4 * 0.7 : 1, (t > 0.6 ? 1 - (t - 0.6) / 0.4 * 0.75 : 1) * tang(t), 0]),
+    shape(0.2, 0.006, 0.025, (t) => [1, (t > 0.7 ? 1 - ((t - 0.7) / 0.3) ** 1.5 * 0.8 : 1) * tang(t), 0]),
+    shape(0.21, 0.0055, 0.026, (t, z) => [z > 0 ? 0.25 : 1, (t > 0.62 ? 1 - ((t - 0.62) / 0.38) ** 1.6 * 0.9 : 1) * tang(t), t > 0.62 ? -(((t - 0.62) / 0.38) ** 1.6) * 0.011 : 0]),
+  ];
+  shapes[0].visible = true;
+  const [ax, az] = F.tw(-0.5, 0.95), anvilY = K.b.ground(ax, az) + 0.39 + 0.075;
+  const SPOT = {
+    fire: { p: new THREE.Vector3(...Wy(FX, fy + FTOP - 0.012, 0.08)), yaw: yaw + Math.PI / 2 + 0.2 },
+    anvil: { p: new THREE.Vector3(ax, anvilY + 0.008, az), yaw: yaw + 1.1 }, // on the anvil's face (setShape: by the shape's thickness)
+    over: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.36, -0.85)), yaw: yaw + 0.4 }, // held over the quench tub
+    tub: { p: new THREE.Vector3(...Wy(-0.25, g(-0.25, -0.85) + 0.207, -0.85)), yaw: yaw + 0.4 }, // in the water, its top at the surface
+  };
+  // steam off the quench tub: white puffs that rise fast and are gone in a breath, only while hot iron is in the water
+  const steam = makeSmoke(SPOT.tub.p.toArray(), [K.wind[0] * 0.15, K.wind[1] * 0.15], { count: 22, rate: 0, idle: true, life: 2.8, size: [0.14, 0.95], rise: 0.85, tint: 0xf6f6f2, shade: 0xc9cbcc, alpha: 0.6, spread: 0.16, seed: 31 });
+  steam.mesh.name = 'steam';
+  K.group.add(steam.mesh);
+  let steamT = 0; // seconds of hiss left
+  K.ups.push((dt, c) => { steamT = Math.max(0, steamT - dt); steam.ctl.rate = steamT > 0 ? 6 + 16 * Math.min(1, steamT / 1.2) : 0; if (c.camera) steam.update(dt, c.camera); });
+  blank.position.copy(SPOT.fire.p); blank.rotation.y = SPOT.fire.yaw;
+  blank.userData.dynamic = true; blank.scale.setScalar(1.5); // plain to see from the bellows and the anvil
+  K.group.add(blank);
+  // the hammer (өтүйэ): a small heavy head on a short haft, lying on the stump; it rises and falls by itself with each blow
+  const hammer = new THREE.Group(); hammer.name = 'hammer';
+  {
+    const head = new THREE.Mesh(hammerHeadGeo(0.105, 0.034), M.iron); // a cross peen
+    head.geometry.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(head.geometry.attributes.position.count).fill(1), 1));
+    head.position.set(0, 0.3, 0); head.castShadow = true;
+    const hg = logGeo(0.3, 0.013, 0.012, rng, { seg: 6, step: 0.1 }).side;
+    hg.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(hg.attributes.position.count * 3).fill(0.6), 3));
+    hg.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(hg.attributes.position.count).fill(1), 1));
+    const haft = new THREE.Mesh(hg, M.fresh); haft.castShadow = true;
+    grainAlong(hg);
+    const eg = haftGeo(0.026, 0.0125, 0.012, 6).translate(0, 0.297, 0); // the haft's end through the eye
+    eg.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(eg.attributes.position.count * 3).fill(0.5), 3));
+    eg.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(eg.attributes.position.count).fill(1), 1));
+    hammer.add(head, haft, new THREE.Mesh(eg, M.fresh));
+  }
+  // at rest it lies on its side across the stump top beside the anvil: the head on the wood, the haft's end out over the edge
+  const hamRest = { q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, yaw + 0.5, 0, 'YXZ')) };
+  { const d = new THREE.Vector3(0, 1, 0).applyQuaternion(hamRest.q), n = new THREE.Vector3(1, 0, 0).applyQuaternion(hamRest.q);
+    hamRest.p = new THREE.Vector3(ax, anvilY - 0.075 + 0.0195, az).addScaledVector(n, 0.125).addScaledVector(d, 0.03 - 0.3); }
+  hammer.position.copy(hamRest.p); hammer.quaternion.copy(hamRest.q);
+  hammer.userData.dynamic = true;
+  K.group.add(hammer);
+
+  // the tongs: leaning on the forge; taken up while the blank is carried (jaws on its tang, reins towards the smith's right hand), then back
+  const tongs = new THREE.Group(); tongs.name = 'tongs';
+  for (const t of tongsGeo(0.66)) {
+    t.setAttribute('grime', new THREE.Float32BufferAttribute(new Float32Array(t.attributes.position.count).fill(1), 1));
+    const m = new THREE.Mesh(t, M.iron); m.castShadow = true; tongs.add(m);
+  }
+  tongs.userData.dynamic = true;
+  const tongsRest = { p: new THREE.Vector3(), q: new THREE.Quaternion(), from: { p: new THREE.Vector3(), q: new THREE.Quaternion() }, k: 1 };
+  along(Wy(-0.05, fy + 0.004, 0.72), Wy(FX - FD / 2 - 0.012, fy + 0.58, 0.55), 0.5).decompose(tongsRest.p, tongsRest.q, new THREE.Vector3());
+  tongs.position.copy(tongsRest.p); tongs.quaternion.copy(tongsRest.q);
+  K.group.add(tongs);
+  const _tj = new THREE.Vector3(), _th = new THREE.Vector3(), _ty = new THREE.Vector3(0, 1, 0);
+
+  const Wk = { at: 'fire', heat: 0, stage: 0, blows: 0, blast: 0, side: 0, fly: null, busy: false, press: [0, 0], pressing: false, pressT: 0, ham: { phase: null, up: 0, top: 0, t: 0, k: 0 } };
+  const NEED = 0.58, DARK = 0.3, BLOWS = 3; // forging heat; below it, too dark to forge; full blows a pass
+  // sparks off the anvil: specks of the glowing iron's own material
+  const sparks = [];
+  { const sg = new THREE.IcosahedronGeometry(0.004, 0); for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(sg, hot); m.visible = false; m.userData.dynamic = true; K.group.add(m); sparks.push({ o: m, v: new THREE.Vector3(), t: 0 }); } }
+  const spark = () => { for (const s of sparks) { s.o.position.copy(SPOT.anvil.p); s.v.set((Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3); s.t = 0.3 + Math.random() * 0.3; s.o.visible = true; } };
+  const world = (v) => K.group.localToWorld(v.clone());
+  const sound = (game, name, v) => game.audio?.play(name, world(v));
+  const FACE = anvilY - 0.0053, HALF = [0.013, 0.012, 0.006, 0.0055].map((t) => t * 0.75); // the anvil's face; half of each shape's thickness (×1.5 scale)
+  SPOT.anvil.p.y = FACE + HALF[0];
+  const setShape = (i) => {
+    shapes.forEach((m, k) => { m.visible = k === i; });
+    SPOT.anvil.p.y = FACE + HALF[i]; // lying on the face
+    if (Wk.at === 'anvil' && !Wk.fly) { blank.position.y = SPOT.anvil.p.y; blank.userData.sphere = undefined; }
+  };
+  const move = (to, dur = 0.7) => new Promise((res) => { Wk.fly = { from: blank.position.clone(), to: SPOT[to].p, y0: blank.rotation.y, y1: SPOT[to].yaw, k: 0, dur, res }; Wk.at = to; });
+  let energy = 0;
+  K.ups.push((dt, c) => {
+    // the bags: the one under the hands empties for as long as it is pressed and gives its air to the fire; let go, it fills again
+    if (Wk.pressing) {
+      Wk.pressT += dt;
+      if (Wk.pressT < 0.32) {
+        const d = Math.min(1 - Wk.press[Wk.side], dt / 0.3);
+        Wk.press[Wk.side] += d; Wk.blast = Math.min(1, Wk.blast + d * 0.3);
+        if (Wk.at === 'fire') Wk.heat = Math.min(1, Wk.heat + d * Wk.step); // a step of heat a press
+      } else { Wk.pressing = false; Wk.pressDone?.(); }
     }
-    K.M.glow.value = 0.22 + energy * 2.4 + energy * 0.4 * Math.sin(bags[0].phase * 2);
-    light.intensity = 0.15 + energy * 9;
+    for (let i = 0; i < 2; i++) if (!(Wk.pressing && i === Wk.side)) Wk.press[i] = Math.max(0, Wk.press[i] - dt / 0.5);
+    Wk.blast = Math.max(0, Wk.blast - dt * 0.06);
+    energy += (Math.min(1, Wk.blast * 1.15) - energy) * (1 - Math.exp(-2.2 * dt));
+    bags.forEach((b, i) => {
+      const pressed = Math.sin(Wk.press[i] * Math.PI / 2);
+      const sc = 0.62 + 0.3 * (1 - pressed) - 0.07;
+      b.bag.scale.set(1, sc, 0.85 + 0.15 * sc);
+      b.upper.position.y = 0.035 + 0.13 * sc;
+    });
+    K.M.glow.value = 0.22 + energy * 1.2 + (Wk.pressing ? 0.25 : 0);
+    light.intensity = 0.15 + energy * 2.5; // the coals keep their colour as they flare
+    // the blank: heats in the coals with the blast, cools in the air
+    if (Wk.at === 'fire' && !Wk.fly) Wk.heat = Math.max(0, Wk.heat - dt * 0.004); // the coals keep it hot
+    else Wk.heat = Math.max(0, Wk.heat - dt * (Wk.at === 'tub' ? 2.5 : 0.01));
+    heatU.value = Wk.heat;
+    if (Wk.fly) {
+      const f = Wk.fly; f.k = Math.min(1, f.k + dt / f.dur);
+      const e = f.k * f.k * (3 - 2 * f.k);
+      blank.position.lerpVectors(f.from, f.to, e); blank.position.y += Math.sin(f.k * Math.PI) * 0.18;
+      blank.rotation.y = f.y0 + (f.y1 - f.y0) * e;
+      blank.userData.sphere = undefined;
+      if (c.camera) {
+        // the smith stands within a tongs' length of where the blank goes; the reins run to below the right of the view
+        _tj.set(-0.07, 0.004, 0).applyAxisAngle(_ty, blank.rotation.y).add(blank.position);
+        K.group.worldToLocal(_th.set(0.22, -0.3, -0.55).applyQuaternion(c.camera.quaternion).add(c.camera.position));
+        tongs.position.copy(_tj); tongs.quaternion.setFromUnitVectors(_ty, _th.sub(_tj).normalize());
+      }
+      if (f.k >= 1) { Wk.fly = null; tongsRest.from.p.copy(tongs.position); tongsRest.from.q.copy(tongs.quaternion); tongsRest.k = 0; f.res(); }
+    } else if (tongsRest.k < 1) { // set back against the forge
+      tongsRest.k = Math.min(1, tongsRest.k + dt / 0.45); const e = tongsRest.k * tongsRest.k * (3 - 2 * tongsRest.k);
+      tongs.position.lerpVectors(tongsRest.from.p, tongsRest.p, e); tongs.quaternion.slerpQuaternions(tongsRest.from.q, tongsRest.q, e);
+    }
+    // the hammer: up as high as the beat allows, then down
+    const H = Wk.ham;
+    if (H.phase === 'raise') {
+      H.t += dt; H.up = Math.min(H.to, H.up + dt / 0.28);
+      if (H.up >= H.to) { H.phase = 'fall'; H.top = H.up; H.k = 0; }
+    } else if (H.phase === 'fall') {
+      H.k = Math.min(1, H.k + dt / (0.05 + 0.07 * H.top));
+      H.up = H.top * (1 - H.k * H.k);
+      if (H.k >= 1) { H.phase = 'rest'; H.t = 0; H.done?.(); }
+    } else if (H.phase === 'rest' && (H.t += dt) > 0.3) { H.phase = null; H.d = null; hammer.position.copy(hamRest.p); hammer.quaternion.copy(hamRest.q); }
+    if (H.phase) {
+      // the blow comes from the smith's place: the haft level and its face square on the blank at the bottom, swung
+      // up about the haft's end (head local: haft +Y, face +X)
+      if (!H.d) {
+        H.d = new THREE.Vector3(...Wy(0.45, 0, 0.9)).sub(new THREE.Vector3(...Wy(0, 0, 0))).setY(0).normalize(); // the smith stands on the forge's side of the anvil
+        const x = new THREE.Vector3(0, -1, 0), z = new THREE.Vector3().crossVectors(x, H.d);
+        H.q0 = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, H.d, z));
+        H.axis = new THREE.Vector3().crossVectors(H.d, _ty).normalize();
+        H.p0 = new THREE.Vector3(ax, anvilY + 0.0145 + 0.0525, az).addScaledVector(H.d, -0.3); // the face on the blank's top
+      }
+      hammer.position.copy(H.p0);
+      hammer.quaternion.setFromAxisAngle(H.axis, H.up * 1.1).multiply(H.q0);
+    }
+    for (const s of sparks) {
+      if (!s.o.visible) continue;
+      s.t -= dt; s.v.y -= 9.8 * dt; s.o.position.addScaledVector(s.v, dt);
+      if (s.t <= 0) s.o.visible = false;
+    }
   });
+
   const target = K.proxy(...Wy(0.1, fy + 0.4, 0), 1.9, 0.85, 1.5, yaw);
   const pos = new THREE.Vector3(...Wy(-0.6, fy + 0.3, 0));
-  const act = {
-    id: 'bellows',
-    label: { sah: 'Күөрдү үр', en: 'Pump the bellows', ru: 'Покачать мехи' },
-    run: async (game) => {
-      const wpos = pos.clone();
-      K.group.localToWorld(wpos);
-      game.audio?.play('bellows', wpos);
-      pumping = 4.2;
-      await sleep(3600);
-    },
+  // one press of a bag (they take turns): the coals flare, the blank in them takes a step of heat
+  const press = async (game) => {
+    Wk.step = Wk.heat < NEED ? Math.max(0.2, (NEED + 0.12 - Wk.heat) / 3) : 0.1;
+    Wk.side = 1 - Wk.side; Wk.pressing = true; Wk.pressT = 0;
+    sound(game, 'bellows', pos);
+    await new Promise((res) => { Wk.pressDone = res; });
   };
-  return { target, act };
+  // each blow on bright iron draws the blank out a little: longer, thinner, wider, until the pass gives the next shape
+  const grow = () => { const k = Wk.blows / BLOWS, m = shapes[Wk.stage]; m.scale.set(1 + 0.07 * k, 1 - 0.22 * k, 1 + 0.12 * k); };
+  const strike = async (game) => {
+    Wk.busy = true;
+    const H = Wk.ham;
+    H.phase = 'raise'; H.up = 0; H.t = 0; H.to = 1; H.d = null;
+    await new Promise((res) => { H.done = res; });
+    sound(game, 'anvil', SPOT.anvil.p);
+    Wk.heat -= 0.06; // the iron cools under the hammer: yellow to red, then a dull glow that wants the coals again
+    Wk.blows++;
+    spark();
+    if (Wk.blows >= BLOWS) { Wk.blows = 0; shapes[Wk.stage].scale.setScalar(1); Wk.stage++; setShape(Wk.stage); } else grow();
+    game.work?.count('hammer');
+    Wk.busy = false;
+  };
+  const quench = async (game) => {
+    await move('over', 0.7);
+    await sleep(250);
+    await move('tub', 0.3);
+    sound(game, 'quench', SPOT.tub.p) || sound(game, 'water-pour', SPOT.tub.p);
+    steamT = 1.6;
+    await sleep(1400);
+    await move('over', 0.4);
+    await sleep(250);
+    await move('anvil', 0.7);
+    Wk.at = 'rest';
+    game.work?.count('blades');
+  };
+  // Watched, in a framed view of the lean-to (src/interact/framed.js): the bellows bring the blank to a glow, the
+  // tongs carry it to the anvil, three passes of three blows draw it into a knife (point, flatten, edge) with a
+  // return to the coals when the iron dulls, the quench in steam, the knife close up. Leaving stops it at the next
+  // step; the next tap goes on from there.
+  // the views (src/interact/framed.js), by the lean-to's own directions: [local x, z] from the watched point to the eye
+  const dirYaw = (lx, lz) => { const d = world(new THREE.Vector3(...Wy(lx, 0, lz))).sub(world(new THREE.Vector3(...Wy(0, 0, 0)))); return Math.atan2(d.x, d.z); };
+  const at = (lx, lz, y) => world(new THREE.Vector3(...Wy(lx, y, lz)));
+  const VIEW = {
+    fire: () => ({ c: at(-0.1, 0, fy + 0.45), r: 0.72, yaw: dirYaw(-0.45, -1), el: 0.78 }), // the bags and the coals, side on
+    anvil: () => ({ c: world(SPOT.anvil.p).add(new THREE.Vector3(0, 0.1, 0)), r: 0.32, yaw: dirYaw(-1, 0.5), el: 0.42 }), // the hammer's arc in profile
+    tub: () => ({ c: world(SPOT.tub.p).add(new THREE.Vector3(0, 0.25, 0)), r: 0.5, yaw: dirYaw(-1, -0.5), el: 0.4 }), // the steam rises in frame
+    knife: () => ({ c: world(SPOT.anvil.p), r: 0.2, yaw: dirYaw(-1, 0.5), el: 0.95 }),
+  };
+  const view = (k) => ({ ...VIEW[k](), fov: 40 });
+  const make = async (game) => {
+    const F = game.framed;
+    if (Wk.at === 'rest') { Wk.at = 'fire'; Wk.stage = 0; Wk.blows = 0; Wk.heat = 0; setShape(0); blank.position.copy(SPOT.fire.p); blank.rotation.y = SPOT.fire.yaw; blank.userData.sphere = undefined; } // a new blank
+    if (!(await F.open(view(Wk.at === 'fire' ? 'fire' : 'anvil')))) return;
+    await sleep(350);
+    while (F.on) {
+      if (Wk.at === 'fire') {
+        F.aim(view('fire'));
+        while (F.on && Wk.heat < NEED + 0.17) { await press(game); await sleep(140); }
+        if (!F.on) break;
+        await sleep(450); // the glow, a breath
+        F.aim(view('anvil'));
+        await move('anvil');
+        sound(game, 'wood-lay-2', SPOT.anvil.p);
+        await sleep(300);
+      } else if (Wk.stage < 3) {
+        if (Wk.heat <= DARK + 0.12) { await sleep(250); F.aim(view('fire')); await move('fire'); await sleep(200); continue; }
+        const pass = Wk.blows === 0;
+        if (pass && Wk.stage) await sleep(380); // the iron turned for the next pass
+        await strike(game);
+        await sleep(130);
+      } else {
+        F.aim(view('tub'));
+        await quench(game);
+        F.aim(view('knife'));
+        await sleep(2200); // the knife, close up
+        break;
+      }
+    }
+    await F.close();
+  };
+  const act = { id: 'forge', label: L3('быһах оҥор', 'forge a knife', 'выковать нож'), run: (game) => make(game) };
+  blank.userData.forge = Wk; Wk.view = view; Wk.dirYaw = dirYaw; // (tools: the work's state, its views)
+  const live = () => act; // from anywhere in the lean-to (src/interact/index.js asks `live`)
+  const around = { r: 3.4, at: () => world(SPOT.anvil.p) };
+  const blankIt = { target: blank, label: TXT.blank, entry: 'knife', live, around };
+  return { target, act, live, extra: [blankIt] };
 }

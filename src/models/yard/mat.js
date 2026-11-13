@@ -4,7 +4,7 @@
 import * as THREE from 'three/webgpu';
 import {
   texture, uv, vec2, vec3, float, vertexColor, mix, smoothstep, positionWorld, normalWorld, mx_noise_float, positionView,
-  normalView, faceDirection, Fn, fract, floor, sin, normalMap, time, positionLocal, attribute, varying, hash, step,
+  normalView, faceDirection, Fn, fract, floor, sin, normalMap, time, positionLocal, attribute, varying, hash, step, length, atan,
 } from 'three/tsl';
 import { TIER } from '../../engine/tier.js';
 
@@ -24,6 +24,18 @@ const bumpFn = Fn(([h, scale]) => {
 });
 const bumpFrom = (h, scale = 1) => bumpFn(h, float(scale));
 
+// Sawn or chopped log ends (`turned` caps with `endGrain`: vertex colour flagged blue, uv centred on the pith at
+// 2 per metre): growth rings, a red-brown heart, the sapwood greyed, checks opening from the pith.
+const endGrainFn = Fn(([col, vc, u, n]) => {
+  const q = u.sub(0.5).mul(0.5), d = length(q), a = atan(q.y, q.x);
+  const rings = sin(d.mul(1100).add(n.mul(4)).add(sin(a.mul(3)).mul(1.5))).mul(0.5).add(0.5);
+  const heart = smoothstep(0.075, 0.03, d.add(n.mul(0.012)));
+  const chk = smoothstep(0.1, 0.02, sin(a.mul(2.5).add(n.mul(1.2))).abs().div(d.mul(9).add(0.25))).mul(smoothstep(0.004, 0.02, d));
+  let c = mix(vec3(0.17, 0.145, 0.115), vec3(0.2, 0.125, 0.075), heart).mul(rings.mul(0.5).add(0.6)).mul(n.mul(0.15).add(1));
+  c = mix(c, vec3(0.035, 0.03, 0.025), chk.mul(0.85));
+  return mix(col, c, step(0.2, vc.b.sub(vc.r)));
+});
+
 // Weathered silver-grey larch (rough_wood). `tone` shifts it: 1 = old silvered, 0 = fresh-ish.
 export function larch(ctx, { key = 'larch', tint = 0xffffff, lichen = 0.6, normalScale = 1.1, side } = {}) {
   return once(key, () => {
@@ -36,9 +48,12 @@ export function larch(ctx, { key = 'larch', tint = 0xffffff, lichen = 0.6, norma
     let col = mix(d1.rgb, d2.rgb, blend).mul(vertexColor().rgb).mul(new THREE.Color(tint));
     // grey-green crust lichen on north (−Z) and upward faces, in patches
     const north = smoothstep(0.0, 0.8, normalWorld.z.negate().add(normalWorld.y.mul(0.5)));
-    const patches = smoothstep(0.1, 0.55, mx_noise_float(positionWorld.mul(3.1)).add(mx_noise_float(positionWorld.mul(11.0)).mul(0.35)));
+    // crusts with a broken edge that follows the grain (they sit on the ridges), pale grey with a little green
+    const fine = mx_noise_float(positionWorld.mul(11.0));
+    col = endGrainFn(col, vertexColor().rgb, u, fine);
+    const patches = smoothstep(0.3, 0.42, mx_noise_float(positionWorld.mul(3.1)).add(fine.mul(0.35)).add(d1.g.sub(0.4).mul(0.9)));
     const lich = north.mul(patches).mul(lichen);
-    col = mix(col, vec3(0.42, 0.46, 0.36).mul(d1.r.mul(0.6).add(0.55)), lich.mul(0.75));
+    col = mix(col, vec3(0.5, 0.5, 0.41).mul(d1.r.mul(0.5).add(0.6)), lich.mul(0.6));
     // fine low-frequency colour wander (sun bleaching vs damp)
     col = col.mul(mx_noise_float(positionWorld.mul(1.3)).mul(0.12).add(1));
     const arm = texture(m.arm, u);
@@ -60,11 +75,12 @@ export function barkPole(ctx) {
     const u = uv();
     // peeled where the mask says so: bare silvered wood shows through
     const ub = u.mul(vec2(2, 2.6));
-    const peel = smoothstep(0.0, 0.25, mx_noise_float(positionWorld.mul(1.4)).add(mx_noise_float(positionWorld.mul(6.0)).mul(0.3)).add(vertexColor().r.sub(0.75)));
+    const fine = mx_noise_float(positionWorld.mul(6.0));
+    const peel = smoothstep(0.0, 0.25, mx_noise_float(positionWorld.mul(1.4)).add(fine.mul(0.3)).add(vertexColor().r.sub(0.75)));
     const bark = texture(b.diff, ub).rgb.mul(vec3(0.7, 0.62, 0.56));
     const wood = texture(w.diff, u).rgb;
     const mat = new THREE.MeshStandardNodeMaterial();
-    mat.colorNode = mix(bark, wood, peel).mul(vertexColor().rgb);
+    mat.colorNode = endGrainFn(mix(bark, wood, peel).mul(vertexColor().rgb), vertexColor().rgb, u, fine);
     mat.roughnessNode = mix(texture(b.arm, ub).g, texture(w.arm, u).g, peel).mul(0.3).add(0.68);
     mat.metalnessNode = float(0);
     mat.normalNode = normalMap(mix(texture(b.nor, ub), texture(w.nor, u), peel));
@@ -110,7 +126,12 @@ export function cloth(key = 'cloth', sway = 0.035) {
   return once(key, () => {
     const mat = new THREE.MeshStandardNodeMaterial({ side: THREE.DoubleSide });
     const weave = sin(uv().x.mul(600)).mul(sin(uv().y.mul(1800))).mul(0.5).add(0.5);
-    mat.colorNode = vertexColor().rgb.mul(weave.mul(0.08).add(0.92));
+    // lengthwise creases that wander down the strip, sun-fade in blotches, a darker selvedge
+    const fold = sin(uv().x.mul(Math.PI * 2.5).add(sin(uv().y.mul(23)).mul(1.3)));
+    const fade = mx_noise_float(vec2(uv().x.mul(2), uv().y.mul(9))).mul(0.1).add(1);
+    const edge = smoothstep(0.0, 0.07, uv().x).mul(smoothstep(1.0, 0.93, uv().x));
+    mat.colorNode = vertexColor().rgb.mul(weave.mul(0.1).add(0.9)).mul(fold.mul(0.1).add(0.92)).mul(fade).mul(edge.mul(0.22).add(0.78));
+    mat.normalNode = bumpFrom(fold.mul(0.0012));
     mat.roughnessNode = float(0.88);
     mat.metalnessNode = float(0);
     if (sway) addSway(mat, sway);

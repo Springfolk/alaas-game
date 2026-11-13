@@ -50,11 +50,13 @@ export default async function build(ctx, placement) {
   const group = new T.Group();
   group.name = 'yardlife';
   const M = yardMats();
-  const colliders = [], interactables = [], ups = [];
-  const yardB = new Bucket(ground), meadowB = new Bucket(ground);
+  const colliders = [], lows = [], interactables = [], ups = [];
+  const yardB = new Bucket(ground, { drape: true }), meadowB = new Bucket(ground, { drape: true });
   const proxyMat = new T.MeshBasicMaterial({ visible: false });
   const K = {
-    M, rng, group, colliders, ups, b: yardB, bm: meadowB, wind: WIND, gate: PLACES.gate,
+    M, rng, group, colliders, lows, ups, b: yardB, bm: meadowB, wind: WIND, gate: PLACES.gate,
+    // the ground things lying flat are shaped over (yard frame); at load they follow each tier's drawn ground (world/settle.js)
+    ground,
     barkCraft: pmat('canvas:birch', { scale: 0.5, back: 'birchIn', double: true, dirt: 0.4, tint: 0xecd3a6 }),
     // an invisible box the player's ray can hit
     proxy(x, y, z, w, h, d, yaw = 0) {
@@ -81,7 +83,8 @@ export default async function build(ctx, placement) {
   const sd = saddle(K, ...PLACES.saddle, 0);
   interactables.push({ entry: 'saddle', target: sd.target });
   const sy = smithy(K, ...PLACES.smithy, -0.45);
-  interactables.push({ entry: 'blacksmith', target: sy.target, act: sy.act });
+  interactables.push({ entry: 'blacksmith', target: sy.target, act: sy.act, live: sy.live });
+  interactables.push(...sy.extra); // the knife blank of the forge work
   const hay = hayMeadow(K);
   for (const t of hay.targets) interactables.push({ entry: 'hay-making', target: t });
   interactables.push({ entry: 'homestead-layout', zone: { x: PLACES.yard[0], z: PLACES.yard[1], r: 3.2 } });
@@ -99,6 +102,7 @@ export default async function build(ctx, placement) {
   return {
     object: group,
     colliders,
+    lows,
     interactables,
     update: (dt, c) => { for (const u of ups) u(dt, c); },
   };

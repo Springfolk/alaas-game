@@ -5,10 +5,11 @@
 // with birch-bark boxes and rolled hides; on the floor the tar tub (суорат/тар, act: lift the lid),
 // a low shelf with cream and the küörchekh whisk, tools on pegs and against the walls.
 import * as THREE from 'three/webgpu';
-import { texture, vec3, float, mix, smoothstep, positionWorld, normalWorld, mx_noise_float, normalMap } from 'three/tsl';
+import { texture, vec3, float, mix, min, smoothstep, positionWorld, positionLocal, normalWorld, mx_noise_float, normalMap } from 'three/tsl';
+import { hash2, mulberry32 } from '../util.js';
 import { turned, logProfile, bow, tube, orient, board, merge } from './yard/geo.js';
 import { larch, birchBark, hide, plain, grass, rope } from './yard/mat.js';
-import { groundOf, grassClump, noSway, tween, ease, troddenPatch, blob } from './yard/bits.js';
+import { groundOf, grassClump, noSway, tween, ease, troddenPatch, blob, leaf } from './yard/bits.js';
 import { trodden } from './yard/mat.js';
 import { section } from '../load/geocache.js';
 
@@ -38,7 +39,7 @@ export default async function build(ctx, placement) {
     const addLog = (p0, p1, r, { caps = true, k = 0.85 + rng() * 0.22 } = {}) => {
       const L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]);
       const g = turned(logProfile(L, r, r * 0.86, { step: 0.3 }), {
-        radial: 14, rng, noise: 0.05, oval: 0.05, bend: bow(rng, L, 0.025), capTop: caps, capBottom: caps,
+        radial: 14, rng, noise: 0.05, oval: 0.05, bend: bow(rng, L, 0.025), capTop: caps, capBottom: caps, endGrain: true,
         color: logTone(k, (p0[1] + p1[1]) / 2 - g0),
       });
       orient(g, p0, p1, rng() * TAU);
@@ -76,7 +77,7 @@ export default async function build(ctx, placement) {
     const sills = [];
     for (const sz of [-1, 1]) addLog([-HW - 0.3 - rng() * 0.04, g0 + 0.08, sz * HW], [HW + 0.3 + rng() * 0.04, g0 + 0.08, sz * HW], 0.125, { k: 0.72 });
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      const b = turned(logProfile(0.28, 0.16, 0.15, { step: 0.14 }), { radial: 12, rng, noise: 0.06, capTop: true, color: (y, a, c) => { c[0] = 0.55; c[1] = 0.5; c[2] = 0.44; } });
+      const b = turned(logProfile(0.28, 0.16, 0.15, { step: 0.14 }), { radial: 12, rng, noise: 0.06, capTop: true, endGrain: true, color: (y, a, c) => { c[0] = 0.55; c[1] = 0.5; c[2] = 0.44; } });
       b.translate(sx * HW, g0 - 0.2 + Y0, sz * HW);
       sills.push(b);
     }
@@ -121,7 +122,7 @@ export default async function build(ctx, placement) {
   walls.add(wallMesh);
   object.add(walls);
 
-  // ── earth roof: a lumpy mound on the poles, grass on top, bare crumbling earth at the edges ──
+  // ── turf roof: sod blocks on the earth over the poles, short sward on top, the cut earth edge at the eaves ──
   const roofY = poleY + 0.06;
   const roof = earthRoof(ctx, rng, roofY, 2.12, 0.36);
   walls.add(roof.mesh);
@@ -130,7 +131,8 @@ export default async function build(ctx, placement) {
   object.add(roofGrass);
 
   // ── the door: three planks on two battens, a leather pull; hinged at the north jamb, opens inward ──
-  const doorW = DOOR.z1 - DOOR.z0 + 0.04, doorH = lintelY - thresholdY + 0.02;
+  const doorW = DOOR.z1 - DOOR.z0 + 0.04, doorH = lintelY - thresholdY - 0.01;
+  const OPEN = -1.75; // radians: swung inward against the north wall
   const door = new THREE.Group();
   door.name = 'ampaar-door';
   door.position.set(HW - 0.02, g0 + thresholdY, DOOR.z0 - 0.02);
@@ -214,39 +216,38 @@ export default async function build(ctx, placement) {
     { x: tar.x, z: tar.z, r: 0.27 },
     { x: cream.x, z: cream.z, hw: 0.22, hd: 0.45 },
   ];
-  const doorCol = { x: HW, z: (DOOR.z0 + DOOR.z1) / 2, hw: T, hd: (DOOR.z1 - DOOR.z0) / 2 };
+  // the leaf (planks and battens, 8.5 cm) is solid wherever it stands, and stops at the player as it swings
+  const doorLeaf = leaf(placement, { hinge: [door.position.x, door.position.z], len: doorW, th: 0.085, off: -0.02, angle: (a) => OPEN * a });
+  const doorCol = doorLeaf.collider(0);
   colliders.push(doorCol);
   const floors = [{ x: HW, z: 0, hw: 0.13, hd: (DOOR.z1 - DOOR.z0) / 2, h: thresholdY }];
   const lows = [{ x: HW, z: 0, hw: T + 0.05, hd: (DOOR.z1 - DOOR.z0) / 2, h: lintelY }]; // stoop through the low door
 
   // ── door act ──
-  let open = false, busy = false, doorK = null;
+  const doorS = { a: 0, v: 0, to: 0 };
   const c0 = Math.cos(placement.yaw || 0), s0 = Math.sin(placement.yaw || 0);
   const tw = (x, z2) => ({ x: placement.x + x * c0 + z2 * s0, z: placement.z - x * s0 + z2 * c0 });
   const toLocal = (wx, wz) => { const dx = wx - placement.x, dz = wz - placement.z; return [dx * c0 - dz * s0, dx * s0 + dz * c0]; };
   const findDoor = (game) => {
-    if (doorK || !game?.world?.colliders) return doorK;
+    if (doorLeaf.k || !game?.world?.colliders) return;
     const w = tw(doorCol.x, doorCol.z);
-    doorK = game.world.colliders.find((k) => k.kind === 'box' && k.hw === doorCol.hw && k.hd === doorCol.hd && Math.abs(k.x - w.x) < 1e-6 && Math.abs(k.z - w.z) < 1e-6) || null;
-    return doorK;
+    doorLeaf.k = game.world.colliders.find((k) => k.kind === 'box' && k.hw === doorCol.hw && k.hd === doorCol.hd && Math.abs(k.x - w.x) < 1e-6 && Math.abs(k.z - w.z) < 1e-6) || null;
   };
-  const OPEN = -1.75; // radians: swung inward against the north wall
+  // a push: the heavy leaf swings by its own weight and knocks against its stop; a push on the way turns it back
+  const LABEL = [{ sah: 'аанны ас', en: 'open the door', ru: 'открыть дверь' }, { sah: 'аанны сап', en: 'close the door', ru: 'закрыть дверь' }];
   const doorAct = {
-    id: 'door', thenCard: false,
-    label: { sah: 'аанны ас', en: 'open the door', ru: 'открыть дверь' },
+    id: 'door', label: LABEL[0],
     run: async (game) => {
-      if (busy) return;
-      busy = true;
-      const to = !open;
+      doorS.to = 1 - doorS.to;
+      doorAct.label = LABEL[doorS.to];
       game?.audio?.play('door', object.localToWorld(new THREE.Vector3(HW, 1, 0)));
-      await tween(1.4, (t) => { const e = ease(t); door.rotation.y = to ? OPEN * e : OPEN * (1 - e); });
-      open = to;
-      const k = findDoor(game);
-      if (k) { k.y0 = open ? 1e5 : undefined; k.y1 = open ? 1e5 + 1 : undefined; }
-      doorAct.label = open ? { sah: 'аанны сап', en: 'close the door', ru: 'закрыть дверь' } : { sah: 'аанны ас', en: 'open the door', ru: 'открыть дверь' };
-      if (game) game.focus = undefined;
-      busy = false;
     },
+  };
+  const swingDoor = (dt, game) => {
+    findDoor(game);
+    if (doorS.a === doorS.to && !doorS.v) return;
+    if (doorLeaf.move(doorS, dt, game, 2.2, 1.3) === 'knock') game.audio?.play('wood-take', object.localToWorld(new THREE.Vector3(HW, 1, 0)));
+    door.rotation.y = OPEN * doorS.a;
   };
 
   // ── tar tub act: lift the lid aside (stays off; remembered) ──
@@ -277,6 +278,7 @@ export default async function build(ctx, placement) {
     update: (dt, { game, camera }) => {
       if (!game) return;
       if (!restored) { restored = true; if (game.done?.has('dairy-suorat-tar:lid')) tar.liftPose(1); }
+      swingDoor(dt, game);
       const [lx, lz] = toLocal(camera.position.x, camera.position.z);
       const isIn = Math.abs(lx) < HW - 0.05 && Math.abs(lz) < HW - 0.05;
       if (isIn !== wasIn) { game.engine.exposureTarget = isIn ? 1.5 : 0.62; wasIn = isIn; }
@@ -300,18 +302,29 @@ function edgeOf(x, z, half) {
   return Math.min(1, Math.pow(Math.abs(x) ** 4 + Math.abs(z) ** 4, 0.25) / half);
 }
 
-// A lumpy earth mound on the ceiling poles; returns the mesh and grass blades for its top.
+// Turf roof: cut sod blocks (~0.45 × 0.32 m, rows offset like bricks) laid grass up on the earth over the poles,
+// each a little higher or lower; at the eaves the cut edge shows the earth under a dark mat of roots. Short grass
+// and moss on top, a few taller tufts, thin where it slopes down to the edge.
+const SOD_W = 0.45, SOD_D = 0.32;
+function sodAt(x, z) { // block (c, r) and the place in it (fu, fv 0..1)
+  const r = Math.floor(z / SOD_D), c = Math.floor(x / SOD_W + (r & 1) * 0.5);
+  return [c, r, x / SOD_W + (r & 1) * 0.5 - c, z / SOD_D - r];
+}
+function roofHeight(x, z, y0, half, depth) {
+  const e = edgeOf(x, z, half), shoulder = Math.max(0, Math.min(1, (1 - e) / 0.07));
+  const lump = Math.sin(x * 2.1 + 1.3) * Math.sin(z * 1.7) * 0.03 + Math.sin(x * 5.3 + z * 3.1) * 0.01;
+  const [c, r, fu, fv] = sodAt(x, z);
+  const sod = (hash2(c, r, 41) - 0.5) * 0.03 + (fu - 0.5) * (hash2(c, r, 42) - 0.5) * 0.025 + (fv - 0.5) * (hash2(c, r, 43) - 0.5) * 0.025;
+  // the sods settle lower towards the edge, where the roof thins out
+  return y0 + (depth * (1 - Math.max(0, e - 0.7) * 0.6) + lump + sod) * Math.pow(shoulder, 0.3) + (e >= 0.999 ? -0.03 : 0);
+}
+
 function earthRoof(ctx, rng, y0, half, depth) {
-  const n = 28;
-  const pos = [], idx = [], col = [];
+  const n = 44;
+  const pos = [], idx = [];
   for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) {
     const x = -half + (i / n) * 2 * half, z = -half + (j / n) * 2 * half;
-    const e = edgeOf(x, z, half); // 0 centre → 1 edge
-    const shoulder = Math.min(1, (1 - e) / 0.14);
-    const lump = Math.sin(x * 2.1 + 1.3) * Math.sin(z * 1.7) * 0.04 + Math.sin(x * 5.3 + z * 3.1) * 0.015;
-    const y = y0 + (depth + lump) * Math.pow(Math.max(0, shoulder), 0.45) + (e >= 0.999 ? -0.03 : 0);
-    pos.push(x, y, z);
-    col.push(1, 1, 1);
+    pos.push(x, roofHeight(x, z, y0, half, depth), z);
   }
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
     const a = i * (n + 1) + j, b = a + n + 1;
@@ -320,34 +333,56 @@ function earthRoof(ctx, rng, y0, half, depth) {
   // underlay: the earth seen from inside between the ceiling poles, facing down (the mound is one-sided, so
   // the sky showed through the gaps)
   const u0 = pos.length / 3, uy = y0 - 0.035, uh = half + 0.02;
-  for (const [x, z] of [[-uh, -uh], [uh, -uh], [-uh, uh], [uh, uh]]) { pos.push(x, uy, z); col.push(0.45, 0.42, 0.4); }
+  for (const [x, z] of [[-uh, -uh], [uh, -uh], [-uh, uh], [uh, uh]]) pos.push(x, uy, z);
   idx.push(u0, u0 + 1, u0 + 2, u0 + 1, u0 + 3, u0 + 2);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(pos.filter((_, k) => k % 3 !== 1), 2));
   g.setIndex(idx);
   g.computeVertexNormals();
   const mud = ctx.maps('brown_mud_dry'), turf = ctx.maps('leafy_grass');
-  const w = positionWorld.xz;
-  const top = smoothstep(0.6, 0.8, normalWorld.y).mul(smoothstep(-0.3, 0.1, mx_noise_float(w.mul(1.3)).add(0.3)));
+  const w = positionWorld.xz, p = positionLocal;
+  // sod seams: the cut lines between blocks, a dark gap with earth in it, half hidden by the grass over them
+  const r = p.z.div(SOD_D).floor(), sx = p.x.div(SOD_W).add(r.mod(2).mul(0.5));
+  const du = sx.fract().sub(0.5).abs().oneMinus().sub(0.5).mul(SOD_W), dv = p.z.div(SOD_D).fract().sub(0.5).abs().oneMinus().sub(0.5).mul(SOD_D);
+  const nz = mx_noise_float(w.mul(7)), nb = mx_noise_float(w.mul(1.3));
+  const seam = smoothstep(0.006, 0.022, min(du, dv)).oneMinus().mul(smoothstep(-0.45, 0.1, nz));
+  // short grass with moss: yellow-green and dark-green patches; earth shows on the slope to the edge
+  const flat = smoothstep(0.55, 0.85, normalWorld.y);
+  const top = flat.mul(smoothstep(-0.45, 0.0, nb.add(0.25)));
+  const grassC = texture(turf.diff, w.mul(0.9)).rgb.mul(vec3(0.62, 0.72, 0.48));
+  const moss = mix(vec3(0.11, 0.16, 0.05), vec3(0.24, 0.27, 0.08), smoothstep(-0.3, 0.4, mx_noise_float(w.mul(3.1).add(7.7))));
+  const sward = mix(grassC, moss, smoothstep(-0.1, 0.35, mx_noise_float(w.mul(2.2).add(3.3))).mul(0.7));
+  const earth = texture(mud.diff, w.mul(0.6)).rgb.mul(vec3(0.46, 0.4, 0.34));
+  // the cut edge: a dark mat of roots in the top 7 cm under the sward, earth below with a darker humus streak
+  const below = float(y0 + depth).sub(p.y); // metres under the roof's mean top
+  const roots = smoothstep(0.06, 0.12, below.add(mx_noise_float(w.mul(9)).mul(0.03))).oneMinus();
+  const humus = smoothstep(0.0, 0.05, below.sub(0.2).abs()).oneMinus().mul(0.4);
+  let edge = mix(earth.mul(float(1).sub(humus)), vec3(0.075, 0.055, 0.04), roots);
+  let c = mix(edge, sward, top);
+  c = mix(c, vec3(0.1, 0.075, 0.05), seam.mul(top).mul(0.85));
   const mat = new THREE.MeshStandardNodeMaterial();
-  mat.colorNode = mix(texture(mud.diff, w.mul(0.6)).rgb.mul(vec3(0.7, 0.62, 0.55)), texture(turf.diff, w.mul(0.5)).rgb.mul(0.85), top);
+  mat.colorNode = c;
   mat.roughnessNode = float(0.95);
   mat.metalnessNode = float(0);
   mat.normalNode = normalMap(texture(mud.nor, w.mul(0.6)));
   const mesh = new THREE.Mesh(g, mat);
   mesh.name = 'ampaar-roof';
-  // grass: clumps scattered on the flat top, thinner towards the edges
+  // the sward: low clumps (12–18 cm) over the flat top, sparse on the slope, and a few taller tufts. Its own
+  // random stream: the build's rng draws stay as they were (the tufts once drew 62 660), so nothing else moves.
+  for (let k = 0; k < 130 * (2 + 40 * 12); k++) rng();
+  const rr = mulberry32(5521);
+  const surf = (x, z) => roofHeight(x, z, y0, half, depth);
   const parts = [];
-  const surf = (x, z) => {
-    const e = edgeOf(x, z, half), shoulder = Math.min(1, (1 - e) / 0.14);
-    const lump = Math.sin(x * 2.1 + 1.3) * Math.sin(z * 1.7) * 0.04 + Math.sin(x * 5.3 + z * 3.1) * 0.015;
-    return y0 + (depth + lump) * Math.pow(Math.max(0, shoulder), 0.45);
-  };
-  for (let k = 0; k < 130; k++) {
-    const x = (rng() - 0.5) * 2 * (half - 0.25), z = (rng() - 0.5) * 2 * (half - 0.25);
-    parts.push(grassClump(rng, surf, x, z, { n: 40, r: 0.32, h: 0.38 }));
+  for (let k = 0; k < 360; k++) {
+    const x = (rr() - 0.5) * 2 * (half - 0.08), z = (rr() - 0.5) * 2 * (half - 0.08);
+    const e = edgeOf(x, z, half);
+    if (e > 0.8 && rr() < (e - 0.8) * 4) continue; // thin on the slope
+    parts.push(grassClump(rr, surf, x, z, { n: 14, r: 0.2, h: 0.12 + rr() * 0.07 }));
+  }
+  for (let k = 0; k < 9; k++) {
+    const x = (rr() - 0.5) * 2 * (half - 0.4), z = (rr() - 0.5) * 2 * (half - 0.4);
+    parts.push(grassClump(rr, surf, x, z, { n: 24, r: 0.1, h: 0.36 + rr() * 0.12 }));
   }
   return { mesh, grass: merge(parts) };
 }
@@ -413,13 +448,13 @@ function coat(g, c) {
 }
 
 function post(rng, base, H, r) {
-  const g = turned(logProfile(H + 0.05, r, r * 0.85, { step: 0.3 }), { radial: 9, rng, noise: 0.06, capTop: true, color: (y, a, c) => { c[0] = 0.85; c[1] = 0.78; c[2] = 0.68; } });
+  const g = turned(logProfile(H + 0.05, r, r * 0.85, { step: 0.3 }), { radial: 9, rng, noise: 0.06, capTop: true, endGrain: true, color: (y, a, c) => { c[0] = 0.85; c[1] = 0.78; c[2] = 0.68; } });
   g.translate(base[0], base[1] - 0.05, base[2]);
   return g;
 }
 function pole(rng, a, b, r) {
   const L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-  const g = turned(logProfile(L, r, r * 0.85, { step: 0.4 }), { radial: 8, rng, noise: 0.06, bend: bow(rng, L, 0.015), capTop: true, capBottom: true, color: (y, ang, c) => { const k = 0.75 + rng() * 0.01; c[0] = 0.9 * k; c[1] = 0.83 * k; c[2] = 0.72 * k; } });
+  const g = turned(logProfile(L, r, r * 0.85, { step: 0.4 }), { radial: 8, rng, noise: 0.06, bend: bow(rng, L, 0.015), capTop: true, capBottom: true, endGrain: true, color: (y, ang, c) => { const k = 0.75 + rng() * 0.01; c[0] = 0.9 * k; c[1] = 0.83 * k; c[2] = 0.72 * k; } });
   orient(g, a, b, rng() * TAU);
   return g;
 }
@@ -610,7 +645,7 @@ function tools(rng, g0, P) {
   const sy2 = g0 + 1.6;
   P.wood.push(pole(rng, [-0.2, sy2, -HW + 0.16], [0.95, sy2 + 0.08, -HW + 0.16], 0.016));
   const bl = [];
-  for (let k = 0; k <= 12; k++) { const t = k / 12; bl.push(new THREE.Vector3(-0.2 - t * 0.02, sy2 - 0.02 - t * 0.04, -HW + 0.17 + Math.sin(t * 2.2) * 0.25)); }
+  for (let k = 0; k <= 12; k++) { const t = k / 12; bl.push(new THREE.Vector3(-0.2 + Math.sin(t * 2.2) * 0.25, sy2 - 0.03 - (1 - Math.cos(t * 1.4)) * 0.2, -HW + 0.17 + t * 0.015)); }
   const bladeG = tube(bl, (t) => 0.004 + 0.014 * (1 - t), { radial: 4 });
   bladeG.scale(1, 1, 1);
   bladeG.attributes.color.array.fill(0.1);

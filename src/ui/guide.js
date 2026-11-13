@@ -1,17 +1,19 @@
-// The journal's finder: a not-yet-found entry chosen in the journal gets a small marker over the nearest
-// place it is found (clamped to the screen edge, with an arrow, when out of view) and a soft shimmer once
-// you are close. DOM only (styles in index.html), so it never builds a shader. Entries with no place of
+// The finder: the destination chosen on the journal's map (a thing, a job, any spot) gets a gold marker over it
+// with the metres left (at the screen edge, with an arrow, when out of view) and a soft shimmer once you are
+// close. DOM only (styles in index.html), so it never builds a shader. Entries with no place of
 // their own (told of in other cards) point at the nearest card that links to them.
 import * as THREE from 'three/webgpu';
 import { BY_ID } from './ui.js';
+import { WORKS } from '../interact/work/list.js';
 
 const NEAR = 7; // m: the shimmer shows inside this
-const EDGE = 44; // px: the edge marker's inset
+const ARRIVE = 3; // m: a place or a found thing is reached
+const INSET = 44; // px: the edge marker's inset
 
 export class Guide {
   constructor(game) {
     this.game = game;
-    this.id = null;
+    this.id = null; this.dest = null; this.targets = [];
     this.el = document.createElement('div');
     this.el.id = 'guide';
     this.el.innerHTML = '<i class="pin"></i><i class="arrow"></i><span class="dist"></span>';
@@ -42,30 +44,66 @@ export class Guide {
     return new THREE.Box3().setFromObject(it.target).getCenter(new THREE.Vector3());
   }
 
+  box(obj) { return new THREE.Box3().setFromObject(obj); }
+
+  // a job's places now, the nearest led to: mowing: the scythes where they are, or with one in the hands the
+  // standing grass nearest the player (else nearest a scythe post); any other job: every thing it is done at
+  jobPlaces(id) {
+    const g = this.game, hay = id === 'hay' ? g.work?.jobs.filter((j) => j.scythe) || [] : [];
+    if (hay.some((j) => j.held)) { const t = this.tall(g.player.pos); return t ? [t] : hay.map((j) => this.tall(j.home.p)).filter(Boolean); }
+    if (hay.length) return hay.map((j) => j.scythe.obj.getWorldPosition(new THREE.Vector3()));
+    const W = WORKS.find((j) => j.id === id);
+    return g.world.interactables.filter((i) => (i.target || i.zone) && W?.find(i)).map((i) => this.pos(i));
+  }
+  // the grass still standing nearest `p` (within 40 m), at eye height
+  tall(p) {
+    const mask = this.game.world._field?.mask;
+    if (!mask) return null;
+    for (let r = 0; r < 40; r += 1) for (let n = Math.max(1, Math.ceil(r * 6.3)), k = 0; k < n; k++) {
+      const a = k / n * 6.2832, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
+      if (mask.tall(x, z)) return new THREE.Vector3(x, this.game.world.groundAt(x, z) + 1, z);
+    }
+    return null;
+  }
+
+  // Be led somewhere (the journal's map): `d` = { key, id } an entry (its nearest place; gone once it is found),
+  // { key, job, at } a job (its nearest place now; mowing: gone at the grass with a scythe in the hands)
+  // or { key, at } a point (gone on arrival); `at` with an `id` or a `job` only says where the map draws it.
+  go(d) {
+    this.dest = d; this.id = d.id || null; this.job = d.job || null;
+    this.targets = d.id ? this.places(d.id) : this.job ? this.jobPlaces(this.job) : [d.at];
+    this.target = null; this.t = 0;
+    if (!this.targets.length) return this.clear();
+    if (this.job) { const p = this.game.player.pos; d.at = this.targets.reduce((a, b) => (a && a.distanceToSquared(p) < b.distanceToSquared(p) ? a : b), null); }
+    this.update();
+    return d;
+  }
+  clear() { this.dest = null; this.id = null; this.job = null; this.targets = []; this.target = null; this.update(); return null; }
   // choose (or, with the same id, drop) the entry to be guided to
   set(id) {
-    this.id = id && id !== this.id ? id : null;
-    this.targets = this.id ? this.places(this.id) : [];
-    this.target = null; this.t = 0;
-    if (!this.targets.length) this.id = null;
-    this.update();
+    if (!id || id === this.id) return this.clear();
+    this.go({ key: id, id });
     return this.id;
   }
 
   update(dt = 0) {
-    const g = this.game, show = this.id && !g.title && !g.ui.modal && !g.paused;
+    const g = this.game, show = this.dest && !g.title && !g.ui.modal && !g.paused;
     this.el.classList.toggle('on', !!show);
     if (!show) { this.glow.classList.remove('on'); return; }
     const p = g.player.pos, cam = g.engine.camera;
     if ((this.t -= dt) <= 0 || !this.target) { // the nearest of its places, re-chosen now and then
       this.t = 0.5;
+      if (this.job) { const t = this.jobPlaces(this.job); if (t.length) this.targets = t; }
       this.target = this.targets.reduce((a, b) => (a && a.distanceToSquared(p) < b.distanceToSquared(p) ? a : b), null);
+      if (this.job && this.target) this.dest.at = this.target; // (the map draws it where it leads now)
     }
     const d = Math.hypot(this.target.x - p.x, this.target.z - p.z);
+    const wait = this.id ? !g.state.found.has(this.id) : this.job === 'hay' && !g.work?.jobs.some((j) => j.scythe && j.held); // a thing not yet found: until it is; a scythe: until taken
+    if (d < ARRIVE && !wait) { this.clear(); return; } // there
     this.dist.textContent = d < 10 ? `${d.toFixed(1)} m` : `${Math.round(d)} m`;
     // camera space: in front when z < 0
     const v = this.v.copy(this.target).applyMatrix4(cam.matrixWorldInverse);
-    const W = innerWidth, H = innerHeight;
+    const W = innerWidth, H = innerHeight, EDGE = INSET * (g.ui.scale || 1);
     let x, y, inView = false;
     if (v.z < -0.1) {
       v.applyMatrix4(cam.projectionMatrix);

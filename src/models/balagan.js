@@ -11,12 +11,16 @@ import { Buckets, rrect } from './balagan/geo.js';
 import { buildShell } from './balagan/shell.js';
 import { buildHearth } from './balagan/hearth.js';
 import { buildInterior } from './balagan/interior.js';
+import { buildWinterGear } from './balagan/winter.js';
 import { PlantBatch, sodRoof } from './balagan/plants.js';
-import { groundOf, troddenPatch, blob } from './yard/bits.js';
+import { groundOf, troddenPatch, blob, leaf } from './yard/bits.js';
 import { trodden } from './yard/mat.js';
+import { offerFrom, offerPath, offerTime } from './yard/offer.js';
+import { ease } from '../util.js';
 import { FX, FZ, H, ZD, DW, DH, XD, ROOF, HEARTH, WIN, KH, inner } from './balagan/dims.js';
 
 const OUTSIDE_EXPOSURE = 0.62, INSIDE_EXPOSURE = 1.9;
+const NEAR_FILL = 2.4; // the light beside the eye during a close look
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default async function build(ctx, placement) {
@@ -34,6 +38,7 @@ export default async function build(ctx, placement) {
   const B = new Buckets();
   const hearth = buildHearth({ B, M, rng, winter, root, chTop: shell.chim.chTop });
   const inside = buildInterior({ B, M, rng, winter, root });
+  const gear = winter ? buildWinterGear({ B, M, rng, root, ground: groundOf(ctx, placement) }) : null;
   M.interior.push(M.clayMat);
 
   // ---------- sod: grass blades and fireweed on both roofs, the canopy and the berm ----------
@@ -158,9 +163,11 @@ export default async function build(ctx, placement) {
 
   // ---------- colliders ----------
   const lift = (c) => (c.y0 !== undefined ? { ...c, y0: c.y0 + Y, y1: c.y1 + Y } : c);
-  const colliders = [...shell.colliders, ...hearth.colliders, ...inside.colliders].map(lift);
+  const colliders = [...shell.colliders, ...hearth.colliders, ...inside.colliders, ...(gear?.colliders || [])].map(lift);
   const DOOR_TAG = Y - 0.5 - 0.0137 * (winter ? 2 : 1);
-  colliders.push({ x: XD, z: ZD, hw: 0.12, hd: DW / 2 + 0.02, y0: DOOR_TAG, y1: shell.door.open > 0.5 ? Y - 50 : Y + 3 });
+  // the leaf (planks and battens, 9.5 cm) is solid wherever it stands, and stops at the player as it swings
+  const doorLeaf = leaf(placement, { hinge: [shell.door.pivot.position.x, shell.door.pivot.position.z], len: DW, th: 0.095, off: -0.019, angle: (a) => a * shell.door.maxAngle });
+  colliders.push(doorLeaf.collider(shell.door.open, { y0: DOOR_TAG, y1: Y + 3 }));
 
   // ---------- ray targets (invisible proxies) and interactables ----------
   const proxy = (w, h, d, p, r = [0, 0, 0], parent = root) => {
@@ -205,49 +212,49 @@ export default async function build(ctx, placement) {
     its.push({ entry: 'knife', target: T.knife });
   } else {
     its.push({ entry: 'sayylyk-kystyk', zone: { x: XD + 3.2, z: ZD, r: 3.2 } });
+    const G = gear.targets;
+    its.push({ entry: 'syarga', target: G.sledge }, { entry: 'syarga', target: G.shafts });
+    its.push({ entry: 'khayyhar', target: G.skis }, { entry: 'annyy', target: G.chisel });
+    its.push({ entry: 'winter-clothing', target: G.clothing }, { entry: 'winter-clothing', target: G.boots });
+    its.push({ entry: 'kharangachchy', target: G.nests });
+    // the swallows nesting on the beams fly out by the door (src/nature/life/birds.js reads this)
+    // out, they sit on the chimney's rim, along the roof's crown (above its grass) and on the sledge
+    const ridge = [-2.4, 0, 2.4].map((x) => [x, shell.roofTop(x, 0.15) + 0.2, 0.15]);
+    ridge.push([chim.x - 0.12, shell.chim.chTop + 0.02, chim.z], [chim.x + 0.12, shell.chim.chTop + 0.02, chim.z + 0.05]);
+    root.userData.swallows = { nests: gear.nests, door: [XD + 0.4, 1.0, ZD], inside: [XD - 1.4, 1.25, ZD], open: () => shell.door.open, perches: [...ridge, ...gear.perches] };
   }
   hearthT.userData.isHearth = true;
   const fire = hearth.fire;
   const world = (v) => root.localToWorld(v.clone());
 
   // the hearth: in the summer house the player may feed the fire (a pinch of butter, respectfully)
-  let flare = 0, morselT = -1, fedOnce = false, fuel = 0;
+  let flare = 0, morselT = -1, morselDur = 1, fuel = 0;
+  const morselFrom = new THREE.Vector3();
   const hearthIt = { entry: 'ohokh', target: hearthT };
   if (!winter) {
     hearthIt.act = {
-      id: 'feed', label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
-      run: async (game, it) => {
-        it.act.thenCard = !fedOnce;
-        morselT = 0; morsel.visible = true;
-        await wait(650);
+      // a pinch of butter from low by the hand, set down slowly in the hearth's mouth (yard/offer.js); the fire takes it
+      id: 'feed', empty: true, label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
+      run: async (game) => {
+        const to = world(fire.pos), sw = world(fire.pos.clone().add(new THREE.Vector3(-Math.SQRT1_2, 0, Math.SQRT1_2))).sub(to); // the mouth faces SW
+        offerFrom(game.engine.camera, to, morselFrom, { a: Math.atan2(sw.z, sw.x), half: 0.55 });
+        morselDur = offerTime(morselFrom, to);
+        root.worldToLocal(morselFrom);
+        morselT = 0; morsel.scale.setScalar(0.01); morsel.visible = true;
+        await wait(morselDur * 1000);
         flare = 1;
         game.audio?.play('fire-feed', world(fire.pos));
-        await wait(1500);
-        fedOnce = true;
       },
     };
   }
   // src/interact lays carried firewood here: it stands upright in the mouth and burns brighter for ~60 s
-  if (!winter) hearthIt.fireplace = { pos: () => world(fire.pos), upright: true, fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); } };
+  if (!winter) hearthIt.fireplace = { pos: () => world(fire.pos), upright: true, lean: (() => { let n = 0; return () => { const a = fire.gaps[n++ % fire.gaps.length], d = world(new THREE.Vector3(Math.cos(a), 0, Math.sin(a))).sub(world(new THREE.Vector3())); return Math.atan2(d.z, d.x); }; })(), fuel: () => { fuel = 1; flare = Math.max(flare, 0.6); }, stir: (k) => { flare = Math.max(flare, k); } };
   its.push(hearthIt);
 
-  // хомус: play it — but never after dark (the card explains the taboo)
+  // хомус: taken from its peg and played at the lips (src/interact/rites.js), never after dark (the card explains the taboo)
   if (!winter) {
-    let played = false;
-    its.push({
-      entry: 'khomus', target: T.khomus,
-      act: {
-        id: 'play', label: { sah: 'Хомустаа', en: 'Play the khomus', ru: 'Сыграть на хомусе' },
-        run: async (game, it) => {
-          const dark = (game.engine?.sunElev ?? 30) < 0;
-          if (dark) { it.act.thenCard = true; return; }
-          it.act.thenCard = !played;
-          game.audio?.play('khomus', world(new THREE.Vector3(0, 1.2, -FZ + 0.2)));
-          await wait(2600);
-          played = true;
-        },
-      },
-    });
+    its.push({ entry: 'khomus', target: T.khomus, khomus: true });
+    root.userData.khomus = { obj: T.khomusObj };
   }
 
   // the door: open or shut it (the winter house stands shut)
@@ -255,18 +262,20 @@ export default async function build(ctx, placement) {
   its.push({
     entry: 'balagan', target: doorT, label: { sah: 'Аан', en: 'Door', ru: 'Дверь' },
     act: {
-      id: 'door', label: { sah: 'Ааны ас / сап', en: 'Open / shut the door', ru: 'Открыть / закрыть дверь' }, thenCard: false,
+      // a push: the leaf swings by its own weight and knocks against its stop; a push on the way turns it back
+      id: 'door', label: { sah: 'Ааны ас / сап', en: 'Open / shut the door', ru: 'Открыть / закрыть дверь' },
       run: async (game) => {
         door.target = door.target > 0.5 ? 0 : 1;
+        doorS.to = door.target;
         game.audio?.play('door', world(new THREE.Vector3(XD, 1, ZD)));
-        await wait(450);
       },
     },
   });
 
   // ---------- per-frame: eye adaptation, fire flicker, smoke, door, shafts ----------
-  let wasInside = false, doorCol = null, shaftClock = 99, lastSun = new THREE.Vector3();
-  const camLocal = new THREE.Vector3();
+  let wasInside = false, shaftClock = 99, lastSun = new THREE.Vector3();
+  const doorS = { a: door.open, v: 0, to: door.target };
+  const camLocal = new THREE.Vector3(), lookAt = new THREE.Vector3(), FILL_HOME = new THREE.Vector3(2.5, 1.1, 0.5);
   const engine = ctx.world?.engine;
   if (engine) M.setEnv(engine.scene.environment);
   function update(dt, { time: t, camera, game }) {
@@ -289,14 +298,23 @@ export default async function build(ctx, placement) {
       const fk = Math.min(1, fuel * 4);
       const f = 0.78 + 0.12 * Math.sin(t * 11.3) * Math.sin(t * 7.1 + 1) + 0.1 * Math.sin(t * 23.7 + Math.sin(t * 3));
       fire.light.intensity = 6 * f * (1 + flare * 1.6 + fk * 0.6);
-      fire.fill.intensity = door.open > 0.5 ? 1.4 : 0.2;
       M.flare.value = Math.max(flare, fk * 0.45);
       if (morselT >= 0) {
         morselT += dt;
-        const k = Math.min(1, morselT / 0.6);
-        morsel.position.set(fire.pos.x + 0.25 * (1 - k) * -Math.SQRT1_2, fire.pos.y + 0.25 - k * k * 0.45, fire.pos.z + 0.25 * (1 - k) * Math.SQRT1_2);
+        const k = Math.min(1, morselT / morselDur);
+        offerPath(morselFrom, fire.pos, k, morsel.position); morsel.scale.setScalar(ease(Math.min(1, k / 0.15)));
         if (k >= 1) { morsel.visible = false; morselT = -1; }
       }
+    }
+    if (fire.fill) {
+      // the door's daylight; while a thing is looked at closely (the inspect stage, `closeLook`) it comes from beside
+      // the eye instead, so a thing in a dark corner is modelled by light rather than lifted flat by exposure
+      const near = !!eng?.closeLook && wasInside && camera;
+      if (near) lookAt.set(0.28, 0.22, 0.1).applyQuaternion(camera.quaternion).add(camera.position), root.worldToLocal(lookAt);
+      else lookAt.copy(FILL_HOME);
+      const k = 1 - Math.exp(-dt * 7);
+      fire.fill.position.lerp(lookAt, k);
+      fire.fill.intensity += ((near ? NEAR_FILL : door.open > 0.5 ? (winter ? 2 : 1.4) : (winter ? 0.5 : 0.2)) - fire.fill.intensity) * k;
     }
     // smoke drifting off the chimney top
     for (const p of smoke) {
@@ -307,14 +325,13 @@ export default async function build(ctx, placement) {
       p.s.scale.setScalar(0.35 + a * 1.8);
       p.op.value = Math.min(1, a * 6) * (1 - a) * (0.75 + flare * 0.5);
     }
-    // door swing (and its collider)
-    if (Math.abs(door.open - door.target) > 1e-3) {
-      door.open += Math.sign(door.target - door.open) * Math.min(Math.abs(door.target - door.open), dt * 1.8);
-      const e = door.open * door.open * (3 - 2 * door.open);
-      door.pivot.rotation.y = e * door.maxAngle;
+    // door swing (its collider follows the leaf)
+    if (game?.world && !doorLeaf.k) doorLeaf.k = game.world.colliders.find((c) => Math.abs((c.y0 ?? 1e9) - DOOR_TAG) < 1e-6) || null;
+    if (doorS.a !== doorS.to || doorS.v) {
+      if (doorLeaf.move(doorS, dt, game) === 'knock') game?.audio?.play('wood-take', world(new THREE.Vector3(XD, 1, ZD)));
+      door.open = doorS.a;
+      door.pivot.rotation.y = doorS.a * door.maxAngle;
     }
-    if (game?.world && !doorCol) doorCol = game.world.colliders.find((c) => Math.abs((c.y0 ?? 1e9) - DOOR_TAG) < 1e-6);
-    if (doorCol) doorCol.y1 = door.open > 0.6 ? Y - 50 : Y + 3;
     // sunbeams follow the sun
     shaftClock += dt;
     if (eng && shaftClock > 0.5) {
@@ -344,5 +361,5 @@ export default async function build(ctx, placement) {
 
   // the low door passage: the player stoops under its lintel
   const lows = [{ x: (XD + 0.15 + inner(FX, DH) - 0.1) / 2, z: ZD, hw: (XD + 0.15 - inner(FX, DH) + 0.1) / 2, hd: DW / 2 + 0.05, h: DH + 0.01 }];
-  return { object: root, colliders, floors: [], lows, interactables: its, update };
+  return { object: root, colliders, floors: [], rests: inside.rests, lows, interactables: its, update };
 }

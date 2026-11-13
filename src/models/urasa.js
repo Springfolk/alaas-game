@@ -7,13 +7,14 @@ import * as THREE from 'three/webgpu';
 import { uv, vec3, mix, fract, float, step, min, abs, faceDirection, mx_fractal_noise_float } from 'three/tsl';
 import { makeProfile, buildFrame, R_POST, POST_H, DOOR } from './urasa/frame.js';
 import { buildCover, buildCurtain, CURTAIN_W } from './urasa/cover.js';
-import { buildInterior, BENCH, HEARTH } from './urasa/interior.js';
+import { buildInterior, BENCH, HEARTH, floorGrid } from './urasa/interior.js';
 import { buildKymys, KYMYS } from './urasa/kymys.js';
 import { buildFire } from './urasa/fire.js';
 import { makeMats, smoothstep, uDoorOpen } from './urasa/mats.js';
 import { merge, lathe } from './urasa/geom.js';
 import { section } from '../load/geocache.js';
 import { noSun, noLocalLights } from '../engine/master.js';
+import { offerFrom, offerPath, offerTime } from './yard/offer.js';
 
 const EXPO_IN = 1.5, EXPO_OUT = 0.62;
 
@@ -28,7 +29,7 @@ export default async function build(ctx) {
 
   // the shell's geometry and data (baked: src/load/geocache.js)
   const frame = section(() => buildFrame(rng, P));
-  const cover = section(() => buildCover(rng, P));
+  const cover = section(() => buildCover(rng, P, frame.innerPoles, frame.outerAngles));
   const inside = section(() => buildInterior(rng));
   const hole = P.at(cover.sTop), holeY = hole.y;
   const coneR = (y) => P.rAtY(Math.max(0, y)); // inner radius of the cone at height y
@@ -43,9 +44,10 @@ export default async function build(ctx) {
   mesh(merge([frame.geoms.hair, inside.geoms.hair]), M.hair, { cast: false });
   mesh(frame.geoms.timber, M.timber);
   mesh(inside.geoms.floor, M.floor, { cast: false });
-  mesh(inside.geoms.plank, M.plank);
+  // benches, firewood and hides stand on the earth floor (built on level 0; world/settle.js)
+  mesh(inside.geoms.plank, M.plank).userData.ground = 0;
   mesh(inside.geoms.clay, M.clay);
-  mesh(inside.geoms.hide, M.hide);
+  mesh(inside.geoms.hide, M.hide).userData.ground = 0;
 
   // ---- the door curtain: bark edged with leather (its embroidery is not drawn: no traceable source yet, docs/patterns.md)
   const curtain = buildCurtain();
@@ -78,9 +80,18 @@ export default async function build(ctx) {
   // ---- kymys corner and fire
   const ky = buildKymys(rng, M);
   root.add(ky.group);
-  const fire = buildFire(rng, { holeY, holeR: hole.r, coneR });
+  // the kymys corner on the earth floor: the sack's platform and the chorons' board drop as one onto it, the
+  // buckets (and the corner's horsehair) follow it (world/settle.js)
+  ky.sackRoot.userData.rest = ky.boardRoot.userData.rest = true;
+  for (const m of [...ky.buckets.children, ky.hair]) m.userData.ground = 0;
+  // the fire asks the cone's radius for every puff every frame: from a table (2 cm steps) instead of the profile's search
+  const coneTab = Float32Array.from({ length: Math.ceil(holeY / 0.02) + 2 }, (_, i) => coneR(i * 0.02));
+  const coneRFast = (y) => { const f = Math.min(coneTab.length - 1.001, Math.max(0, y / 0.02)), i = f | 0; return coneTab[i] + (coneTab[i + 1] - coneTab[i]) * (f - i); };
+  const fire = buildFire(rng, { holeY, holeR: hole.r, coneR: coneRFast });
   root.add(fire.group);
   root.traverse((o) => { if (o.isMesh) o.castShadow = !o.userData.noShadow && !o.material.transparent; });
+  const BOUNCE = 0.13, bounce = new THREE.PointLight(0xffc9a0, 0, 7.5, 1);
+  root.add(bounce); fire.light.userData.pair = bounce; // (a carried thing indoors takes both: src/engine/master.js fireLit)
   // Explicit light sets. Interior-only materials take the fire's light alone: the sun gets in only through the
   // door and the smoke hole, and shadow-map leaks would light thin lines along every pole and seam. The outside
   // takes the sun alone (the fire must not glow through the bark); the floor, door frame and curtain take both.
@@ -133,47 +144,99 @@ export default async function build(ctx) {
   // ---- little animation runner for the hands-on actions
   const tweens = [];
   const tween = (dur, fn) => new Promise((res) => tweens.push({ t: 0, dur, fn, res }));
-  const wait = (s) => tween(s, () => {});
   const ease = (k) => k * k * (3 - 2 * k);
   const local = (v) => root.worldToLocal(v.clone());
-  // main line in the reader's language, the Sakha word (or English for Sakha readers) underneath
-  const toast = (game, sah, en, ru) => { const l = game?.state?.lang; const main = l === 'en' ? en : l === 'ru' ? (ru || en) : sah; game?.ui?.toast(`<b>${main}</b><small>${l === 'sah' ? en : sah}</small>`, 2600); };
+  // Churning, watched: one tap on the sack and the view is framed on it (src/interact/framed.js); the хамнатар comes
+  // up and plunges, stroke after stroke, a turn of the wrist each time, the sack swelling at each plunge, until the
+  // froth rises over the collar (8 strokes: it foams over and stays 90 s, `save.work.kymys`). Leaving stops the
+  // strokes; left alone the froth falls again.
+  const churn = { up: 0, top: 0, fall: 0, lifting: false, t: 0, score: 0, idle: 9, bulge: 0, foamed: 0, base: ky.stirrer.position.y };
+  const froth = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 8).scale(1, 0.42, 1), M.kymys);
+  { const uv = froth.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, 0.9); } // all froth (uv.x: `kymys` in urasa/mats.js)
+  froth.position.set(0, ky.neckY + 0.05, 0); froth.visible = false; froth.castShadow = false; froth.userData.dynamic = true;
+  ky.sackRoot.add(froth);
   const sound = (game, name, obj) => { const p = new THREE.Vector3(); obj.getWorldPosition(p); game?.audio?.play(name, p); };
+  const churnIt = async (game) => {
+    const F = game?.framed;
+    if (!F || churn.lifting || churn.fall > 0) return;
+    const c = ky.sackRoot.localToWorld(new THREE.Vector3(0, ky.neckY + 0.08, 0)), pl = game.player.pos; // the collar: the sack below, the knob's stroke above
+    if (!(await F.open({ c, r: 0.72, yaw: Math.atan2(pl.x - c.x, pl.z - c.z), el: 0.22, fov: 40 }))) return;
+    await tween(0.3, () => {});
+    while (F.on && !churn.foamed) {
+      churn.lifting = true; churn.t = 0; churn.to = 0.85 + Math.random() * 0.15; churn.twist = -(churn.twist || 0.35);
+      await new Promise((res) => { churn.res = res; });
+      await tween(0.2 + Math.random() * 0.08, () => {}); // the beat: up, plunge, a breath
+    }
+    if (churn.foamed) await tween(1.8, () => {}); // it foams over the collar
+    await F.close();
+  };
 
-  // milk-white drops for the sprinkling
+  // milk-white drops: the pinch for the fire, the choron's drops
   const drops = [];
   {
     const g = new THREE.IcosahedronGeometry(0.008, 1);
     const m = new THREE.MeshStandardNodeMaterial({ color: 0xece6d6, roughness: 0.25 });
     for (let i = 0; i < 14; i++) { const d = new THREE.Mesh(g, m); d.visible = false; d.userData.noShadow = true; root.add(d); drops.push({ o: d, v: new THREE.Vector3(), t: 0 }); }
   }
-  const sprinkle = (from, dir) => {
-    for (const d of drops) {
-      d.o.position.copy(from);
-      d.v.copy(dir).multiplyScalar(1.4 + Math.random() * 0.8).add(new THREE.Vector3((Math.random() - 0.5) * 0.4, Math.random() * 0.4, (Math.random() - 0.5) * 0.4));
-      d.t = 1.4; d.o.visible = true;
+  // n drops slip from the rim with velocity `vel` (m/s) and fall
+  const sprinkle = (from, vel, n = 5) => {
+    for (const d of drops.slice(-n)) {
+      d.o.position.copy(from).add(new THREE.Vector3((Math.random() - 0.5) * 0.02, 0, (Math.random() - 0.5) * 0.02));
+      d.v.copy(vel).multiplyScalar(0.8 + Math.random() * 0.4).add(new THREE.Vector3((Math.random() - 0.5) * 0.12, Math.random() * 0.1, (Math.random() - 0.5) * 0.12));
+      d.t = 1.6; d.o.visible = true; d.o.scale.setScalar(1.6);
     }
   };
+  // An offering put into the fire: n drops come up from low by the player and are set down slowly on the embers
+  // (yard/offer.js): put, never thrown
+  const offer = (fromW, toW, n) => {
+    const from = local(fromW), to = local(toW), put = drops.slice(0, n), p = new THREE.Vector3();
+    put.forEach((d, i) => { d.held = true; d.o.visible = true; d.o.scale.setScalar(0.01); d.off = new THREE.Vector3((i - 1) * 0.012, 0, ((i * 7) % 3 - 1) * 0.01); });
+    return tween(offerTime(fromW, toW), (k) => {
+      offerPath(from, to, k, p);
+      for (const d of put) { d.o.position.copy(p).add(d.off); d.o.scale.setScalar(1.8 * ease(Math.min(1, k / 0.15))); }
+      if (k >= 1) for (const d of put) { d.held = false; d.o.visible = false; d.o.scale.setScalar(1); }
+    });
+  };
+  // The guest's choron (src/interact/rites.js takes it into the hands): the ladle fills it from the sack where it stands.
+  const fillChoron = async (game) => {
+    const hero = ky.hero, ladle = ky.ladle, kl = ky.heroKymys;
+    root.updateMatrixWorld();
+    const rootQi = root.getWorldQuaternion(new THREE.Quaternion()).invert();
+    const at = local(hero.getWorldPosition(new THREE.Vector3()));
+    const homeL = { parent: ladle.parent, p: ladle.position.clone(), q: ladle.quaternion.clone(), rp: local(ladle.getWorldPosition(new THREE.Vector3())), rq: rootQi.clone().multiply(ladle.getWorldQuaternion(new THREE.Quaternion())) };
+    root.attach(ladle);
+    const level = rootQi.clone().multiply(ky.sackRoot.getWorldQuaternion(new THREE.Quaternion())); // bowl upright, handle along the wall
+    await flyTo(ladle, ladle.position.clone().add(new THREE.Vector3(0, 0.3, 0)), 0.4);
+    // the bowl over the choron, a little to the side it tips to; poured by rolling it about the handle, which stays level
+    await flyTo(ladle, at.clone().add(new THREE.Vector3(0, 0.36, -0.03).applyQuaternion(level)), 0.55, level);
+    sound(game, 'pour', hero);
+    const q1 = ladle.quaternion.clone(), q2 = q1.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.15));
+    await tween(0.35, (k) => ladle.quaternion.slerpQuaternions(q1, q2, ease(k)));
+    const v0 = kl.vol, v1 = Math.max(v0, kl.volAt(KYMYS.full));
+    await tween(0.6, (k) => { kl.vol = v0 + (v1 - v0) * ease(k); });   // the choron fills
+    await tween(0.3, (k) => ladle.quaternion.slerpQuaternions(q2, q1, ease(k)));
+    await flyTo(ladle, homeL.rp, 0.55, homeL.rq);
+    homeL.parent.attach(ladle); ladle.position.copy(homeL.p); ladle.quaternion.copy(homeL.q);
+  };
+  ky.hero.userData.dynamic = true; ky.ladle.userData.dynamic = true;
+  root.userData.guest = {
+    hero: ky.hero, kymys: ky.heroKymys, KYMYS, fill: fillChoron,
+    sprinkle: (fromW, velW, n) => sprinkle(local(fromW), velW.clone().applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()).invert()), n),
+    offer: (fromW, n) => offer(fromW, fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top + 0.05, 0)), n), // drops set down on the fire
+    hearth: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)),
+    flare: (game) => { sound(game, 'fire-feed', fire.group); fire.flare(); },
+    inside: (p) => { const l = root.worldToLocal(p.clone()); return Math.hypot(l.x, l.z) < R0 - 0.2; },
+  };
 
-  const camPose = (game, fwd, down) => {
-    const cam = game.engine.camera;
-    const f = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-    const u = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
-    return local(cam.position.clone().addScaledVector(f, fwd).addScaledVector(u, -down));
-  };
-  const flyTo = async (obj, to, dur, quatTo) => {
+  // the ladle's motion (model space; the model only turns about +Y)
+  const flyTo = async (obj, to, dur, quatTo, during) => {
     const from = obj.position.clone(), q0 = obj.quaternion.clone();
-    await tween(dur, (k) => { const e = ease(k); obj.position.lerpVectors(from, to, e); if (quatTo) obj.quaternion.slerpQuaternions(q0, quatTo, e); });
-  };
-  const tiltQ = (dirLocal, amount) => {
-    const up = new THREE.Vector3(0, 1, 0), d = dirLocal.clone().normalize();
-    const target = up.clone().lerp(d, amount).normalize();
-    return new THREE.Quaternion().setFromUnitVectors(up, target);
+    await tween(dur, (k) => { const e = ease(k); obj.position.lerpVectors(from, to, e); if (quatTo) obj.quaternion.slerpQuaternions(q0, quatTo, e); during?.(e); });
   };
 
   const interactables = [
     { entry: 'urasa', target: outerProxy },
-    { entry: 'urasa', target: frameProxy, label: { sah: 'Ураһа баҕаналара, курдуу', en: 'Uraha posts and hoop', ru: 'Столбы и обруч урасы' } },
+    { entry: 'urasa', target: frameProxy, label: { sah: 'Ураһа баҕаналара, курдуу', en: 'Uraha posts and hoop', ru: 'Столбы и обруч ураһы' } },
     { entry: 'birch-bark', target: lining, label: { sah: 'Туос', en: 'Birch bark', ru: 'Береста' } },
     { entry: 'hospitality', target: doorProxy, label: { sah: 'Аан (илин)', en: 'The door, facing east', ru: 'Дверь, обращённая на восток' } },
     { entry: 'hospitality', zone: { x: DOOR.r + 1.0, z: 0, r: 0.9 } },
@@ -181,13 +244,19 @@ export default async function build(ctx) {
     {
       entry: 'uot-ichchite', target: fireProxy,
       // src/interact lays carried firewood here
-      fireplace: { pos: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), upright: false, fuel: fire.fuel },
+      fireplace: {
+        pos: () => fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top, 0)), upright: false, fuel: fire.fuel, stir: fire.stir,
+        // the bearing (world, rad from +x towards +z) of the next gap between the fire's leaning billets
+        lean: (() => { let n = 0; return () => { const a = fire.gaps[n++ % fire.gaps.length], o = fire.group.localToWorld(new THREE.Vector3()), d = fire.group.localToWorld(new THREE.Vector3(Math.cos(a), 0, Math.sin(a))).sub(o); return Math.atan2(d.z, d.x); }; })(),
+      },
       act: {
-        id: 'feed', label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
+        // a pinch from low by the hand, set down slowly on the hearth; the fire takes it
+        id: 'feed', empty: true, label: { sah: 'Уоту аһат', en: 'Feed the fire', ru: 'Покормить огонь' },
         run: async (game) => {
+          const hearth = fire.group.localToWorld(new THREE.Vector3(0, HEARTH.top + 0.05, 0));
+          await offer(offerFrom(game.engine.camera, hearth, new THREE.Vector3()), hearth, 3);
           sound(game, 'fire-feed', fire.group);
           fire.flare();
-          await wait(1.4);
         },
       },
     },
@@ -195,85 +264,48 @@ export default async function build(ctx) {
       entry: 'kymys', target: ky.sackRoot,
       act: {
         id: 'churn', label: { sah: 'Хамнат', en: 'Churn the kymys', ru: 'Покачать мутовку в кумысе' },
-        run: async (game) => {
-          const base = ky.stirrer.position.y;
-          for (let i = 0; i < 6; i++) {
-            await tween(0.42, (k) => { ky.stirrer.position.y = base + 0.26 * ease(k); ky.sack.scale.set(1, 1, 1); });
-            sound(game, 'churn', ky.sack);
-            await tween(0.38, (k) => { ky.stirrer.position.y = base + 0.26 * (1 - k * k); const s = Math.sin(k * Math.PI) * 0.025; ky.sack.scale.set(1 + s, 1 - s * 0.6, 1 + s); });
-          }
-          ky.stirrer.position.y = base; ky.sack.scale.set(1, 1, 1);
-          await wait(0.3);
-        },
+        run: (game) => churnIt(game),
       },
     },
     { entry: 'khamyiakh-ladle', target: ky.ladle },
-    {
-      entry: 'choron', target: ky.chorons,
-      act: {
-        id: 'sprinkle', freeze: true, label: { sah: 'Ыс уонна ис', en: 'Sprinkle, then drink', ru: 'Окропить, потом выпить' },
-        run: async (game) => {
-          const hero = ky.hero, ladle = ky.ladle;
-          const homeH = { p: hero.position.clone(), q: hero.quaternion.clone(), parent: hero.parent };
-          const homeL = { p: ladle.position.clone(), q: ladle.quaternion.clone(), parent: ladle.parent };
-          // ladle kymys from the sack into the choron
-          root.attach(ladle); root.attach(hero);
-          const over = hero.position.clone().add(new THREE.Vector3(0, 0.32, 0));
-          const up = ladle.position.clone().add(new THREE.Vector3(0, 0.35, 0));
-          await flyTo(ladle, up, 0.6);
-          const pourQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2 - 0.2));
-          await flyTo(ladle, over.clone().add(new THREE.Vector3(-0.08, 0.05, 0)), 0.8, ladle.quaternion.clone());
-          sound(game, 'pour', hero);
-          const q1 = ladle.quaternion.clone(), q2 = q1.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.9));
-          await tween(0.5, (k) => ladle.quaternion.slerpQuaternions(q1, q2, ease(k)));
-          const kl = ky.heroKymys, l0 = kl.level;
-          await tween(0.6, (k) => { kl.level = l0 + (KYMYS.full - l0) * ease(k); });   // the choron fills
-          await tween(0.4, (k) => ladle.quaternion.slerpQuaternions(q2, q1, ease(k)));
-          await flyTo(ladle, homeL.p.clone().applyMatrix4(homeL.parent.matrixWorld).applyMatrix4(root.matrixWorld.clone().invert()), 0.7);
-          homeL.parent.attach(ladle); ladle.position.copy(homeL.p); ladle.quaternion.copy(homeL.q);
-          void pourQ;
-          // raise the choron in both hands
-          await flyTo(hero, camPose(game, 0.45, 0.2), 0.9, new THREE.Quaternion());
-          const lip = () => hero.position.clone().add(new THREE.Vector3(0, 0.22, 0));
-          const hearth = new THREE.Vector3(0, 0.3, 0);
-          const dirs = [
-            { d: hearth.clone().sub(hero.position).normalize(), sah: 'Уокка', en: 'a few drops to the fire', ru: 'несколько капель огню' },
-            { d: new THREE.Vector3(0, -1, 0).add(hearth.clone().sub(hero.position).setY(0).normalize().multiplyScalar(0.4)).normalize(), sah: 'Сиргэ', en: 'to the earth', ru: 'земле' },
-            { d: new THREE.Vector3(0, 1, 0), sah: 'Халлааҥҥа', en: 'to the sky', ru: 'небу' },
-          ];
-          for (const s of dirs) {
-            const q = tiltQ(s.d, s.d.y > 0.9 ? 0.25 : 0.75);
-            toast(game, s.sah, s.en, s.ru);
-            await tween(0.45, (k) => hero.quaternion.slerpQuaternions(new THREE.Quaternion(), q, ease(k)));
-            sprinkle(lip(), s.d.y > 0.9 ? new THREE.Vector3(0, 1, 0) : s.d);
-            sound(game, 'pour', hero);
-            await wait(0.35);
-            await tween(0.45, (k) => hero.quaternion.slerpQuaternions(q, new THREE.Quaternion(), ease(k)));
-            await wait(0.25);
-          }
-          // drink as a guest
-          toast(game, 'Кымыс', 'drink as a guest — the first kymys of Ysyakh is sprinkled by the algyschyt', 'пейте как гость — первый кумыс ысыаха окропляет алгысчыт');
-          const cam = game.engine.camera;
-          const toCam = local(cam.position).sub(hero.position).normalize();
-          await flyTo(hero, camPose(game, 0.2, 0.1), 0.7, tiltQ(toCam, 0.8));
-          const l1 = kl.level;
-          await tween(1.3, (k) => { kl.level = l1 + (KYMYS.left - l1) * k; });   // drunk down
-          await flyTo(hero, camPose(game, 0.45, 0.2), 0.6, new THREE.Quaternion());
-          // set it back on the board
-          const back = homeH.p.clone().applyMatrix4(homeH.parent.matrixWorld).applyMatrix4(root.matrixWorld.clone().invert());
-          await flyTo(hero, back, 0.9, new THREE.Quaternion().copy(homeH.q));
-          homeH.parent.attach(hero); hero.position.copy(homeH.p); hero.quaternion.copy(homeH.q);
-        },
-      },
-    },
+    { entry: 'choron', target: ky.chorons },
+    { entry: 'choron', target: ky.hero, guest: true, label: { sah: 'ыалдьыт чорооно', en: 'the guest’s choroon', ru: 'чороон гостя' } },
     { entry: 'ygas-bucket', target: ky.buckets },
   ];
 
   // ---- per-frame: curtain, exposure inside, fire, smoke, drops, tweens
   let open = 0, wasOpen = false, inside_ = false;
-  const _kQ = new THREE.Quaternion(), _kUp = new THREE.Vector3(), kLast = { level: -1, up: new THREE.Vector3() };
+  const _kQ = new THREE.Quaternion(), _kUp = new THREE.Vector3(), kLast = { vol: -1, up: new THREE.Vector3() };
   const _p = new THREE.Vector3(), _lp = new THREE.Vector3(), _iq = new THREE.Quaternion(), _sun = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
   const update = (dt, c) => {
+    // the dasher
+    if (churn.lifting) {
+      churn.t += dt; churn.up = Math.min(churn.to, churn.up + dt / 0.34);
+      if (churn.up >= churn.to) { churn.lifting = false; churn.top = churn.up; churn.fall = 1; }
+    } else if (churn.fall > 0) {
+      churn.fall = Math.max(0, churn.fall - dt / (0.08 + 0.12 * churn.top));
+      churn.up = churn.top * churn.fall * churn.fall;
+      if (churn.fall === 0) { // the plunge
+        sound(c.game, 'churn', ky.sack);
+        churn.score = Math.min(12, churn.score + 1.5);
+        churn.idle = 0; churn.bulge = 0.5 + 0.5 * churn.top;
+        c.game?.work?.count('churn');
+        if (churn.score >= 12 && !churn.foamed) { churn.foamed = 90; c.game?.work?.count('kymys'); }
+        churn.res?.();
+      }
+    } else if ((churn.idle += dt) > 1.6 && !churn.foamed) churn.score = Math.max(0, churn.score - dt * 1.5); // left alone, the froth falls
+    if (churn.foamed && (churn.foamed -= dt) <= 0) { churn.foamed = 0; churn.score = 0; }
+    ky.stirrer.position.y = churn.base + 0.26 * ease(churn.up);
+    ky.stirrer.rotation.y = (churn.twist || 0) * ease(churn.up); // a turn of the wrist as it rises
+    churn.bulge = Math.max(0, churn.bulge - dt * 3);
+    { const s = Math.sin(churn.bulge * Math.PI) * 0.03; ky.sack.scale.set(1 + s, 1 - s * 0.6, 1 + s); }
+    const fk = churn.score / 12;
+    froth.visible = fk > 0.04;
+    if (froth.visible) { // the surface in the collar's mouth (inside r 3.5 cm, top neckY + 3 cm) rises to its rim with the strokes, then foams over it
+      const lvl = ky.neckY + 0.03 * ease(Math.min(1, fk / 0.75)), over = ease(Math.max(0, (fk - 0.7) / 0.3)), wob = 1 + 0.04 * Math.sin((c.time || 0) * 3.1);
+      const rx = (0.034 + 0.05 * over) * wob, hy = 0.004 + 0.036 * over; // m: its radius; half its height
+      froth.scale.set(rx / 0.06, hy / (0.06 * 0.42), rx / 0.06); froth.position.y = lvl - hy * 0.3 * over; // (over the rim: a dome, its foot on the wood)
+    }
     for (let i = tweens.length - 1; i >= 0; i--) {
       const tw = tweens[i];
       tw.t += dt;
@@ -284,7 +316,7 @@ export default async function build(ctx) {
     // the guest's choron keeps its kymys level in the world while it is lifted and tilted (re-fit on change only)
     const kl = ky.heroKymys;
     _kUp.set(0, 1, 0).applyQuaternion(ky.hero.getWorldQuaternion(_kQ).invert());
-    if (kl.level !== kLast.level || _kUp.distanceToSquared(kLast.up) > 1e-8) { kl.fit(kl.level, _kUp); kLast.level = kl.level; kLast.up.copy(_kUp); }
+    if (kl.vol !== kLast.vol || _kUp.distanceToSquared(kLast.up) > 1e-8) { kl.fit(_kUp); kLast.vol = kl.vol; kLast.up.copy(_kUp); }
     root.updateMatrixWorld();
     root.getWorldQuaternion(_iq).invert();
     // who is where: the player's feet in the game, the camera in the viewer
@@ -301,6 +333,10 @@ export default async function build(ctx) {
     const r = Math.hypot(lp.x, lp.z);
     const isIn = inside_ ? r < R0 - 0.05 : r < R0 - 0.3;
     if (isIn !== inside_ && engine) { engine.exposureTarget = isIn ? EXPO_IN : EXPO_OUT; inside_ = isIn; }
+    // the fire's light thrown back by the pale bark: it travels with the eye, so a thing held up against the fire
+    // (a choron in the hands) or looked at closely is not a black shape
+    if (c.camera) root.worldToLocal(bounce.position.set(0.12, 0.3, 0.15).applyQuaternion(c.camera.quaternion).add(c.camera.position));
+    bounce.intensity += ((inside_ ? BOUNCE : 0) - bounce.intensity) * (1 - Math.exp(-dt * 4));
     // fire, smoke facing the camera, the sun shaft
     if (engine) _sun.copy(engine.sun.position).normalize().applyQuaternion(_iq);
     else _sun.set(0.4, 0.8, 0.2).normalize();
@@ -308,7 +344,7 @@ export default async function build(ctx) {
     _u.set(0, 1, 0).applyQuaternion(c.camera.quaternion).applyQuaternion(_iq);
     fire.update(dt, { sunLocal: _sun, sunElev: engine ? engine.sunElev : 40, camRight: _r, camUp: _u });
     for (const d of drops) {
-      if (!d.o.visible) continue;
+      if (!d.o.visible || d.held) continue;
       d.t -= dt; d.v.y -= 9.8 * dt; d.o.position.addScaledVector(d.v, dt);
       if (d.t <= 0 || d.o.position.y < 0.02) d.o.visible = false;
     }
@@ -320,5 +356,6 @@ export default async function build(ctx) {
   root.userData.paths = [{ w: 2.6, pts: ring }];
   root.userData.bare = [{ x: 0, z: 0, r: R0 }];
 
-  return { object: root, colliders, floors: [], interactables, update };
+  const rests = inside.rests.map((f) => (f.floor ? { ...f, polar: floorGrid() } : f)); // the earth floor as drawn (a section bakes plain data only)
+  return { object: root, colliders, floors: [], rests, interactables, update };
 }

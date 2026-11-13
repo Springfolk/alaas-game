@@ -24,6 +24,7 @@ export const SOURCES = {
   crows: { url: FS('556/556233_4835746'), page: 'https://freesound.org/s/556233/', title: 'Hooded Crows (Corvus cornix)' },
   crow: { url: FS('741/741366_16104671'), page: 'https://freesound.org/s/741366/', title: 'Hooded Crow: Cawing' },
   woodpecker: { url: FS('428/428146_7455632'), page: 'https://freesound.org/s/428146/', title: 'Great Spotted Woodpecker' },
+  barnswallow: { url: 'https://upload.wikimedia.org/wikipedia/commons/b/bc/Hirundo_rustica_-_Barn_Swallow_-_XC83449.ogg', ext: 'ogg', licence: 'CC BY-SA 3.0', page: 'https://commons.wikimedia.org/wiki/File:Hirundo_rustica_-_Barn_Swallow_-_XC83449.ogg', title: 'Hirundo rustica - Barn Swallow (Jonathon Jongsma)' },
   skylark: { url: FS('387/387426_2247456'), page: 'https://freesound.org/s/387426/', title: 'Single Skylark' },
   horses: { url: FS('868/868303_15895934'), page: 'https://freesound.org/s/868303/', title: 'Horses - Two Horses Neighing, Distant' },
   whinny: { url: FS('149/149024_2581089'), page: 'https://freesound.org/s/149024/', title: 'Horse_Whinny.wav' },
@@ -53,6 +54,11 @@ export const SOURCES = {
   woodpile: { url: FS('316/316728_2591786'), page: 'https://freesound.org/s/316728/', title: 'Bois-empile' },
   firewood: { url: FS('489/489885_7581660'), page: 'https://freesound.org/s/489885/', title: 'STACKING - MOVING - SPLIT FIREWOOD' },
   logdrop: { url: FS('681/681416_14819331'), page: 'https://freesound.org/s/681416/', title: 'wooden log drop' },
+  axechop: { url: FS('452/452554_612689'), page: 'https://freesound.org/s/452554/', title: 'axe chop into wood little debris.wav' },
+  swoosh: { url: FS('60/60026_71257'), page: 'https://freesound.org/s/60026/', title: 'Swosh swoosh whoosh air sound' },
+  bushcut: { url: FS('327/327894_4336114'), page: 'https://freesound.org/s/327894/', title: 'Bush Cut.wav' },
+  smithhammer: { url: FS('521/521972_311243'), page: 'https://freesound.org/s/521972/', title: 'Blacksmith Hammer' },
+  woodcut: { url: FS('614/614449_3397935'), page: 'https://freesound.org/s/614449/', title: 'woodcutfx-001.WAV' },
   khomus2: { url: 'https://upload.wikimedia.org/wikipedia/commons/b/be/Klangdemonstration_einer_jakutischen_Maultrommel.wav', ext: 'wav', licence: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Klangdemonstration_einer_jakutischen_Maultrommel.wav' },
 };
 
@@ -77,6 +83,7 @@ export const OUT = {
   crow: { src: 'crows', kind: 'shot', ss: 0, t: 8, db: -20, mono: true, hp: 250 },
   'crow-2': { src: 'crow', kind: 'shot', ss: 0, t: 4.8, db: -20, mono: true, hp: 250 },
   woodpecker: { src: 'woodpecker', kind: 'shot', ss: 0, t: 10, db: -22, mono: true, hp: 300 },
+  swallow: { src: 'barnswallow', kind: 'shot', ss: 1, t: 6, db: -30, mono: true, hp: 1500 },
   lark: { src: 'skylark', kind: 'shot', ss: 5, t: 22, db: -24, mono: true, hp: 1200 },
   horse: { src: 'horses', kind: 'shot', ss: 0, t: 3.4, db: -20, mono: true, hp: 150 },
   'horse-2': { src: 'whinny', kind: 'shot', ss: 0, t: 6.9, db: -20, mono: true, hp: 200, lp: 6000 },
@@ -110,6 +117,18 @@ export const OUT = {
   'wood-take-2': { src: 'firewood', kind: 'shot', ss: 8.1, t: 0.42, db: -28, mono: true, hp: 100, fade: [0.004, 0.18] },
   'wood-lay': { src: 'logdrop', kind: 'shot', ss: 0, t: 1, db: -24, mono: true, fade: [0.005, 0.5] },
   'wood-lay-2': { src: 'logdrop', kind: 'shot', ss: 3.15, t: 1, db: -24, mono: true, fade: [0.005, 0.5] },
+  // the axe through a round (work: src/interact/work/split.js); stuck: the same blow dulled, the wood holding it
+  chop: { src: 'axechop', kind: 'shot', ss: 0, t: 0.6, db: -22, mono: true, hp: 70, fade: [0.002, 0.25] },
+  'chop-2': { src: 'woodcut', kind: 'shot', ss: 0.66, t: 0.8, db: -22, mono: true, hp: 70, fade: [0.002, 0.4] },
+  'chop-stuck': { src: 'woodcut', kind: 'shot', ss: 0.66, t: 0.45, db: -26, mono: true, hp: 60, lp: 1700, fade: [0.002, 0.25] },
+  // the scythe (work: src/interact/work/hay.js): the blade through the air, then through the grass
+  swish: { src: 'swoosh', kind: 'shot', ss: 0, t: 0.5, db: -28, mono: true, hp: 120, fade: [0.005, 0.2] },
+  scythe: { src: 'bushcut', kind: 'shot', ss: 0, t: 0.9, db: -25, mono: true, hp: 120, fade: [0.003, 0.3] },
+  // the hammer on the glowing blank (src/models/yardlife/smithy.js): the blow and its rebounds on the anvil
+  anvil: { src: 'smithhammer', kind: 'shot', ss: 0, t: 0.7, db: -24, mono: true, hp: 150, fade: [0.002, 0.25] },
+  // single strokes left to ring (a tap on the khomus: src/interact/rites.js)
+  'khomus-pluck': { src: 'khomus2', kind: 'shot', ss: 4.8, t: 1.15, db: -24, mono: true, fade: [0.003, 0.5] },
+  'khomus-pluck-2': { src: 'khomus2', kind: 'shot', ss: 7.04, t: 1.35, db: -24, mono: true, fade: [0.003, 0.6] },
   khomus: { src: 'khomus2', kind: 'shot', ss: 0, t: 18, db: -20, mono: true, fade: [0.05, 2.5], hp: 60 },
 };
 

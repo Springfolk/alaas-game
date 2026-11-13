@@ -123,12 +123,51 @@ function clearingMask(world) {
   }
   // B = grazed (field formula, max mown), A = bare soil: baked in a worker, filled in when it arrives
   const d = new Uint8Array(nx * nz * 4), spots = SPOTS();
-  job('mask', { R, G, spots, mask: MASK }, () => maskTexels(R, G, spots, MASK)).then((m) => { d.set(m); tex.needsUpdate = true; });
+  let loaded = false; const after = []; // (`whenLoaded`: the saved mowing is cut again once the texels are in)
+  job('mask', { R, G, spots, mask: MASK }, () => maskTexels(R, G, spots, MASK)).then((m) => { d.set(m); loaded = true; for (const f of after) f(); tex.needsUpdate = true; });
+  const whenLoaded = (f) => { if (loaded) { f(); tex.needsUpdate = true; } else after.push(f); };
   const tex = new THREE.DataTexture(d, nx, nz, THREE.RGBAFormat);
   tex.magFilter = tex.minFilter = THREE.LinearFilter;
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.needsUpdate = true;
-  return { tex, stone };
+  // Mowing in play (src/interact/work/hay.js): texels where inside(x, z) and the sward still stands tall become
+  // mown (G and B full); returns how many changed. The blades and the ground read the texture every frame.
+  const mow = (minX, minZ, maxX, maxZ, inside, whole = false) => {
+    const i0 = Math.max(1, Math.floor((minX - x0) / px)), i1 = Math.min(nx - 2, Math.ceil((maxX - x0) / px));
+    const j0 = Math.max(1, Math.floor((minZ - z0) / px)), j1 = Math.min(nz - 2, Math.ceil((maxZ - z0) / px));
+    let n = 0;
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const k = (j * nx + i) * 4;
+      if (d[k] > 100 || d[k + 1] > 110 || d[k + 2] > 110 || !inside(x0 + (i + 0.5) * px, z0 + (j + 0.5) * px)) continue; // a path, or short already
+      d[k + 1] = d[k + 2] = 255; n++;
+    }
+    if (n && !whole) {
+      // only the touched block goes to the GPU (the whole mask is 8 MB: a hitch per scythe blow on a phone)
+      const w = i1 - i0 + 1, h = j1 - j0 + 1, r = world.engine?.renderer;
+      let part = false;
+      if (r?.backend?.isWebGPUBackend && w <= PATCH && h <= PATCH) {
+        try {
+          const pd = patch.image.data;
+          for (let j = 0; j < h; j++) pd.set(d.subarray(((j0 + j) * nx + i0) * 4, ((j0 + j) * nx + i0 + w) * 4), j * PATCH * 4);
+          patch.needsUpdate = true;
+          r.copyTextureToTexture(patch, tex, patchBox.set(patchMin.set(0, 0), patchMax.set(w, h)), patchAt.set(i0, j0));
+          part = true;
+        } catch (e) { console.warn('mask: partial update failed, uploading it whole', e); }
+      }
+      if (!part) tex.needsUpdate = true;
+    }
+    return n;
+  };
+  const PATCH = 32, patch = new THREE.DataTexture(new Uint8Array(PATCH * PATCH * 4), PATCH, PATCH, THREE.RGBAFormat);
+  const patchBox = new THREE.Box2(), patchMin = new THREE.Vector2(), patchMax = new THREE.Vector2(), patchAt = new THREE.Vector2();
+  // is the sward tall at (x, z)? (not cut, mown or grazed short)
+  const tall = (x, z) => {
+    const i = Math.floor((x - x0) / px), j = Math.floor((z - z0) / px);
+    if (i < 1 || j < 1 || i > nx - 2 || j > nz - 2) return false;
+    const k = (j * nx + i) * 4;
+    return d[k] < 100 && d[k + 1] < 110 && d[k + 2] < 110;
+  };
+  return { tex, stone, mow, tall, texel: px, whenLoaded };
 }
 
 // Tiling value noise, 4 octaves in RGBA (periods 4, 8, 16, 32 cells over 256 px).

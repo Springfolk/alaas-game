@@ -3,7 +3,7 @@ import * as THREE from 'three/webgpu';
 import {
   texture, uv, vec2, vec3, vec4, float, mix, smoothstep, step, clamp, max, abs, sin, fract, floor, positionLocal,
   normalLocal, attribute, faceDirection, normalMap, mx_noise_float, mx_fractal_noise_float, mx_worley_noise_float, time,
-  uniform, luminance, vertexColor, dot, length, bumpMap, Fn, If,
+  uniform, luminance, cos, vertexColor, dot, length, bumpMap, Fn, If,
 } from 'three/tsl';
 
 import { FX, FZ, H, OUT, GAP, XD, ZD, KH } from './dims.js';
@@ -75,7 +75,8 @@ export function makeMats(maps, { winter = false } = {}) {
     const damp = smoothstep(0.45, 0.62, y).mul(smoothstep(dampEdge, dampEdge.sub(0.25), y));
     col = col.mul(mix(1.0, 0.72, damp));
     // flaking: a few large irregular patches (more low and near the corners) exposing the logs
-    const fl = fz(p.mul(vec3(0.8, 1.5, 0.8)).add(1.7), 4).add(fz(p.mul(vec3(4.0, 2.5, 4.0)).add(5.5), 2).mul(0.2)).sub(0.08);
+    const flAt = (q) => fz(q.mul(vec3(0.8, 1.5, 0.8)).add(1.7), 4).add(fz(q.mul(vec3(4.0, 2.5, 4.0)).add(5.5), 2).mul(0.2)).sub(0.08);
+    const fl = flAt(p);
     const thr = float(flake).add(smoothstep(1.3, 1.9, y).mul(0.6)).sub(smoothstep(0.9, 0.3, y).mul(0.05));
     const flaked = smoothstep(thr, thr.add(0.015), fl);
     const rim = smoothstep(thr.sub(0.05), thr, fl).mul(float(1).sub(flaked));     // thinned plaster round a patch
@@ -98,6 +99,9 @@ export function makeMats(maps, { winter = false } = {}) {
       const barkLeft = smoothstep(0.62, 0.7, fz(vec3(u.x.mul(4), u.y.mul(1.2), 8.0), 2));
       c = mix(c, look(T.bark.diff, [1.4, 0.9]).rgb.mul(0.7), barkLeft.mul(0.6));
       c = mix(c, vec3(0.05, 0.045, 0.04), smoothstep(0.12, 0.0, fu).add(smoothstep(0.88, 1.0, fu)).min(1));
+      // the plaster is a hand thick: its broken edge shades the logs just under it
+      const over = float(1).sub(smoothstep(thr, thr.add(0.015), flAt(p.add(vec3(0, 0.045, 0)))));
+      c = c.mul(mix(1.0, 0.38, over));
       return vec4(c, smoothstep(0.75, 0.95, nz(p.mul(7.0))).mul(0.5));   // + clay crumbs left in the joints (mixed in below)
     };
     const lc = !lean ? logs(null) : Fn(() => {
@@ -115,7 +119,9 @@ export function makeMats(maps, { winter = false } = {}) {
     m.colorNode = vec4(col.mul(vertexColor().rgb).mul(faceDirection.greaterThan(0).select(float(1), float(0.12))), m.opacityNode);
     const n1 = smp(T.plaster.nor, u.mul(0.42)).xyz, n2 = smp(T.crack.nor, u.mul(1.5).add(vec2(0.31, 0.17))).xyz;
     const nW = smp(T.wood.nor, vec2(u.x.mul(1.3), u.y.mul(0.35))).xyz;
-    m.normalNode = normalMap(mix(mix(n1, n2, 0.45), nW, flaked), vec2(1.3, 1.3));
+    // the logs' roundness, also showing through the thinned plaster round a patch (not on phones)
+    const ribs = lean ? vec3(0) : vec3(fract(u.x.div(0.16).add(nz(vec3(u.y.mul(0.8), 0.0, 4.4)).mul(0.25))).sub(0.5).mul(flaked.mul(0.75).add(rim.mul(0.3))), 0, 0);
+    m.normalNode = normalMap(mix(mix(n1, n2, 0.45), nW, flaked).add(ribs), vec2(1.3, 1.3));
     m.roughnessNode = float(0.93);
     m.aoNode = smp(T.plaster.arm, u.mul(0.42)).r.mul(mix(1.0, 0.55, crack.mul(float(1).sub(flaked)))).mul(faceDirection.greaterThan(0).select(float(1), float(0.06)));
     return m;
@@ -196,10 +202,13 @@ export function makeMats(maps, { winter = false } = {}) {
     const u = vec2(p.x, p.z);
     const g = smp(T.sodA.diff, u.mul(0.55)).rgb, g2 = smp(T.sodB.diff, u.mul(0.4)).rgb, s = smp(T.dirt.diff, u.mul(0.5)).rgb;
     const n = fz(vec3(p.x, p.y, p.z).mul(0.8), 3);
-    const bare = smoothstep(0.55, 0.75, n);
+    const bare = smoothstep(0.62, 0.8, n);
     let c = mix(g.mul(vec3(0.9, 1.0, 0.75)), g2, smoothstep(0.3, 0.6, fz(p.mul(0.37).add(5), 2)));
     if (winter) c = mix(c, c.mul(vec3(1.1, 0.95, 0.7)), 0.4);
-    c = mix(c, s.mul(vec3(0.7, 0.62, 0.52)), bare.mul(0.85));
+    // dry stalks among the green, matted and lying one way: last year's grass never cut up here
+    const thatch = smoothstep(0.45, 0.8, nz(vec3(p.x.mul(60).add(p.z.mul(14)), p.y.mul(8), p.z.mul(9))));
+    c = mix(c, vec3(0.5, 0.44, 0.24), thatch.mul(0.35));
+    c = mix(c, s.mul(vec3(0.7, 0.62, 0.52)), bare.mul(0.7));
     // steep banks (the berm's slumped ends and toes): earth breaks through the turf, mapped on the bank itself
     // (the top-down map smears into streaks there)
     const steep = smoothstep(0.8, 0.45, normalLocal.y);
@@ -234,24 +243,35 @@ export function makeMats(maps, { winter = false } = {}) {
     return m;
   })();
 
-  // ---- clay of the hearth: buff, fire-reddened round the mouth, soot above it
+  // ---- clay of the hearth: pale sandy clay packed over a ring of slanted poles lashed with withes; the pole backs
+  // show where it has worn thin above the mouth; fire-reddened round the mouth, a tongue of soot over its crown
   M.clay = ({ mouth, dir, top = 3.6 }) => {
     const m = new S({ name: 'clay', roughness: 0.92 });
     const p = positionLocal;
     const u = uv();
-    const base = smp(T.plaster.diff, u.mul(0.9)).rgb.mul(vec3(1.18, 1.1, 0.95));
+    const base = smp(T.plaster.diff, u.mul(0.9)).rgb.mul(vec3(1.3, 1.2, 1.02));
     const cr = smoothstep(0.38, 0.18, luminance(smp(T.crack.diff, u.mul(1.6)).rgb));
     const d = length(vec3(p.x.sub(mouth[0]), p.y.sub(mouth[1]).mul(0.8), p.z.sub(mouth[2])));
     const fire = smoothstep(0.9, 0.35, d);
-    const front = smoothstep(0.1, 0.7, dot(vec2(p.x.sub(mouth[0] - dir[0] * 0.5), p.z.sub(mouth[2] - dir[1] * 0.5)).normalize(), vec2(...dir)));
-    const soot = smoothstep(mouth[1] + 0.55, mouth[1] + 1.0, p.y).mul(front).mul(smoothstep(2.45, 2.15, p.y)).mul(fz(p.mul(vec3(3, 0.7, 3)), 2).mul(0.6).add(0.55))
+    const front = smoothstep(0.55, 0.95, dot(vec2(p.x.sub(mouth[0] - dir[0] * 0.5), p.z.sub(mouth[2] - dir[1] * 0.5)).normalize(), vec2(...dir)));
+    const n2 = fz(p.mul(vec3(3, 0.7, 3)), 2);
+    const soot = smoothstep(mouth[1] + 0.5, mouth[1] + 0.8, p.y).mul(front).mul(smoothstep(2.6, 1.7, p.y)).mul(n2.mul(0.7).add(0.5))
       .add(smoothstep(top - 0.35, top, p.y).mul(fz(p.mul(vec3(4, 1.5, 4)), 2).mul(0.5).add(0.5)));
+    // poles (hearth.js POLES = 26 round, uv.x = 3.6 a turn) and their withe lashings
+    const rib = cos(u.x.mul(Math.PI * 2 * 26 / 3.6)).mul(0.5).add(0.5);
+    const up = smoothstep(1.05, 1.7, p.y);
+    const bare = smoothstep(0.5, 0.78, rib.mul(up).mul(fz(p.mul(vec3(5, 1.6, 5)), 2).mul(0.8).add(0.45)));
+    const withe = smoothstep(0.035, 0.02, abs(fract(p.y.mul(1.55).add(0.18)).sub(0.5))).mul(up).mul(smoothstep(0.25, 0.5, rib));
     let c = base.mul(nz(p.mul(2.0)).mul(0.18).add(0.9));
-    c = mix(c, vec3(0.62, 0.3, 0.16), fire.mul(0.75));
-    c = mix(c, vec3(0.05, 0.045, 0.04), clamp(soot, 0, 0.92));
-    c = mix(c, c.mul(0.5), cr.mul(0.35));
+    c = c.mul(mix(float(1), rib.mul(0.3).add(0.72), up));                 // clay lies thicker, and dustier, between the poles
+    c = mix(c, vec3(0.3, 0.2, 0.13).mul(nz(vec3(u.x.mul(40), p.y.mul(3), 1.0)).mul(0.5).add(0.7)), bare.mul(0.75));
+    c = mix(c, vec3(0.2, 0.13, 0.08), withe.mul(0.8));
+    c = mix(c, vec3(0.66, 0.34, 0.18), fire.mul(0.7));
+    c = mix(c, vec3(0.075, 0.062, 0.052), clamp(soot, 0, 0.9));
+    c = mix(c, c.mul(0.5), cr.mul(0.35).mul(float(1).sub(bare)));
     m.colorNode = c;
-    m.normalNode = normalMap(smp(T.plaster.nor, u.mul(0.9)).xyz, vec2(1.5, 1.5));
+    m.roughnessNode = mix(float(0.95), float(0.86), bare);
+    m.normalNode = normalMap(smp(T.plaster.nor, u.mul(0.9)).xyz, vec2(1.8, 1.8));
     m.envMapIntensity = 0.3;
     return m;
   };
@@ -309,10 +329,10 @@ export function makeMats(maps, { winter = false } = {}) {
     const m = new THREE.MeshBasicNodeMaterial({ name: 'shaft', transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
     m.userData.noShadow = true;
     const u = uv();
-    const edge = smoothstep(0.0, 0.25, u.x).mul(smoothstep(1.0, 0.75, u.x));
+    const edge = smoothstep(0.0, 0.5, u.x).mul(smoothstep(1.0, 0.5, u.x)); // each face brightest down its middle: a round beam, no slab edges
     const along = smoothstep(0.0, 0.08, u.y).mul(smoothstep(1.0, 0.55, u.y));
     const dust = fz(positionLocal.mul(5).add(vec3(0, time.mul(0.05), time.mul(0.03))), 3).mul(0.7).add(0.5);
-    m.colorNode = vec4(vec3(1.0, 0.86, 0.66).mul(edge.mul(along).mul(dust).mul(0.035)), 1);
+    m.colorNode = vec4(vec3(1.0, 0.86, 0.66).mul(edge.mul(along).mul(dust).mul(0.03)), 1);
     return m;
   })();
 
@@ -347,36 +367,54 @@ export function makeMats(maps, { winter = false } = {}) {
 
   // ---- birch bark: cream outer face with dark lenticels; the хаппахчы curtain (plain boiled bark)
   M.birch = (() => {
+    // туос, the pale inner side out: honey to cream in soft bands, dark lenticel dashes, a faint peel grain
     const m = new S({ name: 'birch', vertexColors: true, roughness: 0.62 });
-    const u = uv();
-    const len = nz(vec3(u.x.mul(1.8), u.y.mul(28), 0.5));
-    const lent = smoothstep(0.78, 0.86, len);
-    const base = mix(vec3(0.42, 0.33, 0.21), vec3(0.32, 0.22, 0.12), fz(vec3(u.mul(3), 2.0), 3));
-    m.colorNode = mix(base, vec3(0.09, 0.07, 0.06), lent.mul(0.85)).mul(vertexColor());
+    const u = uv(), p = positionLocal;
+    const len = nz(vec3(u.x.mul(46), p.y.mul(260), 0.5));
+    const lent = smoothstep(0.7, 0.78, len);
+    const band = fz(vec3(u.x.mul(2.5), p.y.mul(14), 2.0), 3);
+    const grain = nz(vec3(u.x.mul(9), p.y.mul(700), 4.0));
+    const base = mix(vec3(0.46, 0.36, 0.22), vec3(0.3, 0.2, 0.11), band).mul(grain.mul(0.16).add(0.92));
+    m.colorNode = mix(base, vec3(0.09, 0.06, 0.045), lent.mul(0.8)).mul(vertexColor());
+    m.roughnessNode = mix(float(0.5), float(0.8), band);
     m.envMapIntensity = 0.35;
     return m;
   })();
   M.birchCurtain = (() => {
+    // boiled bark, soft and brown, sewn of strips a span high: each sheet its own tone, the upper strip lapping
+    // the lower, a row of horsehair stitches under the lap, upright joins staggered from strip to strip
     const m = new S({ name: 'birch-curtain', roughness: 0.6, side: THREE.DoubleSide, alphaTest: 0.5 });
     const u = uv();                       // metres: x across, y up
-    const len = nz(vec3(u.x.mul(3), u.y.mul(40), 0.5));
-    let base = mix(vec3(0.24, 0.15, 0.07), vec3(0.16, 0.09, 0.04), fz(vec3(u.mul(2.5), 1.0), 3));
-    base = mix(base, vec3(0.1, 0.08, 0.06), smoothstep(0.8, 0.88, len).mul(0.8));
-    // plain: the black openwork bands drawn here before had no image source (docs/patterns.md)
-    m.colorNode = base;
-    // leather-bound edges
+    const ROW = 0.24, row = floor(u.y.div(ROW)), fy = fract(u.y.div(ROW));
+    const sx = u.x.div(0.62).add(row.mul(0.37)), col = floor(sx), fx = fract(sx);
+    const tone = nz(vec3(col.mul(7.3), row.mul(3.7), 2.0));
+    const len = nz(vec3(u.x.mul(26), u.y.mul(190), 0.5));
+    let base = mix(vec3(0.27, 0.17, 0.08), vec3(0.15, 0.085, 0.04), fz(vec3(u.mul(2.5), 1.0), 3).mul(0.7).add(tone.mul(0.5)));
+    base = mix(base, vec3(0.08, 0.06, 0.045), smoothstep(0.74, 0.82, len).mul(0.75));          // lenticel dashes
+    const lap = smoothstep(0.0, 0.03, fy).mul(smoothstep(0.0, 0.012, fx));                       // dark under each lap and join
+    const stitch = smoothstep(0.012, 0.004, abs(fy.sub(0.08))).mul(step(0.45, fract(u.x.div(0.016))));
+    const join = smoothstep(0.006, 0.002, abs(fx.sub(0.035))).mul(step(0.45, fract(u.y.div(0.016))));
+    base = base.mul(lap.mul(0.55).add(0.45));
+    m.colorNode = mix(base, vec3(0.035, 0.03, 0.025), max(stitch, join).mul(0.85));
+    m.normalNode = bumpMap(lap.mul(1.2).add(len.mul(0.25)).add(nz(vec3(u.x.mul(8), u.y.mul(420), 3.0)).mul(0.2)).sub(max(stitch, join).mul(0.5)), 0.9);
+    m.roughnessNode = mix(float(0.52), float(0.78), tone);
     m.userData.noShadow = false;
     return m;
   })();
 
   // ---- furs (vertex colour), textiles, leather, metals, oiled wood
   M.fur = (() => {
+    // guard hairs: fine streaks drawn out along the lie of the coat, clumps, paler tips over a dark underfur
     const m = new S({ name: 'fur', vertexColors: true, roughness: 0.95 });
     const p = positionLocal;
-    const n = nz(p.mul(vec3(60, 60, 60)));
-    const clump = fz(p.mul(9), 2);
-    m.colorNode = vertexColor().mul(n.mul(0.35).add(0.7)).mul(clump.mul(0.4).add(0.75));
-    m.normalNode = bumpMap(n.mul(0.6).add(clump.mul(0.4)), 2.5);
+    // the hair lies one way (aslant in the model's frame, so along no bench): long streaks, wavering, in locks
+    const q = vec3(p.x.add(p.z), p.y, p.x.sub(p.z)).add(nz(p.mul(11)).mul(0.05));
+    const tuft = nz(vec3(q.x.mul(38), q.y.mul(160), q.z.mul(330)));
+    const fine = nz(vec3(q.x.mul(90), q.y.mul(300), q.z.mul(900)));
+    const clump = fz(vec3(q.x.mul(9), q.y.mul(24), q.z.mul(30)), 2);
+    const h = tuft.mul(0.6).add(fine.mul(0.4));
+    m.colorNode = vertexColor().mul(mix(float(0.3), float(1.55), smoothstep(0.3, 0.72, h))).mul(clump.mul(0.3).add(0.82));
+    m.normalNode = bumpMap(h.mul(0.85).add(clump.mul(0.25)), 7);
     m.envMapIntensity = 0.3;
     return m;
   })();
@@ -405,11 +443,12 @@ export function makeMats(maps, { winter = false } = {}) {
     return m;
   })();
   M.silver = (() => {
-    const m = new S({ name: 'silver', vertexColors: true, metalness: 1, roughness: 0.33 });
+    // уулаах көмүс: a soft, matte white metal; tarnish sits in fine patches (vertex colour carries the engraving)
+    const m = new S({ name: 'silver', vertexColors: true, metalness: 0.82, roughness: 0.42 });
     const p = positionLocal;
-    const tarn = smoothstep(0.5, 0.75, fz(p.mul(70), 2));
-    m.colorNode = mix(vec3(0.81, 0.79, 0.75), vec3(0.25, 0.24, 0.22), tarn.mul(0.6)).mul(vertexColor());
-    m.roughnessNode = mix(0.28, 0.55, tarn);
+    const tarn = smoothstep(0.45, 0.8, fz(p.mul(260), 2));
+    m.colorNode = mix(vec3(0.9, 0.89, 0.86), vec3(0.4, 0.38, 0.35), tarn.mul(0.6)).mul(vertexColor());
+    m.roughnessNode = mix(0.36, 0.62, tarn);
     m.envMapIntensity = 0.6;
     return m;
   })();
@@ -420,13 +459,23 @@ export function makeMats(maps, { winter = false } = {}) {
     m.envMapIntensity = 0.5;
     return m;
   })();
+  // oiled, hand-worn wood (table, bowls, boards): the grain runs along x on what lies flat, round what is turned;
+  // year-ring figure, dark pores, a sheen where it is handled
   M.oiled = (() => {
     const m = new S({ name: 'oiled-wood', vertexColors: true, roughness: 0.48 });
     const p = positionLocal;
-    const grain = nz(vec3(p.x.mul(9), p.y.mul(90), p.z.mul(9)));
+    const flat = smoothstep(0.75, 0.95, abs(normalLocal.y));
+    const q = mix(vec3(p.x.mul(9), p.y.mul(90), p.z.mul(9)), vec3(p.x.mul(7), p.y.mul(9), p.z.mul(110)), flat);
+    const grain = nz(q);
+    const ringC = mix(p.y.mul(38), p.z.mul(46), flat).add(nz(vec3(p.x.mul(5), p.y.mul(4), p.z.mul(5))).mul(7));
+    const ring = abs(fract(ringC).sub(0.5)).mul(2).pow(1.5);
+    const pore = smoothstep(0.62, 0.9, nz(q.mul(vec3(1.3, 3.1, 3.1)).add(11.0)));
     const fig = fz(p.mul(25), 3);
-    m.colorNode = mix(vec3(0.42, 0.24, 0.1), vec3(0.66, 0.43, 0.2), grain.mul(0.5).add(fig.mul(0.5))).mul(vertexColor());
-    m.roughnessNode = mix(0.38, 0.6, fig);
+    let c = mix(vec3(0.4, 0.225, 0.095), vec3(0.66, 0.43, 0.2), grain.mul(0.45).add(fig.mul(0.4)).add(ring.mul(0.15)));
+    c = c.mul(float(1).sub(pore.mul(0.28)));
+    m.colorNode = c.mul(vertexColor());
+    m.roughnessNode = mix(0.34, 0.62, fig).add(pore.mul(0.2));
+    m.normalNode = bumpMap(grain.mul(0.5).add(ring.mul(0.35)).sub(pore.mul(0.6)), 0.6);
     m.envMapIntensity = 0.4;
     return m;
   })();
@@ -434,10 +483,11 @@ export function makeMats(maps, { winter = false } = {}) {
     const m = new S({ name: 'web', transparent: true, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9, color: 0x6a6660 });
     const u = uv();
     const r = length(u), a = u.y.atan(u.x);
-    const radial = smoothstep(0.93, 0.99, abs(sin(a.mul(13))));
-    const rings = smoothstep(0.85, 0.97, abs(sin(r.mul(60).add(sin(a.mul(5)).mul(1.5)))));
+    // hair-thin threads sagging between the spokes, grey with dust
     const dust = fz(vec3(u.mul(6), 1.0), 2);
-    m.opacityNode = radial.add(rings).min(1).mul(0.35).add(dust.mul(0.12)).mul(smoothstep(1.0, 0.6, r));
+    const radial = smoothstep(0.993, 0.9995, abs(sin(a.mul(11))));
+    const rings = smoothstep(0.985, 0.998, abs(sin(r.mul(34).add(abs(sin(a.mul(11))).mul(1.0)))));
+    m.opacityNode = radial.add(rings).min(1).mul(0.2).add(dust.mul(0.07)).mul(smoothstep(1.0, 0.6, r));
     m.userData.noShadow = true;
     return m;
   })();

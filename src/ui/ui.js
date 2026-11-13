@@ -1,11 +1,15 @@
-// DOM overlay: look prompt, explainer card (peek = side panel, full = centred window with a reference-image
-// gallery), journal (Бэлиэтээһин), Messenger-style toasts, and the title's loading bar. Styles live in
+// DOM overlay: look prompt, the inspect stage's type and photographs (the thing itself is the live view:
+// src/ui/stage.js), the journal's window (src/ui/journal.js), toasts, and the title's loading bar. Styles live in
 // index.html. The windows take the mouse through a drawn cursor while pointer lock stays on (cursor.js).
 import ENTRIES from '../data/entries.json';
-import HINTS from '../data/hints.json';
 import { versioned } from '../load/assetv.js';
-import { T } from './i18n.js';
+import { T, LANGS, LANG_NAMES } from './i18n.js';
+import { icon, actIcon, MOUSE } from './icons.js';
+import { selectHTML } from './select.js';
 import { VirtualCursor } from './cursor.js';
+import { VIEWS } from './stage.js';
+import { Journal } from './journal.js';
+import { names, nameHTML, fade } from './names.js';
 
 export const BY_ID = Object.fromEntries(ENTRIES.map((e) => [e.id, e]));
 // { entryId: [{ src, w, h, caption: {sah,en,ru}, credit, license, url }] } — optional (src/data/images.json)
@@ -19,19 +23,14 @@ const CATS = {
   belief: { sah: 'Итэҕэл', en: 'Belief', ru: 'Верования' }, rite: { sah: 'Сиэр-туом', en: 'Rites', ru: 'Обряды' },
   calendar: { sah: 'Дьыл кэмнэрэ', en: 'The year', ru: 'Годовой круг' },
 };
-const NEXT = { sah: 'English', en: 'Русский', ru: 'Сахалыы' };
 const L = {
   journal: { sah: 'Бэлиэтээһин', en: 'Journal', ru: 'Дневник' }, found: { sah: 'булулунна', en: 'found', ru: 'найдено' },
   close: { sah: 'сап', en: 'close', ru: 'закрыть' },
   related: { sah: 'Сибээстээх', en: 'Related', ru: 'См. также' }, sources: { sah: 'Сигэлэр', en: 'Sources', ru: 'Источники' },
-  newEntry: { sah: 'Бэлиэтээһиҥҥэ киирдэ', en: 'Added to the journal', ru: 'Добавлено в дневник' },
-  guideHow: { sah: '«?» тал — бэлиэ онно сирдиэ.', en: 'Pick a “?” and a marker will lead you there.', ru: 'Выберите «?», и метка приведёт вас туда.' },
-  guiding: { sah: 'Сирдэтэ', en: 'Guiding', ru: 'Ведёт' },
 };
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const head = (e) => e.sah.split(/[;(]/)[0].trim();
 const imgSrc = (s) => /^(https?:|data:|\/)/.test(s) ? s : versioned(import.meta.env.BASE_URL + s.replace(/^(\.\/|public\/)/, ''));
 
 // Title loading bar: mirrors main.js's `#go` status line ("45% · stage", then "preparing… 60%").
@@ -49,6 +48,10 @@ export class UI {
   constructor(state) {
     this.state = state; // { lang, found: Set }
     this.prompt = $('#prompt');
+    this.pName = $('#prompt .p-name'); this.pTool = $('#prompt .tool'); this.pVerb = $('#prompt .verb'); this.pKey = $('#prompt .p-act .p-key');
+    $('#prompt .lens').innerHTML = icon('eye');
+    this.putHint = $('#puthint');
+    this.fit(); addEventListener('resize', () => this.fit());
     this.card = $('#card');
     this.journal = $('#journal');
     this.lightbox = $('#lightbox');
@@ -58,41 +61,50 @@ export class UI {
     this.img = 0;     // gallery index
     this.images = IMAGES;
     this.menu = false; // the pause menu is up while the pointer stays locked (main.js)
-    this.guided = null; // the entry the finder points at (src/ui/guide.js)
     this.placed = new Set(); // entries found somewhere in the world (others are told of in cards)
     this.cursor = new VirtualCursor(() => this.modal || this.menu);
-    // window buttons (close, language) and a click on the dim backdrop round a centred window
-    const winAct = (e) => {
-      const a = e.target.closest('[data-act]')?.dataset.act || (e.target === e.currentTarget && 'close');
-      if (a) this.onAction?.(a); // set by main.js: 'close' | 'lang'
-      return !!a;
-    };
     this.card.addEventListener('click', (e) => {
-      if (winAct(e)) return;
-      const t = e.target.closest('[data-entry],[data-img],.hero');
+      if (e.target.closest('.sel')) return;
+      const act = e.target.closest('[data-act]')?.dataset.act;
+      if (act) { this.onAction?.(act); return; }
+      const t = e.target.closest('[data-entry],[data-img],[data-big],[data-mark],.hero,.st-hero');
       if (!t) return;
+      if (t.dataset.big) { this.enlarge(+t.dataset.big); return; } // the reading sheet's photographs
       if (t.dataset.learn) this.onAction?.('learn', t.dataset.entry); // told of only in cards: reading the link finds it
-      if (t.dataset.entry) this.showEntry(t.dataset.entry, { mode: 'full' });
+      if (t.dataset.entry) this.onAction?.('open', t.dataset.entry);
+      else if (t.dataset.mark) { const m = this.marks?.[+t.dataset.mark]; if (m) this.onAction?.('open', m.entry, m.it); }
       else if (t.dataset.img) this.setImage(+t.dataset.img);
       else this.enlarge();
     });
+    // turning the thing: a drag on the open view (a free pointer or a finger; under pointer lock the drawn cursor does it)
+    let drag = null;
+    this.card.addEventListener('pointerdown', (e) => {
+      if (!e.target.closest('[data-orbit]') || document.pointerLockElement) return;
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      e.target.setPointerCapture?.(e.pointerId);
+    });
+    this.card.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      this.stage?.orbit(e.clientX - drag.x, e.clientY - drag.y);
+      drag.x = e.clientX; drag.y = e.clientY;
+    });
+    for (const k of ['pointerup', 'pointercancel']) this.card.addEventListener(k, (e) => { if (drag?.id === e.pointerId) drag = null; });
+    this.cursor.onOrbit = (dx, dy) => this.stage?.orbit(dx, dy);
+    this.cursor.onZoom = (d) => this.stage?.zoomBy(d);
+    addEventListener('resize', () => { if (this.open === 'card') this.layout(); });
     // a missing reference image just drops out
     this.card.addEventListener('error', (e) => {
       const img = e.target;
       if (img.tagName !== 'IMG') return;
-      (img.closest('.thumbs button') || img.closest('.gal') || img).remove();
+      (img.closest('.st-strip button') || img).remove();
     }, true);
-    this.journal.addEventListener('click', (e) => {
-      if (winAct(e)) return;
-      const r = e.target.closest('[data-entry]');
-      if (r && this.state.found.has(r.dataset.entry)) this.showEntry(r.dataset.entry, { mode: 'full' });
-      else if (r) this.onAction?.('guide', r.dataset.entry);
-    });
+    this.j = new Journal(this, CATS, L.journal); // (src/ui/journal.js; it takes its own clicks and drags)
+    this.cursor.onMapPan = (dx, dy) => this.j.cursorPan(dx, dy);
+    this.cursor.onMapZoom = (d, x, y) => this.j.cursorZoom(d, x, y);
+    this.cursor.onMapTap = (x, y) => this.j.cursorTap(x, y);
     this.lightbox.addEventListener('click', () => this.lightbox.classList.remove('show'));
-    // the card is read while walking: the wheel and PageUp/PageDown scroll it without freeing the pointer
-    addEventListener('wheel', (e) => {
-      if (this.open !== 'card' || this.cursor.active || e.target.closest?.('#card .client')) return;
-      this.scroll(e.deltaY * (e.deltaMode === 1 ? 32 : 1), false);
+    addEventListener('wheel', (e) => { // a free pointer over the open view: nearer, further
+      if (this.open === 'card' && !document.pointerLockElement && e.target.closest?.('[data-orbit]')) this.stage?.zoomBy(e.deltaY);
     }, { passive: true });
     addEventListener('keydown', (e) => {
       if (this.lightbox.classList.contains('show')) this.lightbox.classList.remove('show');
@@ -101,135 +113,214 @@ export class UI {
         e.preventDefault();
         const c = this.client();
         this.scroll((e.code === 'PageDown' ? 1 : -1) * (c ? c.clientHeight * 0.85 : 300));
-      } else if (this.modal && (e.code === 'ArrowDown' || e.code === 'ArrowUp')) {
+      } else if (e.code === 'ArrowDown' || e.code === 'ArrowUp') {
         e.preventDefault();
         this.scroll(e.code === 'ArrowDown' ? 80 : -80);
+      } else if (this.open === 'card' && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+        this.stage?.orbit(e.code === 'ArrowRight' ? -70 : 70, 0);
       } else if (this.open === 'card' && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
-        this.setImage(this.img + (e.code === 'BracketRight' ? 1 : -1));
+        this.setImage(this.pic ? this.img + (e.code === 'BracketRight' ? 1 : -1) : this.img);
       }
     });
   }
   t(o) { return o?.[this.state.lang] || o?.en || ''; }
   get isOpen() { return !!this.open; }
-  // a centred window is up (journal or full card): the player stands still and the mouse drives a cursor
-  get modal() { return this.open === 'journal' || (this.open === 'card' && this.mode === 'full'); }
-  client() { return (this.open === 'journal' ? this.journal : this.card).querySelector('.client'); }
+  // the journal or a card is up: the player stands still and the mouse drives a cursor
+  get modal() { return !!this.open; }
+  client() { return this.open === 'journal' ? this.journal.querySelector('.j-list.on') : this.card.querySelector('.client'); }
   scroll(dy, smooth = true) { this.client()?.scrollBy({ top: dy, behavior: smooth ? 'smooth' : 'auto' }); }
 
-  setPrompt(label, action) {
-    if (!label) { this.prompt.classList.remove('show'); return; }
-    this.prompt.innerHTML = `<span class="key">E</span><span class="what">${esc(label)}</span>${action ? `<span class="act">${esc(action)}</span>` : ''}`;
-    this.prompt.classList.add('show');
+  // The interface's scale on a big screen (`--ui`, index.html): a desktop larger than 1600×900 gets everything
+  // larger by as much; phones stay at 1.
+  fit() {
+    const k = matchMedia('(pointer: coarse)').matches ? 1 : Math.max(1, Math.min(2.4, innerWidth / 1600, innerHeight / 900));
+    this.scale = k;
+    document.documentElement.style.setProperty('--ui', k.toFixed(3));
   }
 
-  // mode 'peek': category, headword, title and lead (a glance while walking); 'full': everything, scrollable.
-  showEntry(id, { mode = 'full' } = {}) {
+  // The look prompt (index.html `#prompt`): the thing's name under the dot; to the dot's left the blue lens (E) when
+  // it can be looked at closer; to its right the green plate with the tool and the verb of what the hands would do
+  // now (`act`, a tap). `put`: what is carried can be put down.
+  // Its parts stay in the page and only change their content: the touch controls take touches on them.
+  // `label`: the thing's name (an entry or a label: src/ui/names.js; a new one restarts the fade).
+  setPrompt(label, { act = null, read = false, put = null } = {}) {
+    const on = !!(label || act);
+    this.prompt.className = `${on ? 'show' : ''}${act ? ' has-act' : ''}${read ? ' has-read' : ''}`;
+    if (on) {
+      const lang = this.state.lang, key = `${typeof label === 'string' ? label : label ? names(label).sah : ''}|${lang}`;
+      if (key !== this.pKeyName) {
+        this.pKeyName = key;
+        this.pName.innerHTML = typeof label === 'string' ? label : nameHTML(label, lang);
+        if (label) fade(this.pName);
+      }
+      const k = act ? actIcon(act) : '';
+      if (k !== this.pIcon) { this.pIcon = k; this.pTool.innerHTML = k ? icon(k) : ''; }
+      const verb = act ? this.t(act.label) : '';
+      this.pVerb.textContent = verb.charAt(0).toUpperCase() + verb.slice(1); // (labels are written in either case)
+      if (!this.pKey.firstChild) this.pKey.innerHTML = MOUSE.left;
+    }
+    const pk = put ? actIcon(put) : '';
+    if (pk !== this.putIcon) { this.putIcon = pk; this.putHint.innerHTML = pk ? `${icon(pk)}<span class="p-key">${MOUSE.right}</span>` : ''; this.putHint.classList.toggle('show', !!pk); }
+  }
+
+  // The inspect stage's interface (docs/ui.md): the thing itself fills the view (src/ui/stage.js moves the eye
+  // there) and the type is set straight on the picture: its Sakha name, one line, its reference photographs as
+  // a strip to compare with, the names of the things round it. mode 'peek' = that; 'full' = the reading sheet
+  // too (title, text, facts, related, sources). kind: what the stage shows ('near' | 'out' | 'here' | 'photo').
+  showEntry(id, { mode = 'peek', kind = this.kind, fresh = false } = {}) {
     const e = BY_ID[id];
     if (!e) return;
-    const lang = this.state.lang, peek = mode === 'peek';
-    const again = this.open === 'card' && this.mode === mode; // re-render in place (language, related link)
-    if (this.current !== id) this.img = 0;
-    const imgs = this.images[id] || [];
-    const kb = (k) => `<kbd>${k}</kbd>`;
-    let body;
-    if (peek) {
-      const im = imgs[0];
-      body = `<div class="peek-row">${im ? `<img src="${esc(imgSrc(im.src))}" alt="">` : ''}<div>
-          <h3>${esc(this.t(e.title))}</h3><p class="lead">${esc(this.t(e.short))}</p></div></div>
-        <div class="foot"><span>${kb('E')} ${esc(this.t(T.readMore))}</span></div>`;
-    } else {
-      const rel = (e.related || []).filter((r) => BY_ID[r]).map((r) => {
-        const known = this.state.found.has(r), told = !known && !this.placed.has(r);
-        if (told) return `<button class="chip told" data-entry="${r}" data-learn="1">${esc(head(BY_ID[r]))}</button>`;
-        return `<button class="chip${known ? '' : ' unknown'}" ${known ? `data-entry="${r}"` : 'disabled'}>${esc(known ? head(BY_ID[r]) : '· · ·')}</button>`;
-      }).join('');
-      const facts = (e.facts[lang] || e.facts.en || []).map((f) => `<li>${esc(f)}</li>`).join('');
-      body = `${imgs.length ? `<div class="gal">${this.galleryHTML(imgs)}</div>` : ''}
-        <h3>${esc(this.t(e.title))}</h3>
-        <p class="lead">${esc(this.t(e.short))}</p>
-        <p>${esc(this.t(e.body))}</p>
-        ${facts ? `<ul class="facts">${facts}</ul>` : ''}
-        ${rel ? `<div class="rel"><span>${esc(this.t(L.related))}</span>${rel}</div>` : ''}
-        <details class="src"><summary>${esc(this.t(L.sources))}</summary>${(e.sources || []).map((s) => `<a href="${esc(s)}" target="_blank" rel="noopener">${esc(s.replace(/^https?:\/\//, '').slice(0, 70))}</a>`).join('')}</details>
-        <div class="foot"><span>${kb('E')} ${esc(this.t(L.close))}</span><span class="kb">${kb('PgUp')} ${kb('PgDn')}</span>${imgs.length > 1 ? `<span class="kb">${kb('[')} ${kb(']')}</span>` : ''}</div>`;
-    }
+    const lang = this.state.lang, full = mode === 'full';
+    const again = this.open === 'card' && this.current === id;
+    if (!again) { this.img = 0; this.pic = false; this.fresh = fresh; }
+    this.kind = kind;
+    const imgs = this.images[id] || [], photo = kind === 'photo';
+    const kb = (k) => `<kbd class="kb">${k}</kbd>`;
+    const say = VIEWS[id]?.say;
+    const rel = (e.related || []).filter((r) => BY_ID[r]).map((r) => {
+      const known = this.state.found.has(r), told = !known && !this.placed.has(r);
+      if (told) return `<button class="chip told" data-entry="${r}" data-learn="1">${nameHTML(BY_ID[r], lang)}</button>`;
+      return `<button class="chip${known ? '' : ' unknown'}" ${known ? `data-entry="${r}"` : 'disabled'}>${known ? nameHTML(BY_ID[r], lang) : '· · ·'}</button>`;
+    }).join('');
+    const facts = (e.facts[lang] || e.facts.en || []).map((f) => `<li>${esc(f)}</li>`).join('');
+    const tl = this.t(e.title), th = names(e)[lang], title = !e.name && tl.startsWith(th) ? nameHTML(e, lang) + esc(tl.slice(th.length)) : esc(tl);
     this.card.innerHTML = `
-      <div class="win glass">
-        <div class="win-head">${peek ? '' : this.closeButton()}
-          <div class="cat">${esc(this.t(CATS[e.category]) || e.category)}</div>
-          <h2>${esc(e.sah)}</h2>
-          <div class="sub">${esc(e.translit || '')}${e.ru ? ` · <span class="ru">${esc(e.ru)}</span>` : ''}</div>${peek ? '' : this.langButton()}
+      <div class="st-orbit" data-orbit>${photo && imgs.length ? '<img class="st-hero" alt="">' : ''}</div>
+      <div class="st-marks"></div>
+      <div class="st-col"><div class="st-pane glass win">
+        <button class="win-close" data-act="close" title="${esc(this.t(L.close))}" aria-label="${esc(this.t(L.close))}"></button>
+        <div class="st-head win-head">
+          <div class="cat">${this.fresh ? '<i class="gmark"></i>' : ''}${esc(this.t(CATS[e.category]) || e.category)}</div>
+          <h2>${nameHTML(e, lang)}</h2>
         </div>
-        <div class="client">${body}</div>
-      </div>`;
-    this.card.classList.toggle('peek', peek);
-    this.card.classList.toggle('full', !peek);
-    this.card.classList.toggle('again', again);
-    this.card.classList.add('show');
+        <div class="st-body st-show">
+          <figure class="st-fig"></figure>
+          <p class="lead">${esc(this.t(e.short))}</p>
+          ${say ? `<p class="say">${esc(this.t(say))}</p>` : ''}
+        </div>
+        ${imgs.length ? `<div class="st-strip">${imgs.map((m, k) => `<button data-img="${k}"><img src="${esc(imgSrc(m.src))}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}
+        <div class="st-read"><div class="client">
+          <h3>${title}</h3>
+          <p class="lead">${esc(this.t(e.short))}</p>
+          ${say ? `<p class="say">${esc(this.t(say))}</p>` : ''}
+          ${imgs.length ? `<div class="rd-gal">${imgs.map((m, k) => `<button data-big="${k}"><img src="${esc(imgSrc(m.src))}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}
+          <p>${esc(this.t(e.body))}</p>
+          ${facts ? `<ul class="facts">${facts}</ul>` : ''}
+          ${rel ? `<div class="rel"><span>${esc(this.t(L.related))}</span>${rel}</div>` : ''}
+          <details class="src"><summary>${esc(this.t(L.sources))}</summary>${(e.sources || []).map((s) => `<a href="${esc(s)}" target="_blank" rel="noopener">${esc(s.replace(/^https?:\/\//, '').slice(0, 70))}</a>`).join('')}</details>
+        </div></div>
+        <div class="st-go">
+          <button class="btn primary" data-act="more">${kb('E')} ${esc(this.t(full ? L.close : T.readMore))}</button>
+          ${this.langSelect()}
+        </div>
+      </div></div>`;
+    if (!again) fade(this.card);
+    this.card.className = `layer stage show k-${kind || 'near'}${full ? ' read' : ''}${again ? ' again' : ''}`;
+    document.documentElement.classList.add('carded');
     this.open = 'card';
-    this.mode = peek ? 'peek' : 'full';
+    this.mode = full ? 'full' : 'peek';
     this.current = id;
+    this.marks = null; // the names round it: asked of the stage on the next frame (frame())
+    this.setImage(this.img, this.pic || photo);
+    this.layout();
     this.cursor.sync();
   }
-  closeButton() { return `<button class="win-close" data-act="close" title="${esc(this.t(L.close))}" aria-label="${esc(this.t(L.close))}"></button>`; }
-  langButton() { return `<button class="win-lang" data-act="lang"><kbd>L</kbd> ${esc(NEXT[this.state.lang])}</button>`; }
+  // the language as a select: the three by their own names, the current one ticked (src/ui/select.js)
+  langSelect(up = true) { return `<span class="sel${up ? ' up' : ''}" data-sel="lang" title="${esc(this.t(T.language))}">${selectHTML(LANGS.map((l) => [l, LANG_NAMES[l]]), this.state.lang)}</span>`; }
 
-  galleryHTML(imgs) {
-    const i = Math.min(this.img, imgs.length - 1), im = imgs[i], lang = this.state.lang;
-    const cap = im.caption?.[lang] || im.caption?.en || '';
+  // The reference photograph `i` beside the thing (`show`: opened; a second pick of the same one puts it away).
+  setImage(i, show = true) {
+    const imgs = this.images[this.current] || [], fig = this.card.querySelector('.st-fig');
+    if (!fig || !imgs.length) return;
+    const photo = this.kind === 'photo';
+    i = (i + imgs.length) % imgs.length;
+    if (show && this.pic && i === this.img && !photo && this.card.classList.contains('pic')) show = false;
+    this.img = i; this.pic = show;
+    const im = imgs[i], cap = im.caption?.[this.state.lang] || im.caption?.en || '';
+    const hero = this.card.querySelector('.st-hero');
+    if (hero) hero.src = imgSrc(im.src);
+    fig.innerHTML = show ? `${photo ? '' : `<button class="hero"><img src="${esc(imgSrc(im.src))}" ${im.w ? `width="${im.w}" height="${im.h}"` : ''} alt="${esc(cap)}"></button>`}
+      <figcaption>${this.capHTML(im)}</figcaption>` : '';
+    this.card.classList.toggle('pic', show && !photo);
+    for (const b of this.card.querySelectorAll('.st-strip button')) b.classList.toggle('on', show && +b.dataset.img === i);
+    this.layout();
+  }
+  capHTML(im) {
+    const cap = im.caption?.[this.state.lang] || im.caption?.en || '';
     const credit = [im.credit, im.license && (im.url ? `<a href="${esc(im.url)}" target="_blank" rel="noopener">${esc(im.license)}</a>` : esc(im.license))].filter(Boolean);
-    const nav = imgs.length > 1 ? `<button class="nav prev" data-img="${i - 1}" aria-label="‹"></button><button class="nav next" data-img="${i + 1}" aria-label="›"></button>` : '';
-    return `<figure><div class="stage"><button class="hero" title=""><img src="${esc(imgSrc(im.src))}" ${im.w ? `width="${im.w}" height="${im.h}"` : ''} alt="${esc(cap)}"></button>${nav}</div>
-      <figcaption>${esc(cap)}${credit.length ? `<span class="credit">${credit.map((c, k) => k ? c : esc(c)).join(' · ')}</span>` : ''}</figcaption></figure>
-      ${imgs.length > 1 ? `<div class="thumbs">${imgs.map((m, k) => `<button data-img="${k}" class="${k === i ? 'on' : ''}"><img src="${esc(imgSrc(m.src))}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}`;
+    return `${esc(cap)}${credit.length ? `<span class="credit">${credit.map((c, k) => k ? c : esc(c)).join(' · ')}</span>` : ''}`;
   }
-  setImage(i) {
-    const imgs = this.images[this.current] || [], gal = this.card.querySelector('.gal');
-    if (!gal || imgs.length < 2) return;
-    this.img = (i + imgs.length) % imgs.length;
-    gal.innerHTML = this.galleryHTML(imgs);
+  // Where the thing sits on screen: the part of the view the type leaves free (the stage frames it there).
+  layout() {
+    const col = this.card.querySelector('.st-col');
+    if (!col || !this.stage) return;
+    const W = innerWidth, H = innerHeight, r = col.getBoundingClientRect();
+    if (H > W * 1.05) { // portrait: the thing above, the type below
+      const top = Math.min(70, H * 0.09), bot = Math.max(top + H * 0.2, r.top);
+      this.free = { l: 0, t: top, r: W, b: bot };
+    } else this.free = { l: 0, t: 0, r: Math.max(W * 0.3, r.left), b: H };
+    const f = this.free;
+    Object.assign(this.stage.area, { x: (f.l + f.r) / W - 1, y: 1 - (f.t + f.b) / H, w: (f.r - f.l) / W * 0.86, h: (f.b - f.t) / H * 0.8 });
+    this.card.style.setProperty('--free-r', `${W - f.r}px`); this.card.style.setProperty('--free-b', `${H - f.b}px`);
   }
-  enlarge() {
-    const im = (this.images[this.current] || [])[this.img];
+  // each frame while a card is up: the names round the thing follow their places
+  frame() {
+    if (this.open !== 'card' || !this.stage?.on) return;
+    const box = this.card.querySelector('.st-marks'), st = this.stage;
+    if (!box) return;
+    if (!this.marks) {
+      this.marks = st.marks(this.state.found);
+      box.innerHTML = this.marks.map((m, k) => `<button class="st-mark" data-mark="${k}"><i></i>${nameHTML(m.label || BY_ID[m.entry], this.state.lang)}</button>`).join('');
+      this.markEls = [...box.children];
+      for (const el of this.markEls) { el.classList.add('msr'); el._w = el.offsetWidth; el._h = el.offsetHeight; el.classList.remove('msr'); } // (both names of a fade share one box: its width is the longer)
+    }
+    // each name on its dot, its text to the right, or to the left at the right edge; inside the free part of the view,
+    // clear of the lesson and of the names already placed (nearest first)
+    const f = this.free, o = {}, keep = [], t = document.getElementById('teach');
+    if (t && t.offsetParent) { const r = t.getBoundingClientRect(); if (r.width) keep.push(r); }
+    for (let k = 0; k < this.marks.length; k++) {
+      const el = this.markEls[k], p = st.s?.t >= 1 && !st.closing && st.project(this.marks[k].p, o);
+      let on = !!p && p.x > f.l + 8 && p.x < f.r - 8 && p.y > f.t + 8 && p.y < f.b - 8, left = false, x = 0;
+      if (on) {
+        left = p.x - 6 + el._w > f.r - 4;
+        x = left ? p.x + 6 - el._w : p.x - 6;
+        const r = { left: x - 3, right: x + el._w + 3, top: p.y - el._h / 2 - 2, bottom: p.y + el._h / 2 + 2 };
+        on = x >= f.l + 4 && r.top >= f.t && r.bottom <= f.b && !keep.some((q) => r.left < q.right && r.right > q.left && r.top < q.bottom && r.bottom > q.top);
+        if (on) keep.push(r);
+      }
+      if (on !== el._on) { el._on = on; el.classList.toggle('on', on); }
+      if (left !== el._l) { el._l = left; el.classList.toggle('l', left); }
+      if (on) el.style.transform = `translate(${Math.round(x)}px,${Math.round(p.y - el._h / 2)}px)`;
+    }
+  }
+  // the photograph `i` (the one shown) over everything, with its caption and credit
+  enlarge(i = this.img) {
+    const im = (this.images[this.current] || [])[i];
     if (!im) return;
-    const fig = this.card.querySelector('.gal figcaption');
-    this.lightbox.innerHTML = `<div class="win glass"><div class="client"><img src="${esc(imgSrc(im.src))}" alt=""><div class="cap">${fig ? fig.innerHTML : ''}</div></div></div>`;
+    this.lightbox.innerHTML = `<img src="${esc(imgSrc(im.src))}" alt=""><div class="cap">${this.capHTML(im)}</div>`;
     this.lightbox.classList.add('show');
   }
 
-  showJournal() {
-    const groups = {};
-    for (const e of ENTRIES) (groups[e.category] ||= []).push(e);
-    const n = this.state.found.size;
-    let html = `<div class="win glass"><div class="win-head">${this.closeButton()}<span class="orb"></span><h2>${esc(this.t(L.journal))}</h2>
-      <div class="count"><div class="bar"><i style="--p:${n / ENTRIES.length}"></i></div>${n} / ${ENTRIES.length} ${esc(this.t(L.found))}</div>${this.langButton()}</div><div class="client">
-      ${n < ENTRIES.length ? `<p class="jhow">${esc(this.t(L.guideHow))}</p>` : ''}`;
-    for (const cat of Object.keys(CATS)) {
-      const list = groups[cat];
-      if (!list) continue;
-      html += `<h4>${esc(this.t(CATS[cat]))}</h4><div class="grid">`;
-      for (const e of list) {
-        const k = this.state.found.has(e.id);
-        const on = !k && this.guided === e.id;
-        html += k ? `<button class="tile" data-entry="${e.id}"><b>${esc(head(e))}</b><small>${esc(this.t(e.title).split(' — ')[1] || '')}</small></button>`
-          : `<button class="tile unknown hint${on ? ' on' : ''}" data-entry="${e.id}"><b>${on ? `<i class="gmark"></i>${esc(this.t(L.guiding))}` : '?'}</b><small>${esc(this.t(HINTS[e.id]))}</small></button>`;
-      }
-      html += '</div>';
-    }
-    html += `<div class="foot"><span><kbd>J</kbd> ${esc(this.t(L.close))}</span></div></div></div>`;
-    this.journal.innerHTML = html;
+  // The journal (src/ui/journal.js): the map, the finds, the work. `tab`: which leaf (none: the last one);
+  // `here`: the map comes up round the player.
+  showJournal(tab, here = false) {
     this.card.classList.remove('show');
     this.journal.classList.add('show');
+    if (this.open !== 'journal') fade(this.journal);
     this.open = 'journal';
+    this.j.show(tab, here);
     this.cursor.sync();
   }
 
   setMenu(on) { this.menu = on; this.cursor.sync(); }
 
   close() {
+    if (this.open === 'journal') this.j.tiles.clear(); // (their pictures go)
     this.card.classList.remove('show');
     this.journal.classList.remove('show');
     this.lightbox.classList.remove('show');
+    this.card.innerHTML = '';
+    document.documentElement.classList.remove('carded');
     this.open = null;
     this.mode = null;
     this.cursor.sync();
@@ -241,19 +332,22 @@ export class UI {
     else if (this.open === 'journal') this.showJournal();
   }
 
-  // A Messenger-style pop-up, bottom right. `html` is the body (a <small> line and a <b> line).
-  toast(html, ms = 3600) {
+  // A beat (docs/ui.md), no window: `html` is its body. A saying (`say`): a caption low in the view, a <b> line
+  // and a <small> by-line.
+  toast(html, ms = 3600, cls = 'say') {
     const d = document.createElement('div');
-    d.className = 'toast glass';
-    d.innerHTML = `<div class="t-head"><span class="orb"></span>Алаас</div><div class="t-body">${html}</div>`;
+    d.className = 'toast pane ' + cls;
+    d.innerHTML = html;
+    if (d.querySelector('.nm')) fade(d);
     this.toasts.appendChild(d);
     while (this.toasts.children.length > 4) this.toasts.firstChild.remove();
     setTimeout(() => d.classList.add('out'), ms);
-    setTimeout(() => d.remove(), ms + 800);
+    setTimeout(() => d.remove(), ms + 700);
   }
-
+  // found by doing: the thing's own picture (the journal's) and its name, by the journal's corner
   discovered(id) {
-    const e = BY_ID[id];
-    this.toast(`<small>${esc(this.t(L.newEntry))}</small><b>${esc(head(e))}</b>`);
+    const e = BY_ID[id], v = VIEWS[id] || {}, im = this.images[id]?.[0];
+    const src = v.photo ? im && imgSrc(im.src) : imgSrc(`assets/ui/journal/${id}.webp`);
+    this.toast(`<b>${nameHTML(e, this.state.lang)}</b>${src ? `<img src="${esc(src)}" alt="">` : '<span class="gmark"></span>'}`, 2600, 'found');
   }
 }

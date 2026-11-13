@@ -1,5 +1,5 @@
 // Sitting on a bench (орон): the view turns from the bench to the room and lowers to a sitting eye;
-// you keep looking around. E (with nothing in focus), a step or a jump stands you up again.
+// you keep looking around. The do input (with nothing in focus), a step or a jump stands you up again.
 import * as THREE from 'three/webgpu';
 import { clamp, damp, yawTo, angleDiff, ease } from '../util.js';
 
@@ -14,10 +14,10 @@ export class Seat {
     this.eye = new THREE.Vector3();
     this.stand = new THREE.Vector3();
     this.act = {
-      id: 'sit', label: { sah: 'олор', en: 'sit down', ru: 'сесть' }, thenCard: false, freeze: true,
+      id: 'sit', label: { sah: 'олор', en: 'sit down', ru: 'сесть' }, freeze: true,
       run: (g, it) => this.sit(it),
     };
-    this.standAct = { id: 'stand', label: { sah: 'тур', en: 'stand up', ru: 'встать' }, thenCard: false, run: async () => this.up() };
+    this.standAct = { id: 'stand', label: { sah: 'тур', en: 'stand up', ru: 'встать' }, run: async () => this.up() };
     this.label = { sah: 'олорор', en: 'sitting', ru: 'сидя' };
   }
 

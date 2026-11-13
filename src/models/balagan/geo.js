@@ -77,20 +77,23 @@ function metricUV(g, w, h, d) {
 }
 
 // An irregular log from a to b: taper r0→r1, gentle bow, knobbly radius. u = around (m), v = along (m).
-export function log(a, b, r0, r1, rng, { seg = 7, bow = 0.02, knob = 0.12, caps = false, capTop = 0, rowLen = 0.5 } = {}) {
+export function log(a, b, r0, r1, rng, { seg = 7, bow = 0.02, knob = 0.12, caps = false, capTop = 0, rowLen = 0.5, hew = 0 } = {}) {
   const A = new V(...a), B = new V(...b);
   const axis = B.clone().sub(A), len = axis.length();
   axis.normalize();
   const side = Math.abs(axis.y) < 0.9 ? new V(0, 1, 0) : new V(1, 0, 0);
   const n1 = new V().crossVectors(axis, side).normalize(), n2 = new V().crossVectors(axis, n1).normalize();
-  const rows = Math.max(2, Math.ceil(len / rowLen));   // rowLen: metres per ring along the log
+  let rows = Math.max(2, Math.ceil(len / rowLen));   // rowLen: metres per ring along the log
   const bowDir = n1.clone().multiplyScalar(Math.cos(rng() * 6.28)).addScaledVector(n2, Math.sin(rng() * 6.28));
   const bowAmt = (rng() - 0.3) * bow * len;
   const ph = [rng() * 6.28, rng() * 6.28, rng() * 6.28];
   const pos = [], uv = [], idx = [];
   const ring = seg + 1;
+  // hew: both ends cut by the axe from two sides to a blunt wedge, over `hew` radii (rings added there)
+  const ts = Array.from({ length: rows + 1 }, (_, j) => j / rows), hl = hew * r0 / len, hewA = hew ? rng() * 6.28 : 0;
+  if (hew) { ts.splice(1, 0, hl / 3, hl * 2 / 3, hl); ts.splice(ts.length - 1, 0, 1 - hl, 1 - hl * 2 / 3, 1 - hl / 3); rows = ts.length - 1; }
   for (let j = 0; j <= rows; j++) {
-    const t = j / rows;
+    const t = ts[j];
     const c = A.clone().addScaledVector(axis, t * len).addScaledVector(bowDir, Math.sin(t * Math.PI) * bowAmt);
     let r = r0 + (r1 - r0) * t;
     if (capTop && t > 1 - capTop) r *= Math.max(0.05, (1 - t) / capTop); // pointed top
@@ -99,6 +102,12 @@ export function log(a, b, r0, r1, rng, { seg = 7, bow = 0.02, knob = 0.12, caps 
       const k = 1 + knob * (0.5 * Math.sin(th * 2 + ph[0] + t * 3) + 0.35 * Math.sin(th * 3 + ph[1] - t * 5) + 0.3 * Math.sin(t * 17 + ph[2]) * Math.sin(th + ph[2]));
       const d = n1.clone().multiplyScalar(Math.cos(th)).addScaledVector(n2, Math.sin(th));
       const p = c.clone().addScaledVector(d, r * k);
+      const e = Math.min(t, 1 - t);
+      if (hew && e < hl) {
+        const ha = hewA + (t > 0.5 ? 1.9 : 0), u = n1.clone().multiplyScalar(Math.cos(ha)).addScaledVector(n2, Math.sin(ha)), q = p.clone().sub(c).dot(u), f = e / hl;
+        const hi = r * (0.12 + 0.95 * f), lo = -r * (0.3 + 0.75 * f);
+        if (q > hi) p.addScaledVector(u, hi - q); else if (q < lo) p.addScaledVector(u, lo - q);
+      }
       pos.push(p.x, p.y, p.z);
       uv.push((i / seg) * 2 * Math.PI * r0, t * len);
     }

@@ -1,6 +1,6 @@
 {
   "name": "alaas",
-  "version": "0.3.0",
+  "version": "1.1.0",
   "description": "Алаас: a first-person walk through a traditional Sakha summer homestead that teaches Sakha culture (three.js WebGPU).",
   "license": "MIT",
   "author": "Springfolk",
@@ -19,13 +19,16 @@
     "fetch-audio": "node tools/fetch-audio.mjs",
     "bench": "node tools/bench.mjs",
     "hitch": "node tools/hitch.mjs",
+    "smooth": "node tools/smooth.mjs",
     "loadprof": "node tools/loadprof.mjs",
     "loadtrace": "node tools/loadtrace.mjs",
     "walkcheck": "node tools/walkcheck.mjs",
     "lint": "eslint src tools",
     "bake-impostors": "node tools/bake-impostors.mjs",
     "bake-geometry": "node tools/bake-geometry.mjs",
-    "key-art": "node tools/key-art.mjs"
+    "key-art": "node tools/key-art.mjs",
+    "bake-journal": "node tools/bake-journal.mjs",
+    "bake-map": "node tools/bake-map.mjs"
   },
   "dependencies": {
     "meshoptimizer": "1.3.0",

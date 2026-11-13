@@ -10,6 +10,44 @@ const A = 360, B = 2640; // x = A·u + B·u⁴ around the homestead
 // (one plane per component, so the baked pack deflates well).
 const warp = (u) => Math.sign(u) * (A * Math.abs(u) + B * u ** 4);
 const gridX = (i, N) => HOME.x + warp(i / (N - 1) * 2 - 1), gridZ = (j, N) => HOME.z + 120 + warp(j / (N - 1) * 2 - 1);
+// The ground as drawn at (x, z) by an N×N grid: the terrain at the cell's corners, linear over its two triangles
+// (the diagonal runs from (i+1, j) to (i, j+1)). Between the corners it differs from terrain.height by centimetres.
+const unwarp = (d) => { const X = Math.abs(d); let a = Math.min(1, X / A); for (let k = 0; k < 8; k++) a -= (A * a + B * a ** 4 - X) / (A + 4 * B * a ** 3); return Math.sign(d) * a; };
+// `at(i, j)` = the sample at a grid node (a cache may stand in for the terrain)
+export function drawnHeight(terrain, x, z, N, at = (i, j) => Math.round(terrain.height(gridX(i, N), gridZ(j, N)) * 1000) / 1000) {
+  const fi = (unwarp(x - HOME.x) + 1) / 2 * (N - 1), fj = (unwarp(z - HOME.z - 120) + 1) / 2 * (N - 1);
+  const i = Math.max(0, Math.min(N - 2, Math.floor(fi))), j = Math.max(0, Math.min(N - 2, Math.floor(fj)));
+  const x0 = gridX(i, N), x1 = gridX(i + 1, N), z0 = gridZ(j, N), z1 = gridZ(j + 1, N), u = (x - x0) / (x1 - x0), v = (z - z0) / (z1 - z0);
+  const hb = at(i + 1, j), hc = at(i, j + 1);
+  if (u + v <= 1) { const ha = at(i, j); return ha + u * (hb - ha) + v * (hc - ha); }
+  const hd = at(i + 1, j + 1); return hd + (1 - u) * (hc - hd) + (1 - v) * (hb - hd);
+}
+export const gridNode = (i, j, N) => [gridX(i, N), gridZ(j, N)];
+// drawnHeight for many points, fast: the cell found by bisection over the grid's node lines, the node samples memoised
+// in a typed array, or read from the grid's own samples `mm` (groundSamples' h) (what World.drawnAt and the load's
+// settling use)
+export function drawnSampler(terrain, N, mm = null) {
+  const gx = new Float64Array(N), gz = new Float64Array(N), h = mm ? null : new Float32Array(N * N).fill(NaN);
+  for (let i = 0; i < N; i++) { gx[i] = gridX(i, N); gz[i] = gridZ(i, N); }
+  const cell = (a, v, last) => { // the last point's cell first: points come near each other
+    if (v >= a[last] && v < a[last + 1]) return last;
+    let lo = 0, hi = N - 2; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (a[m] <= v) lo = m; else hi = m - 1; } return lo;
+  };
+  let li = 0, lj = 0;
+  const at = mm ? (i, j) => mm[j * N + i] / 1000 : (i, j) => { const k = j * N + i; let y = h[k]; if (y !== y) h[k] = y = Math.round(terrain.height(gx[i], gz[j]) * 1000) / 1000; return y; };
+  return (x, z) => {
+    const i = (li = cell(gx, x, li)), j = (lj = cell(gz, z, lj)), u = (x - gx[i]) / (gx[i + 1] - gx[i]), v = (z - gz[j]) / (gz[j + 1] - gz[j]);
+    const hb = at(i + 1, j), hc = at(i, j + 1);
+    if (u + v <= 1) { const ha = at(i, j); return ha + u * (hb - ha) + v * (hc - ha); }
+    const hd = at(i + 1, j + 1); return hd + (1 - u) * (hc - hd) + (1 - v) * (hb - hd);
+  };
+}
+// drawnHeight for many points: the node samples memoised
+export function drawnBy(terrain, N) {
+  const c = new Map(), at = (i, j) => { const k = j * N + i; let y = c.get(k); if (y === undefined) c.set(k, (y = Math.round(terrain.height(gridX(i, N), gridZ(j, N)) * 1000) / 1000)); return y; };
+  return (x, z) => drawnHeight(terrain, x, z, N, at);
+}
+
 export function groundSamples(terrain, N) {
   const h = new Int32Array(N * N), nor = new Int16Array(N * N * 3), spl = new Uint8Array(N * N * 4), n = [0, 1, 0];
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {

@@ -30,7 +30,7 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
 
     // hood + chimney, one lofted shell with the mouth carved as raised column starts
     const rows = [[h, 0.64], [0.55, 0.62], [0.85, 0.57], [1.15, 0.5], [1.45, 0.4], [1.75, 0.3], [2.0, 0.25], [2.3, 0.235], [chTop - 0.05, 0.225], [chTop, 0.25]];
-    const NC = 56;
+    const NC = 156, POLES = 26; // the hood's slanted poles show through the clay above the mouth (6 columns a pole)
     const ringAt = (th, j, inset) => {
       const [y0, r0] = rows[j];
       const d = th - mouthTh, dd = Math.atan2(Math.sin(d), Math.cos(d));
@@ -40,7 +40,8 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
       if (y0 <= 1.75) y = arch + (y0 - h) / (1.75 - h) * (1.75 - arch);   // rows squeeze above the arch
       const lean = Math.min(y, 1.9) / 1.9 * 0.16;
       const wob = 1 + 0.03 * fbm2(th * 3, y * 4, 7);
-      const r = (r0 - inset) * wob;
+      const ribs = inset ? 0 : 0.013 * Math.max(0, Math.cos(th * POLES)) ** 0.8 * Math.min(1, Math.max(0, (y - 1.0) / 0.6));
+      const r = (r0 - inset) * wob + ribs;
       return [c0[0] + ne[0] * lean + Math.cos(th) * r, y, c0[1] + ne[1] * lean + Math.sin(th) * r];
     };
     const shell = (inset) => sheet(NC, rows.length - 1, (u, v) => ringAt(u * Math.PI * 2, Math.round(v * (rows.length - 1)), inset),
@@ -60,21 +61,26 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
   // fire: an ember bed, upright split billets, flame cards, a flickering light
   const F = [c0[0] + sw[0] * 0.12, h + 0.01, c0[1] + sw[1] * 0.12];
   M.fireAt.value.set(F[0], F[1], F[2]);
-  section(() => {
+  const angles = section(() => { // returns the billets' bearings round F (a laid billet leans in between two: src/interact/hands.js)
+    const out = [];
     B.add(M.embers, sheet(16, 16, (u, v) => {
       const a = u * Math.PI * 2, r = v * (winter ? 0.42 : 0.36);
       return [F[0] + Math.cos(a) * r, F[1] + (1 - v) * 0.05 + 0.025 * fbm2(Math.cos(a) * r * 10, Math.sin(a) * r * 10, 8), F[2] + Math.sin(a) * r];
     }, { face: () => [0, 1, 0] }));
     const billets = winter ? 2 : 5;
     for (let i = 0; i < billets; i++) {
-      const a = (i / billets) * Math.PI * 2 + rng();
+      const a = (i / billets) * Math.PI * 2 + rng(); out.push(a);
       const bx = F[0] + Math.cos(a) * 0.17, bz = F[2] + Math.sin(a) * 0.17;
       const tx = F[0] + ne[0] * 0.06 + Math.cos(a) * 0.03, tz = F[2] + ne[1] * 0.06 + Math.sin(a) * 0.03;
       if (winter) B.add(M.char, log([bx, h + 0.04, bz], [bx + Math.cos(a) * 0.35, h + 0.06, bz + Math.sin(a) * 0.35], 0.045, 0.035, rng, { caps: true, seg: 6 }), { color: [1, 1, 1] });
       else B.add(M.char, log([bx, h + 0.02, bz], [tx, h + 0.55 + rng() * 0.12, tz], 0.05, 0.035, rng, { caps: true, seg: 6, knob: 0.15 }), { color: [1, 1, 1] });
     }
+    return out;
   });
-  const fire = { pos: new THREE.Vector3(F[0], F[1] + 0.35, F[2]), cards: null, light: null };
+  // the gaps between them that face the mouth (a billet laid there stands in the open, not against the clay)
+  const gaps = angles.map((a) => a % (Math.PI * 2)).sort((x, y) => x - y).map((a, i, A) => (a + (i + 1 < A.length ? A[i + 1] : A[0] + Math.PI * 2)) / 2)
+    .sort((x, y) => Math.abs(Math.atan2(Math.sin(x - mouthTh), Math.cos(x - mouthTh))) - Math.abs(Math.atan2(Math.sin(y - mouthTh), Math.cos(y - mouthTh)))).slice(0, 2);
+  const fire = { pos: new THREE.Vector3(F[0], F[1] + 0.35, F[2]), gaps, cards: null, light: null };
   if (!winter) {
     const cards = [];
     for (let i = 0; i < 5; i++) {
@@ -87,8 +93,10 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
       cards.push(g);
     }
     for (const g of cards) B.add(M.flame, g);
-    const light = new THREE.PointLight(0xffb57a, 6, 6.5, 2);
-    light.position.set(F[0] + sw[0] * 0.25, F[1] + 0.4, F[2] + sw[1] * 0.25);
+    // reach and decay: the far benches keep their shape in its light; it stands before the mouth, so the hood's
+    // own front takes some of it
+    const light = new THREE.PointLight(0xffb57a, 6, 9, 1.5);
+    light.position.set(F[0] + sw[0] * 0.62, F[1] + 0.5, F[2] + sw[1] * 0.62); light.userData.fire = true;
     // No shadow map: a point-light shadow adds a sampled texture to every lit material in the scene and
     // pushes the ground shader past WebGPU's default 16-texture limit. Re-enable if the engine raises
     // requiredLimits.maxSampledTexturesPerShaderStage.
@@ -99,6 +107,15 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
     const fill = new THREE.PointLight(0xc4d4ea, 1.4, 5.5, 1.6);
     fill.position.set(2.5, 1.1, 0.5);
     root.add(fill);
+    fire.fill = fill; light.userData.pair = fill;
+  } else {
+    // the shut-up winter house: daylight through the door (bright when open, a glow through the gaps when shut)
+    // and through the windows and the cracks in the old plaster, from overhead
+    const fill = new THREE.PointLight(0xc4d4ea, 0.5, 6, 1.4);
+    fill.position.set(2.5, 1.1, 0.5);
+    const sky = new THREE.PointLight(0xdde5ef, 0.9, 7.5, 1.1);
+    sky.position.set(-0.6, 1.95, 0.6);
+    root.add(fill, sky);
     fire.fill = fill;
   }
   section(() => {

@@ -13,10 +13,12 @@ import { TIER } from '../engine/tier.js';
 // on the main thread only if workers fail.
 export async function buildGround(terrain) {
   const sizes = [TIER.ground, 200], pads = terrain.pads;
-  const [fine, rough] = (await job('ground', { pads, sizes }, () => sizes.map((N) => groundSamples(terrain, N)))).map(groundArrays);
+  const samples = await job('ground', { pads, sizes }, () => sizes.map((N) => groundSamples(terrain, N)));
+  const [fine, rough] = samples.map(groundArrays);
   const mesh = new THREE.Mesh(groundGeometry(fine), groundMaterial());
   mesh.receiveShadow = true;
   mesh.name = 'ground';
+  mesh.userData.N = sizes[0]; mesh.userData.h = samples[0].h; // the drawn grid and its node heights in mm (world.drawnAt)
   mesh.userData.tiles = tiles(mesh, 4);
   // a coarse copy (same material, so the same pipeline) the lake reflection draws instead (lake.js)
   const coarse = new THREE.Mesh(groundGeometry(rough), mesh.material);

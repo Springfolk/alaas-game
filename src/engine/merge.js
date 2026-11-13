@@ -20,6 +20,7 @@ import { KEYART, urlFlag } from '../util.js';
 import { work } from '../load/workers.js';
 
 export const SHADOW_LAYER = 2, CULL_LAYER = 30;
+const SHADOW_PX = 6; // a caster under this many px on screen casts no shadow (its shadow is as small: a smudge)
 // The loader (src/load/stream.js collect) renders once with the view camera on every layer to build every
 // shader: culling must then step aside, in every pass.
 export const compiling = (camera) => (camera.layers.mask | 0) === -1;
@@ -62,20 +63,21 @@ const opaque = (m) => !m.transparent && !(m.alphaTest > 0) && !m.alphaMap && !m.
 const shown = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
 
 // The proxy's triangles simplified in a load worker (src/load/simplify.js: ~1.5 cm, under a shadow texel; the
-// shadow pass drew the models' full detail per cascade): a new geometry with the same position attribute, the
-// swap the watchdog's rebuild does too (no new shader). Resolves when done; none on the main thread.
+// shadow pass drew the models' full detail per cascade): a new geometry of the kept vertices, the swap the
+// watchdog's rebuild does too (no new shader). Resolves when done; none on the main thread.
 const SHADOW_ERROR = 0.015;
 function simplified(proxy) {
   if (KEYART || urlFlag('fullshadow')) return null; // ?keyart: exact shadows; ?fullshadow: A/B
   const g = proxy.geometry, pos = g.attributes.position.array, idx = Uint32Array.from(g.index.array);
   return work('simplify', { pos, idx, error: SHADOW_ERROR }, () => null).then((out) => {
-    if (!out || proxy.geometry !== g || out.length >= idx.length) return;
+    if (!out || proxy.geometry !== g || out.idx.length > idx.length) return;
     const s = new THREE.BufferGeometry();
-    s.setAttribute('position', g.attributes.position);
-    s.setIndex(new THREE.BufferAttribute(g.index.array instanceof Uint16Array ? Uint16Array.from(out) : out, 1));
+    s.setAttribute('position', new THREE.BufferAttribute(out.pos, 3));
+    s.setIndex(new THREE.BufferAttribute(out.idx, 1));
     s.boundingSphere = g.boundingSphere;
     proxy.geometry = s;
-    console.info(`${proxy.name}: shadow ${idx.length / 3} → ${out.length / 3} triangles`);
+    g.dispose();
+    console.info(`${proxy.name}: shadow ${idx.length / 3} → ${out.idx.length / 3} triangles, ${pos.length / 3} → ${out.pos.length / 3} vertices`);
   }).catch((e) => console.warn('shadow simplify', e));
 }
 
@@ -129,8 +131,9 @@ export function optimizePlaced(world, camera, sun) {
   for (const it of world.interactables) if (it.target && Object.keys(it).some((k) => !PLAIN.has(k))) dynamic.add(it.target);
   const isDynamic = (o) => { for (let p = o; p; p = p.parent) if (dynamic.has(p) || p.userData.dynamic) return true; return false; };
   // built in slices (a model per task) while the rest loads; World.build awaits `ready`
-  const proxies = [], parts = [];
-  let imp = null, far = null, baked = false; // until the impostors are baked (late in the load stream) the real meshes stay
+  const proxies = [], parts = [], frozen = [];
+  let imp = null, far = null, baked = false;
+  const held = new Set(); // clusters shown as their real meshes at any distance (`hold`) // until the impostors are baked (late in the load stream) the real meshes stay
   const breathe = () => new Promise((r) => setTimeout(r, 0));
   const init = async () => {
     for (const { object } of world.placed) { proxies.push(...shadowProxies(object, dynamic)); await breathe(); }
@@ -168,9 +171,18 @@ export function optimizePlaced(world, camera, sun) {
       _s.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
       let cl = clusterOf.get(o) ?? -1;
       if (cl < 0) cl = built.clusters.findIndex((c) => c.object === object && inside(c, _s.center));
-      if (isDynamic(o) && cl < 0) return;
+      // a moving part outside every cluster is sized where it is now (`live`); one instance's bounds say nothing
+      const live = isDynamic(o) && cl < 0;
+      if (live && o.isInstancedMesh) return;
       if (_s.radius >= 3 && cl < 0) return;
-      parts.push({ o, parent: o.parent, x: _s.center.x, y: _s.center.y, z: _s.center.z, r: _s.radius, cl, mask: o.layers.mask, culled: false });
+      parts.push({ o, parent: o.parent, x: _s.center.x, y: _s.center.y, z: _s.center.z, r: _s.radius, cl, live, mask: o.layers.mask, culled: false, cast: o.castShadow, shade: o.castShadow });
+    });
+    // static objects keep their matrices (no per-frame compose and multiply; `?nofreeze` off); one that moves after all thaws at once
+    if (!urlFlag('nofreeze')) world.scene.traverse((o) => {
+      if (o === world.scene || !o.matrixAutoUpdate || isDynamic(o) || o.isLight || o.isCamera) return;
+      o.updateMatrix();
+      frozen.push({ o, parent: o.parent, s: [...o.position.toArray(), ...o.quaternion.toArray(), ...o.scale.toArray()] });
+      o.matrixAutoUpdate = false;
     });
     imp = built;
     built.baked.then(() => { baked = true; });
@@ -178,22 +190,39 @@ export function optimizePlaced(world, camera, sun) {
   const ready = init();
 
   let t = 0, cursor = 0, warned = 0;
+  // before the frame's world matrices (Engine.render): a frozen part moved, turned, scaled or re-parented thaws
+  const thaw = () => {
+    for (let i = frozen.length - 1; i >= 0; i--) {
+      const { o, parent, s } = frozen[i], p = o.position, q = o.quaternion, c = o.scale;
+      if (o.parent === parent && p.x === s[0] && p.y === s[1] && p.z === s[2] && q._x === s[3] && q._y === s[4] && q._z === s[5] && q._w === s[6] && c.x === s[7] && c.y === s[8] && c.z === s[9]) continue;
+      o.matrixAutoUpdate = true; o.matrixWorldNeedsUpdate = true;
+      frozen[i] = frozen[frozen.length - 1]; frozen.pop();
+    }
+  };
   const update = (dt) => {
     if (!imp || KEYART) return; // ?keyart: every mesh at every distance, no impostors
     const cam = camera.position;
     for (let i = 0; i < far.length; i++) {
       const c = imp.clusters[i], d = Math.hypot(c.x - cam.x, c.z - cam.z);
-      far[i] = !baked ? 0 : d > c.far ? 1 : d < c.far - 2 ? 0 : far[i]; // 2 m hysteresis
+      far[i] = !baked || held.has(i) ? 0 : d > c.far ? 1 : d < c.far - 2 ? 0 : far[i]; // 2 m hysteresis
     }
-    // a slice per frame: tiny = under ~2.5 px at the current FOV and height
-    const k = 2.5 * 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / Math.max(1, innerHeight);
+    // a slice per frame: tiny = under ~2.5 px at the current FOV and height; a caster under SHADOW_PX casts nothing
+    // (castShadow is read per draw in the shadow pass: no shader); a castShadow set elsewhere is taken as the part's own
+    const k = 2.5 * 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / Math.max(1, innerHeight), ks = k * SHADOW_PX / 2.5;
     const n = Math.min(parts.length, 96);
     for (let j = 0; j < n; j++) {
       const s = parts[cursor = (cursor + 1) % parts.length];
-      if (s.o.parent !== s.parent) { if (s.culled) s.o.layers.mask = s.mask; s.culled = false; s.gone = true; } // re-parented: hands off
+      if (s.o.parent !== s.parent) { if (s.culled) s.o.layers.mask = s.mask; if (s.cast && !s.shade) s.o.castShadow = true; s.o.userData.shadowCulled = false; s.culled = false; s.gone = true; } // re-parented: hands off
       if (s.gone) continue;
-      const cull = (s.cl >= 0 && far[s.cl] === 1) || 2 * s.r < Math.hypot(s.x - cam.x, s.y - cam.y, s.z - cam.z) * k;
+      if (s.live) { _v.copy(s.o.geometry.boundingSphere.center).applyMatrix4(s.o.matrixWorld); s.x = _v.x; s.y = _v.y; s.z = _v.z; }
+      const d = Math.hypot(s.x - cam.x, s.y - cam.y, s.z - cam.z);
+      const cull = (s.cl >= 0 && far[s.cl] === 1) || 2 * s.r < d * k;
       if (cull !== s.culled) { s.culled = cull; s.o.layers.mask = cull ? 1 << CULL_LAYER : s.mask; }
+      if (s.o.castShadow !== s.shade) s.cast = s.o.castShadow;
+      if (s.cast) {
+        const shade = 2 * s.r > d * ks * (s.shade ? 1 : 1.15); // 15% hysteresis
+        if (shade !== s.shade) { s.o.castShadow = s.shade = shade; s.o.userData.shadowCulled = !shade; }
+      } else { s.shade = false; s.o.userData.shadowCulled = false; }
     }
     // watchdog: a merged source that moved or hid gets its own shadow back
     t += dt;
@@ -211,5 +240,24 @@ export function optimizePlaced(world, camera, sun) {
   };
   // for the lake mirror (lake.js): the model meshes an impostor stands in for there
   const mirrored = () => (imp ? parts.filter((p) => p.cl >= 0 && imp.clusters[p.cl].mirror && !p.gone).map((p) => p.o) : []);
-  return { update, ready, proxies, mirrored, get impostors() { return imp; } };
+  // the stage's house seen from outside: its clusters (centres within `box`, a Box3) keep their real meshes at any
+  // distance, their impostors out (the impostors are baked level with the eye; the stage looks down); null: release
+  const hold = (box) => {
+    if (!imp) return;
+    const isz = imp.mesh.geometry.attributes.isz;
+    const was = new Set(held);
+    for (const i of held) isz.array[i * 4 + 3] = imp.clusters[i].mirror ? imp.clusters[i].far : -imp.clusters[i].far;
+    held.clear();
+    if (box) imp.clusters.forEach((c, i) => { if (c.x >= box.min.x && c.x <= box.max.x && c.z >= box.min.z && c.z <= box.max.z) { held.add(i); isz.array[i * 4 + 3] = c.mirror ? 1e5 : -1e5; } });
+    isz.needsUpdate = true;
+    // at once, not over the per-frame slices: the held clusters' parts shown, the released ones' hidden when far
+    const cam = camera.position;
+    for (const p of parts) {
+      if (p.gone || p.cl < 0 || !(held.has(p.cl) || was.has(p.cl))) continue;
+      const c = imp.clusters[p.cl], out = !held.has(p.cl) && baked && Math.hypot(c.x - cam.x, c.z - cam.z) > c.far;
+      far[p.cl] = out ? 1 : 0;
+      if (out !== p.culled) { p.culled = out; p.o.layers.mask = out ? 1 << CULL_LAYER : p.mask; }
+    }
+  };
+  return { update, thaw, ready, proxies, mirrored, hold, get impostors() { return imp; } };
 }

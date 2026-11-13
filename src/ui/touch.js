@@ -1,67 +1,53 @@
-// Phone / tablet controls, no pointer lock: a floating stick under the left thumb (walk; push to the
-// rim = run), drag anywhere on the right to look (a short tap there = E; a tip says so until the first
-// look drag), glass buttons for E, jump, crouch, journal, language and pause, and 1·2·3 buttons while an
-// act asks for a choice.
+// Phone / tablet controls, no pointer lock: a stick fixed bottom left (a touch that starts on or near it
+// walks; push to the rim = run); a drag that starts anywhere else on the open view looks, and does nothing else.
+// A lesson (src/ui/teach.js) rings the button it is about (`.tc-teach`).
+// Buttons (drawn glass, no blur): the hand, green (the do input: held while the thumb stays down, a drag that
+// starts on it looks, so a held tool can be aimed; it shows the tool of the act of the moment), the eye, blue
+// (inspect; shown when the thing in view has a card), put down (shown while carrying), jump, crouch, journal,
+// pause. The look prompt's own lens and plate (index.html `#prompt`) are the same two inputs, at the thing.
+// Windows, toasts and buttons keep their touches.
 // Auto-enabled on coarse-pointer devices; `?touch` forces it, `?notouch` disables it.
 // Self-contained: every class is `tc-` prefixed and the stylesheet is injected here.
-import { CONTROLS, tr } from './i18n.js';
+import { icon, actIcon } from './icons.js';
 
 const CSS = `
 .tc-root{position:fixed;inset:0;z-index:15;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
-  font-family:"Segoe UI","Noto Sans",system-ui,sans-serif;--tc-glass:rgba(200,225,255,.16);--tc-edge:rgba(255,255,255,.55);--tc-glow:120,220,255}
+  font-family:"Segoe UI","Noto Sans",system-ui,sans-serif;--tc-glass:rgba(18,46,76,.6);--tc-edge:rgba(255,255,255,.6);--tc-glow:120,220,255}
 .tc-root[data-mode=off]>*{display:none!important}
-.tc-root:not([data-mode=play]) .tc-zone,.tc-root:not([data-mode=play]) .tc-play,.tc-root:not([data-mode=play]) .tc-stick{display:none}
-.tc-root:not([data-mode=ui]) .tc-ui{display:none}
-.tc-root:not([data-mode=choice]) .tc-choice{display:none}
-.tc-zone{position:absolute;bottom:0;pointer-events:auto;touch-action:none}
-.tc-move{left:0;width:45%;height:62%}
-.tc-look{right:0;width:55%;height:100%}
-.tc-stick{position:absolute;width:128px;height:128px;margin:-64px 0 0 -64px;border-radius:50%;pointer-events:none;opacity:.55;transition:opacity .25s;
+.tc-root:not([data-mode=play]) .tc-play,.tc-root:not([data-mode=play]) .tc-stick{display:none}
+.tc-stick{position:absolute;left:calc(36px + env(safe-area-inset-left));bottom:calc(48px + env(safe-area-inset-bottom));width:128px;height:128px;border-radius:50%;pointer-events:none;opacity:.6;transition:opacity .25s;
   background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.04) 52%,rgba(var(--tc-glow),.12) 70%,rgba(255,255,255,.08) 71%);
-  border:1px solid var(--tc-edge);box-shadow:inset 0 0 0 1px rgba(0,30,60,.35),inset 0 10px 24px rgba(255,255,255,.12),0 2px 14px rgba(0,0,0,.35);
-  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+  border:1px solid var(--tc-edge);box-shadow:inset 0 0 0 1px rgba(0,30,60,.35),inset 0 10px 24px rgba(255,255,255,.12),0 2px 14px rgba(0,0,0,.35);}
 .tc-stick.on{opacity:1}
 .tc-stick.run{box-shadow:inset 0 0 0 1px rgba(0,30,60,.35),inset 0 10px 24px rgba(255,255,255,.12),0 0 22px rgba(var(--tc-glow),.55)}
 .tc-knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
   background:linear-gradient(180deg,rgba(255,255,255,.75) 0%,rgba(225,240,255,.35) 48%,rgba(120,170,220,.28) 52%,rgba(170,220,255,.5) 100%);
   border:1px solid rgba(255,255,255,.85);box-shadow:inset 0 0 0 1px rgba(20,60,110,.45),inset 0 -6px 12px rgba(var(--tc-glow),.45),0 2px 8px rgba(0,0,0,.4)}
 .tc-btn{position:absolute;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;border-radius:50%;
-  color:#fff;font-weight:600;text-shadow:0 1px 3px rgba(0,20,50,.85);font-size:15px;letter-spacing:.02em;
-  background:linear-gradient(180deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,.14) 49%,rgba(10,40,80,.22) 51%,rgba(110,170,230,.28) 100%),var(--tc-glass);
-  border:1px solid var(--tc-edge);box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -5px 10px rgba(var(--tc-glow),.25),0 2px 10px rgba(0,0,0,.35);
-  -webkit-backdrop-filter:blur(6px) saturate(1.4);backdrop-filter:blur(6px) saturate(1.4);transition:transform .08s,box-shadow .2s,opacity .2s}
+  color:#fff;font-weight:600;font-size:15px;
+  background:linear-gradient(180deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,.14) 49%,rgba(10,40,80,.12) 51%,rgba(160,200,240,.2) 100%),var(--tc-glass);
+  border:1px solid var(--tc-edge);box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),0 2px 10px rgba(0,0,0,.35);transition:transform .08s,opacity .2s}
 .tc-btn.down{transform:scale(.92);box-shadow:inset 0 0 0 1px rgba(10,40,80,.6),inset 0 3px 10px rgba(0,20,50,.45),0 0 16px rgba(var(--tc-glow),.6)}
-.tc-btn svg{width:48%;height:48%;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px rgba(0,20,50,.8))}
-.tc-act{right:calc(18px + env(safe-area-inset-right));bottom:calc(112px + env(safe-area-inset-bottom));width:76px;height:76px;font-size:24px;opacity:.6}
-.tc-act.ready{opacity:1;box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -6px 14px rgba(var(--tc-glow),.55),0 0 20px rgba(var(--tc-glow),.75);animation:tc-pulse 1.8s ease-in-out infinite}
-@keyframes tc-pulse{50%{box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -6px 14px rgba(var(--tc-glow),.4),0 0 30px rgba(var(--tc-glow),.95)}}
-.tc-jump{right:calc(104px + env(safe-area-inset-right));bottom:calc(34px + env(safe-area-inset-bottom));width:64px;height:64px}
-.tc-crouch{right:calc(24px + env(safe-area-inset-right));bottom:calc(30px + env(safe-area-inset-bottom));width:54px;height:54px}
-.tc-crouch.on{box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),inset 0 -5px 12px rgba(var(--tc-glow),.6),0 0 14px rgba(var(--tc-glow),.6)}
+.tc-btn .ic{width:50%;height:50%;stroke-width:2.2;pointer-events:none}
+.tc-act{right:calc(18px + env(safe-area-inset-right));bottom:calc(112px + env(safe-area-inset-bottom));width:78px;height:78px;border-radius:22px;opacity:.5}
+.tc-act.ready{opacity:1;--tc-glass:rgb(58,156,28);box-shadow:inset 0 0 0 1px rgba(0,50,0,.5),0 0 0 3px rgba(190,255,160,.55),0 2px 12px rgba(0,0,0,.4)}
+.tc-act.held.ready::after{content:'';position:absolute;left:22px;right:22px;bottom:8px;height:5px;border-radius:3px;background:#fff}
+.tc-eye{right:calc(108px + env(safe-area-inset-right));bottom:calc(124px + env(safe-area-inset-bottom));width:58px;height:58px;--tc-glass:rgb(48,132,216)}
+.tc-put{right:calc(30px + env(safe-area-inset-right));bottom:calc(204px + env(safe-area-inset-bottom));width:54px;height:54px}
+.tc-eye:not(.ready),.tc-put:not(.ready){opacity:0;pointer-events:none}
+.tc-jump{right:calc(108px + env(safe-area-inset-right));bottom:calc(36px + env(safe-area-inset-bottom));width:52px;height:52px;opacity:.7}
+.tc-crouch{right:calc(30px + env(safe-area-inset-right));bottom:calc(32px + env(safe-area-inset-bottom));width:48px;height:48px;opacity:.7}
+.tc-crouch.on{box-shadow:inset 0 0 0 1px rgba(10,40,80,.45),0 0 0 3px rgba(var(--tc-glow),.6)}
 .tc-top{position:absolute;top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));display:flex;gap:10px}
-.tc-top .tc-btn{position:relative;width:46px;height:46px;border-radius:12px;font-size:13px}
-.tc-choice{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:14px}
-.tc-choice .tc-btn{position:relative;width:58px;height:58px;font-size:20px}
-.tc-ui{position:absolute;top:calc(10px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));display:flex;gap:10px;z-index:40}
-.tc-ui .tc-btn{position:relative;width:46px;height:46px;border-radius:12px;font-size:13px}
-.tc-tip{position:absolute;right:calc(12% + env(safe-area-inset-right));top:40%;display:flex;align-items:center;gap:8px;padding:7px 14px 7px 9px;
-  border-radius:22px;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 3px rgba(0,20,50,.85);pointer-events:none;
-  background:var(--tc-glass);border:1px solid var(--tc-edge);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:opacity .8s}
-.tc-tip.gone{opacity:0}
-.tc-tip svg{width:30px;height:30px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;animation:tc-drag 1.6s ease-in-out infinite}
-@keyframes tc-drag{0%,100%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
+.tc-top .tc-btn{position:relative;width:48px;height:48px;border-radius:12px}
+.tc-live #prompt .p-act,.tc-live #prompt .p-read{pointer-events:auto;touch-action:none}
+.tc-live #prompt .p-act *,.tc-live #prompt .p-read *{pointer-events:none}
+.tc-teach::before{content:'';position:absolute;inset:-7px;border-radius:inherit;border:3px solid #fff;animation:tc-ring 1.2s ease-out infinite;pointer-events:none}
+@keyframes tc-ring{from{transform:scale(.86);opacity:1}to{transform:scale(1.22);opacity:0}}
+@media (max-height:500px){.tc-stick{left:calc(32px + env(safe-area-inset-left));bottom:calc(26px + env(safe-area-inset-bottom))}
+  .tc-act{bottom:calc(96px + env(safe-area-inset-bottom))}.tc-eye{bottom:calc(106px + env(safe-area-inset-bottom))}.tc-put{bottom:calc(184px + env(safe-area-inset-bottom))}
+  .tc-jump{bottom:calc(24px + env(safe-area-inset-bottom))}.tc-crouch{bottom:calc(22px + env(safe-area-inset-bottom))}}
 `;
-
-const ICON = {
-  jump: '<svg viewBox="0 0 24 24"><path d="M12 19V6M6 11l6-6 6 6"/></svg>',
-  crouch: '<svg viewBox="0 0 24 24"><path d="M12 5v13M6 13l6 6 6-6"/></svg>',
-  journal: '<svg viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3zM21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></svg>',
-  pause: '<svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg>',
-  close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-  drag: '<svg viewBox="0 0 24 24"><path d="M10 13V6.5a1.5 1.5 0 0 1 3 0V12l4.2.9a2 2 0 0 1 1.5 2.3L18 20h-7.5L7 15.5a1.4 1.4 0 0 1 2-2zM3 5l-2 2 2 2M21 5l2 2-2 2"/></svg>',
-};
-const LANG_SHORT = { sah: 'САХ', en: 'EN', ru: 'РУ' };
-const LOOK = CONTROLS[1][1]; // the hand-written "Look around" (no new Sakha text)
 
 export class TouchControls {
   static wanted() {
@@ -76,6 +62,7 @@ export class TouchControls {
     this.input = game.input;
     this.input.touchMode = true;
     this.runRadius = 52;  // px from the stick centre to full deflection
+    this.catchR = 100;    // px from the stick centre: a touch starting within walks, beyond it looks
     this.lookScale = 1;   // multiplies drag pixels (player sens applies on top)
     const style = document.createElement('style');
     style.textContent = CSS;
@@ -84,103 +71,122 @@ export class TouchControls {
     root.className = 'tc-root';
     root.dataset.mode = 'off';
     root.innerHTML = `
-      <div class="tc-zone tc-move"></div><div class="tc-zone tc-look"></div>
       <div class="tc-stick"><div class="tc-knob"></div></div>
-      <div class="tc-tip tc-play">${ICON.drag}<span></span></div>
-      <div class="tc-btn tc-play tc-act" data-b="act">E</div>
-      <div class="tc-btn tc-play tc-jump" data-b="jump">${ICON.jump}</div>
-      <div class="tc-btn tc-play tc-crouch" data-b="crouch">${ICON.crouch}</div>
+      <div class="tc-btn tc-play tc-act" data-b="act">${icon('hand')}</div>
+      <div class="tc-btn tc-play tc-eye" data-b="eye">${icon('eye')}</div>
+      <div class="tc-btn tc-play tc-put" data-b="put">${icon('put')}</div>
+      <div class="tc-btn tc-play tc-jump" data-b="jump">${icon('jump')}</div>
+      <div class="tc-btn tc-play tc-crouch" data-b="crouch">${icon('crouch')}</div>
       <div class="tc-top tc-play">
-        <div class="tc-btn" data-b="lang">САХ</div><div class="tc-btn" data-b="journal">${ICON.journal}</div><div class="tc-btn" data-b="pause">${ICON.pause}</div>
-      </div>
-      <div class="tc-ui"><div class="tc-btn" data-b="lang">САХ</div><div class="tc-btn" data-b="close">${ICON.close}</div></div>
-      <div class="tc-choice"><div class="tc-btn" data-b="1">1</div><div class="tc-btn" data-b="2">2</div><div class="tc-btn" data-b="3">3</div><div class="tc-btn" data-b="esc">${ICON.close}</div></div>`;
+        <div class="tc-btn" data-b="journal">${icon('book')}</div><div class="tc-btn" data-b="pause">${icon('pause')}</div>
+      </div>`;
+    document.documentElement.classList.add('tc-live');
     document.body.appendChild(root);
     this.stick = root.querySelector('.tc-stick');
     this.knob = root.querySelector('.tc-knob');
-    this.act = root.querySelector('.tc-act');
+    this.act = root.querySelector('.tc-act'); this.eye = root.querySelector('.tc-eye'); this.putBtn = root.querySelector('.tc-put');
     this.crouchBtn = root.querySelector('.tc-crouch');
-    this.langBtns = [...root.querySelectorAll('[data-b=lang]')];
-    this.tip = root.querySelector('.tc-tip'); this.tipText = this.tip.querySelector('span');
-    this.moveId = null; this.lookId = null;
+    this.toasts = document.getElementById('toasts');
+    this.moveId = null; this.lookId = null; this.actId = null; // the walk touch, the look touch, the thumb on the hand button
     this.stickHome();
 
     const opt = { passive: false };
-    const move = root.querySelector('.tc-move'), look = root.querySelector('.tc-look');
-    move.addEventListener('touchstart', (e) => this.moveStart(e), opt);
-    look.addEventListener('touchstart', (e) => this.lookStart(e), opt);
+    this.input.canvas.style.touchAction = 'none';
+    addEventListener('touchstart', (e) => this.touchStart(e), opt);
     addEventListener('touchmove', (e) => this.touchMove(e), opt);
     addEventListener('touchend', (e) => this.touchEnd(e), opt);
     addEventListener('touchcancel', (e) => this.touchEnd(e), opt);
     for (const b of root.querySelectorAll('.tc-btn')) {
-      b.addEventListener('touchstart', (e) => { e.preventDefault(); b.classList.add('down'); navigator.vibrate?.(8); this.button(b.dataset.b); }, opt);
+      b.addEventListener('touchstart', (e) => {
+        e.preventDefault(); b.classList.add('down'); navigator.vibrate?.(8);
+        if (b === this.act && this.actId === null) { const t = e.changedTouches[0]; this.actId = t.identifier; this.ax = t.clientX; this.ay = t.clientY; }
+        this.button(b.dataset.b);
+      }, opt);
       const up = () => b.classList.remove('down');
       b.addEventListener('touchend', up); b.addEventListener('touchcancel', up);
-      b.addEventListener('click', () => { if (!this.recentTouch) this.button(b.dataset.b); }); // mouse, with ?touch
+      b.addEventListener('click', () => { if (!this.recentTouch) { this.button(b.dataset.b); if (b === this.act) this.input.setDo(false); } }); // mouse, with ?touch
     }
+    const plate = document.querySelector('#prompt .p-act'), lens = document.querySelector('#prompt .p-read');
+    plate?.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (this.actId === null) { const t = e.changedTouches[0]; this.actId = t.identifier; this.ax = t.clientX; this.ay = t.clientY; }
+      this.input.setDo(true);
+    }, opt);
+    lens?.addEventListener('touchstart', (e) => { e.preventDefault(); this.game.inspect(this.game.focus); }, opt);
     addEventListener('touchstart', () => { this.recentTouch = true; clearTimeout(this.rt); this.rt = setTimeout(() => { this.recentTouch = false; }, 600); }, { passive: true, capture: true });
     const tick = () => { this.sync(); requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }
 
-  key(code) { this.game.key?.({ code, preventDefault() {} }); }
+  key(code) { this.input.press(code); this.game.key?.({ code, preventDefault() {} }); }
   button(b) {
     const g = this.game, inp = this.input;
-    if (b === 'act') { if (g.useReady ?? g.focus) this.key('KeyE'); }
+    if (b === 'act') inp.setDo(true); // held until its touch ends (touchEnd); the mouse (?touch) clicks: down and up
+    else if (b === 'eye') g.inspect(g.focus);
+    else if (b === 'put') inp.put();
     else if (b === 'jump') inp.press('Jump');
     else if (b === 'crouch') inp.press('Crouch');
     else if (b === 'journal') this.key('KeyJ');
-    else if (b === 'lang') this.key('KeyL');
     else if (b === 'pause') inp.release();
-    else if (b === 'close') { g.ui?.close(); inp.lock(); }
-    else if (b === 'esc' || /^[123]$/.test(b)) dispatchEvent(new KeyboardEvent('keydown', { code: b === 'esc' ? 'Escape' : 'Digit' + b }));
   }
 
-  stickHome() {
-    this.cx = 110; this.cy = innerHeight - 130;
-    this.stick.style.left = this.cx + 'px'; this.stick.style.top = this.cy + 'px';
+  stickHome() { // the stick never moves (its place is in the CSS); the knob goes back to the middle
     this.knob.style.transform = '';
     this.stick.classList.remove('on', 'run');
   }
-  moveStart(e) {
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    if (this.moveId !== null) return;
-    this.moveId = t.identifier;
-    this.cx = t.clientX; this.cy = t.clientY; // the stick comes to the thumb
-    this.stick.style.left = this.cx + 'px'; this.stick.style.top = this.cy + 'px';
-    this.stick.classList.add('on');
+  // A touch on the open view (the canvas: windows and buttons take their own; toasts let taps through to the
+  // buttons under them but start nothing) walks when it starts within `catchR` px of the stick's middle,
+  // otherwise looks. One of each at a time.
+  touchStart(e) {
+    if (this.root.dataset.mode !== 'play') return;
+    let r = null;
+    for (const t of e.changedTouches) {
+      if (t.target !== this.input.canvas) continue;
+      e.preventDefault();
+      if (this.overToast(t.clientX, t.clientY)) continue;
+      r ||= this.stick.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      if (this.moveId === null && Math.hypot(t.clientX - cx, t.clientY - cy) < this.catchR) {
+        this.moveId = t.identifier; this.cx = cx; this.cy = cy;
+        this.stick.classList.add('on');
+        this.steer(t);
+      } else if (this.lookId === null) {
+        this.lookId = t.identifier;
+        this.lx = t.clientX; this.ly = t.clientY;
+        this.tap = { x: t.clientX, y: t.clientY, t: performance.now() };
+      }
+    }
   }
-  lookStart(e) {
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    if (this.lookId !== null) return;
-    this.lookId = t.identifier;
-    this.lx = t.clientX; this.ly = t.clientY;
-    this.tap = { x: t.clientX, y: t.clientY, t: performance.now() };
+  overToast(x, y) {
+    for (const el of this.toasts?.children || []) {
+      const b = el.getBoundingClientRect();
+      if (x >= b.left && x <= b.right && y >= b.top && y <= b.bottom) return true;
+    }
+    return false;
+  }
+  steer(t) {
+    const dx = t.clientX - this.cx, dy = t.clientY - this.cy, R = this.runRadius;
+    const m = Math.min(1, Math.hypot(dx, dy) / R), a = Math.atan2(dy, dx);
+    const dead = 0.12, v = m < dead ? 0 : (m - dead) / (1 - dead);
+    this.input.stickX = Math.cos(a) * v;
+    this.input.stickY = -Math.sin(a) * v;
+    const kd = Math.min(Math.hypot(dx, dy), R);
+    this.knob.style.transform = `translate(${Math.cos(a) * kd}px,${Math.sin(a) * kd}px)`;
+    this.stick.classList.toggle('run', v > 0.92);
   }
   touchMove(e) {
-    if (this.moveId === null && this.lookId === null) return;
+    if (this.moveId === null && this.lookId === null && this.actId === null) return;
     for (const t of e.changedTouches) {
       if (t.identifier === this.moveId) {
         e.preventDefault();
-        let dx = t.clientX - this.cx, dy = t.clientY - this.cy;
-        const d = Math.hypot(dx, dy), R = this.runRadius, over = R * 1.35;
-        if (d > over) { // drag past the rim: the stick follows the thumb
-          this.cx += dx / d * (d - over); this.cy += dy / d * (d - over);
-          this.stick.style.left = this.cx + 'px'; this.stick.style.top = this.cy + 'px';
-          dx = t.clientX - this.cx; dy = t.clientY - this.cy;
-        }
-        const m = Math.min(1, Math.hypot(dx, dy) / R), a = Math.atan2(dy, dx);
-        const dead = 0.12, v = m < dead ? 0 : (m - dead) / (1 - dead);
-        this.input.stickX = Math.cos(a) * v;
-        this.input.stickY = -Math.sin(a) * v;
-        const kd = Math.min(Math.hypot(dx, dy), R);
-        this.knob.style.transform = `translate(${Math.cos(a) * kd}px,${Math.sin(a) * kd}px)`;
-        this.stick.classList.toggle('run', v > 0.92);
+        this.steer(t);
+      } else if (t.identifier === this.actId) { // the thumb holding the hand button aims
+        e.preventDefault();
+        this.input.lookX += (t.clientX - this.ax) * this.lookScale;
+        this.input.lookY += (t.clientY - this.ay) * this.lookScale;
+        this.ax = t.clientX; this.ay = t.clientY;
       } else if (t.identifier === this.lookId) {
         e.preventDefault();
-        if (!this.looked && this.tap && Math.hypot(t.clientX - this.tap.x, t.clientY - this.tap.y) > 40) { this.looked = true; this.tip.classList.add('gone'); }
         this.input.lookX += (t.clientX - this.lx) * this.lookScale;
         this.input.lookY += (t.clientY - this.ly) * this.lookScale;
         this.lx = t.clientX; this.ly = t.clientY;
@@ -191,31 +197,32 @@ export class TouchControls {
     for (const t of e.changedTouches) {
       if (t.identifier === this.moveId) {
         this.moveId = null; this.input.stickX = this.input.stickY = 0; this.stickHome();
+      } else if (t.identifier === this.actId) {
+        this.actId = null; this.input.setDo(false);
       } else if (t.identifier === this.lookId) {
         this.lookId = null;
-        const p = this.tap;
-        if (p && performance.now() - p.t < 250 && Math.hypot(t.clientX - p.x, t.clientY - p.y) < 12 && this.game.focus) this.key('KeyE');
         this.tap = null;
       }
     }
   }
 
-  // Which controls show: none on the title / pause, close + language over a card or journal, the
-  // choice row while an act runs, otherwise the play set.
+  // Which controls show: none on the title, in pause, over a card or the journal (their own buttons); otherwise the
+  // play set.
   sync() {
     const g = this.game;
-    const mode = !g.ready || g.title || (!this.input.touchLive && !g.ui?.open) ? 'off'
-      : g.ui?.modal || (g.ui?.open && !this.input.touchLive) ? 'ui' : g.choosing ? 'choice' : 'play'; // a peek is a side panel: play on
+    const mode = this.show ? this.show : !g.ready || g.title || (!this.input.touchLive && !g.ui?.open) ? 'off' // (show: src/ui/prewarm.js)
+      : g.ui?.open ? 'ui' : 'play';
     if (mode !== this.root.dataset.mode) {
       this.root.dataset.mode = mode;
-      if (mode !== 'play') { this.moveId = this.lookId = null; this.input.stickX = this.input.stickY = 0; this.stickHome(); }
+      if (mode !== 'play') { this.moveId = this.lookId = this.actId = null; this.input.setDo(false); this.input.stickX = this.input.stickY = 0; this.stickHome(); }
     }
     if (mode === 'off') return;
-    this.act.classList.toggle('ready', !!(g.useReady ?? g.focus));
+    this.act.classList.toggle('ready', !!(this.show || g.doReady));
+    const k = g.doAct ? actIcon(g.doAct) : 'hand', pk = g.putAct ? actIcon(g.putAct) : 'put';
+    if (k !== this.actK) { this.actK = k; this.act.innerHTML = icon(k); }
+    if (pk !== this.putK) { this.putK = pk; this.putBtn.innerHTML = icon(pk); }
+    this.eye.classList.toggle('ready', !!(this.show || g.readReady));
+    this.putBtn.classList.toggle('ready', !!(this.show || g.putReady));
     this.crouchBtn.classList.toggle('on', !!g.player?.crouch);
-    const l = LANG_SHORT[g.state?.lang] || 'EN';
-    for (const b of this.langBtns) if (b.textContent !== l) b.textContent = l;
-    const tip = tr(LOOK, g.state?.lang);
-    if (this.tipText.textContent !== tip) this.tipText.textContent = tip;
   }
 }

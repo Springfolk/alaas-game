@@ -6,20 +6,23 @@ import { TAU, tube, lathe, merge, beam, grid, xf } from './geom.js';
 import { R_POST } from './frame.js';
 import { valueNoise, deg } from '../../util.js';
 
+// the ladle's hook radius and its hang (rad about the sack's z: its handle's tilt off the horizontal), the lowest that
+// keeps it 5 mm or more off the sack's shoulder (`sackAt`)
+export const LADLE = { hookR: 0.021, hang: 0.87 };
 const P2 = (r, a, y = 0) => [Math.cos(a) * r, y, Math.sin(a) * r];
 const setUV = (g, fn) => { const uv = g.attributes.uv, p = g.attributes.position; for (let i = 0; i < uv.count; i++) { const [a, b] = fn(uv.getX(i), uv.getY(i), p.getX(i), p.getY(i), p.getZ(i), i); uv.setXY(i, a, b); } return g; };
 const plain = (g, k = 10) => setUV(g, (u, v) => [u + k, v]);
 
 // ---- chorons: lathe bodies; outer vertices get uv.y = height fraction (carving bands), inner ones plain
-function choronBody(prof, lipIndex, H, u0 = 0) {
-  const g = lathe(prof, 28, (r, y, a) => r * (1 + valueNoise(a * 2, y * 30, 17) * 0.006));
-  const segs = 28;
+// (uv.y 2..3 = the height fraction inside the bowl); `segs` round
+function choronBody(prof, lipIndex, H, u0 = 0, segs = 28) {
+  const g = lathe(prof, segs, (r, y, a) => r * (1 + valueNoise(a * 2, y * 30, 17) * 0.006));
   return setUV(g, (u, v, x, y, z, i) => {
     const row = Math.floor(i / (segs + 1));
-    return row <= lipIndex ? [u + u0, y / H] : [u + 10, 2];
+    return row <= lipIndex ? [u + u0, y / H] : [u + 10, 2 + y / H];
   });
 }
-function choronA(scale = 1) {
+function choronA(scale = 1, segs = 28) {
   // standard choron on a conical foot: 22 cm, bowl 14 cm, lip 12.5 cm, raised rings
   const P = [[0.001, 0], [0.055, 0], [0.056, 0.006], [0.054, 0.013], [0.044, 0.017], [0.034, 0.035], [0.026, 0.055], [0.022, 0.07],
     [0.026, 0.075], [0.04, 0.085], [0.052, 0.098], [0.058, 0.11], [0.063, 0.125], [0.0665, 0.128], [0.068, 0.14], [0.07, 0.152],
@@ -28,7 +31,7 @@ function choronA(scale = 1) {
     // inside
     [0.056, 0.221], [0.052, 0.21], [0.052, 0.19], [0.06, 0.15], [0.052, 0.115], [0.03, 0.093], [0.001, 0.088]];
   const S = P.map(([r, y]) => [r * scale, y * scale]);
-  const g = choronBody(S, 27, 0.22 * scale);
+  const g = choronBody(S, 27, 0.22 * scale, 0, segs);
   g.userData.inner = S.slice(28);
   return g;
 }
@@ -60,77 +63,125 @@ function choronB() {
   return g;
 }
 
-// kymys levels in the guest's choron (cup space, m): left after drinking / ladled full
+// kymys levels in the guest's choron (cup space, upright, m): left after drinking / ladled full
 export const KYMYS = { left: 0.12, full: 0.185 };
 
-// ---- kymys in a choron: a flat surface kept level in the world and fitted to the bowl's inner wall.
-// `inner` = the bowl's inside profile [[r, y], …] in cup space. fit(level) re-shapes it for the cup's tilt;
-// what would rise over the lip has been spilled, so the level drops to stay inside.
+// ---- kymys in a choron: a surface kept level in the world inside the bowl, holding its volume as the cup tilts.
+// `inner` = the bowl's inside profile [[r, y], …] in cup space. K.vol (m³) is what it holds (`volAt(level)`: the
+// upright volume up to a level). fit(up) (`up` = world up in cup space) finds the plane that holds K.vol and draws
+// it as a fan inside the bowl; what would rise over the lip spills: K.vol drops to the tilted bowl's `capacity`.
 function kymysSurface(inner, mat, cup, level) {
   const prof = [...inner].sort((a, b) => a[1] - b[1]);
-  const top = prof[prof.length - 1][1] - 0.006;
+  const y0 = prof[0][1], top = prof[prof.length - 1][1] - 0.006;
   const rIn = (y) => {
     if (y <= prof[0][1]) return prof[0][0];
-    for (let i = 1; i < prof.length; i++) if (y <= prof[i][1]) { const [r0, y0] = prof[i - 1], [r1, y1] = prof[i]; return r0 + (r1 - r0) * (y - y0) / (y1 - y0); }
+    for (let i = 1; i < prof.length; i++) if (y <= prof[i][1]) { const [ra, ya] = prof[i - 1], [rb, yb] = prof[i]; return ra + (rb - ra) * (y - ya) / (yb - ya); }
     return prof[prof.length - 1][0];
   };
-  const N = 28, pos = new Float32Array((N + 2) * 3), nor = new Float32Array((N + 2) * 3), idx = [];
+  const rTop = rIn(top);
+  // volume under the plane p·u = H: the bowl as NS stacked discs, each cut by a chord in closed form
+  // (G = ∫ over the chord's distance c from the middle of the disc's area on its side)
+  const NS = 32, dy = (top - y0) / NS, sr = new Float64Array(NS);
+  for (let i = 0; i < NS; i++) sr[i] = rIn(y0 + (i + 0.5) * dy);
+  const G = (R, c) => c <= -R ? 0 : c >= R ? Math.PI * R * R * c
+    : Math.PI * R * R * c - R * R * (c * Math.acos(c / R) - Math.sqrt(R * R - c * c)) - (R * R - c * c) ** 1.5 / 3;
+  const volume = (u, s, H) => {
+    let v = 0;
+    for (let i = 0; i < NS; i++) {
+      const ya = y0 + i * dy, R = sr[i];
+      v += s < 1e-7 ? Math.PI * R * R * Math.min(dy, Math.max(0, H / u.y - ya)) : (s / u.y) * (G(R, (H - u.y * ya) / s) - G(R, (H - u.y * (ya + dy)) / s));
+    }
+    return v;
+  };
+  const brim = (u, s) => top * u.y - rTop * s; // the lip's lowest point along up
+  const N = 48, pos = new Float32Array((N + 2) * 3), nor = new Float32Array((N + 2) * 3), idx = [];
   for (let i = 1; i <= N; i++) idx.push(0, i + 1, i);
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); // the level, refitted (src/load/release.js keeps it)
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); // refitted (src/load/release.js keeps it)
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3).setUsage(THREE.DynamicDrawUsage));
-  g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array((N + 2) * 2), 2));
+  const fuv = new Float32Array((N + 2) * 2); // uv.x: 0 in the middle, 1 at the wall (the froth ring, the thin edge)
+  for (let i = 0; i <= N; i++) { fuv[(i + 1) * 2] = 1; fuv[(i + 1) * 2 + 1] = i / N; }
+  g.setAttribute('uv', new THREE.BufferAttribute(fuv, 2));
   g.setIndex(idx);
   const mesh = new THREE.Mesh(g, mat);
   mesh.castShadow = false; mesh.userData.noShadow = true; mesh.userData.dynamic = true;
   cup.add(mesh);
-  const up = new THREE.Vector3(0, 1, 0), slopes = new Float32Array(N + 1), radii = new Float32Array(N + 1);
-  const K = { mesh, level, fit(lvl = K.level, u = up) {
-    const ny = Math.max(u.y, 0.25);
-    let peak = -1e9;
-    for (let i = 0; i <= N; i++) {
-      const a = (i / N) * TAU, c = Math.cos(a), s = Math.sin(a), sl = -(u.x * c + u.z * s) / ny;
-      // where the level plane meets the wall along this direction: rIn(lvl + sl·r) = r (bisection)
-      let lo = 0, hi = 0.2;
-      for (let k = 0; k < 14; k++) { const r = (lo + hi) / 2; if (rIn(lvl + sl * r) > r) lo = r; else hi = r; }
-      const r = lo + 0.0015;   // tucked into the wall
-      slopes[i] = sl; radii[i] = r;
-      peak = Math.max(peak, lvl + sl * r);
-    }
-    K.level = lvl - Math.max(0, peak - top);
-    pos.set([0, K.level, 0], 0);
-    for (let i = 0; i <= N; i++) { const a = (i / N) * TAU; pos.set([Math.cos(a) * radii[i], K.level + slopes[i] * radii[i], Math.sin(a) * radii[i]], (i + 1) * 3); }
-    for (let i = 0; i < N + 2; i++) nor.set([u.x, u.y, u.z], i * 3);
-    g.attributes.position.needsUpdate = g.attributes.normal.needsUpdate = true;
-    g.computeBoundingSphere();
-  } };
+  const UP = new THREE.Vector3(0, 1, 0), c0 = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), d = new THREE.Vector3(), p = new THREE.Vector3();
+  const inside = (q) => q.y >= y0 && q.y <= top && Math.hypot(q.x, q.z) <= rIn(q.y);
+  const K = {
+    mesh, top, rTop,
+    volAt: (lvl) => volume(UP, 0, lvl),
+    capacity: (u) => { const s = Math.hypot(u.x, u.z); return volume(u, s, brim(u, s)); },
+    // the tilt (rad) at which the bowl holds exactly v
+    tiltFor(v) {
+      let a = 0, b = 1.3;
+      for (let k = 0; k < 24; k++) { const m = (a + b) / 2; if (K.capacity(d.set(Math.sin(m), Math.cos(m), 0)) > v) a = m; else b = m; }
+      return (a + b) / 2;
+    },
+    fit(u = UP) {
+      if (u.y < 0.05) { K.vol = 0; mesh.visible = false; return; } // on its side or upside down: all out
+      const s = Math.hypot(u.x, u.z), hi = brim(u, s);
+      K.vol = Math.min(K.vol, volume(u, s, hi)); // over the lip: spilled (or drunk)
+      // the bowl's deepest point along up, then the plane's offset that holds K.vol (bisection)
+      let lo = 1e9, dr = 0, dyy = y0;
+      for (const [r, y] of prof) if (y * u.y - r * s < lo) { lo = y * u.y - r * s; dr = r; dyy = y; }
+      let a = lo, b = hi;
+      for (let k = 0; k < 22; k++) { const m = (a + b) / 2; if (volume(u, s, m) < K.vol) a = m; else b = m; }
+      const H = (a + b) / 2;
+      // the fan's middle: above the deepest point (inside the pool however far the cup tilts)
+      c0.set(s > 1e-7 ? -dr * u.x / s : 0, dyy, s > 1e-7 ? -dr * u.z / s : 0);
+      c0.addScaledVector(u, H - c0.dot(u));
+      mesh.visible = H - lo > 1e-4;
+      e1.set(u.y, -u.x, 0).normalize(); e2.crossVectors(e1, u);
+      pos.set([c0.x, c0.y, c0.z], 0);
+      for (let i = 0; i <= N; i++) {
+        const an = (i / N) * TAU;
+        d.copy(e1).multiplyScalar(Math.cos(an)).addScaledVector(e2, Math.sin(an));
+        // where the plane meets the wall along this direction: step out to the first miss, then bisect
+        let t0 = 0, t1 = 0.006;
+        while (t1 < 0.2 && inside(p.copy(c0).addScaledVector(d, t1))) { t0 = t1; t1 += 0.006; }
+        for (let k = 0; k < 9; k++) { const m = (t0 + t1) / 2; if (inside(p.copy(c0).addScaledVector(d, m))) t0 = m; else t1 = m; }
+        p.copy(c0).addScaledVector(d, t0 + 0.0015); // tucked into the wall
+        pos.set([p.x, p.y, p.z], (i + 1) * 3);
+      }
+      for (let i = 0; i < N + 2; i++) nor.set([u.x, u.y, u.z], i * 3);
+      g.attributes.position.needsUpdate = g.attributes.normal.needsUpdate = true;
+      g.computeBoundingSphere();
+    },
+  };
+  K.vol = K.volAt(level);
   K.fit();
   return K;
 }
 
-// ---- the leather sack: flattened, slightly triangular, two welted side seams, neck on a collar
+// ---- the leather sack: flattened, slightly triangular, two welted side seams; the neck rounds and gathers over the
+// wooden collar (its lower 5 cm, under the horsehair cord), centred on it. `sackAt(u, v)` = a point of its surface.
+const SACK_H = 0.83, NECK_R = 0.0645; // the collar's outer radius is 0.062
+const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+export function sackAt(u, v) {
+  const a = u * TAU;
+  // full of milk: a heavy rounded belly, sloping shoulders, a narrow creased neck
+  const f = v < 0.32 ? 1 : Math.pow(1 - (v - 0.32) / 0.68, 1.5);
+  let w = 0.068 + (0.29 - 0.068) * f, d = 0.068 + (0.21 - 0.068) * f;
+  const belly = 1 + 0.08 * Math.sin(Math.min(1, v / 0.45) * Math.PI);
+  w *= belly; d *= belly;
+  const top = sstep(0.88, 0.975, v); // 0 → 1 over the neck's last 8 cm: round, smooth, tight on the collar
+  if (v > 0.75) { const cr = Math.sin(v * 70 + a * 2) * 0.006 * Math.min(1, (v - 0.75) / 0.15) * (1 - top); w += cr; d += cr; }
+  if (v < 0.06) { const k = Math.sqrt(v / 0.06); w *= 0.55 + 0.45 * k; d *= 0.5 + 0.5 * k; }
+  w += (NECK_R - w) * top; d += (NECK_R - d) * top;
+  const ca = Math.cos(a), sa = Math.sin(a), e = 0.75 + 0.25 * top;
+  const sup = (x) => Math.sign(x) * Math.pow(Math.abs(x), e); // squarish section, round on the collar
+  let x = sup(ca) * w, z = sup(sa) * d;
+  // welt along the side seams (a = 0, π)
+  const seam = Math.exp(-((sa / 0.08) ** 2));
+  x += Math.sign(ca) * seam * 0.012 * (1 - top);
+  const n = (valueNoise(a * 2.5, v * 5, 41) * 0.012 + valueNoise(a * 7, v * 14, 43) * 0.004) * (1 - top);
+  x *= 1 + n * 3; z *= 1 + n * 3;
+  const y = v < 0.06 ? Math.sqrt(v / 0.06) * 0.03 : 0.03 + (v - 0.06) / 0.94 * (SACK_H - 0.03);
+  return [x + 0.045 * v * v * (1 - v * v), y, z]; // the belly sags a little to one side; the neck stands centred on the collar
+}
 function sackGeom() {
-  return grid(36, 30, (u, v) => {
-    const a = u * TAU;
-    const H = 0.83;
-    // full of milk: a heavy rounded belly, sloping shoulders, a narrow creased neck
-    const f = v < 0.32 ? 1 : Math.pow(1 - (v - 0.32) / 0.68, 1.5);
-    let w = 0.068 + (0.29 - 0.068) * f, d = 0.068 + (0.21 - 0.068) * f;
-    const belly = 1 + 0.08 * Math.sin(Math.min(1, v / 0.45) * Math.PI);
-    w *= belly; d *= belly;
-    if (v > 0.75) { const cr = Math.sin(v * 70 + a * 2) * 0.006 * (v - 0.75) / 0.25; w += cr; d += cr; }
-    if (v < 0.06) { const k = Math.sqrt(v / 0.06); w *= 0.55 + 0.45 * k; d *= 0.5 + 0.5 * k; }
-    const ca = Math.cos(a), sa = Math.sin(a);
-    const sup = (x) => Math.sign(x) * Math.pow(Math.abs(x), 0.75); // squarish section
-    let x = sup(ca) * w, z = sup(sa) * d;
-    // welt along the side seams (a = 0, π)
-    const seam = Math.exp(-((sa / 0.08) ** 2));
-    x += Math.sign(ca) * seam * 0.012;
-    const n = valueNoise(a * 2.5, v * 5, 41) * 0.012 + valueNoise(a * 7, v * 14, 43) * 0.004;
-    x *= 1 + n * 3; z *= 1 + n * 3;
-    const y = v < 0.06 ? Math.sqrt(v / 0.06) * 0.03 : 0.03 + (v - 0.06) / 0.94 * (H - 0.03);
-    return [x + Math.pow(v, 2) * 0.03, y, z];
-  }, (u, v) => [u, v], false);
+  return grid(36, 40, sackAt, (u, v) => [u, v], false);
 }
 
 export function buildKymys(rng, M) {
@@ -152,14 +203,14 @@ export function buildKymys(rng, M) {
   add(merge(plat), M.plank, sackRoot);
   const sack = add(sackGeom(), M.leather, sackRoot);
   sack.position.y = 0.152;
-  const neckY = 0.152 + 0.83;
+  const neckY = 0.152 + SACK_H, collarY = neckY - 0.01, collarTop = collarY + 0.04; // the leather ends 3 cm under the collar's top
   const collar = plain(lathe([[0.035, -0.04], [0.06, -0.04], [0.062, -0.03], [0.058, 0], [0.062, 0.03], [0.06, 0.04], [0.035, 0.04], [0.035, -0.04]], 20));
-  const collarM = add(xf(collar, { p: [0, neckY + 0.02, 0] }), M.birch, sackRoot);
+  const collarM = add(xf(collar, { p: [0, collarY, 0] }), M.birch, sackRoot);
   collarM.userData.noShadow = true;
-  // horsehair cord tied round the neck, and a rope from the neck to the post
+  // horsehair cord tied round the neck over the collar, and a rope from the neck to the post
   for (let w = 0; w < 3; w++) {
     const pts = [];
-    for (let i = 0; i <= 24; i++) { const a = (i / 24) * TAU; pts.push(new THREE.Vector3(Math.cos(a) * 0.071, neckY - 0.035 + w * 0.012, Math.sin(a) * 0.071)); }
+    for (let i = 0; i <= 24; i++) { const a = (i / 24) * TAU; pts.push(new THREE.Vector3(Math.cos(a) * 0.069, neckY - 0.03 + w * 0.009, Math.sin(a) * 0.069)); }
     hair.push(tube(pts, () => 0.0045, 5));
   }
   // stirrer хамнатар: birch pole, perforated cap below (inside), knob with incised rings and a white tuft
@@ -180,28 +231,34 @@ export function buildKymys(rng, M) {
   tuftMesh.userData.noShadow = true;
   stirrer.position.y = neckY - 1.06; // the pole stands in the sack, knob ~0.5 m above the collar
 
-  // ---- the ladle (удьаа kind): deep bowl, S-curved handle with a hook, hung on the collar
+  // ---- the ladle (удьаа kind): deep bowl, a handle rising off the rim and running straight on to a hook; hung by the
+  // hook astride the collar's wall on the side along the wall (−x), the handle down over the sack's shoulder, clear
+  // of it (the room side stays clear for the look that churns)
   const ladle = new THREE.Group();
   {
     const bowl = lathe([[0.001, -0.06], [0.03, -0.055], [0.045, -0.04], [0.053, -0.02], [0.055, 0], [0.051, 0.002], [0.049, -0.018], [0.042, -0.036], [0.028, -0.05], [0.001, -0.055]], 22);
     xf(bowl, { s: [1.0, 1, 0.82] });
-    const path = [];
-    for (let i = 0; i <= 18; i++) {
-      const t = i / 18;
-      const x = 0.05 + t * 0.3, y = 0.0 + Math.sin(t * Math.PI * 0.9) * 0.05 + t * 0.12 - (t > 0.9 ? (t - 0.9) * 0.4 : 0);
-      path.push(new THREE.Vector3(x, y, 0));
-    }
-    // the hook at the end curls down
-    const e = path[path.length - 1];
-    for (let i = 1; i <= 5; i++) { const a = (i / 5) * Math.PI * 0.9; path.push(new THREE.Vector3(e.x + Math.sin(a) * 0.025, e.y - (1 - Math.cos(a)) * 0.025, 0)); }
-    const handle = tube(path, (t, an) => Math.hypot(Math.cos(an) * 0.007, Math.sin(an) * 0.012) * (t < 0.08 ? 1.25 : 1) * (1 - t * 0.25), 8, { capEnd: true });
-    const rings = [0.075, 0.085, 0.095].map((x) => xf(lathe([[0.012, -0.002], [0.0145, 0], [0.012, 0.002]], 10), { r: [0, 0, Math.PI / 2 - 0.3], p: [x, 0.012 + (x - 0.05) * 0.4, 0] }));
+    const hy = (t) => 0.004 + 0.085 * (1 - (1 - t) ** 3), path = [];
+    for (let i = 0; i <= 16; i++) { const t = i / 16; path.push(new THREE.Vector3(0.048 + t * 0.3, hy(t), 0)); }
+    // the end bends up so that, hung, its shank stands upright; then the hook: a little over a half turn, ~3 cm
+    // inside, astride the collar's wall
+    const HR = LADLE.hookR, th = LADLE.hang, e = path[path.length - 1].clone();
+    let h = 0;
+    const arc = (R, turn, n) => { // a turtle along an arc (turn > 0: to the left)
+      const c = new THREE.Vector3(e.x - Math.sin(h) * R * Math.sign(turn), e.y + Math.cos(h) * R * Math.sign(turn), 0), a0 = h - Math.sign(turn) * Math.PI / 2;
+      for (let i = 1; i <= n; i++) { const a = a0 + turn * i / n; path.push(new THREE.Vector3(c.x + Math.cos(a) * R, c.y + Math.sin(a) * R, 0)); }
+      h += turn; e.copy(path[path.length - 1]); return c;
+    };
+    arc(0.03, Math.PI / 2 - th, 4);
+    const hook = arc(HR, -Math.PI * 1.05, 9);
+    const handle = tube(path, (t, an) => Math.hypot(Math.cos(an) * 0.0065, Math.sin(an) * 0.011) * (t < 0.06 ? 1.25 : 1) * (1 - t * 0.3), 8, { capEnd: true });
+    // three turned rings round the handle's root, square to it
+    const rings = [0.075, 0.085, 0.095].map((x) => { const t = (x - 0.048) / 0.3, th = Math.atan2(0.255 * (1 - t) ** 2, 0.3); return xf(lathe([[0.0125, -0.002], [0.015, 0], [0.0125, 0.002]], 10), { r: [0, 0, th - Math.PI / 2], p: [x, hy(t), 0] }); });
     add(merge([plain(bowl), plain(handle), ...rings.map((g) => plain(g))]), M.birch, ladle);
-    // hang it on the room side (−z): the hook's curl (centre at handle-local (0.35, 0.0705)) over the collar rim,
-    // the handle leaning out over the sack's shoulder, the bowl hanging clear of the belly
-    const th = 0.89, cx = 0.35 * Math.cos(th) - 0.0705 * Math.sin(th), cy = 0.35 * Math.sin(th) + 0.0705 * Math.cos(th);
-    ladle.rotation.set(0, -Math.PI / 2, th);
-    ladle.position.set(0, neckY + 0.068 - cy, -0.0485 - cx);
+    // the hook's centre over the middle of the collar's wall, its inside resting on the rim
+    const cx = hook.x * Math.cos(th) - hook.y * Math.sin(th), cy = hook.x * Math.sin(th) + hook.y * Math.cos(th);
+    ladle.rotation.set(0, 0, th);
+    ladle.position.set(-0.0485 - cx, collarTop - 0.006 - cy, 0);
     sackRoot.add(ladle);
   }
 
@@ -216,7 +273,7 @@ export function buildKymys(rng, M) {
   add(merge(bd), M.plank, boardRoot);
   const chorons = new THREE.Group();
   boardRoot.add(chorons);
-  const hero = add(choronA(1), M.birch, chorons);
+  const hero = add(choronA(1, 56), M.birch, chorons); // held at the face: rounder
   hero.position.set(0.02, 0.118, 0.01);
   const b = add(choronB(), M.birch, chorons);
   b.position.set(-0.22, 0.118, -0.02); b.rotation.y = 0.4;
@@ -335,5 +392,5 @@ export function buildKymys(rng, M) {
   colliders.push({ x: Math.cos(aB) * rB, z: Math.sin(aB) * rB, hw: 0.17, hd: 0.4, rot: -aB });
   colliders.push({ x: posA[0], z: posA[2], r: 0.15 }, { x: posB[0], z: posB[2], r: 0.15 });
 
-  return { group, sackRoot, sack, stirrer, ladle, chorons, hero, heroKymys: kymys[0], buckets, colliders, neckY, boardRoot };
+  return { group, sackRoot, sack, stirrer, ladle, chorons, hero, heroKymys: kymys[0], buckets, hair: hm, colliders, neckY, boardRoot };
 }

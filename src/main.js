@@ -1,8 +1,9 @@
-// Boot and loop: title → walk. Looking at a thing + E opens its explainer card or does its action.
+// Boot and loop: title → walk. Looking at a thing: the do input acts on it (hands), E opens its explainer card.
 import * as THREE from 'three/webgpu';
 import { Engine } from './engine/engine.js';
 import { setAnisotropy, setTextureRenderer, sharpenTextures } from './engine/materials.js';
-import { bootDone, bootFailed, restoreLost, resumeSpot } from './engine/tier.js';
+import { bootDone, bootFailed, restoreLost, resumeSpot, isPhone, PRESETS } from './engine/tier.js';
+import { VIDEO, fromOpts, toOpts, needsReload, applyLive } from './engine/video.js';
 import { releaseGeometry } from './load/release.js';
 import { World } from './world/world.js';
 import { START } from './world/layout.js';
@@ -11,14 +12,23 @@ import { Player } from './player.js';
 import { TouchControls } from './ui/touch.js';
 import { UI, BY_ID } from './ui/ui.js';
 import { Interactions } from './interact/index.js';
+import { quickRaycast } from './interact/raycast.js';
 import { ShaderStream } from './load/stream.js';
 import { shareShadowShaders } from './load/shadows.js';
 import { closeWorkers } from './load/workers.js';
 import { isShadowProxy } from './engine/merge.js';
 import { T, CONTROLS, LANGS, LANG_NAMES, tr, detectLang } from './ui/i18n.js';
 import { Guide } from './ui/guide.js';
+import { Stage } from './ui/stage.js';
+import { Teach } from './ui/teach.js';
+import { Hints } from './interact/hints.js';
+import { Framed } from './interact/framed.js';
+import { prewarmUI } from './ui/prewarm.js';
+import { icon, glyph } from './ui/icons.js';
+import { fillSelects, watchSelects } from './ui/select.js';
 import { version } from '../package.json';
 import { instrument, event } from './load/prof.js';
+const _gen = new THREE.Vector3(); // (pickFocus)
 
 const KEY = 'alaas-v1';
 const params = new URLSearchParams(location.search);
@@ -33,11 +43,13 @@ const keyartShown = () => !!keyart && getComputedStyle(keyart).display !== 'none
 const setRes = (e, k) => { e.renderer.setPixelRatio(e.pixelRatio() * k); e.renderer.setSize(innerWidth, innerHeight, false); };
 
 function loadSave() {
-  const def = { lang: detectLang(), found: [], done: [], settings: { sens: 1, fov: 72, vol: 0.85, quality: 'auto', invertY: false, hints: true, motion: 1, smooth: 0 } };
+  const def = { lang: detectLang(), found: [], done: [], settings: { sens: 1, fov: 72, vol: 0.85, quality: 'auto', invertY: false, motion: 1, smooth: 0 } };
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
     // the language comes from the browser until the player picks one (langSet)
-    if (s) return { ...def, ...s, lang: s.langSet ? s.lang : def.lang, settings: { ...def.settings, ...s.settings } };
+    if (s) {
+      return { ...def, ...s, lang: s.langSet ? s.lang : def.lang, settings: { ...def.settings, ...s.settings } };
+    }
   } catch { /* storage blocked */ }
   return def;
 }
@@ -45,12 +57,16 @@ function loadSave() {
 class Game {
   async boot() {
     this.save = loadSave();
-    this.state = { lang: this.save.lang, found: new Set(this.save.found) };
+    this.state = { lang: this.save.lang, found: new Set(this.save.found), work: this.save.work ||= {} }; // work: counts of the hands-on jobs (src/interact/work)
     this.done = new Set(this.save.done); // actions already performed (ribbon tied…)
     const canvas = document.getElementById('game');
-    const quality = this.bootQuality = params.get('q') || (params.has('low') ? 'low' : this.save.settings.quality);
+    const st = this.save.settings;
+    if (st.quality === 'custom' && !(st.video && PRESETS[st.videoBase])) st.quality = 'auto';
+    const quality = this.bootQuality = params.get('q') || (params.has('low') ? 'low' : st.quality);
+    const custom = quality === 'custom'; // the video options on their preset (src/engine/video.js)
     this.applyStatic();
-    this.engine = await new Engine(canvas, { webgl: params.has('webgl'), post: !params.has('nopost'), quality }).init();
+    this.engine = await new Engine(canvas, { webgl: params.has('webgl'), post: !params.has('nopost'), quality: custom ? st.videoBase : quality, custom: custom ? toOpts(st.video, st.videoBase) : undefined }).init();
+    this.bootVideo = fromOpts(this.engine.opts, this.engine.tier); // what this load is built with
     setAnisotropy(this.engine.renderer.getMaxAnisotropy?.() || 8);
     setTextureRenderer(this.engine.renderer); // phones: texture images freed once uploaded
     instrument(this.engine.renderer); // ?prof (src/load/prof.js)
@@ -63,9 +79,11 @@ class Game {
     this.player = new Player(this.engine.camera, this.world, this.input);
     if (params.has('cam')) this.player.view = params.get('cam').split(',').map(Number); // free camera: x,y,z,yaw°,pitch°,fov° (tools/key-art.mjs)
     this.touch = TouchControls.attach(this); // phones: virtual stick + buttons, no pointer lock
+    this.teach = new Teach(this); // the controls, one at a time, when first needed (src/ui/teach.js)
     this.ray = new THREE.Raycaster();
     this.ray.far = 3.4;
     this.applySettings();
+    const painted = prewarmUI(this); // the interface's own paint shaders, while the world is built
 
     // Loading (docs/loading.md): the world is drawn behind the title from the first frames (sky, ground,
     // homestead, then nature) while its shaders build in time slices (src/load/stream.js) and pure-CPU
@@ -95,15 +113,23 @@ class Game {
     mark('built');
     releaseGeometry(this); // vertex arrays the GPU holds leave the JS heap before the warm-up (src/load/release.js)
     this.interact = new Interactions(this); // carrying, sitting, berries (src/interact)
+    this.hints = new Hints(this); // the next thing to do, told by the world (src/interact/hints.js); its sprites exist before the warm-up
     this.guide = new Guide(this); // the journal's finder (DOM only)
+    this.stage = this.ui.stage = new Stage(this); // the inspect stage: the view goes to the thing (src/ui/stage.js)
+    this.framed = new Framed(this); // a job's framed work view (src/interact/framed.js)
     this.ui.placed = new Set(this.world.interactables.map((i) => i.entry).filter(Boolean));
+    this.ui.j.init(this); // the journal's map: where everything is
     if (params.has('sun')) { const [e, a] = params.get('sun').split(',').map(Number); this.engine.setSun(e, a ?? this.engine.sunAz); }
     await this.warmUp();
+    await painted;
     mark('warm');
 
     this.audio = await this.loadAudio();
     this.audio?.fetchClips();
     releaseGeometry(this); // again: meshes first drawn in the warm-up
+    // pick and hit boxes (an invisible material) leave the render passes: three still frustum-tests a visible
+    // object per pass before it reads the material (raycasts and bounds ignore `visible`)
+    this.engine.scene.traverse((o) => { if (o.isMesh && o.material?.visible === false && !o.children.length) o.visible = false; });
     this.sharpening = sharpenTextures().then(() => { this.sharp = true; mark('sharp'); closeWorkers(); }); // 256 → the tier's size, in play
     if (params.has('perftest')) this.sharpening.then(() => import('./load/perftest.js')).then((m) => m.perfTest(this)); // per-layer frame cost on a device
     this.player.onStep = (surface, speed) => this.audio?.step(surface, speed);
@@ -113,29 +139,36 @@ class Game {
     bootDone(); // the boot guard's mark (src/engine/tier.js): this load was not killed
     mark('ready');
     document.getElementById('fade').classList.add('clear');
-    this.reveal(() => { go.textContent = this.tt(T.clickToWalk); });
+    this.reveal(() => { go.textContent = this.startLabel(); });
     document.getElementById('title').addEventListener('click', () => this.start());
     document.getElementById('pause').addEventListener('click', () => this.resume());
-    for (const b of document.querySelectorAll('.tabs button')) b.onclick = () => {
-      for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x === b);
-      for (const t of document.querySelectorAll('.tab')) t.classList.toggle('on', t.id === 'tab-' + b.dataset.tab);
-    };
+    for (const b of document.querySelectorAll('#pause [data-page]')) b.onclick = () => this.pausePage(b.dataset.page);
+    document.getElementById('pause-x').onclick = () => this.resume();
+    document.getElementById('resume').onclick = () => this.resume();
     document.getElementById('reload').onclick = () => { this.persist(); location.reload(); };
     document.getElementById('exit').onclick = (e) => { e.stopPropagation(); this.exit(); }; // (a click on #pause resumes)
     this.input.onLockChange = (locked) => {
       // the pause menu goes once the lock is really back (a too-early request fails and leaves it up)
       if (locked) { this.unpause(); return; }
       if (this.title) return;
-      this.reading = null; this.ui.close(); // Esc closes the card or journal (and, as pointer lock goes, pauses)
-      document.getElementById('pause').classList.add('show');
+      this.closeCard(); this.ui.close(); // Esc closes the card or journal (and, as pointer lock goes, pauses)
+      this.showPause();
+      this.teach.note('pause');
     };
     addEventListener('keydown', (e) => this.key(e));
-    this.ui.onAction = (a, id) => { // window buttons, journal tiles, card links
-      if (a === 'lang') this.key({ code: 'KeyL' });
-      else if (a === 'learn') this.discover(id);
-      else if (a === 'guide') this.setGuide(id);
+    this.input.onDo = (down) => { if (down && this.playing) this.act(this.focus); }; // the hands: left button, F, the touch hand button
+    this.input.onPut = () => this.put();
+    this.ui.onAction = (a, id, it, back) => { // window buttons, journal tiles, card links, the names on the stage
+      if (a === 'learn') this.discover(id, true);
+      else if (a === 'more') this.inspect(null);
+      else if (a === 'open') { if (back) this.ui.close(); this.read(id, it, back); }
       else this.closeUI();
     };
+    watchSelects((name, v) => {
+      if (name === 'lang') this.setLang(v);
+      else if (name === 'q') { this.setQuality(v); }
+      else if (name.startsWith('v-')) this.setVideo(name.slice(2), VIDEO.find((o) => o.key === name.slice(2)).values.find((x) => String(x) === v));
+    });
     if (params.has('auto')) this.start(true);
 
     this.clock = new THREE.Timer();
@@ -239,6 +272,7 @@ class Game {
   }
 
   tt(o) { return tr(o, this.state.lang); }
+  startLabel() { return this.tt(this.touch ? T.tapToWalk : T.clickToWalk); }
 
   // Every static interface string, the controls lists and the language buttons, in the current language.
   applyStatic() {
@@ -246,36 +280,28 @@ class Game {
     document.documentElement.lang = lang;
     for (const el of document.querySelectorAll('[data-t]')) el.textContent = this.tt(T[el.dataset.t]);
     for (const el of document.querySelectorAll('.ver')) el.textContent = 'v' + version;
-    const keys = (mini) => CONTROLS.filter((c) => !mini || !['F3', 'L', '1 2 3'].includes(c[0]))
-      .map(([k, l]) => `<kbd>${typeof k === 'string' ? k : this.tt(k)}</kbd><span>${this.tt(l)}</span>`).join('');
-    document.getElementById('keys-title').innerHTML = keys(false);
-    document.getElementById('keys-pause').innerHTML = keys(false);
-    document.getElementById('hints').innerHTML = keys(true);
-    const langs = document.getElementById('title-langs');
-    langs.innerHTML = LANGS.map((l) => `<button data-lang="${l}" class="${l === lang ? 'on' : ''}">${LANG_NAMES[l]}</button>`).join('');
-    langs.onclick = (e) => { const b = e.target.closest('[data-lang]'); if (b) this.setLang(b.dataset.lang); };
+    for (const el of document.querySelectorAll('[data-ic]')) if (!el.firstChild) { el.innerHTML = icon(el.dataset.ic, el.className); el.className = ''; el.style.display = 'contents'; }
+    // the controls, drawn: on a phone its own (stick, drag, buttons), else the keys and the mouse
+    const touch = !!this.touch;
+    const keys = () => CONTROLS.filter((c) => !touch || c.touch)
+      .map((c) => `<span>${glyph(c, touch)}</span><span>${this.tt(c.label)}</span>`).join('');
+    document.getElementById('keys-pause').innerHTML = keys();
+    fillSelects('lang', LANGS.map((l) => [l, LANG_NAMES[l]]), lang);
+    this.fillQuality?.();
+    this.teach?.show(null);
     const go = document.getElementById('go');
-    if (this.ready && this.title) go.textContent = this.tt(T.clickToWalk);
-    const sl = document.getElementById('s-lang');
-    if (sl) sl.value = lang;
-    this.showHints();
+    if (this.ready && this.title) go.textContent = this.startLabel();
   }
   setLang(lang) {
     this.state.lang = lang;
     this.save.langSet = true;
-    if (this.cardOpen()) this.ui.showEntry(this.ui.current, { mode: this.reading?.mode || 'full' }); else if (this.ui.open === 'journal') this.ui.showJournal();
+    if (this.cardOpen()) this.ui.showEntry(this.ui.current, { mode: this.reading?.mode || 'peek' }); else if (this.ui.open === 'journal') this.ui.showJournal();
     this.focus = undefined;
     this.applyStatic();
     this.persist();
   }
-  showHints() {
-    const h = document.getElementById('hints');
-    h.classList.toggle('off', !this.save.settings.hints || this.title !== false);
-  }
-
   start(auto = false) {
     this.title = false;
-    this.showHints();
     document.getElementById('title').classList.remove('show');
     this.audio?.start();
     if (!auto) this.input.lock();
@@ -284,9 +310,70 @@ class Game {
   // needs no new lock (and no browser banner). Esc: the browser drops the lock; Continue re-locks once.
   get paused() { return document.getElementById('pause').classList.contains('show'); }
   pause() {
-    this.reading = null; this.ui.close();
-    document.getElementById('pause').classList.add('show');
+    this.closeCard(); this.ui.close();
+    this.showPause();
     this.ui.setMenu(true);
+    this.teach.note('pause');
+  }
+  // the pause window, open on the controls (a phone: its back button shows the list)
+  showPause() {
+    this.pausePage('controls');
+    document.getElementById('pause').classList.add('show');
+  }
+  // one of its pages (settings, controls, about); none: back to the list (a phone)
+  pausePage(id) {
+    document.querySelector('#pause .menu').classList.toggle('paged', !!id);
+    if (!id) return;
+    for (const b of document.querySelectorAll('#pause .pz-nav [data-page]')) b.classList.toggle('on', b.dataset.page === id);
+    for (const t of document.querySelectorAll('#pause .tab')) t.classList.toggle('on', t.id === 'tab-' + id);
+  }
+  // Graphics: the quality preset and, under Advanced, the options it sets (src/engine/video.js); changing one makes it Custom.
+  // Live options apply at once; the rest (and another preset) after the reload the note offers.
+  fillQuality() {
+    const s = this.save.settings, q = s.quality, cap = (v) => v[0].toUpperCase() + v.slice(1);
+    fillSelects('q', ['auto', 'high', 'medium', 'low', 'mobile', 'custom'].map((v) => [v, this.tt(T['q' + cap(v)])]), q);
+    if (!this.bootVideo) return; // (the engine not up yet)
+    const v = this.shownVideo(), adv = document.getElementById('v-adv');
+    if (!adv.firstChild) {
+      const phone = this.engine?.phone ?? isPhone();
+      adv.innerHTML = VIDEO.filter((o) => !(o.desktop && phone)).map(({ key, values }) => {
+        const label = `<span class="vl"><span data-t="v${cap(key)}"></span><small data-t="v${cap(key)}Hint"></small></span>`;
+        return typeof values[0] === 'boolean' ? `<label class="row" data-v="${key}">${label}<input type="checkbox" id="v-${key}"></label>` : `<div class="row" data-v="${key}">${label}<span class="sel up" data-sel="v-${key}"></span></div>`;
+      }).join('');
+      for (const el of adv.querySelectorAll('input')) el.onchange = () => this.setVideo(el.id.slice(2), el.checked);
+    }
+    for (const el of adv.querySelectorAll('[data-t]')) el.textContent = this.tt(T[el.dataset.t]);
+    const word = (o, x, i) => (o.fmt ? o.fmt(x) : o.metres ? `${x} ${this.tt(T.vMetres)}` : this.tt(T[o.words[i]]));
+    const base = q === 'custom' ? s.videoBase : PRESETS[q] ? q : this.engine.tier;
+    for (const o of VIDEO) {
+      const row = adv.querySelector(`[data-v="${o.key}"]`);
+      if (row) row.hidden = !!o.ok && !o.ok(base);
+      const el = document.getElementById('v-' + o.key);
+      if (el) el.checked = !!v[o.key];
+      else fillSelects('v-' + o.key, o.values.map((x, i) => [String(x), word(o, x, i)]), String(v[o.key]));
+    }
+    document.getElementById('qnote').hidden = q === 'custom' ? !needsReload(this.bootVideo, s.video) : q === this.bootQuality;
+  }
+  // the options shown: the custom ones, else those of this load's preset (or of the chosen one, from its table)
+  shownVideo() {
+    const s = this.save.settings, q = s.quality;
+    if (q === 'custom') return s.video;
+    if (q === this.bootQuality || !PRESETS[q]) return this.bootVideo;
+    return fromOpts(PRESETS[q], q);
+  }
+  setQuality(q) {
+    const s = this.save.settings;
+    s.quality = q;
+    if (q === 'custom' && !s.video) { s.video = { ...this.bootVideo }; s.videoBase = this.engine.tier; }
+    if (q === 'custom' || q === this.bootQuality) applyLive(this.engine, this.shownVideo(), q === 'custom' ? s.videoBase : this.engine.tier);
+    this.persist(); this.applySettings();
+  }
+  setVideo(key, value) {
+    const s = this.save.settings;
+    if (s.quality !== 'custom') { s.videoBase = PRESETS[s.quality] ? s.quality : this.engine.tier; s.video = { ...this.shownVideo() }; s.quality = 'custom'; }
+    s.video[key] = value;
+    applyLive(this.engine, s.video, s.videoBase);
+    this.persist(); this.applySettings();
   }
   unpause() {
     document.getElementById('pause').classList.remove('show');
@@ -300,9 +387,8 @@ class Game {
     window.close();
     if (window.closed) return;
     this.title = true; // first: losing the pointer lock then shows no pause menu
-    this.unpause(); this.reading = null; this.ui.close();
+    this.unpause(); this.closeCard(); this.ui.close();
     document.exitPointerLock();
-    this.showHints();
     document.getElementById('title').classList.add('show');
     const prev = window.navigation?.entries()[navigation.currentEntry?.index - 1]; // same-origin entries only
     if (!prev || new URL(prev.url).pathname !== location.pathname) history.back();
@@ -311,13 +397,6 @@ class Game {
     this.persist();
     if (this.input.locked) this.unpause(); else this.input.lock(); // the menu goes once the lock is back
   }
-  // the journal's finder: choose (or drop) the entry to be led to
-  setGuide(id) {
-    const c = this.ui.client(), top = c?.scrollTop;
-    this.ui.guided = this.guide.set(id);
-    if (this.ui.open === 'journal') { this.ui.showJournal(); const n = this.ui.client(); if (n) n.scrollTop = top; }
-  }
-
   applySettings() {
     const s = this.save.settings;
     this.player.settings.sens = s.sens;
@@ -332,21 +411,12 @@ class Game {
     };
     bind('s-sens', 'sens'); bind('s-fov', 'fov'); bind('s-vol', 'vol');
     bind('s-inv', 'invertY', Boolean, 'checked');
-    bind('s-hints', 'hints', Boolean, 'checked');
     for (const k of ['motion', 'smooth']) if (document.getElementById('s-' + k)) bind('s-' + k, k); // sliders 0..1, if the UI has them
     bind('s-battery', 'batterySaver', Boolean, 'checked'); // read by the perf code (save.settings.batterySaver)
     if (s.batterySaver == null && this.engine) document.getElementById('s-battery').checked = !!this.engine.autoSaver; // auto until toggled
-    const q = document.getElementById('s-q');
-    for (const [v, en] of [['auto', 'Auto'], ['mobile', 'Phone']]) if (!q.querySelector(`option[value="${v}"]`)) { // device tiers (perf)
-      const o = document.createElement('option'); o.value = v; o.textContent = en; v === 'auto' ? q.prepend(o) : q.append(o);
-    }
-    q.value = s.quality;
-    q.onchange = () => { s.quality = q.value; this.persist(); document.getElementById('qnote').hidden = q.value === this.bootQuality; };
-    document.getElementById('fovv').textContent = s.fov + '°';
-    const lang = document.getElementById('s-lang');
-    lang.value = this.state.lang;
-    lang.onchange = () => this.setLang(lang.value);
-    if (this.ui) this.showHints();
+    document.getElementById('s-battery').closest('.row').style.display = this.engine?.phone ? 'none' : ''; // phones stay at 30
+    this.fillQuality();
+    document.getElementById('fovv')?.replaceChildren(s.fov + '°');
   }
 
   persist() {
@@ -357,82 +427,112 @@ class Game {
   }
 
   key(e) {
-    if (this.title) return;
+    if (this.title || (e.repeat && !/^Key[WASD]$|^Arrow/.test(e.code))) return; // a held key steps once (E: the card, its text, closed)
     const ui = this.ui;
     if (e.code === 'KeyL') { this.setLang({ sah: 'en', en: 'ru', ru: 'sah' }[this.state.lang] || 'sah'); return; }
     if (e.code === 'F3') { e.preventDefault(); document.getElementById('fps').classList.toggle('on'); return; }
     if (e.code === 'KeyP' && this.input.locked) { if (this.paused) this.resume(); else this.pause(); return; }
     if (this.paused) return;
-    if (e.code === 'KeyH' && ui.open !== 'journal') { this.save.settings.hints = !this.save.settings.hints; document.getElementById('s-hints').checked = this.save.settings.hints; this.showHints(); this.persist(); return; }
-    // a centred window (journal, full card): E / Esc / J close it; the pointer lock is kept throughout
-    if (ui.modal || (this.cardOpen() && !this.input.active)) {
-      if (e.code === 'Escape' || e.code === 'KeyE' || (e.code === 'KeyJ' && ui.open === 'journal')) this.closeUI();
+    // a card or the journal is up: E goes on (the thing → its text → closed), Esc / J / a step away close; the
+    // pointer lock is kept throughout
+    if (ui.modal) {
+      if (e.code === 'KeyE' && ui.open === 'card') this.inspect(null);
+      else if (e.code === 'Escape' || e.code === 'KeyE' || e.code === 'KeyJ' || e.code === 'Tab' || (ui.open === 'card' && /^Key[WASD]$/.test(e.code))) this.closeUI();
       return;
     }
     if (!this.input.active) return;
-    if (e.code === 'Escape' && this.cardOpen()) { this.closeCard(); return; } // touch: no pointer lock to eat Esc
-    if (e.code === 'KeyJ' || e.code === 'Tab') { this.closeCard(); ui.showJournal(); }
-    if (e.code === 'KeyE') this.use(this.focus);
+    if (e.code === 'KeyJ' || e.code === 'Tab') { ui.showJournal(undefined, true); this.teach.note('journal'); }
+    if (e.code === 'KeyE') this.inspect(this.focus);
   }
 
-  discover(id) {
+  // `quiet`: the card that is opening shows it as new itself
+  discover(id, quiet = false) {
     if (!BY_ID[id] || this.state.found.has(id)) return false;
     this.state.found.add(id);
-    this.ui.discovered(id);
-    if (this.guide?.id === id) this.ui.guided = this.guide.set(null);
+    if (!quiet) this.ui.discovered(id);
+    if (this.guide?.id === id) this.guide.clear();
     this.audio?.play('discover');
     this.persist();
     return true;
   }
 
-  // Is the explainer card up (peek side panel or full centred window)?
-  cardOpen() { const o = this.ui.open ?? (this.ui.isOpen ? 'card' : null); return !!o && o !== 'journal'; }
-  closeCard() { if (this.cardOpen()) this.ui.close(); this.reading = null; }
+  // Is a card up (the inspect stage, with or without its reading sheet)?
+  cardOpen() { return this.ui.open === 'card'; }
+  // the card away and the view back in the body; a card opened from the journal goes back to it
+  closeCard() {
+    const r = this.reading;
+    this.reading = null;
+    if (this.framed?.on) { this.framed.leave(); return; }
+    if (!this.cardOpen() && !this.stage?.on) return;
+    if (this.cardOpen()) this.ui.close();
+    this.stage.close();
+    if (r?.back === 'journal' && !this.paused && !this.title) this.ui.showJournal();
+  }
   // close any window and play on (lock() is a no-op while the pointer is still locked)
-  closeUI() { this.reading = null; this.ui.close(); this.input.lock(); }
-  // E on a thing: peek (title + lead, you walk on) → full text (centred, you stand) → closed.
-  read(id, it = null) {
+  closeUI() { const card = this.cardOpen(); this.closeCard(); if (!card) this.ui.close(); if (!this.ui.open) this.input.lock(); }
+  // Inspecting (E, the touch eye button): the thing in view comes up (the view goes to it: src/ui/stage.js)
+  // with its name and one line → its full text beside it → closed. The one entry point for looking closer; it never acts.
+  inspect(it) {
+    const r = this.cardOpen() ? this.reading : null;
+    if (r && (!it || !it.entry || r.it === it || it.entry === r.id)) { this.read(r.id, r.it); return; }
+    if (it?.entry) this.read(it.entry, it);
+  }
+  // `it`: the thing looked at (none: the entry's own view, as from the journal or a link); `back`: where closing returns
+  read(id, it = null, back = null) {
     if (!BY_ID[id]) return;
     const r = this.cardOpen() ? this.reading : null;
-    if (r?.id === id && r.mode === 'full') { this.closeCard(); return; }
-    const mode = r?.id === id ? 'full' : 'peek';
-    this.discover(id);
-    this.ui.showEntry(id, { mode });
-    this.reading = { id, it, mode, x: this.player.pos.x, z: this.player.pos.z };
+    if (r?.id === id && (!it || r.it === it)) { // the same thing again: its text, then closed
+      if (r.mode === 'full') { this.closeCard(); return; }
+      r.mode = 'full';
+      this.ui.showEntry(id, { mode: 'full' });
+      return;
+    }
+    const fresh = this.discover(id, true);
+    this.teach.note('read');
+    const kind = this.stage.open(id, it);
+    this.ui.showEntry(id, { mode: 'peek', kind, fresh });
+    this.reading = { id, it, mode: 'peek', back: back || r?.back };
   }
-  // The act E does on `it` now (what you carry can change it), or null.
+  // The act the hands do on `it` now (what you carry can change it), or null.
   actOf(it) {
     const o = this.interact?.actFor(it);
     if (o !== undefined) return o;
-    if (!it.act) return null;
+    if (!it.act || it.act.empty && this.interact?.hands?.held) return null; // `empty`: with empty hands only
     const doneKey = it.act.once ? `${it.entry}:${it.act.id || 'act'}` : null;
     return doneKey && this.done.has(doneKey) ? null : it.act;
   }
-  // for touch: is there anything E would do right now?
-  get useReady() { return !!(this.focus || this.idle || this.reading); }
-
-  async use(it) {
-    const r = this.cardOpen() ? this.reading : null;
-    const idle = it || this.acting ? null : this.interact?.idleAct() || null;
-    // E again on the thing whose card is up (or with nothing in view) turns the page instead
-    if (r && (it ? r.it === it || (it.entry === r.id && !this.actOf(it)) : !idle)) { this.read(r.id, r.it); return; }
-    const act = it ? this.actOf(it) : idle;
-    if (act) {
-      if (this.acting) return;
-      this.acting = act;
-      this.promptKey = null;
-      const doneKey = act === it?.act && act.once ? `${it.entry}:${act.id || 'act'}` : null;
-      if (act.freeze) this.player.frozen = true; // only acts that move the view or ask a choice
-      try { await act.run(this, it); } finally {
-        if (act.freeze) this.player.frozen = false;
-        this.acting = null; this.promptKey = null;
-      }
-      if (doneKey) this.done.add(doneKey);
-      if (!it) return;
-      this.discover(it.entry);
-      if (act.thenCard === false) return;
+  // taking play input: not on the title, in a menu or under a centred window
+  get playing() { return !this.title && !this.paused && !this.ui.modal && this.input.active; }
+  // Acting (the do input goes down): the act of the thing in view, or with nothing in view what the carried
+  // thing does by itself (also when the thing in view has nothing for the hands: a job's tool works at its
+  // object from anywhere near it). Every act is a tap; a running act may take the next taps (`act.tap`). It
+  // never opens a card.
+  act(it) {
+    if (this.acting) { this.acting.tap?.(); return; }
+    const act = (it && this.actOf(it)) || this.interact?.idleAct();
+    if (act && act.id !== 'none') this.teach.note('do');
+    if (act) return this.run(act, it);
+  }
+  // Putting down (right button, Q, the touch button): what you carry goes back to its place when that is
+  // within reach, else onto the ground before you.
+  put() {
+    if (this.framed?.on) { this.framed.leave(); return; }
+    if (!this.playing || this.acting) return;
+    const act = this.interact?.putAct();
+    if (act) this.teach.note('put');
+    if (act) return this.run(act, null);
+  }
+  async run(act, it) {
+    this.acting = act;
+    this.promptKey = null;
+    const doneKey = act === it?.act && act.once ? `${it.entry}:${act.id || 'act'}` : null;
+    if (act.freeze) this.player.frozen = true; // only acts that move the view
+    try { await act.run(this, it); } finally {
+      if (act.freeze) this.player.frozen = false;
+      this.acting = null; this.promptKey = null;
     }
-    if (it?.entry) this.read(it.entry, it);
+    if (doneKey) this.done.add(doneKey);
+    if (it?.entry) this.discover(it.entry); // learnt by doing; reading stays the player's own step
   }
 
   // What the player is looking at (a target within reach) or standing in (a zone).
@@ -463,6 +563,21 @@ class Game {
       const r = o?.userData.sphere?.radius ?? Infinity;
       if (o && (!best || r < bestR)) { bestR = r; best = o.userData.interactable; bestD = h.distance; this.focusHit = { ...h, it: best }; }
     }
+    {
+      // a small thing the look passes close to (a thin tool, a sheet): no pixel-hunting. With nothing hit, within
+      // 0.8 of its radius (at least 0.3 m); smaller than what was hit and in front of it, within half its radius
+      // (at least 0.12 m)
+      const ray = this.ray.ray, hit = best;
+      let bk = 1;
+      for (const t of targets) {
+        const sp = t.userData.sphere, it = t.userData.interactable;
+        if (!sp || !it || it === hit || sp.radius > (hit ? bestR : 1.2)) continue;
+        const along = _gen.copy(sp.center).sub(cp).dot(ray.direction);
+        if (along < 0 || along > (hit ? bestD - 0.1 : this.ray.far + sp.radius)) continue;
+        const k = ray.distanceToPoint(sp.center) / (hit ? Math.max(0.12, sp.radius * 0.5) : Math.max(0.3, sp.radius * 0.8));
+        if (k < bk) { bk = k; best = it; }
+      }
+    }
     if (!best) {
       const p = this.player.pos;
       for (const it of this.world.interactables) {
@@ -475,45 +590,56 @@ class Game {
   }
 
   frame(now) {
+    const t0 = performance.now();
     this.clock.update(now); // the rAF timestamp: frame steps stay as even as the display's refreshes
     const dt = Math.max(0, Math.min(this.clock.getDelta(), 0.25)); // (was 0.05: under 20 fps the world ran in slow motion)
     const paused = this.paused;
-    if (!this.title && !this.ui.modal && !paused) this.stepPlayer(dt);
+    const staged = this.stage?.on; // the view is away from the body (the inspect stage)
+    if (!this.title && !this.ui.modal && !paused && !staged) this.stepPlayer(dt);
     else if (this.title) { this.player.update(0); }
+    if (staged) this.stage.update(dt);
+    this.framed?.update();
     // tag interactable roots once
-    for (const it of this.world.interactables) if (it.target && !it.target.userData.interactable) it.target.userData.interactable = it;
+    for (const it of this.world.interactables) if (it.target && !it.target.userData.interactable) { it.target.userData.interactable = it; quickRaycast(it.target); }
     this.pickTick = (this.pickTick || 0) + 1;
-    const live = !this.title && !this.ui.modal && !this.player.frozen && !paused;
+    const live = !this.title && !this.ui.modal && !this.player.frozen && !paused && !staged;
     const pick = !(this.pickTick % 3);
     const f = live ? (pick ? this.pickFocus() : this.focus) : null;
     if (f !== this.focus) { this.focus = f; this.promptKey = null; }
     if (pick || this.promptKey == null) {
-      // the prompt: what is in view (or carried) and what E would do with it
-      const act = !live || this.acting ? null : f ? this.actOf(f) : this.interact?.idleAct();
-      this.idle = !f && live ? act : null;
+      // the prompt names the thing in view, what the hands would do with it and whether it has a card; with
+      // nothing in view the dot alone turns into a ring when the carried thing can be used
+      const fr = this.framed?.on ? this.framed.v : null; // a framed work view: its own act of the moment, and "back"
+      const act = fr ? fr.act?.() || null : !live || this.acting ? null : (f && this.actOf(f)) || this.interact?.idleAct();
       const e = f && BY_ID[f.entry];
-      const what = f ? (f.label ? this.ui.t(f.label) : e ? e.sah.split(/[;(]/)[0].trim() : f.entry) : this.interact?.idleLabel() || null;
-      const actText = act ? this.ui.t(act.label) : null;
-      const key = `${what}|${actText}`;
+      const what = fr ? null : f ? f.label || e || f.entry : null; // (src/ui/names.js)
+      const can = !!act && act.id !== 'none';
+      const put = fr ? this.framed.backAct : live && !this.acting ? this.interact?.putAct() || null : null;
+      this.doReady = can; this.doAct = can ? act : null; // (the touch hand button draws this act's tool)
+      this.readReady = !!e;
+      this.putReady = !!put; this.putAct = put;
+      const key = `${what?.sah ?? what?.id ?? what}|${this.ui.state.lang}|${can ? act.id + this.ui.t(act.label) : ''}|${!!e}|${put?.id}`;
       if (key !== this.promptKey) {
         this.promptKey = key;
-        document.getElementById('dot').classList.toggle('on', !!(f || act));
-        this.ui.setPrompt(what && (f || act) ? what : null, actText);
+        const dot = document.getElementById('dot');
+        dot.classList.toggle('on', !fr && !!(f || can));
+        dot.classList.toggle('do', can);
+        this.ui.setPrompt(what, { act: this.doAct, read: !!e, put });
       }
     }
-    // reading: walking away closes the card (the UI scrolls it: wheel, keys, drawn cursor)
-    const rd = this.reading;
-    if (rd && this.input.active && this.cardOpen()) {
-      if (Math.hypot(this.player.pos.x - rd.x, this.player.pos.z - rd.z) > 3) this.closeCard();
-    } else if (rd && !this.cardOpen()) this.reading = null;
     const ctx = { dt, time: this.clock.getElapsed(), camera: this.engine.camera, player: this.player, game: this };
     this.world.update(dt, ctx);
     this.audio?.update(dt, ctx);
+    this.hints?.update(dt); // before the render: its light at the view's edge sits on this frame's camera
+    this.engine.govHold = paused || this.ui.open === 'journal'; // (src/engine/pacing.js govern)
     this.engine.update(dt);
     this.engine.render();
     this.guide?.update(dt);
+    this.ui.frame();
     this.fpsMeter(dt);
+    this.teach.update(dt);
     this.input.endFrame();
+    this.engine.frameDone(performance.now() - t0);
   }
 }
 
@@ -538,7 +664,7 @@ Game.prototype.fpsMeter = function (dt) {
   if (el.classList.contains('on')) {
     const info = this.engine.renderer.info.render, e = this.engine;
     el.textContent = `${Math.round(m.n / m.t)} fps · ${(m.t / m.n * 1000).toFixed(1)} ms (worst ${(m.worst * 1000).toFixed(0)})\n` +
-      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap · res ${Math.round(e.renderer.getPixelRatio() / devicePixelRatio * 100)}% of native · ${e.backend}${e.fallback ? ` (${e.fallback})` : ''}`;
+      `${info.drawCalls} calls · ${(info.triangles / 1e6).toFixed(1)} M tris\n${e.tier}${e.tierAuto ? ' (auto)' : ''} · ${e.fpsCap} fps cap${e.knobs?.length ? ` (${e.knobs.map((k) => k.name).join(', ')})` : ''} · gpu ${e.gpuSilent >= 2 ? 'untimed' : `${Math.round(e.gpuMs || 0)} ms`} · res ${Math.round(e.renderer.getPixelRatio() / devicePixelRatio * 100)}% of native · ${e.backend}${e.fallback ? ` (${e.fallback})` : ''}`;
   }
   m.t = 0; m.n = 0; m.worst = 0;
 };
@@ -564,7 +690,7 @@ new Game().boot().catch(fail);
 // display refreshes, so a 120 Hz screen draws exactly every other one.
 Game.prototype.tick = function (now) {
   const e = this.engine, s = this.save.settings;
-  e.fpsCap = (s.batterySaver ?? (e.autoSaver || e.capDown)) ? 30 : e.opts.fps; // capDown: Engine.adapt
+  e.fpsCap = e.phone || (s.batterySaver ?? e.autoSaver) ? 30 : e.opts.fps; // phones: always 30
   const paused = document.getElementById('pause')?.classList.contains('show');
   this.pausedFrames = paused ? (this.pausedFrames || 0) + 1 : 0;
   if (e.pace(now, this.pausedFrames > 45 ? 0 : e.fpsCap)) this.frame(now);

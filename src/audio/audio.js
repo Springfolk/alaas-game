@@ -24,8 +24,9 @@ const HOUSES = ['urasa', 'balagan', 'mogol-urasa'];
 const FIRE_ENTRIES = ['ohokh', 'uot-ichchite'];
 // Interaction shots: playback gain (default 0.75) and whether to jitter pitch (music stays in tune).
 const SHOTS = {
-  discover: { gain: 0.5, tune: true }, khomus: { gain: 0.8, tune: true },
+  discover: { gain: 0.5, tune: true }, khomus: { gain: 0.8, tune: true }, 'khomus-pluck': { gain: 0.7, tune: true },
   bench: { gain: 0.55 }, 'wood-take': { gain: 0.6 }, 'wood-lay': { gain: 0.65 }, ribbon: { gain: 0.65 },
+  'fire-feed': { gain: 0.45 }, chop: { gain: 0.9 }, 'chop-stuck': { gain: 0.8 }, anvil: { gain: 0.85 }, bellows: { gain: 0.6 },
 };
 
 export class AudioScape {
@@ -251,14 +252,14 @@ export class AudioScape {
   }
 
   // Play a buffer once, optionally from a 3D point (with air absorption by distance).
-  shot(name, pos, gain = 1, ref = 2, dest = this.near, rate = 1) {
+  shot(name, pos, gain = 1, ref = 2, dest = this.near, rate = 1, offset = 0) {
     const buf = this.buffers[name];
     if (!buf || this.ctx.state !== 'running') return null;
     const c = this.ctx;
     const src = c.createBufferSource();
     src.buffer = buf; src.playbackRate.value = rate;
     const g = c.createGain(); g.gain.value = gain;
-    src.connect(g);
+    src.connect(g); src.fade = g;
     let tail = g;
     if (pos) {
       const L = c.listener;
@@ -274,7 +275,7 @@ export class AudioScape {
       tail.connect(p); tail = p;
     }
     tail.connect(dest);
-    src.start();
+    src.start(0, offset);
     src.onended = () => { src.disconnect(); tail.disconnect(); };
     return src;
   }
@@ -291,6 +292,20 @@ export class AudioScape {
     }
     const gain = (def.gain ?? 0.75) * (def.tune ? 1 : rand(0.82, 1));
     return this.shot(pick(variants), p, gain, 2.5, this.near, def.tune ? 1 : rand(0.94, 1.05));
+  }
+
+  // A clip that plays for as long as it is held (the khomus at the lips): `stop()` fades it out; the next hold
+  // takes it up where this one left off.
+  sustain(name, pos) {
+    const buf = this.buffers[name];
+    if (!buf) return null;
+    const at = (this.resume ||= {})[name] || 0, t0 = this.ctx.currentTime;
+    const src = this.shot(name, pos, SHOTS[name]?.gain ?? 0.75, 2.5, this.near, 1, at);
+    if (!src) return null;
+    return { stop: () => {
+      this.resume[name] = (at + this.ctx.currentTime - t0) % Math.max(1, buf.duration - 3);
+      try { src.fade.gain.setTargetAtTime(0, this.ctx.currentTime, 0.12); src.stop(this.ctx.currentTime + 0.6); } catch { /* ended */ }
+    } };
   }
 
   // One footstep: a random slice from the surface's sprite, never the same as the last two.

@@ -7,16 +7,18 @@ import {
 import { buildPost } from './post.js';
 import { fastPMREM } from '../load/pmrem.js';
 import { leanEnvironment } from './leanenv.js';
-import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, restoreLost, webgpuAdapter, gpuBroken } from './tier.js';
+import { PRESETS, TIER, LITE, setTier, detectTier, bootStep, restoreLost, webgpuAdapter, gpuBroken, isPhone } from './tier.js';
 import { setTextureMax } from './materials.js';
 import { makeSky, updateSky, cloudField, cloudCover, CLOUD_Y } from './sky.js';
 import { sunMask } from './master.js';
 import { SunLight } from 'three/addons/lights/SunLight.js';
 import { SunLightNode } from 'three/addons/lights/SunLightNode.js';
 import { urlFlag, KEYART } from '../util.js';
+import { pace, govern, knob, frameDone } from './pacing.js';
 
 // exposure for a sunlit scene; METER_REF = its metered mean log2 luminance (post.js meter)
 const EXPOSURE = 0.75, METER_REF = -1.75;
+const NOLAZY = urlFlag('nolazy'); // ?nolazy: every frame's shadow maps (A/B)
 const SUN_DAY = new THREE.Color(0xfff5ea), SUN_LOW = new THREE.Color(0xffa060);
 
 export class Engine {
@@ -29,15 +31,15 @@ export class Engine {
     this.opts = this.presetOpts(this.tier);
     this.fpsCap = 60; // frame pacing (pace())
     this.resScale = 1; // dynamic resolution: drops when frames run long, recovers when there is room
-    this.frameTimes = [];
     this.sunElev = 40; this.sunAz = 215; // degrees; azimuth 0 = north (−Z), 90 = east (+X)
     this.exposure = EXPOSURE; this.exposureTarget = 0.62; // houses raise the target (a hint: the meter decides)
   }
 
   presetOpts(tier) {
-    const { quality, ...rest } = this.requested;
+    const { quality, custom, ...rest } = this.requested;
     // ?keyart: the high preset maxed — 4096 shadow maps over the whole shot, full-resolution lake mirror
-    return { post: true, ...setTier(tier, KEYART ? { shadows: 4096, shadowFar: 900, reflection: 1, texMax: 4096 } : this.tierExtra), ...rest };
+    // custom: the player's video options on top of the preset (src/engine/video.js)
+    return { post: true, ...setTier(tier, KEYART ? { shadows: 4096, shadowFar: 900, reflection: 1, texMax: 4096 } : { ...this.tierExtra, ...custom }), ...rest };
   }
 
   // A broken WebGPU device (Safari): a new buffer maps no bytes, or mapping throws. Load errors check this first.
@@ -76,7 +78,8 @@ export class Engine {
     this.resScale = this.opts.resStart ?? 1; // phones start low and climb (dynamicResolution)
     // battery saver (30 fps) by default on phones (at 60 an iPhone heated within a minute, dimmed its screen and
     // throttled to ~10 fps) and on a battery running low (≤20%, unplugged) where the Battery Status API reports it
-    // (Chromium; Safari has none). The setting overrides it.
+    // (Chromium; Safari has none). The setting overrides it, except on a phone: 30 there whatever the tier or setting.
+    this.phone = this.tier === 'mobile' || isPhone();
     this.autoSaver = this.tier === 'mobile';
     navigator.getBattery?.().then((b) => {
       const upd = () => { this.autoSaver = this.tier === 'mobile' || (!b.charging && b.level <= 0.2); };
@@ -96,6 +99,21 @@ export class Engine {
     r.toneMappingExposure = 1;
     await r.init();
     this.backend = r.backend.isWebGPUBackend ? 'webgpu' : 'webgl2';
+    // Instance matrices go in instanced vertex buffers, uploaded when they change: three's other path (up to ~1000
+    // instances: a uniform buffer) writes every one whole on every frame, per pass, and its copy for the velocity
+    // pass again (the yard: 0.5 MB a frame of unchanged matrices). Read while the shaders build: before any does.
+    if (!urlFlag('reupload')) r.backend.capabilities.getUniformBufferLimit = () => 0;
+    // three uploads every DynamicDrawUsage attribute again on each frame it is drawn, changed or not, and whole (the
+    // first upload clears its update ranges): the forest's instance lists alone were 2.1 MB a frame, the urasa's cover
+    // 1 MB. Only what was marked since (`needsUpdate`: a newer version) goes up. three r186 internals
+    // (Attributes.update): recheck on upgrade.
+    const attributes = r._attributes, upload = r.backend.updateAttribute.bind(r.backend);
+    if (attributes && !urlFlag('reupload')) r.backend.updateAttribute = (a) => { if (attributes.get(a).version < (a.isInterleavedBufferAttribute ? a.data : a).version) upload(a); }; // ?reupload: A/B
+    // Indices go up 16-bit where they address under 65536 vertices: three's WebGPU upload widens every 16-bit array
+    // that is not `normalized` to 32-bit, indices too (meant for vertex formats; an index's upload ignores the flag), and a
+    // static 32-bit index under 65536 vertices is narrowed first. No shader or pipeline sees the index format. ?wideindex: A/B
+    const mkIndex = r.backend.createIndexAttribute.bind(r.backend);
+    if (!urlFlag('wideindex')) r.backend.createIndexAttribute = (a) => { narrowIndex(a); const n = a.normalized; if (a.array instanceof Uint16Array) a.normalized = true; try { mkIndex(a); } finally { a.normalized = n; } }; // (only while it uploads: getX() would read a normalized index as fractions)
     // Safari can break a WebGPU device without losing it (mid-load, or after the page was hidden): every
     // createCommandEncoder then throws and the canvas freezes. Treated as a loss at the first throw.
     const dev = r.backend.device;
@@ -206,15 +224,16 @@ export class Engine {
   // towards light than towards dark. Without the meter, the houses' exposureTarget hints drive it.
   update(dt) {
     this.dynamicResolution(dt);
-    if (this.opts.lazyShadows && !KEYART && !urlFlag('nolazy')) this.lazyShadows(dt); // ?nolazy: A/B
+    if ((this.opts.lazyShadows || this.lazyKnob) && !KEYART && !NOLAZY) this.lazyShadows(dt); // ?nolazy: A/B; lazyKnob: dynamic quality (pacing.js)
     this.cloudMap?.render(this.renderer, this.camera, this.sky.sunPosition.value);
     this.syncInteriors?.();
     this.meterDt = dt;
     const m = this.meter?.log2;
     const target = m != null
-      ? EXPOSURE * Math.min(6, Math.max(0.45, 2 ** ((METER_REF - m) * 0.75)))
+      ? EXPOSURE * Math.min(this.closeLook ? 24 : 6, Math.max(0.45, 2 ** ((METER_REF - m) * (this.closeLook ? 1 : 0.75)))) // closeLook: a thing held up to the eye is seen in full, however dark its corner (src/ui/stage.js)
       : EXPOSURE * this.exposureTarget / 0.62;
-    const rate = target < this.exposure ? 2.2 : 0.9;
+    const rate = this.adaptFast > 0 ? 14 : target < this.exposure ? 2.2 : 0.9; // adaptFast (s): after a cut of the view (src/ui/stage.js)
+    if (this.adaptFast > 0) this.adaptFast -= dt;
     this.exposure += (target - this.exposure) * (1 - Math.exp(-rate * dt));
     if (this.grade) this.grade.exposure.value = this.exposure;
     this.renderer.toneMappingExposure = this.exposure;
@@ -223,71 +242,58 @@ export class Engine {
   // opts.lazyShadows (phones): the sun's maps re-render only when the view moved 1.5 m or turned 8°, at most every
   // 1/8 s, else every 2 s; between, the last maps and their matrices keep (shadows of swaying leaves pause).
   // Both cascades every frame was the largest single cost on an iPhone on WebGL2 (frozen: 10 → 25 fps).
+  // 'watch' (medium, low): on any move or turn of the view, or when a caster moved, showed or hid: `watchShadows`.
   lazyShadows(dt) {
-    const sh = this.sun.shadow, c = this.camera, s = (this._lazy ||= { p: new THREE.Vector3(1e9, 0, 0), d: new THREE.Vector3(), f: new THREE.Vector3(), t: 9 });
+    const sh = this.sun.shadow, c = this.camera, s = (this._lazy ||= { p: new THREE.Vector3(1e9, 0, 0), d: new THREE.Vector3(), f: new THREE.Vector3(), t: 9, n: 0 });
     sh.autoUpdate = false;
     s.t += dt;
+    if ((s.watch = this.opts.lazyShadows === 'watch')) return; // (lazyKnob there: watchShadows)
     c.getWorldDirection(s.f);
     if (s.t > 0.125 && (s.t > 2 || c.position.distanceToSquared(s.p) > 2.25 || s.f.dot(s.d) < 0.99)) {
-      sh.needsUpdate = true; s.t = 0; s.p.copy(c.position); s.d.copy(s.f);
+      sh.needsUpdate = true; s.t = 0; s.p.copy(c.position); s.d.copy(s.f); s.n++;
     }
   }
 
-  // Frame pacing: true when a frame is due on this animation frame (`now` = its timestamp, ms) for `fps`
-  // (0 = none). Draws every n-th display refresh, n = refreshes per capped frame (120 Hz → every 2nd for 60),
-  // so frame intervals stay even; a refresh rate the cap doesn't divide (75, 90, 144 Hz) runs every refresh
-  // (or every 2nd at 144) — never below the cap. The refresh interval is the low quartile of recent rAF deltas,
-  // at most 1/58 s: a device too slow to draw every refresh must not read as a slow display (its frames would
-  // then always "keep pace" and dynamic quality never step down).
-  pace(now, fps) {
-    const d = now - (this.lastTick ?? now);
-    this.lastTick = now;
-    const r = this.rafDeltas ||= [];
-    if (d > 2 && d < 60) r.push(d);
-    if (r.length >= 31) { r.sort((a, b) => a - b); this.vsync = r[7]; r.length = 0; }
-    const v = Math.min(this.vsync || 1000 / 60, 1000 / 58);
-    this.vsyncs = (this.vsyncs || 0) + Math.max(1, Math.round(d / v));
-    if (!fps) return false;
-    const n = Math.max(1, Math.floor(1000 / fps / v + 0.2)); // +0.2: tolerates a noisy refresh estimate
-    if (this.vsyncs < n) return false;
-    this.vsyncs = 0;
-    this.paceIv = n * v;
-    if (n !== this.paceN || fps !== this.paceFps) { this.paceN = n; this.paceFps = fps; this.frameTimes.length = 0; }
-    return true;
+  // After the frame's world matrices: the maps re-render when the view or any shadow caster (world matrix, vertices,
+  // shown or not, casting or not, layers) differs from the last render's, else every 2 s (swaying leaves; the caster
+  // list is gathered again then, made things join it).
+  watchShadows() {
+    const s = this._lazy, c = this.camera;
+    c.updateMatrixWorld();
+    const moving = moved(c.matrixWorld.elements, (s.prev ||= new Float64Array(16)));
+    s.prev.set(c.matrixWorld.elements);
+    const viewed = !s.list || moved(c.matrixWorld.elements, s.cam);
+    if (this.lazyKnob && s.t < 0.125 && (moving || !viewed)) return; // dynamic quality (pacing.js): ≤8/s, a view come to rest at once
+    let dirty = s.t > 2 || viewed;
+    for (let i = 0; !dirty && i < s.list.length; i++) {
+      const w = s.list[i], o = w.o;
+      dirty = o.castShadow !== w.c || o.layers.mask !== w.l || shown(o) !== w.v || (w.c && (shape(o) !== w.g || moved(o.matrixWorld.elements, w.m)));
+    }
+    if (!dirty) return;
+    this.sun.shadow.needsUpdate = true; s.n++;
+    if (s.t > 2 || !s.list) {
+      s.list = [];
+      this.scene.traverse((o) => { if (o.isMesh && (o.castShadow || o.userData.shadowCulled)) s.list.push({ o, m: new Float64Array(16) }); });
+    }
+    s.t = 0;
+    (s.cam ||= new Float64Array(16)).set(c.matrixWorld.elements);
+    for (const w of s.list) { const o = w.o; w.c = o.castShadow; w.l = o.layers.mask; w.v = shown(o); w.g = shape(o); w.m.set(o.matrixWorld.elements); }
   }
 
-  // Every ~1.5 s: if frames miss the paced interval (a few missed refreshes: ≥12% over on average) render
-  // fewer pixels; when they all keep it, give pixels back — but not straight back to a scale that just
-  // failed (ceiling, retried after 8 s). Holds the frame rate by resolution instead of dropping frames.
-  // Still slow at the resolution floor: one cheaper knob per window (KNOBS: none builds a shader). A knob
-  // comes back, last first, once resolution is full again and frames kept pace for `knobWait` (4 s;
-  // doubled, ≤2 min, when a restored knob fails again within 20 s).
-  dynamicResolution(dt) {
-    if (dt <= 0 || KEYART) return; // ?keyart: full resolution however long a frame takes
-    const f = this.frameTimes, iv = this.paceIv || 1000 / 60;
-    f.push(Math.min(dt * 1000, iv * 3));
-    if (f.length * iv < 1500) return;
-    let sum = 0;
-    for (const x of f) sum += x;
-    const avg = sum / f.length;
-    f.length = 0;
-    const prev = this.resScale, now = performance.now();
-    if (this.resCeil && now - this.resCeilAt > 8000) this.resCeil = 0;
-    if (avg > iv * 1.12) {
-      this.resCeil = this.resScale; this.resCeilAt = now;
-      // floor: the tier's resMin pixel ratio (high: CSS pixels, never upscaled), else 55% of the start ratio — and
-      // never under MIN_RES of the screen's own ratio (a base already there: no dropping, the knobs go instead)
-      const base = Math.min(devicePixelRatio, this.opts.dpr), resMin = this.opts.resMin;
-      const floor = Math.min(1, Math.max(resMin ? resMin / base : 0.55, devicePixelRatio * MIN_RES / base));
-      if (this.resScale > floor) this.resScale = Math.max(floor, this.resScale - (avg > iv * 1.6 ? 0.15 : 0.08));
-      else this.knob(-1, now);
-    } else if (avg < iv * 1.02 && this.resScale < 1 && (!this.resCeil || this.resScale + 0.1 < this.resCeil)) {
-      this.resScale = Math.min(1, this.resScale + 0.1);
-    } else if (avg < iv * 1.02 && this.resScale >= 1 && this.knobs?.length && now - this.knobAt > this.knobWait) this.knob(1, now);
-    if (this.resScale !== prev) {
-      this.renderer.setPixelRatio(this.pixelRatio());
-      this.renderer.setSize(innerWidth, innerHeight, false);
-    }
+  // Frame pacing and dynamic quality: src/engine/pacing.js (tools override `pace` and `dynamicResolution`).
+  pace(now, fps) { return pace(this, now, fps); }
+  dynamicResolution(dt) { if (!KEYART) govern(this, dt); } // ?keyart: full resolution however long a frame takes
+  knob(dir, now) { knob(this, dir, now); }
+
+  // Lowest dynamic scale: the tier's resMin pixel ratio (high: CSS pixels, never upscaled), else 55% of the start
+  // ratio — and never under MIN_RES of the screen's own ratio (a base already there: only the knobs go)
+  resFloor() {
+    const base = Math.min(devicePixelRatio, this.opts.dpr), resMin = this.opts.resMin;
+    return Math.min(1, Math.max(resMin ? resMin / base : 0.55, devicePixelRatio * MIN_RES / base));
+  }
+  applyResolution() {
+    this.renderer.setPixelRatio(this.pixelRatio());
+    this.renderer.setSize(innerWidth, innerHeight, false);
   }
 
   // The render pixel ratio: the tier's cap × the dynamic scale, never under MIN_RES of the screen's own ratio.
@@ -295,20 +301,23 @@ export class Engine {
     return Math.max(devicePixelRatio * MIN_RES, Math.min(devicePixelRatio, this.opts.dpr) * this.resScale);
   }
 
-  // One knob down (dir −1) or the last one back up (+1). Each changes only sizes, counts or the frame cap.
-  knob(dir, now) {
-    const on = this.knobs ||= [];
-    this.knobWait ||= 4000;
-    if (dir < 0) {
-      const k = KNOBS.find((k) => !on.includes(k) && k.ok(this));
-      if (!k) return;
-      if (now - this.knobAt < 20000 && this.knobUp === k) this.knobWait = Math.min(120000, this.knobWait * 2);
-      on.push(k); k.set(this, true);
-    } else {
-      const k = this.knobUp = on.pop();
-      k.set(this, false);
-    }
-    this.knobAt = now;
+  // After a frame's draw (main.js): its JS time, and a watch on when the GPU has finished it.
+  frameDone(jsMs) {
+    const b = this.renderer.backend, dev = b.device, gl = b.gl;
+    // Safari's WebGPU resolves onSubmittedWorkDone about one paced frame after the submit at any load (60 fps: 17 ms at
+    // full and at two-thirds resolution; 30 fps: 34 ms) and paces rAF to the GPU (never 2 frames queued): the governor
+    // goes without GPU timing there, as on Safari's WebGL2
+    if (dev && WEBKIT) this.gpuSilent = 2;
+    frameDone(this, jsMs, dev ? (cb) => dev.queue.onSubmittedWorkDone().then(cb, cb) : gl?.fenceSync ? (cb) => {
+      const t = performance.now(), s = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      gl.flush();
+      const poll = () => { if (gl.isContextLost() || gl.getSyncParameter(s, gl.SYNC_STATUS) === gl.SIGNALED) { gl.deleteSync(s); cb(); } else setTimeout(poll, 3); };
+      setTimeout(poll, 3);
+      // Safari's WebGL2 waits on its GPU process in these calls (the iOS Simulator: 5 ms a frame): where the first 30
+      // fences cost over 1 ms each, the governor goes without GPU timing (pacing.js: its interval-only rule)
+      this.fenceMs = (this.fenceMs || 0) + performance.now() - t;
+      if ((this.fences = (this.fences || 0) + 1) === 30 && this.fenceMs > 30) this.gpuSilent = 2;
+    } : null);
   }
 
   resize() {
@@ -318,20 +327,46 @@ export class Engine {
   }
 
   render() {
-    if (this.pipeline) { this.pipeline.render(); this.meter?.tick(this.meterDt || 0); }
-    else this.renderer.render(this.scene, this.camera);
+    // world matrices once a frame, not once per pass (shadows, mirror, AO pre-pass: each render walked the whole graph)
+    const s = this.scene;
+    this.beforeMatrices?.();
+    s.updateMatrixWorld();
+    s.matrixWorldAutoUpdate = false;
+    if (this._lazy?.watch && !this.sun.shadow.autoUpdate) this.watchShadows(); // (Engine.lazyShadows)
+    try {
+      // high: the AO (and the pre-pass it reads) render here, first: left to three, they ran inside whichever render
+      // first met them that frame (the scene pass, or the sun's shadows within it), and every change of that nesting
+      // built the pre-pass's shaders again in play
+      if (this.aoPass?._ao) this.renderer._nodes.nodeFrame.updateBeforeNode(this.aoPass); // (once three has set it up)
+      if (this.pipeline) { this.pipeline.render(); this.meter?.tick(this.meterDt || 0); }
+      else this.renderer.render(s, this.camera);
+    } finally { s.matrixWorldAutoUpdate = true; }
   }
 }
 
-// Dynamic quality steps after resolution (Engine.knob), cheapest loss first; none needs a new shader or pipeline.
+// (Engine.watchShadows) a world matrix off its copy by over 0.1 mm or ~0.006°; shown = it and every parent visible
+function moved(e, m) {
+  for (let i = 0; i < 16; i++) if (Math.abs(e[i] - m[i]) > 1e-4) return true;
+  return false;
+}
+function shown(o) {
+  for (let p = o; p; p = p.parent) if (!p.visible) return false;
+  return true;
+}
+function shape(o) { // a new geometry or rewritten vertices or instances
+  return o.geometry.id * 1e6 + (o.geometry.attributes.position?.version || 0) + (o.instanceMatrix?.version || 0);
+}
+
+function narrowIndex(a) {
+  const ix = a.array;
+  if (!(ix instanceof Uint32Array) || a.usage !== THREE.StaticDrawUsage || a.isInterleavedBufferAttribute) return;
+  for (let i = 0; i < ix.length; i++) if (ix[i] > 65535) return;
+  a.array = Uint16Array.from(ix);
+}
+
 // No tier or dynamic resolution renders under half the screen's own resolution (per axis).
 const MIN_RES = 0.5;
-
-const KNOBS = [
-  { name: 'shadow range ×0.7', ok: () => true, set: (e, d) => { e.sun.shadow.camera.far = e.opts.shadowFar * (d ? 0.7 : 1); } }, // fewer casters per cascade
-  { name: 'lake mirror ×0.6', ok: (e) => !!e.reflector, set: (e, d) => { e.reflector.resolutionScale = e.opts.reflection * (d ? 0.6 : 1); } },
-  { name: '30 fps', ok: (e) => e.fpsCap > 30, set: (e, d) => { e.capDown = d; } }, // main.js tick
-];
+const WEBKIT = typeof navigator !== 'undefined' && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|Edg|Firefox/.test(navigator.userAgent); // Safari, any browser on iOS
 
 // The coarse cloud field (sky.js cloudField, what cloud shadows use) over CLOUD_SPAN m of the cloud plane
 // around where the view's ground looks up to through the sun, in a 512² half-float texture (16 m texels;

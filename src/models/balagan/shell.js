@@ -6,6 +6,7 @@ import { FX, FZ, H, OUT, GAP, PL, ZD, DW, DH, XD, BAY, ROOF, KH, WINDOWS, WIN, H
 import { openingsNode } from './mats.js';
 import { float } from 'three/tsl';
 import { section } from '../../load/geocache.js';
+import { leaf } from '../yard/bits.js';
 
 const lin = (F, y) => F + GAP + OUT * (1 - y / H);           // inner face, extrapolated below 0
 const hp = (F, y) => lin(F, y) + PL;                          // plaster surface
@@ -160,7 +161,8 @@ export function buildShell({ M, rng, winter, root }) {
     B.add(M.outWood, box(0.12, DH + 0.12, 0.1, { p: [XD + 0.02, DH / 2, ZD - DW / 2 - 0.05] }), { color: [0.75, 0.73, 0.7] });
     B.add(M.outWood, box(0.12, DH + 0.12, 0.1, { p: [XD + 0.02, DH / 2, ZD + DW / 2 + 0.05] }), { color: [0.75, 0.73, 0.7] });
     B.add(M.outWood, box(0.14, 0.12, DW + 0.32, { p: [XD + 0.02, DH + 0.06, ZD] }), { color: [0.72, 0.7, 0.66] });
-    B.add(M.logs, log([XD - 0.2, 0.03, ZD - DW / 2 - 0.1], [XD - 0.2, 0.05, ZD + DW / 2 + 0.1], 0.08, 0.075, rng, { caps: true }), { color: [0.8, 0.75, 0.7], extra: { outw: [0, 1, 0] } });
+    // (outdoor wood: the wall timber's sky cut for indoors would leave it black in the doorway)
+    B.add(M.outWood, log([XD - 0.2, 0.03, ZD - DW / 2 - 0.1], [XD - 0.2, 0.05, ZD + DW / 2 + 0.1], 0.08, 0.075, rng, { caps: true }), { color: [0.6, 0.54, 0.46] });
   });
   colliders.push({ x: (2.6 + 4.3) / 2, z: (-3.9 + ZD - DW / 2 + 0.02) / 2, hw: (4.3 - 2.6) / 2, hd: (ZD - DW / 2 + 0.02 + 3.9) / 2 });
   colliders.push({ x: (2.6 + 4.3) / 2, z: (ZD + DW / 2 - 0.02 + 3.9) / 2, hw: (4.3 - 2.6) / 2, hd: (3.9 - ZD - DW / 2 + 0.02) / 2 });
@@ -176,10 +178,12 @@ export function buildShell({ M, rng, winter, root }) {
   section(() => {
     for (let i = 0; i < nP; i++) DB.add(M.doorWood, box(0.055, DH - 0.03 - rng() * 0.03, pw - 0.006, { p: [0, (DH - 0.03) / 2, (i + 0.5) * pw], r: [0, 0, (rng() - 0.5) * 0.008] }), { color: [0.78 + rng() * 0.15, 0.74, 0.7] });
     for (const y of [0.3, DH - 0.35]) DB.add(M.doorWood, box(0.04, 0.12, DW - 0.06, { p: [-0.045, y, DW / 2], r: [0.03, 0, 0] }), { color: [0.7, 0.66, 0.62] });
-    for (const y of [0.28, DH - 0.33]) DB.add(M.leather, box(0.09, 0.08, 0.14, { p: [0.0, y, 0.0] }), { color: [0.5, 0.4, 0.32] });
-    DB.add(M.leather, tube([[0.04, 0.95, DW - 0.12], [0.08, 0.9, DW - 0.13], [0.04, 0.85, DW - 0.12]], 0.012, 5), { color: [0.45, 0.35, 0.28] });
+    // rawhide straps round the hinge edge and a pull loop (door wood's material: the indoor leather is unlit out here)
+    for (const y of [0.3, DH - 0.35]) for (const dy of [-0.035, 0.035]) DB.add(M.doorWood, box(0.075, 0.035, 0.2, { p: [-0.002, y + dy, 0.06], r: [0, 0, (rng() - 0.5) * 0.08] }), { color: [0.34, 0.25, 0.17] });
+    DB.add(M.doorWood, tube([[0.03, 0.97, DW - 0.12], [0.065, 0.94, DW - 0.125], [0.085, 0.9, DW - 0.13], [0.065, 0.86, DW - 0.125], [0.03, 0.83, DW - 0.12]], 0.011, 6), { color: [0.34, 0.25, 0.17] });
   });
   DB.build(doorPivot);
+  doorPivot.traverse((o) => { o.userData.dynamic = true; }); // it swings: its own shadow, not the merged proxy's
   root.add(doorPivot);
   const door = { pivot: doorPivot, open: winter ? 0 : 1, target: winter ? 0 : 1, maxAngle: 1.75 };
   doorPivot.rotation.y = door.open * door.maxAngle;
@@ -285,18 +289,22 @@ export function buildShell({ M, rng, winter, root }) {
     for (const sg of [-1, 1]) B.add(M.beams, box(kD, 1.6, 0.05, { p: [kxd - kD / 2 - 0.02, 0.8, KZD + sg * (kIn - 0.03)] }), { color: [0.35, 0.3, 0.26] });
     B.add(M.beams, box(kD + 0.05, 0.05, 2 * kIn, { p: [kxd - kD / 2 - 0.02, 1.52, KZD] }), { color: [0.25, 0.2, 0.17] });
     B.add(M.logs, log([kxd - 1.45, 0.35, KZD - kIn + 0.06], [kxd - 1.45, 0.38, KZD + kIn - 0.06], 0.11, 0.1, rng, { caps: true }), { color: [0.6, 0.55, 0.5], extra: { outw: [0, 1, 0] } });
+    // the barn's ceiling under its earth roof, from wall to wall and up to the house's north wall
+    const kyc = KH.top - 0.32, kcx = klin(KH.hx, kyc) + 0.1, kz0 = kcz - klin(KH.hz, kyc) - 0.1, kz1 = -hp(FZ, kyc);
+    B.add(M.beams, box(2 * kcx, 0.06, kz1 - kz0, { p: [0, kyc, (kz0 + kz1) / 2] }), { color: [0.25, 0.2, 0.17] });
   });
   // barn door: summer propped open, winter shut
   const kd = new THREE.Group();
-  kd.position.set(kxd + 0.08, 0.02, KZD - 0.5);
+  kd.position.set(kxd + 0.08, 0.07, KZD - 0.5); // hung clear of the trodden sill (the berm's slump differs by tier)
   const KB = new Buckets();
   section(() => {
-    for (let i = 0; i < 4; i++) KB.add(M.doorWood, box(0.05, 1.4 - rng() * 0.05, 0.245, { p: [0, 0.7, 0.125 + i * 0.25], r: [0, 0, (rng() - 0.5) * 0.02] }), { color: [0.7 + rng() * 0.1, 0.67, 0.62] });
+    for (let i = 0; i < 4; i++) KB.add(M.doorWood, box(0.05, 1.35 - rng() * 0.05, 0.245, { p: [0, 0.675, 0.125 + i * 0.25], r: [0, 0, (rng() - 0.5) * 0.02] }), { color: [0.7 + rng() * 0.1, 0.67, 0.62] });
     KB.add(M.doorWood, box(0.04, 0.1, 0.95, { p: [-0.04, 0.35, 0.5], r: [0.25, 0, 0] }), { color: [0.6, 0.57, 0.52] });
   });
   KB.build(kd);
   kd.rotation.y = winter ? 0 : 1.9;
   root.add(kd);
+  colliders.push(leaf({}, { hinge: [kd.position.x, kd.position.z], len: 1.0, th: 0.085, off: -0.018, angle: () => kd.rotation.y }).collider(0)); // the leaf is solid, propped or shut
   colliders.push({ x: 0, z: (KR.z1 - 0.6 - 3.4) / 2, hw: klin(KH.hx, 0) + PL + 0.35, hd: (KR.z1 - 0.6 + 3.4) / -2 }); // to the berm's foot
   // ---------- earth berm (кунус) round the foot, held by horizontal logs on stakes ----------
   // Two cross-sections (offset out from the wall foot, height), blended per point round the perimeter:
@@ -372,14 +380,14 @@ export function buildShell({ M, rng, winter, root }) {
   // retaining logs along each straight side of the house berm, on stakes; the earth slumps off past their ends.
   section(() => {
     // weathered larch like the canopy posts (M.logs is the house's wall timber: its sky light is cut for indoors)
-    const rl = (a, b, r = 0.09) => B.add(M.outWood, log(a, b, r, r * 0.9, rng, { caps: true, seg: 8, bow: 0.004, knob: 0.06, rowLen: 1.0 }), { color: [0.72, 0.69, 0.64] });
+    const rl = (a, b, r = 0.09, hew = 2.4) => B.add(M.outWood, log(a, b, r, r * 0.9, rng, { caps: true, seg: 8, bow: 0.004, knob: 0.06, rowLen: 1.0, hew }), { color: [0.72, 0.69, 0.64] });
     for (const y of [0.075, 0.235]) {
       rl([-logEnd.x, y, bz], [logEnd.x, y, bz]);
       rl([-bx, y, -logEnd.z], [-bx, y, logEnd.z]);
       rl([bx, y, -logEnd.z], [bx, y, ZD - logGap]);
       rl([bx, y, ZD + logGap], [bx, y, logEnd.z]);
     }
-    const stake = (x, z) => rl([x, -0.2, z], [x + (rng() - 0.5) * 0.03, 0.42, z + (rng() - 0.5) * 0.03], 0.065);
+    const stake = (x, z) => rl([x, -0.2, z], [x + (rng() - 0.5) * 0.03, 0.42, z + (rng() - 0.5) * 0.03], 0.065, 0);
     const run = (a, b, put) => { const n = Math.max(1, Math.round((b - a) / 1.6)); for (let i = 0; i <= n; i++) put(a + 0.12 + (b - a - 0.24) * i / n + (i > 0 && i < n ? (rng() - 0.5) * 0.3 : 0)); };
     run(-logEnd.x, logEnd.x, (x) => stake(x, bz + 0.15));
     run(-logEnd.z, logEnd.z, (z) => stake(-bx - 0.15, z));

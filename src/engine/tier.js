@@ -9,13 +9,13 @@
 //   grassDensity 1 = full blades (grass.js), forest = scale of the full/coarse tree ring radii (forest.js)
 //   ground       ground grid vertices per side · fps = frame cap (battery saver halves it)
 //   atlasMax     largest impostor atlas edge · pipelines = GPU pipeline compiles in flight while loading
-//   lazyShadows  sun shadow maps re-render on a move/turn only (Engine.lazyShadows)
+//   lazyShadows  sun shadow maps re-render on a move/turn only; 'watch': also when a caster moves (Engine.lazyShadows)
 //   release      drop each texture image's CPU/IOSurface copy once it is on the GPU (materials.js)
 const NATIVE = typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1;
 export const PRESETS = {
   high: { quality: 'high', ao: true, shadows: 2048, shadowFar: 150, reflection: 0.35, dpr: 2, resMin: 1, texMax: 4096, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
-  medium: { quality: 'medium', ao: false, shadows: 2048, shadowFar: 110, reflection: 0.25, dpr: 1.5, resMin: 0.7, texMax: 2048, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
-  low: { quality: 'low', ao: false, shadows: 1024, shadowFar: 70, reflection: 0, leanEnv: true, dpr: 0.75, resMin: 0.5, texMax: 1024, grassDensity: 0.6, forest: 0.8, ground: 512, fps: 60 },
+  medium: { quality: 'medium', ao: false, shadows: 2048, shadowFar: 110, lazyShadows: 'watch', reflection: 0.25, dpr: 1.5, resMin: 0.7, texMax: 2048, grassDensity: 1, forest: 1, ground: 640, fps: 60 },
+  low: { quality: 'low', ao: false, shadows: 1024, shadowFar: 70, lazyShadows: 'watch', reflection: 0, leanEnv: true, dpr: 0.75, resMin: 0.5, texMax: 1024, grassDensity: 0.6, forest: 0.8, ground: 512, fps: 60 },
   // phones (lite too): 67–100% of the screen's own resolution — starts at 67% and climbs while frames keep pace
   // (dynamic resolution); below 67% read as mush (dpr = resMin: no dynamic resolution, only the knobs)
   mobile: { quality: 'low', ao: false, shadows: 1024, shadowFar: 55, reflection: 0, leanEnv: true, dpr: NATIVE, resMin: NATIVE * 0.67, resStart: 0.67, lazyShadows: true, texMax: 512, aniso: 4, atlasMax: 1024, pipelines: 4, release: true, grassDensity: 0.45, forest: 0.7, ground: 320, fps: 60 },

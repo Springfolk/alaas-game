@@ -1,5 +1,5 @@
 // Small shared pieces for the yard models: ground following, trodden-earth patches, horsehair tufts,
-// cloth ribbons, uncut grass at post feet, colour helpers, and an on-screen three-way choice.
+// cloth ribbons, uncut grass at post feet, and colour helpers.
 import * as THREE from 'three/webgpu';
 import { strip, tube } from './geo.js';
 import { fbm } from '../../util.js';
@@ -96,10 +96,33 @@ export function ribbon(rng, at, { len = 0.2, width = 0.025, color = [0.9, 0.9, 0
     // hangs from the knot, bellies out a little and curls at the end
     pts.push(new THREE.Vector3(...at).addScaledVector(D, len * t).addScaledVector(side, Math.sin(t * 4.2 + ph) * amp * t + t * t * 0.03));
   }
-  const g = strip(pts, (t) => width * (1 - 0.15 * t), {
-    up: [side.x, 0, side.z], twist: (rng() - 0.5) * 2.4,
-    color: (t, s, c) => { const k = 1 - 0.12 * Math.sin(t * 9 + s * 2); c[0] = color[0] * k; c[1] = color[1] * k; c[2] = color[2] * k; },
-  });
+  // cloth, not a flat tape: three verts across, creased down the middle (the fold it was tied by), the crease
+  // dying out and turning over along its length, a swallow-tail cut at the end
+  const tw = (rng() - 0.5) * 2.4, cr = (0.25 + rng() * 0.3) * (rng() < 0.5 ? -1 : 1), n = pts.length - 1;
+  const pos = [], uv = [], col = [], idx = [], U = new THREE.Vector3(side.x, 0, side.z);
+  let s = 0;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    if (i) s += pts[i].distanceTo(pts[i - 1]);
+    const tg = pts[Math.min(i + 1, n)].clone().sub(pts[Math.max(i - 1, 0)]).normalize();
+    const sd = tg.clone().cross(U).normalize().applyAxisAngle(tg, tw * t), nr = sd.clone().cross(tg).normalize();
+    const w = width * (1 - 0.15 * t) * (i === 0 ? 0.35 : i === 1 ? 0.8 : 1);   // gathered into the knot
+    const fold = w * cr * Math.cos(t * 2.6) * (1 - 0.5 * t);
+    for (const k of [-0.5, 0, 0.5]) {
+      const back = i === n && k === 0 ? -width * 0.7 : 0;   // the notch
+      pos.push(pts[i].x + sd.x * w * k + nr.x * (k ? 0 : fold) + tg.x * back, pts[i].y + sd.y * w * k + nr.y * (k ? 0 : fold) + tg.y * back, pts[i].z + sd.z * w * k + nr.z * (k ? 0 : fold) + tg.z * back);
+      uv.push(k + 0.5, s);
+      const c = (1 - 0.12 * Math.sin(t * 9 + (k + 0.5) * 2)) * (k ? 1 : 0.9);
+      col.push(color[0] * c, color[1] * c, color[2] * c);
+    }
+  }
+  for (let i = 0; i < n; i++) { const a = i * 3; idx.push(a, a + 1, a + 3, a + 1, a + 4, a + 3, a + 1, a + 2, a + 4, a + 2, a + 5, a + 4); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
   return withSway(g, null, pts.length);
 }
 
@@ -158,24 +181,58 @@ export function grassClump(rng, ground, cx, cz, { n = 40, r = 0.25, h = 0.45 } =
   return g;
 }
 
-// A three-way choice shown under the crosshair; keys 1/2/3, Esc cancels (resolves null).
-export function choose(game, title, options) {
-  return new Promise((resolve) => {
-    const t = (o) => game?.ui?.t ? game.ui.t(o) : o.en;
-    const d = document.createElement('div');
-    d.style.cssText = 'position:fixed;left:50%;top:calc(50% + 34px);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px;text-shadow:0 1px 6px rgba(0,0,0,.7);pointer-events:none;white-space:nowrap;color:#f3efe6;font-family:"Noto Sans",system-ui,sans-serif;z-index:20';
-    const opts = options.map((o, i) => `<span style="display:inline-flex;gap:7px;align-items:center"><span style="border:1px solid rgba(255,255,255,.7);border-radius:4px;padding:1px 7px;font-size:12px;background:rgba(0,0,0,.25)">${i + 1}</span>${o.swatch ? `<span style="width:12px;height:12px;border-radius:2px;background:${o.swatch};border:1px solid rgba(255,255,255,.5)"></span>` : ''}<span style="font-family:'Noto Serif',serif;font-size:16px">${t(o.label)}</span></span>`).join('<span style="opacity:.4">·</span>');
-    d.innerHTML = `<div style="color:#d9c08a;font-size:13px">${t(title)}</div><div style="display:flex;gap:14px;align-items:center">${opts}</div><div style="opacity:.6;font-size:11.5px">Esc</div>`;
-    document.body.appendChild(d);
-    if (game) game.choosing = true; // touch shows its 1·2·3 row
-    const done = (v) => { removeEventListener('keydown', key, true); d.remove(); if (game) game.choosing = false; resolve(v); };
-    const key = (e) => {
-      const n = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code];
-      if (n !== undefined && n < options.length) { e.stopPropagation(); done(options[n].id); }
-      else if (e.code === 'Escape') { e.stopPropagation(); done(null); }
-    };
-    addEventListener('keydown', key, true);
-  });
+// A hinged leaf with weight (a door, gate rails). s = { a: 0…1, v, to: 0 | 1 }: pushed towards `to` it gathers
+// speed, knocks once against its stop and settles; pushed again on the way it turns back. Returns 'knock' on the
+// frame it meets the stop, 'rest' when it lies still there, else null.
+export function swing(s, dt, accel = 3.5, max = 1.6) {
+  const d = s.to ? 1 : -1;
+  if (s.a === s.to && !s.v) return null;
+  s.v = Math.max(-max, Math.min(max, (s.v || 0) + d * accel * dt));
+  s.a += s.v * dt;
+  if (d * (s.a - s.to) < 0) return null;
+  s.a = s.to;
+  if (d * s.v > 0.8) { s.v *= -0.2; return 'knock'; }
+  s.v = 0;
+  return 'rest';
+}
+
+// A hinged leaf as a solid: its collider follows the leaf, and the swing stops at the player instead of passing
+// through. hinge = [x, z] model-local, len = leaf width, th = thickness centred `off` along the leaf's own x,
+// angle(a) = the leaf's turn about +Y at swing a (its width runs along its local +Z). find(world) returns the
+// leaf's own world collider (a box); move(s, dt, game, accel, max) swings like `swing`.
+export function leaf(placement, { hinge, len, th, off = 0, angle }) {
+  const yaw = placement.yaw || 0, c0 = Math.cos(yaw), s0 = Math.sin(yaw);
+  const span = (a) => { // the leaf's middle line, model-local
+    const A = angle(a), ux = Math.sin(A), uz = Math.cos(A), ox = hinge[0] + Math.cos(A) * off, oz = hinge[1] - Math.sin(A) * off;
+    return { A, x0: ox, z0: oz, x1: ox + ux * len, z1: oz + uz * len };
+  };
+  const toLocal = (wx, wz) => { const dx = wx - placement.x, dz = wz - placement.z; return [dx * c0 - dz * s0, dx * s0 + dz * c0]; };
+  const R = 0.28 + th / 2 + 0.07; // the player's radius, half the leaf, and room for the eye
+  const hits = (a, p) => {
+    const g = span(a), [x, z] = toLocal(p.x, p.z), ex = g.x1 - g.x0, ez = g.z1 - g.z0;
+    const t = Math.max(0, Math.min(1, ((x - g.x0) * ex + (z - g.z0) * ez) / (ex * ex + ez * ez)));
+    return Math.hypot(x - g.x0 - ex * t, z - g.z0 - ez * t) < R;
+  };
+  const self = {
+    k: null,
+    // the leaf's collider, local, at swing a (rot: the leaf's turn)
+    collider(a, extra = {}) { const g = span(a); return { x: (g.x0 + g.x1) / 2, z: (g.z0 + g.z1) / 2, hw: th / 2, hd: len / 2, rot: g.A, ...extra }; },
+    place(a) {
+      if (!self.k) return;
+      const g = span(a), mx = (g.x0 + g.x1) / 2, mz = (g.z0 + g.z1) / 2;
+      self.k.x = placement.x + mx * c0 + mz * s0; self.k.z = placement.z - mx * s0 + mz * c0;
+      self.k.c = Math.cos(yaw + g.A); self.k.s = Math.sin(yaw + g.A);
+    },
+    move(s, dt, game, accel, max) {
+      const a0 = s.a, v0 = s.v || 0, p = game?.player?.pos;
+      let r = swing(s, dt, accel, max);
+      // it meets the player on the way: stopped there with a small rebound (a knock if it came fast)
+      if (p && s.a !== a0 && hits(s.a, p) && !hits(a0, p)) { s.a = a0; s.v = -v0 * 0.25; r = Math.abs(v0) > 0.6 ? 'knock' : null; }
+      self.place(s.a);
+      return r;
+    },
+  };
+  return self;
 }
 
 // Tween helper for act animations: resolves after `dur` s while calling step(t 0..1) each frame.

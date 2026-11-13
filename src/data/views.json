@@ -1,0 +1,427 @@
+{
+ "alaas": {
+  "cam": [
+   20,
+   135,
+   -330,
+   180,
+   -14,
+   50
+  ]
+ },
+ "sayylyk-kystyk": {
+  "cam": [
+   284,
+   100,
+   -86,
+   60,
+   -8,
+   45
+  ]
+ },
+ "balagan": {
+  "dir": [
+   330,
+   13
+  ]
+ },
+ "ohokh": {
+  "dir": [
+   310,
+   20
+  ],
+  "fix": true,
+  "dist": 0.45
+ },
+ "ottuk-mas": {
+  "say": {
+   "sah": "Тыаҕа наадалааҕыҥ эрэ ыл, айдаарыма.",
+   "en": "In the forest take only what you need, and make no noise.",
+   "ru": "В лесу бери только нужное и не шуми."
+  },
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "oron": {
+  "it": "Billerik",
+  "dir": [
+   139,
+   24
+  ],
+  "fix": true,
+  "dist": 0.8
+ },
+ "khappakhchy": {
+  "dir": [
+   28,
+   14
+  ],
+  "fix": true,
+  "dist": 0.9
+ },
+ "toyon-baghana": {
+  "dir": [
+   163,
+   3
+  ],
+  "fix": true,
+  "dist": 0.55
+ },
+ "muus-tunnuk": {
+  "dir": [
+   345,
+   13
+  ]
+ },
+ "khoton": {
+  "dir": [
+   195,
+   13
+  ]
+ },
+ "urasa": {
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ },
+ "mogol-urasa": {
+  "as": "urasa",
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ },
+ "ampaar": {
+  "it": 1,
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ },
+ "kuruo": {
+  "it": 1,
+  "fix": true,
+  "dir": [
+   45,
+   20
+  ],
+  "dist": 0.7
+ },
+ "hay-making": {
+  "dir": [
+   300,
+   20
+  ]
+ },
+ "homestead-layout": {
+  "cam": [
+   4,
+   152,
+   -158,
+   0,
+   -55,
+   40
+  ]
+ },
+ "choron": {
+  "say": {
+   "sah": "Уокка · Сиргэ · Халлааҥҥа",
+   "en": "To the fire · to the earth · to the sky",
+   "ru": "Огню · земле · небу"
+  },
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "kytyya": {
+  "dir": [
+   0,
+   22
+  ]
+ },
+ "khamyiakh-ladle": {
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "birch-bark": {
+  "it": 1,
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "ygas-bucket": {
+  "dir": [
+   255,
+   34
+  ]
+ },
+ "mas-yagas": {
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "horsehair": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "kymys": {
+  "say": {
+   "sah": "Саҥа көөнньөр кымыс аттыгар айдаарбаттар.",
+   "en": "Nobody makes a noise beside young kymys.",
+   "ru": "Возле молодого кумыса не шумят."
+  },
+  "dir": [
+   270,
+   34
+  ]
+ },
+ "dairy-suorat-tar": {
+  "dir": [
+   135,
+   34
+  ]
+ },
+ "dairy-cream": {
+  "dir": [
+   210,
+   34
+  ]
+ },
+ "dyedyen": {
+  "dir": [
+   200,
+   22
+  ],
+  "fix": true,
+  "free": true,
+  "dist": 0.5
+ },
+ "munkha": {
+  "dir": [
+   0,
+   9
+  ],
+  "fix": true,
+  "dist": 0.6
+ },
+ "tuu": {
+  "it": "fish trap",
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "khomus": {
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "blacksmith": {
+  "say": {
+   "sah": "Уус суох. Көмөлөһөөччүтүн курдук, кини хаалларбыт быһах тимирин таптай.",
+   "en": "The smith is away. Finish the knife blank he left, as his helper would.",
+   "ru": "Кузнеца нет. Докуйте оставленную им заготовку ножа, как сделал бы его подручный."
+  },
+  "dir": [
+   240,
+   34
+  ]
+ },
+ "knife": {
+  "dir": [
+   135,
+   34
+  ]
+ },
+ "saddle": {
+  "dir": [
+   270,
+   34
+  ]
+ },
+ "silver-ornaments": {
+  "dir": [
+   0,
+   34
+  ]
+ },
+ "clothing": {
+  "dir": [
+   30,
+   34
+  ]
+ },
+ "ornament": {
+  "photo": true
+ },
+ "aal-luuk-mas": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "urung-aar-toyon-aiyy": {
+  "photo": true
+ },
+ "ichchi": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "uot-ichchite": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "baay-bayanay": {
+  "cam": [
+   0,
+   100,
+   -305,
+   0,
+   3,
+   55
+  ]
+ },
+ "serge": {
+  "it": 0,
+  "dir": [
+   80,
+   7
+  ],
+  "fix": true,
+  "dist": 0.6
+ },
+ "salama": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "sacred-birch": {
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ },
+ "algys": {
+  "photo": true
+ },
+ "ysyakh": {
+  "photo": true
+ },
+ "osuokhai": {
+  "photo": true
+ },
+ "olonkho": {
+  "photo": true
+ },
+ "sakha-calendar": {
+  "dir": [
+   150,
+   8
+  ],
+  "fix": true
+ },
+ "horse-and-cow": {
+  "cam": [
+   47.9,
+   93.5,
+   -214.4,
+   166,
+   -6,
+   48
+  ]
+ },
+ "hospitality": {
+  "dir": [
+   60,
+   34
+  ]
+ },
+ "tupte": {
+  "dir": [
+   0,
+   34
+  ],
+  "free": true
+ },
+ "syarga": {
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ },
+ "khayyhar": {
+  "cam": [
+   269.02,
+   96.13,
+   -94.14,
+   252,
+   -6,
+   50
+  ]
+ },
+ "winter-clothing": {
+  "cam": [
+   268.96,
+   96.45,
+   -96.29,
+   19,
+   -26,
+   55
+  ]
+ },
+ "annyy": {
+  "cam": [
+   269.02,
+   96.13,
+   -94.14,
+   241,
+   -8,
+   50
+  ]
+ },
+ "kharangachchy": {
+  "cam": [
+   268.18,
+   96.43,
+   -96.52,
+   160,
+   14,
+   55
+  ]
+ },
+ "otuu": {
+  "dir": [
+   330,
+   13
+  ],
+  "free": true
+ }
+}

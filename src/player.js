@@ -53,9 +53,15 @@ export class Player {
       this.aimPitch = clamp(this.aimPitch - (inp.mdy * LOOK + inp.lookY * TOUCH_LOOK) * S.sens * inv, -1.45, 1.45);
     }
     const prevYaw = this.yaw;
-    const sm = Math.max(S.smooth || 0, inp.touchMode ? 0.3 : 0);
+    const touch = inp.touchMode && !(S.smooth > 0.3), sm = touch ? 0.3 : S.smooth || 0;
     if (sm <= 0.001 || dt <= 0) { this.yaw = this.aimYaw; this.pitch = this.aimPitch; }
-    else { const k = lerp(60, 9, sm); this.yaw = damp(this.yaw, this.aimYaw, k, dt); this.pitch = damp(this.pitch, this.aimPitch, k, dt); }
+    else {
+      // touch: the smoothing is there for the finger's one-pixel steps (0.33° each) in a slow drag; it lets go as
+      // the view falls behind (a drag of some speed is followed at once: it trailed ~10 ms at 30 fps)
+      const off = Math.max(Math.abs(this.aimYaw - this.yaw), Math.abs(this.aimPitch - this.pitch));
+      const k = lerp(60, 9, sm) * (touch ? 1 + (off / 0.012) ** 2 : 1);
+      this.yaw = damp(this.yaw, this.aimYaw, k, dt); this.pitch = damp(this.pitch, this.aimPitch, k, dt);
+    }
 
     // ── intent ──
     let mx = 0, mz = 0, wantRun = false;

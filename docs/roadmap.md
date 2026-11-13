@@ -13,12 +13,11 @@ Planned, not built. No people, no hunting, sacred acts explained never played (`
 - ★ Cuckoo (кэҕэ): calling deep in the forest; card (summer, fate).
 - Owl: on a branch, head follows you.
 
-## Forest — non-locking acts and places
+## Forest — acts and places
 - ★ Mushrooms to pick; card on what Sakha eat and don't.
 - Cones / nuts to gather (check fit).
 - Larch resin (сымала) to scrape, chewed as gum; card.
 - Birch sap: tapped birch, birch-bark cup; card.
-- ★ Dry wood to gather and carry home (extends the firewood chore).
 - ★ Spirit-of-place larch with ribbons (Аан Дархан); explained only.
 - Hunter's lean-to / unused trap as objects; card on Баай Байанай customs.
 - Clearing with a fallen giant, moss, light shafts; a place to sit.
@@ -31,7 +30,7 @@ Planned, not built. No people, no hunting, sacred acts explained never played (`
 - Distant thunder and a passing summer shower (large).
 
 ## Lake — animals
-- Varied fish rises with ripple rings (exists; extend).
+- Fish rises with ripple rings: more variety.
 - ★ Ducks with ducklings in a line, dabbing and diving.
 - ★ Swan pair (куба) far out, never disturbed; card (sacred bird).
 - Grebe diving and resurfacing elsewhere.
@@ -41,29 +40,36 @@ Planned, not built. No people, no hunting, sacred acts explained never played (`
 - Dragonflies and water striders by the reeds.
 
 ## Lake — acts and objects
-- Stone skimming (earlier research advised against; maintainer to decide).
+- Stone skimming: against the lake's etiquette (`docs/actions.md`); maintainer to decide.
 - Look into the water: fish shadows; card on lake fish (мунду, собо) and мунха, explained only.
 - ★ Dugout / birch-bark boat (тыы) on the shore; card; sit-in later.
 - Wash hands / splash at the edge.
-- Willow fish trap in the shallows; card.
 
 ## Lake — atmosphere
 - ★ Morning mist burning off.
 - ★ Swaying reeds and water lilies, pads moving in your wake.
-- ★ Wind ripples and a better reflection (fixes the flat lake).
+- ★ Wind ripples and a better reflection (the lake reads flat).
 - Lapping, reed rustle, distant loons.
 
 ## Both
 - Day–night cycle or a chosen time of day: dawn mist and cuckoo, midday buzz, evening frogs and owl, white night.
 - ★ Animal sightings logged as journal "seen" entries, found through the finder.
 
-## Open from earlier waves
-- Loading: shader builds ≈1.9 s WebKit / 1.2 s Chrome are the floor; next levers in `docs/loading.md` (hidden things after the fade, smaller graphs, node-builder patches).
+## Work (`docs/actions.md`)
+- Rake the mown grass into бугул and build a stack (the scythe job stops at the swath).
+- Dry the мунду on a сибиэ (хохту); carry the тымтай home.
+- Milk the mares at the сэлэ (foals tethered) before the kymys is churned.
+- Sew a тууйас or ыаҕас with the awl and horsehair (the тордуйа needs no sewing).
+- Кии (dry dung) gathered for the түптэ.
+- Own sounds for the quench and bark folding (they borrow `water-pour` and `ribbon`).
+
+## Open items
+- Loading: shader builds dominate; untried levers: building hidden things after the fade, smaller graphs, node-builder patches.
 - Urasa bench hides read dark and sparse.
-- Near trees cast no sun shadow (cost ≈90 draws).
+- Near trees cast no sun shadow (≈90 more draws).
 - Far forest not hidden by haze (haze too thin).
-- Balagan alcove curtain: vec3 colour + alphaTest drops its shadow (`docs/models.md`).
+- Balagan alcove curtain: vec3 colour + alphaTest, so it casts no shadow (`docs/models.md`).
 - Choron: add the arch band (сарбынньах ойуу) beside the combed ribs, with a line in its card.
-- Ornament motif names in Sakha (сүрэх ойуу, муос ойуу?) — maintainer to confirm (`docs/patterns.md`).
-- Key art: higher or golden-light variant if wanted; title overlaps the left haystacks at 720p.
+- Ornament motif names in Sakha (сүрэх ойуу, муос ойуу?): maintainer to confirm (`docs/patterns.md`).
+- Key art: a higher or golden-light variant if wanted; the title overlaps the left haystacks at 720p.
 - Kites are silent (no free recording).

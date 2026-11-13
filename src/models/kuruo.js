@@ -7,7 +7,7 @@
 import * as THREE from 'three/webgpu';
 import { turned, logProfile, bow, tube, merge, tris } from './yard/geo.js';
 import { larch, barkPole, rope, trodden, grass, plain } from './yard/mat.js';
-import { groundOf, troddenPatch, grassClump, noSway, tween, ease } from './yard/bits.js';
+import { groundOf, troddenPatch, grassClump, noSway, tween, ease, swing } from './yard/bits.js';
 import { section } from '../load/geocache.js';
 
 const TAU = Math.PI * 2;
@@ -58,7 +58,7 @@ export default async function build(ctx, placement) {
         const holeY = RAILS.map((h) => 0.35 + h), extra = holeY.flatMap((y) => [-0.075, -0.05, -0.03, -0.012, 0, 0.012, 0.03, 0.05, 0.075].map((d) => y + d));
         const hole = (y, a, r) => Math.min(...holeY.map((yh) => Math.hypot(Math.cos(a) * r / HOLE_R, (y - yh) / HOLE_R)));
         const g = turned(logProfile(H + 0.3, 0.095, 0.08, { step: 0.12, extra }), {
-          radial: 28, rng, noise: 0.03, oval: 0.03, bend: bow(rng, H, 0.006), capTop: true,
+          radial: 28, rng, noise: 0.03, oval: 0.03, bend: bow(rng, H, 0.006), capTop: true, endGrain: true,
           carve: (y, a, r) => -0.035 * smooth(1, 0.7, hole(y, a, r)),
           color: (y, a, c) => { tone(y, a, c); const k = smooth(1.25, 0.9, hole(y, a, 0.09)); for (let i = 0; i < 3; i++) c[i] += (0.09 - c[i]) * k; },
         });
@@ -71,7 +71,7 @@ export default async function build(ctx, placement) {
       const sp = n.corner ? 0.14 : 0.11;
       for (const sgn of [-1, 1]) {
         const H = 1.42 + rng() * 0.18, r0 = 0.05 + rng() * 0.014;
-        const g = turned(logProfile(H + 0.25, r0, r0 * 0.78, { step: 0.3 }), { radial: 9, rng, noise: 0.07, oval: 0.07, bend: bow(rng, H, 0.03), color: stakeTone(0.85 + rng() * 0.2), capTop: true });
+        const g = turned(logProfile(H + 0.25, r0, r0 * 0.78, { step: 0.3 }), { radial: 9, rng, noise: 0.07, oval: 0.07, bend: bow(rng, H, 0.03), color: stakeTone(0.85 + rng() * 0.2), capTop: true, endGrain: true });
         g.translate(0, -0.25, 0);
         // lean towards the partner stake (~3°) plus a random wobble, about the fence direction
         const sx = n.x + px * sp * sgn, sz = n.z + pz * sp * sgn;
@@ -95,27 +95,28 @@ export default async function build(ctx, placement) {
       const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L;
       for (let h = 0; h < 3; h++) {
         if (rng() < 0.03) continue; // one or two rails missing — knocked down
-        const over0 = a.gate ? 0.14 : 0.25 + rng() * 0.3, over1 = b.gate ? 0.14 : 0.25 + rng() * 0.3;
+        const over0 = a.gate ? (a === gN ? -0.06 : 0.14) : 0.25 + rng() * 0.3, over1 = b.gate ? (b === gN ? -0.06 : 0.14) : 0.25 + rng() * 0.3;
         const r = 0.042 + rng() * 0.016;
         const stack = (h % 2 ? 1 : -1) * 0.02; // overlapping ends ride on each other
         const ya = a.gy + RAILS[h] + stack + (rng() - 0.5) * 0.06, yb = b.gy + RAILS[h] - stack + (rng() - 0.5) * 0.06;
         const len = L + over0 + over1;
         const sag = 0.03 + L * 0.008;
         const fresh = rng() < 0.08;
-        const g = turned(logProfile(len, r, r * 0.8, { step: 0.4 }), {
-          radial: 9, rng, noise: 0.06, oval: 0.08, capTop: true, capBottom: true,
+        const g = turned(logProfile(len, r, r * 0.8, { step: 0.4, extra: [r * 0.9, r * 1.8, r * 2.6, len - r * 2.6, len - r * 1.8, len - r * 0.9] }), {
+          radial: 9, rng, noise: 0.06, oval: 0.08, capTop: true, capBottom: true, endGrain: true, hew: 2.6,
           bend: (y) => { const t = y / len; return [Math.sin(Math.PI * t) * sag * 0.3, 0]; },
           color: (y, ang, c) => { const k = fresh ? 1.1 : 0.85 + rng() * 0.002; c[0] = fresh ? 0.95 : 0.9 * k; c[1] = fresh ? 0.86 : 0.86 * k; c[2] = fresh ? 0.66 : 0.8 * k; },
         });
         // sag: bow downward (bend x is in the rail's local frame → after orient points down if roll fits)
-        // rails meeting a gate post run past its inner face, lashed to it, clear of the sliding gate rails
-        const ia = a.gate ? SIDE : 0, ib = b.gate ? SIDE : 0;
+        // rails meeting a gate post run past its face, lashed to it, clear of the sliding gate rails: inside at the south post,
+        // outside at the north post (the drawn rails' tail swings inward about it), ending at the post
+        const fa = a === gN ? -1 : 1, fb = b === gN ? -1 : 1, ia = a.gate ? SIDE * fa : 0, ib = b.gate ? SIDE * fb : 0;
         const p0 = [a.x - ux * over0 + ia, ya, a.z - uz * over0], p1 = [b.x + ux * over1 + ib, yb, b.z + uz * over1];
         orientRail(g, p0, p1, sag);
         (fresh ? railsFresh : rails).push(g);
         // lashing loops at both ends (around both stakes of the pair), under the rail
         for (const [n, end] of [[a, 0], [b, 1]]) {
-          if (n.gate) { lashes.push(postLashing(rng, n, end ? yb : ya, end ? r * 0.8 : r)); continue; }
+          if (n.gate) { lashes.push(postLashing(rng, n, end ? yb : ya, end ? r * 0.8 : r, n === gN ? -1 : 1)); continue; }
           if (end === 1 && h % 2 === 0) continue; // one lashing per height per pair
           lashes.push(lashing(rng, n, (end ? yb : ya) - r - 0.01));
         }
@@ -134,7 +135,7 @@ export default async function build(ctx, placement) {
     const gateRails = [];
     for (let h = 0; h < 3; h++) {
       const r = 0.045;
-      const g = turned(logProfile(gLen, r * 1.05, r * 0.85, { step: 0.35 }), { radial: 10, rng, noise: 0.05, oval: 0.06, capTop: true, capBottom: true, color: (y, a, c) => { c[0] = 0.93; c[1] = 0.86; c[2] = 0.76; } });
+      const g = turned(logProfile(gLen, r * 1.05, r * 0.85, { step: 0.35 }), { radial: 10, rng, noise: 0.05, oval: 0.06, capTop: true, capBottom: true, endGrain: true, color: (y, a, c) => { c[0] = 0.93; c[1] = 0.86; c[2] = 0.76; } });
       const y0 = gN.gy + RAILS[h] + 0.05, y1 = gS.gy + RAILS[h] + 0.05;
       orientRail(g, [0, y0, 0.35], [0, y1, 0.35 - gLen], 0.01);
       gateRails.push(g);
@@ -183,7 +184,8 @@ export default async function build(ctx, placement) {
   });
   const earth = add(yard.tg, trodden(ctx, { key: 'trodden-pen', hoof: 1.3 }), 'earth', false);
   earth.receiveShadow = true; earth.renderOrder = -1;
-  add(yard.pats, plain('dung', { roughness: 0.88, bump: 0.003, bumpFreq: 30 }), 'dung', false);
+  // the earth and the dung on it follow the drawn ground (world/settle.js)
+  earth.userData.ground = add(yard.pats, plain('dung', { roughness: 0.88, bump: 0.003, bumpFreq: 30 }), 'dung', false).userData.ground = 'terrain';
   add(yard.grass, grass(), 'grass', false);
 
   // ── colliders: the four sides as thin boxes, the west side split at the gate ──
@@ -224,24 +226,31 @@ export default async function build(ctx, placement) {
     gateMesh.position.set(0, 0, slide);
     gate.rotation.y = swing;
   };
+  // Opening: a tap draws the rails out of the south post; once free they swing aside by their own weight and knock to a stop. Closing: a push swings
+  // them back, and they are run home into the mortises.
+  const LABEL = [{ sah: 'сүрдьүгэһи ас', en: 'draw the gate rails', ru: 'отодвинуть жерди ворот' }, { sah: 'сүрдьүгэһи сап', en: 'close the gate rails', ru: 'задвинуть жерди ворот' }];
+  const mid = () => object.localToWorld(new THREE.Vector3(gN.x, 1, (GATE.z0 + GATE.z1) / 2));
+  const frames = (step) => new Promise((res) => { let t0 = performance.now(); const f = () => { const t = performance.now(), dt = Math.min(0.05, (t - t0) / 1000); t0 = t; if (step(dt)) res(); else requestAnimationFrame(f); }; requestAnimationFrame(f); });
   const act = {
-    id: 'gate', thenCard: false,
-    label: { sah: 'сүрдьүгэһи ас', en: 'open the gate rails', ru: 'отодвинуть жерди ворот' },
-    run: async (game, it) => {
+    id: 'gate', label: LABEL[0],
+    run: async (game) => {
       if (busy) return;
       busy = true;
-      const to = !open;
-      game?.audio?.play('gate', object.localToWorld(new THREE.Vector3(gN.x, 1, (GATE.z0 + GATE.z1) / 2)));
-      if (to) {
-        await tween(0.9, (t) => pose(SLIDE * ease(t), 0));
-        await tween(1.1, (t) => pose(SLIDE, SWING * ease(t)));
-      } else {
-        await tween(1.1, (t) => pose(SLIDE, SWING * (1 - ease(t))));
-        await tween(0.9, (t) => pose(SLIDE * (1 - ease(t)), 0));
-      }
-      open = to;
+      const S = { a: open ? 1 : 0, v: 0, to: open ? 0 : 1 };
+      if (!open) {
+        game?.audio?.play('gate', mid());
+        let s = 0;
+        await frames((dt) => {
+          s = Math.min(1, s + dt / 0.8);
+          pose(SLIDE * ease(s), 0);
+          return s >= 1;
+        });
+      } else game?.audio?.play('gate', mid());
+      await frames((dt) => { const r = swing(S, dt, 2.4, 1.2); pose(SLIDE, SWING * S.a); if (r === 'knock') game?.audio?.play('wood-take', mid()); return r === 'rest'; });
+      if (open) { await tween(0.7, (t) => pose(SLIDE * (1 - ease(t)), 0)); game?.audio?.play('wood-lay', mid()); }
+      open = !open;
       setCollider(game, open);
-      act.label = open ? { sah: 'сүрдьүгэһи сап', en: 'close the gate rails', ru: 'задвинуть жерди ворот' } : { sah: 'сүрдьүгэһи ас', en: 'open the gate rails', ru: 'отодвинуть жерди ворот' };
+      act.label = LABEL[open ? 1 : 0];
       if (game) game.focus = undefined; // refresh the prompt
       busy = false;
     },
@@ -258,7 +267,7 @@ export default async function build(ctx, placement) {
     colliders,
     floors: [],
     interactables: [
-      { entry: 'kuruo', target: gate, act, label: { sah: 'сүрдьүгэс', en: 'gate rails (сүрдьүгэс)', ru: 'жердевые ворота (сүрдьүгэс)' } },
+      { entry: 'kuruo', target: gate, act, label: { sah: 'сүрдьүгэс', en: 'gate rails (sürdjüges)', ru: 'жердевые ворота (сүрдьүгэс)' } },
       { entry: 'kuruo', target: fenceTarget },
     ],
   };
@@ -290,21 +299,24 @@ function lashing(rng, n, y) {
     const t = k / N, a = t * TAU;
     // a stadium around the two stakes: long axis across the fence
     const ex = Math.cos(a) * (sp + 0.065), ez = Math.sin(a) * 0.075;
-    pts.push(new THREE.Vector3(n.x + px * ex + n.dir[0] * ez, y + t * 0.025 + (rng() - 0.5) * 0.004, n.z + pz * ex + n.dir[1] * ez));
+    const j = (rng() - 0.5) * 0.004;
+    if (k % 2) continue; // every other point: a band this thin shows no more
+    pts.push(new THREE.Vector3(n.x + px * ex + n.dir[0] * ez, y + t * 0.025 + j, n.z + pz * ex + n.dir[1] * ez));
   }
   return tube(pts, 0.007, { radial: 4 });
 }
 
 // Willow band binding a fence rail to a gate post's inner face: two turns around the post, one
 // over the rail and one under it, so the rail hangs in the band. yc / rr: the rail's axis height and radius.
-function postLashing(rng, n, yc, rr) {
+function postLashing(rng, n, yc, rr, side = 1) {
   const west = -0.118, cu = (SIDE + west) / 2, eu = (SIDE - west) / 2, ev = 0.125, R = rr * 1.22 + 0.009;
   const pts = [], N = 26;
   for (let k = 0; k <= N * 2; k++) {
     const t = k / N, a = Math.PI + t * TAU, s = t < 1 ? 1 : -1; // turns start and swap behind the post
     const u = cu + Math.cos(a) * eu, v = Math.sin(a) * ev;
     const y = yc + s * Math.sqrt(Math.max(0, R * R - (u - SIDE) ** 2)) + (rng() - 0.5) * 0.004;
-    pts.push(new THREE.Vector3(n.x + u, y, n.z + v));
+    if (k % 2) continue;
+    pts.push(new THREE.Vector3(n.x + u * side, y, n.z + v));
   }
   return tube(pts, 0.007, { radial: 4 });
 }

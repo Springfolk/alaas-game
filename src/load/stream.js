@@ -10,6 +10,7 @@
 // Uses three r186 renderer internals (`_renderObjectDirect`, `_objects`, `_nodes`, `_pipelines`, state fields).
 import { Sphere, Vector3 } from 'three/webgpu';
 import { enter, exit, span } from './prof.js';
+import { urlFlag } from '../util.js';
 import { TIER } from '../engine/tier.js';
 
 // Safari has no `scheduler.yield`: three's fallback waits a whole animation frame per build stage.
@@ -36,9 +37,28 @@ function sameShaderIndexed(ro) {
   if (key) proto.getGeometryCacheKey = function () { const k = key.call(this); return k.endsWith('index,') ? k.slice(0, -6) : k; };
 }
 
+// three keeps every finished NodeBuilder alive: uniform update callbacks made inside its shader functions close
+// over the builder, and the built state keeps those callbacks. A builder holds its whole working set (per-node
+// caches, generated code: ~1 MB each, ~110 after a load = about half of the JS heap), none of it read again once
+// `_createNodeBuilderState` has taken the shaders, bindings and update lists: drop it there.
+const WORK = ['nodes', 'sequentialNodes', 'hashNodes', 'flowNodes', 'flowCode', 'uniforms', 'structs', 'types', 'bindings', 'bindingsIndexes', 'bindGroups',
+  'attributes', 'bufferAttributes', 'varyings', 'codes', 'vars', 'declarations', 'flow', 'chaining', 'stack', 'stacks', 'cache', 'globalCache', 'flowsData',
+  'vertexShader', 'fragmentShader', 'computeShader', 'lightsNode', 'environmentNode', 'fogNode', 'subBuildLayers', 'activeStacks', 'geometry'];
+function dropBuilders(renderer) {
+  const nodes = renderer._nodes, make = nodes?._createNodeBuilderState;
+  if (!make || urlFlag('keepbuilders')) return; // ?keepbuilders: A/B
+  nodes._createNodeBuilderState = function (nb) {
+    const state = make.call(this, nb);
+    for (const k of WORK) if (k in nb) nb[k] = null;
+    nb.context = {};
+    return state;
+  };
+}
+
 export class ShaderStream {
   constructor(renderer) {
     this.r = renderer;
+    dropBuilders(renderer);
     this.queue = [];                  // { ro, group, drawRange, state, bias, view, x, y, z, r, done }
     this.seen = new Map();            // render object → its queue item, until its build starts
     this.drawn = new WeakSet();       // objects drawn at least once
@@ -129,7 +149,7 @@ export class ShaderStream {
     try { fn(); } finally { delete r._renderObjectDirect; }
   }
 
-  // Queue every mesh in `scene`: everything shown (with its parents) and unculled for one render. One the
+  // Queue every mesh in `scene`: everything shown (with its parents), unculled and casting (`shadowCulled`: merge.js) for one render. One the
   // camera's layers miss (a part culled to a spare layer for now, a shadow-only proxy) joins layer 0 for it,
   // so every pass that will draw it later (the lake mirror, the shadow cascades) builds it now. Built ones are
   // drawn too (for one loading frame): a pipeline is only compiled for good once a draw has used it — one made
@@ -137,14 +157,14 @@ export class ShaderStream {
   collect(scene, camera, fn) {
     const objs = [], groups = [], seen = camera.layers.mask;
     scene.traverse((o) => {
-      if (o.isMesh || o.isPoints || o.isLine || o.isSprite) objs.push([o, o.visible, o.frustumCulled, o.layers.mask]);
+      if (o.isMesh || o.isPoints || o.isLine || o.isSprite) objs.push([o, o.visible, o.frustumCulled, o.layers.mask, o.castShadow]);
       else groups.push([o, o.visible]);
     });
-    for (const [o] of objs) { o.visible = true; o.frustumCulled = false; if (!(o.layers.mask & seen)) o.layers.mask |= 1; }
+    for (const [o] of objs) { o.visible = true; o.frustumCulled = false; if (!(o.layers.mask & seen)) o.layers.mask |= 1; if (o.userData.shadowCulled) o.castShadow = true; }
     for (const [o] of groups) o.visible = true;
     camera.layers.enableAll();
     try { this.render(fn, false); } finally {
-      for (const [o, v, f, m] of objs) { o.visible = v; o.frustumCulled = f; o.layers.mask = m; }
+      for (const [o, v, f, m, c] of objs) { o.visible = v; o.frustumCulled = f; o.layers.mask = m; o.castShadow = c; }
       for (const [o, v] of groups) o.visible = v;
       camera.layers.mask = seen;
     }

@@ -5,9 +5,13 @@ import * as TSL from 'three/tsl';
 import { lights } from 'three/tsl';
 import { Terrain } from './terrain.js';
 import { buildGround } from './ground.js';
+import { drawnSampler } from './ground-data.js';
 import { PLACEMENTS } from './layout.js';
 import { pbr, maps, tex } from '../engine/materials.js';
 import { optimizePlaced } from '../engine/merge.js';
+import { TIER } from '../engine/tier.js';
+import { settle } from './settle.js';
+import { restAt } from './settle-data.js';
 import { geoBuild } from '../load/geocache.js';
 import { homesteadLights, useLights, shareGraphs, materialsOf } from '../engine/master.js';
 import { mulberry32, strHash, urlFlag } from '../util.js';
@@ -24,6 +28,7 @@ export class World {
     this.terrain = new Terrain();
     this.colliders = [];     // { kind: 'circle', x, z, r } | { kind: 'box', x, z, hw, hd, c, s, y0?, y1? }
     this.floors = [];        // { x, z, hw, hd, c, s, h } walkable surfaces above the ground (world y)
+    this.rests = [];         // { x, z, r | hw, hd, c, s, h } surfaces loose things rest on (drawnAt)
     this.lows = [];          // { x, z, hw, hd, c, s, h } low lintels/ceilings: clear height (world y) the player stoops under
     this.interactables = []; // { entry, target?, zone?, act?, label? }
     this.updaters = [];      // (dt, ctx) => void, from models and nature
@@ -84,9 +89,18 @@ export class World {
         await this.breathe();
       }
     }));
+    await groundBuilt; // its node heights: what the settling reads
+    if (!urlFlag('nosettle')) this.settled = await settle(this); // resting things onto the ground as this tier draws it (settle.js; ?nosettle: A/B)
     // One light set for the whole homestead: the sun and two local lights that each material takes from its
     // own model (a house its fire; src/engine/master.js), so builds don't split by light set. A model may set
     // its materials first (the urasa: no sun indoors, no fire outside).
+    // Cut-out materials (alphaTest: the balagans' plaster, nets, the birch curtain) draw after the plain opaque ones:
+    // a GPU can skip a hidden pixel of theirs only when what hides it is already drawn, and inside a balagan its
+    // plaster, mostly behind the log wall, took half the frame (medium at 2592×1675: 11.0 → 5.9 ms).
+    for (const { object } of this.placed) object.traverse((o) => {
+      const m = o.isMesh && !Array.isArray(o.material) && o.material;
+      if (m && m.alphaTest > 0 && !m.transparent && !o.renderOrder) o.renderOrder = 1;
+    });
     const homeLights = homesteadLights(this.engine);
     for (const { object } of this.placed) {
       const own = [];
@@ -101,6 +115,7 @@ export class World {
     if (!urlFlag('nomerge')) { // ?nomerge: A/B
       const opt = this.optimized = optimizePlaced(this, this.engine.camera, this.engine.sun);
       this.updaters.push(opt.update);
+      this.engine.beforeMatrices = opt.thaw; // frozen static matrices (merge.js)
       opt.ready.catch((e) => console.error('merge failed', e));
     }
     // nature after the models; a failing module is logged and skipped, never blocks the load
@@ -144,6 +159,11 @@ export class World {
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
       this.floors.push({ ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h });
     }
+    for (const f of res.rests || []) { // surfaces drawn over the ground that loose things rest on (an earth floor): circles or boxes, `polar` = its surface as drawn (settle-data.js restAt)
+      const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
+      const polar = f.polar && { ...f.polar, x: p.x, y: p.y, z: p.z, c, s };
+      this.rests.push(f.r !== undefined ? { ...w, r: f.r, h: p.y + f.h, polar, loose: f.loose } : { ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h, polar, loose: f.loose });
+    }
     for (const f of res.lows || []) {
       const w = tw(f.x, f.z), a = (p.yaw || 0) + (f.rot || 0);
       this.lows.push({ ...w, hw: f.hw, hd: f.hd, c: Math.cos(a), s: Math.sin(a), h: p.y + f.h });
@@ -161,6 +181,23 @@ export class World {
   static local(b, x, z) {
     const dx = x - b.x, dz = z - b.z;
     return [dx * b.c - dz * b.s, dx * b.s + dz * b.c];
+  }
+
+  // the ground as it is drawn (its grid is linear between samples a metre or more apart), floors as groundAt: what a
+  // loose thing comes to rest on
+  // (`rests`, `floors`: the lists to take, null = none; the grid is this tier's before the ground mesh exists)
+  drawnAt(x, z, rests = this.rests, floors = this.floors) {
+    const N = this.ground?.userData.N ?? TIER.ground;
+    let h;
+    if (this.ground) h = (this._drawnG ||= drawnSampler(this.terrain, N, this.ground.userData.h))(x, z);
+    else if (N) h = (this._drawn ||= drawnSampler(this.terrain, N))(x, z);
+    else h = this.terrain.height(x, z);
+    for (const f of rests || []) h = Math.max(h, restAt(f, x, z));
+    for (const f of floors || []) {
+      const [lx, lz] = World.local(f, x, z);
+      if (Math.abs(lx) < f.hw && Math.abs(lz) < f.hd) h = Math.max(h, f.h);
+    }
+    return h;
   }
 
   groundAt(x, z) {

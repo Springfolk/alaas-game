@@ -2,7 +2,8 @@
 // Saddle tree: two birch side boards, front and rear bows after Sieroszewski's Rys. 76 clad in silver, a hair-stuffed
 // leather seat, a saddle cloth (кычым) after REM 437-49, a woven horsehair girth and forged round-arched stirrups.
 import * as THREE from 'three/webgpu';
-import { addLog, blob, boxUV, frame, geoPiece, jitterTint, mtx, sheetGeo } from './kit.js';
+import { addLog, blob, boxUV, frame, geoPiece, jitterTint, mtx, sheetGeo, tube } from './kit.js';
+import { barGeo } from './forged.js';
 
 // Bow outlines, half (x ≥ 0), [x, y] metres from the base, top to bottom; the opening from its top down.
 // Front: Sieroszewski 1902, Rys. 76 «Szkielet jakuckiego siodła. Łęk» (1/8 natural size, measured at 600 dpi);
@@ -18,12 +19,10 @@ function bowGeo(B, d) {
   s.moveTo(-o[o.length - 1][0], o[o.length - 1][1]);
   for (let i = o.length - 1; i >= 0; i--) s.lineTo(-o[i][0], o[i][1]);
   for (const [x, y] of o) s.lineTo(x, y);
-  // the opening under the bow that clears the horse's withers
-  const hp = new THREE.Path(), h = B.hole;
-  hp.moveTo(-h[h.length - 1][0], h[h.length - 1][1]);
-  for (let i = h.length - 1; i >= 0; i--) hp.lineTo(-h[i][0], h[i][1]);
-  for (const [x, y] of h) hp.lineTo(x, y);
-  s.holes.push(hp);
+  // the opening under the bow that clears the horse's withers, open at the foot (an arch: no bar across its bottom)
+  const h = B.hole;
+  for (let i = h.length - 1; i >= 0; i--) s.lineTo(h[i][0], h[i][1]);
+  for (const [x, y] of h) s.lineTo(-x, y);
   const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 2, curveSegments: 4 });
   g.translate(0, 0, -d / 2);
   // uvs: planar in metres (the bow plate texture spans x −0.17…0.17, y 0…0.34)
@@ -64,7 +63,7 @@ export function saddle(K, x, z, yaw) {
       addLog(K.b, Wy(0.42, g(0.42, lz) - 0.05, lz + 0.03), Wy(-0.17, TY + 0.12, lz), 0.045, 0.04, rng, M.wood, M.end, { seg: 7 });
       F.add(new THREE.TorusGeometry(0.06, 0.008, 4, 10), M.lash, mtx([0, TY - 0.1, lz], [0, 0, 0]));
     }
-    addLog(K.b, Wy(0, TY, -0.75), Wy(0, TY + 0.01, 0.75), TR, TR * 0.92, rng, M.wood, M.end, { seg: 10 });
+    addLog(K.b, Wy(0, TY, -0.75), Wy(0, TY + 0.01, 0.75), TR, TR * 0.92, rng, M.wood, M.end, { seg: 10, bend: 0, wob: 0.03 }); // straight and true: the cloth lies on it
     K.colliders.push(F.col({ x: 0, z: 0, hw: 0.45, hd: 0.78 }));
 
     // ---- the saddle, spine along z (front = +z) ----
@@ -83,7 +82,7 @@ export function saddle(K, x, z, yaw) {
         if (as < arc) { const a = s / R; px = Math.sin(a) * R; py = Math.cos(a) * R - R; }
         else { const d = as - arc; px = Math.sign(s) * (R + d * 0.12); py = -R - d; }
         px += Math.sign(s) * Math.max(0, as - arc) * 0.08 * Math.sin(zz * 30 + s * 4); // soft folds in the hanging part
-        return [px, py + TR + 0.004];
+        return [px, py + TR + 0.012]; // 1.2 cm over the log's crown (its bark wobbles 3 %)
       };
       const tone = (s, zz) => { // colour from the photo's regions
         const x = 345 - Math.abs(s) / P, y = 215 + zz / P;
@@ -135,16 +134,16 @@ export function saddle(K, x, z, yaw) {
       const p = b.attributes.position;
       for (let k = 0; k < p.count; k++) { const zz = p.getZ(k); p.setY(k, p.getY(k) + 0.012 * (zz / 0.22) ** 2); }
       b.computeVertexNormals();
-      F.add(b, M.wood, mtx([sd * 0.085, top - 0.02, 0], [0, 0, -sd * 0.72]), [0.75, 0.62, 0.48]);
+      F.add(b, M.wood, mtx([sd * 0.085, top - 0.012, 0], [0, 0, -sd * 0.72]), [0.75, 0.62, 0.48]);
     }
     // bows after Rys. 76: the front one 32 cm tall, its plate engraved with the drawing's frame lines (bowplate), the
     // rear one 15 cm, plain silver (its engraving is not legible in the drawing)
-    F.add(bowGeo(BOW_F, 0.025), M.bowplate, mtx([0, top - 0.02, 0.19], [0.17, 0, 0]));
-    F.add(bowGeo(BOW_R, 0.025), M.silver, mtx([0, top - 0.02, -0.19], [-0.17, 0, 0]));
+    F.add(bowGeo(BOW_F, 0.025), M.bowplate, mtx([0, top - 0.012, 0.19], [0.17, 0, 0]));
+    F.add(bowGeo(BOW_R, 0.025), M.silver, mtx([0, top - 0.012, -0.19], [-0.17, 0, 0]));
     // iron hook on the front bow
-    F.add(new THREE.TorusGeometry(0.02, 0.003, 4, 10, Math.PI * 1.2), M.iron, mtx([0, top + 0.19, 0.27], [0, Math.PI / 2, 0]));
+    F.add(new THREE.TorusGeometry(0.02, 0.003, 4, 10, Math.PI * 1.2), M.iron, mtx([0, top + 0.198, 0.27], [0, Math.PI / 2, 0]));
     // seat: leather cushion stuffed with hair
-    F.add(blob(0.105, 0.075, 0.16, rng, { detail: 2, rough: 0.05 }), M.leather, mtx([0, top + 0.005, 0]), [1.5, 1.25, 1.05]);
+    F.add(blob(0.105, 0.075, 0.16, rng, { detail: 2, rough: 0.05 }), M.leather, mtx([0, top + 0.04, 0], [0, 0, 0], [1, 0.75, 1]), [1.5, 1.25, 1.05]); // on the boards, over the cloth
     // stirrups hanging on leathers, a horsehair girth hanging down one side
     for (const sd of [-1, 1]) {
       const sx = sd * 0.16;
@@ -162,6 +161,23 @@ export function saddle(K, x, z, yaw) {
       const c = new Float32Array(p.count * 3).fill(0.06);
       gb.setAttribute('color', new THREE.Float32BufferAttribute(c, 3));
       F.add(gb, M.cloth, mtx([-0.215, top - 0.06, -0.06], [0, 0, 0.05]));
+    }
+    // a working bridle (үүн) hung by its crown on a peg in the front post: plain leather cheeks, brow and nose
+    // bands, a throat strap, a jointed iron bit on two rings, the reins hanging in a loop (no silver: a festive
+    // bridle's plaques have no source here)
+    {
+      const at = [-0.8, y0 + 1.5, 0.85], L = (st, side, tint = [1.25, 1.15, 1.05]) => F.add(barGeo(st, side), M.leather, mtx(at), tint);
+      F.add(boxUV(new THREE.CylinderGeometry(0.012, 0.014, 0.2, 6).rotateZ(Math.PI / 2), 4), M.wood, mtx([at[0] - 0.02, at[1] - 0.012, at[2]]), [0.8, 0.72, 0.62]);
+      for (const sd of [-1, 1]) {
+        L([[0, 0.003, 0, 0.018, 0.003], [0, -0.004, sd * 0.016, 0.018, 0.003], [0, -0.03, sd * 0.03, 0.018, 0.003], [0, -0.2, sd * 0.055, 0.018, 0.003], [0, -0.42, sd * 0.068, 0.018, 0.003], [0, -0.5, sd * 0.07, 0.016, 0.003]], [1, 0, 0]);
+        F.add(new THREE.TorusGeometry(0.022, 0.003, 5, 14), M.iron, mtx([at[0], at[1] - 0.522, at[2] + sd * 0.07]), [0.8, 0.8, 0.84]);
+        F.add(tube([[0, -0.53, sd * 0.07], [0, -0.538, sd * 0.035], [0, -0.536, sd * 0.004]], 0.0042, 5, false, 4), M.iron, mtx(at), [0.75, 0.75, 0.8]); // one half of the jointed mouthpiece
+      }
+      F.add(new THREE.TorusGeometry(0.007, 0.0028, 4, 8), M.iron, mtx([at[0], at[1] - 0.536, at[2]], [0, Math.PI / 2, 0]), [0.75, 0.75, 0.8]); // the joint
+      L([[0, -0.1, -0.043, 0.015, 0.003], [0.03, -0.1, -0.032, 0.015, 0.003], [0.046, -0.1, 0, 0.015, 0.003], [0.03, -0.1, 0.032, 0.015, 0.003], [0, -0.1, 0.043, 0.015, 0.003]], [0, 1, 0]); // brow band
+      L([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((k) => { const a = k / 10 * Math.PI * 2; return [Math.sin(a) * (Math.sin(a) > 0 ? 0.06 : 0.045), -0.38 + 0.01 * Math.cos(a * 2), -Math.cos(a) * 0.066, 0.017, 0.003]; }), [0, 1, 0]); // nose band
+      L([[0, -0.06, -0.036, 0.01, 0.0025], [-0.02, -0.2, -0.032, 0.01, 0.0025], [-0.03, -0.31, 0, 0.01, 0.0025], [-0.02, -0.2, 0.032, 0.01, 0.0025], [0, -0.06, 0.036, 0.01, 0.0025]], [1, 0, 0]); // throat strap
+      L([[0, -0.544, -0.07, 0.014, 0.003], [0.004, -0.76, -0.06, 0.014, 0.003], [0.008, -0.95, -0.034, 0.014, 0.003], [0.01, -1.0, 0, 0.014, 0.003], [0.008, -0.95, 0.034, 0.014, 0.003], [0.004, -0.76, 0.06, 0.014, 0.003], [0, -0.544, 0.07, 0.014, 0.003]], [1, 0, 0], [1.1, 1.0, 0.92]); // reins (тэһиин)
     }
     return top;
   });
