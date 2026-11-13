@@ -10,20 +10,21 @@ import { uniform } from 'three/tsl';
 import { LAKE } from '../world/terrain.js';
 import { glintMaterial, lightMaterial } from './glint.js';
 import { DOOR as URASA_DOOR } from '../models/urasa/frame.js';
-import { XD, ZD, KH, GAP, PL } from '../models/balagan/dims.js';
+import { XD, ZD, KH, GAP, PL, FX, FZ, H as BH, inner } from '../models/balagan/dims.js';
 
 const FAR = 45; // m: glints show within this
 const NEAR = 14; // m: farther off (the hearth: 7 m) the light at the thing rises as a shaft, seen over roofs and trees
 const C = (r, g, b, k) => new THREE.Color(r, g, b).multiplyScalar(k);
 const smooth = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 // rooms in a placement's local space (+X east): who is inside (x, z), the doorway's middle and its outward normal
+// `free(x, y, z)` (y over the ground there): room for an eye, clear of the walls, the cover and the ceiling (the stage)
 const ROOMS = {
-  urasa: [{ in: (x, z) => Math.hypot(x, z) < URASA_DOOR.r - 0.15, door: [URASA_DOOR.r, 0], n: [1, 0] }], // the door faces +X
+  urasa: [{ in: (x, z) => Math.hypot(x, z) < URASA_DOOR.r - 0.15, free: (x, y, z) => y < 9 && Math.hypot(x, z) < URASA_DOOR.rAt(y) - 0.4, door: [URASA_DOOR.r, 0], n: [1, 0] }], // the door faces +X
   balagan: [
-    { in: (x, z) => x > -3.7 && x < XD && Math.abs(z) < 3.15, door: [XD, ZD], n: [1, 0] },
-    { in: (x, z) => Math.abs(x) < KH.hx + 0.6 && z < -3.3 && z > KH.zc - KH.hz, door: [KH.hx + GAP + 0.65 + PL + 0.05, -5.4], n: [1, 0] }, // the khoton's barn door (balagan/shell.js `kxd`, `KZD`)
+    { in: (x, z) => x > -3.7 && x < XD && Math.abs(z) < 3.15, free: (x, y, z) => y < BH - 0.15 && Math.abs(x) < inner(FX, y) - 0.25 && Math.abs(z) < inner(FZ, y) - 0.25, door: [XD, ZD], n: [1, 0] },
+    { in: (x, z) => Math.abs(x) < KH.hx + 0.6 && z < -3.3 && z > KH.zc - KH.hz, free: (x, y, z) => y < KH.h - 0.15 && Math.abs(x) < KH.hx && z < -3.5 && z > KH.zc - KH.hz + 0.2, door: [KH.hx + GAP + 0.65 + PL + 0.05, -5.4], n: [1, 0] }, // the khoton's barn door (balagan/shell.js `kxd`, `KZD`)
   ],
-  ampaar: [{ in: (x, z) => Math.abs(x) < 1.8 && Math.abs(z) < 1.8, door: [1.9, 0], n: [1, 0] }], // walls at ±1.9 (ampaar.js `HW`)
+  ampaar: [{ in: (x, z) => Math.abs(x) < 1.8 && Math.abs(z) < 1.8, free: (x, y, z) => y < 1.9 && Math.abs(x) < 1.6 && Math.abs(z) < 1.6, door: [1.9, 0], n: [1, 0] }], // walls at ±1.9 (ampaar.js `HW`)
 };
 // each hint's light: `px` its glint's least size on screen, `col` its colour (HDR), `glow` the bloom at the thing
 // (`m` across in metres, `asp` height/width, `ring` a halo's ring), `sparks` glints per beat
@@ -70,7 +71,8 @@ export class Hints {
     for (const p of game.world.placed) for (const r of ROOMS[p.model] || []) {
       const c = Math.cos(p.yaw || 0), s = Math.sin(p.yaw || 0), tw = (x, z) => new THREE.Vector3(p.x + x * c + z * s, 0, p.z - x * s + z * c);
       const at = (k) => { const v = tw(r.door[0] + r.n[0] * k, r.door[1] + r.n[1] * k); v.y = game.world.groundAt(v.x, v.z) + 1; return v; };
-      this.rooms.push({ in: (v) => { const dx = v.x - p.x, dz = v.z - p.z; return r.in(dx * c - dz * s, dx * s + dz * c); }, doorIn: at(-0.45), doorOut: at(0.6) });
+      const gy = game.world.groundAt(p.x, p.z);
+      this.rooms.push({ in: (v) => { const dx = v.x - p.x, dz = v.z - p.z; return r.in(dx * c - dz * s, dx * s + dz * c); }, free: (v) => { const dx = v.x - p.x, dz = v.z - p.z; return r.free(dx * c - dz * s, v.y - gy, dx * s + dz * c); }, doorIn: at(-0.45), doorOut: at(0.6) });
     }
   }
   room(v) { return this.rooms.find((r) => r.in(v)) || null; }
