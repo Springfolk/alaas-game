@@ -11,7 +11,7 @@ import { clamp, ease } from '../util.js';
 
 const D2R = Math.PI / 180;
 const SMALL = 1.5; // m: a thing of at most this radius is gone up to; a bigger one is framed from outside
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _box = new THREE.Box3();
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _w = new THREE.Vector3(), _box = new THREE.Box3();
 const UP = new THREE.Vector3(0, 1, 0);
 
 // The things an entry is shown by: its interactables with a place, the summer homestead first.
@@ -38,6 +38,11 @@ function inWall(k, x, y, z, pad) {
   return Math.abs(ox * k.c - oz * k.s) < k.hw + pad && Math.abs(ox * k.s + oz * k.c) < k.hd + pad;
 }
 // How far from `c` along the unit `dir` the eye may go, up to D, before it comes to a wall.
+// … or before it leaves the room `room` (hints.js `ROOMS`: walls, cover, ceiling) the thing stands in
+function reachRoom(room, c, dir, D) {
+  for (let t = 0.1; t < D; t += 0.1) if (!room.free(_w.set(c.x + dir.x * t, c.y + dir.y * t, c.z + dir.z * t))) return Math.max(0.1, t - 0.1);
+  return D;
+}
 function reach(walls, c, dir, D) {
   for (let t = 0.1; t < D; t += 0.1) {
     const x = c.x + dir.x * t, y = c.y + dir.y * t, z = c.z + dir.z * t;
@@ -98,12 +103,13 @@ export class Stage {
         if (preset) { s.yaw = preset[0] * D2R; s.el = preset[1] * D2R; s.k = v.dist || 1; if (v.free) s.yawMax = Math.PI; }
         else { s.yaw = Math.atan2(to.x, to.z); s.el = 14 * D2R; }
       }
-      if (s.mode === 'out') { s.elMin = 3 * D2R; s.elMax = 55 * D2R; }
+      if (s.mode === 'out') { s.elMin = 3 * D2R; s.elMax = 55 * D2R; world.optimized?.hold(b.box || new THREE.Box3().setFromCenterAndSize(b.c, new THREE.Vector3().setScalar(b.r * 2))); } // seen from above: the house itself, not its impostor
       if (s.el < 0) { s.elMin = s.el - 25 * D2R; s.elMax = 0; } // seen from below: it turns under, never over into the roof
     }
     // a small thing indoors: the walls the eye must stay within (thin long colliders; not one the thing itself is on)
     if (s.mode === 'near') s.walls = world.colliders.filter((k) => k.kind === 'box' && Math.min(k.hw, k.hd) <= 0.2 && Math.max(k.hw, k.hd) >= 0.5
       && Math.hypot(k.x - s.c.x, k.z - s.c.z) < 12 && !inWall(k, s.c.x, s.c.y, s.c.z, s.r + PAD));
+    if (s.mode === 'near' || s.mode === 'out') s.room = g.hints?.rooms.find((r) => r.in(s.c) && r.free(s.c)) || null; // a thing indoors: the eye stays in its room
     if (wasOn && this.s?.mode !== 'photo') s.cut = s.cut || s.mode !== 'near';
     this.s = s; this.on = true; this.closing = false;
     g.engine.closeLook = s.mode === 'near';
@@ -128,7 +134,7 @@ export class Stage {
   close(then) {
     const s = this.s;
     if (!this.on) { then?.(); return; }
-    const end = () => { this.on = false; this.s = null; this.body = null; this.closing = false; this.game.engine.closeLook = false; this.game.player.update(0); then?.(); };
+    const end = () => { this.game.world.optimized?.hold(null); this.on = false; this.s = null; this.body = null; this.closing = false; this.game.engine.closeLook = false; this.game.player.update(0); then?.(); };
     if (!s || s.mode === 'photo') { end(); return; }
     if (s.cut || (s.mode !== 'near' && s.mode !== 'work')) { this.cut(end); return; }
     this.closing = end; // glides back (update)
@@ -181,7 +187,8 @@ export class Stage {
       const D = (s.maxD ? Math.min(D0, s.maxD) : D0) * s.zoom;
       dirOf(s.yaw + s.oy + sway, el, this.pos);
       // not through a wall: the eye stops short of it (at once), and goes back out as the way clears (eased)
-      const free = s.walls?.length ? reach(s.walls, s.c, this.pos, D) : D;
+      let free = s.walls?.length ? reach(s.walls, s.c, this.pos, D) : D;
+      if (s.room) free = reachRoom(s.room, s.c, this.pos, free);
       s.d = s.d === undefined || free < s.d ? free : s.d + (free - s.d) * (1 - Math.exp(-6 * dt));
       this.pos.multiplyScalar(Math.max(s.d, s.r + 0.12)).add(s.c);
       const floor = this.game.world.groundAt(this.pos.x, this.pos.z) + (s.mode === 'out' ? 0.25 : 0.08); // never under the ground

@@ -47,6 +47,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 - Glass pane beside the thing (landscape: right; portrait: below): category, name, one line, the entry's saying (`say` in `views.json`), reference photographs as a strip (a tap puts one in the pane, again: full screen), `E` / "Read more" (the reading sheet: title, lead, the photographs (a tap: full screen), text, facts, related, sources), the language select, the close button. Names of found things round it on the view (a tap goes there).
 - Turning: drag (mouse under the drawn cursor, finger, ← →), wheel = nearer / further, a slow turn of its own unless camera motion is low.
 - Round a small thing the eye stops short of walls (thin long colliders, 16 cm clear) and of the ground.
+- A thing indoors: the eye stays inside its room, clear of walls, cover and ceiling (`ROOMS` `free` in `src/interact/hints.js`).
 - `ui.layout()` gives the stage the part of the screen the pane leaves free; the pane's text scrolls inside it, its buttons stay in view.
 
 | Kind (`Stage.open` → `s.mode`) | When | The view |

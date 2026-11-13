@@ -30,7 +30,7 @@
 - Read the tier from `engine.tier` or `TIER` (set before the world builds: `grassDensity`, `forest`, `ground`, `texMax`, `lite` …); `engine.opts.quality` is `high|medium|low` (mobile → `low`).
 - Lazy shadows (phones; high as a dynamic-quality knob before the slower beat): the sun's maps re-render on a 1.5 m move or 8° turn (≤8/s), else every 2 s; the warm-up forces them each round; `?nolazy` off.
 - Watched shadows (medium, low): the maps re-render on any move or turn of the view or when a caster's world matrix, vertices, visibility, `castShadow` or layers change, else every 2 s; the lazy-shadow knob there caps them at 8/s, a view come to rest at once.
-- Model impostors from max(110 m, 6× size); phones max(45 m, 3× size), the homestead atlas at full size.
+- Model impostors from max(110 m, 6× size); phones max(45 m, 3× size), the homestead atlas at full size. A house on the stage seen from outside keeps its real meshes (`hold`, `merge.js`).
 - Phones (`mobile` tier or `isPhone()`, any preset or setting): 30 fps; the battery saver and frame-rate options are hidden there.
 - Battery saver (30 fps, desktops): default on a battery ≤20% unplugged (Battery Status API); the setting overrides.
 

@@ -5,7 +5,7 @@
   "model:ampaar": "a81766e27c41",
   "model:balagan": "ea16e583da0c",
   "model:barkwork": "2565f2df20a4",
-  "model:chores": "6dddb0986c94",
+  "model:chores": "9df56c9662d2",
   "model:drywood": "a74c7f34b16a",
   "model:fishery": "caf2b48b192e",
   "model:haybase": "2c962bfe3f7a",
@@ -97,7 +97,7 @@
   },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "6dddb0986c94",
+   "key": "9df56c9662d2",
    "file": "chores-753cb87c.bin",
    "bytes": 11650,
    "raw": 47444
