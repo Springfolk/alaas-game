@@ -74,6 +74,7 @@ export class Guide {
     this.targets = d.id ? this.places(d.id) : this.job ? this.jobPlaces(this.job) : [d.at];
     this.target = null; this.t = 0;
     if (!this.targets.length) return this.clear();
+    if (this.job) { const p = this.game.player.pos; d.at = this.targets.reduce((a, b) => (a && a.distanceToSquared(p) < b.distanceToSquared(p) ? a : b), null); }
     this.update();
     return d;
   }
@@ -94,6 +95,7 @@ export class Guide {
       this.t = 0.5;
       if (this.job) { const t = this.jobPlaces(this.job); if (t.length) this.targets = t; }
       this.target = this.targets.reduce((a, b) => (a && a.distanceToSquared(p) < b.distanceToSquared(p) ? a : b), null);
+      if (this.job && this.target) this.dest.at = this.target; // (the map draws it where it leads now)
     }
     const d = Math.hypot(this.target.x - p.x, this.target.z - p.z);
     const wait = this.id ? !g.state.found.has(this.id) : this.job === 'hay' && !g.work?.jobs.some((j) => j.scythe && j.held); // a thing not yet found: until it is; a scythe: until taken
