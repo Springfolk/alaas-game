@@ -87,7 +87,7 @@ export class Stage {
       } else s.mode = 'photo'; // an idea: its photographs carry it, the view stays
     } else {
       const b = boundsOf(world, it);
-      s.c = b.c; s.r = b.r;
+      s.c = b.c; s.r = b.r; s.box = b.box;
       const preset = (!inPerson || it === pickThing(world, id, v)) && v.dir;
       const to = _v.copy(eye).sub(b.c), dist = to.length();
       if (inPerson && b.r <= SMALL) { // gone up to, along the line it is seen on
@@ -109,7 +109,8 @@ export class Stage {
     // a small thing indoors: the walls the eye must stay within (thin long colliders; not one the thing itself is on)
     if (s.mode === 'near') s.walls = world.colliders.filter((k) => k.kind === 'box' && Math.min(k.hw, k.hd) <= 0.2 && Math.max(k.hw, k.hd) >= 0.5
       && Math.hypot(k.x - s.c.x, k.z - s.c.z) < 12 && !inWall(k, s.c.x, s.c.y, s.c.z, s.r + PAD));
-    if (s.mode === 'near' || s.mode === 'out') s.room = g.hints?.rooms.find((r) => r.in(s.c) && r.free(s.c)) || null; // a thing indoors: the eye stays in its room
+    // a thing indoors: the eye stays in its room (not the house itself, framed from outside: its box holds the doorway)
+    if (s.mode === 'near' || s.mode === 'out') s.room = g.hints?.rooms.find((r) => r.in(s.c) && r.free(s.c) && !(s.mode === 'out' && s.box?.containsPoint(r.doorIn))) || null;
     if (wasOn && this.s?.mode !== 'photo') s.cut = s.cut || s.mode !== 'near';
     this.s = s; this.on = true; this.closing = false;
     g.engine.closeLook = s.mode === 'near' && !this.byFire(s); // (a fire in view keeps play's metering: the close-up gain would blow its flame white)
