@@ -15,7 +15,7 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 | Surface | Shows |
 |---|---|
 | Dot | dot; larger and blue on a thing; a green ring when the hands can do something |
-| Look prompt (`#prompt`, `ui.setPrompt`) | the thing's name on top; under it, apart: blue lens + `E` = it can be looked at closer; green plate = the act's tool, its verb, the mouse glyph. Desktop: low in the screen, small and soft; touch: under the dot. With nothing in view the plate alone, when what is carried can be used. Its parts are permanent elements (touch takes touches on them) |
+| Look prompt (`#prompt`, `ui.setPrompt`) | the thing's name on top; under it, apart: blue lens + `E` = it can be looked at closer; green plate = the act's tool, its verb, the mouse glyph. Desktop: low in the screen, small and soft; touch: under the dot, on a soft dark shade. With nothing in view the plate alone, when what is carried can be used. Its parts are permanent elements (touch takes touches on them) |
 | Put-down hint (`#puthint`) | low on the right while something is carried: where it goes (down / back) + right mouse |
 | Found by doing (`ui.discovered`) | glass pill, top right: the thing's journal picture in a gold ring and its name, 2.6 s |
 | Saying (`ui.toast`) | glass caption: one italic line and its by-line, low in the view (phones: under the corner buttons) |
@@ -48,11 +48,12 @@ Principle: a visual show, not explanation; portrait phone first. Styles in `inde
 - Turning: drag (mouse under the drawn cursor, finger, ← →), wheel = nearer / further, a slow turn of its own unless camera motion is low.
 - Round a small thing the eye stops short of walls (thin long colliders, 16 cm clear) and of the ground.
 - A thing indoors: the eye stays inside its room, clear of walls, cover and ceiling (`ROOMS` `free` in `src/interact/hints.js`).
+- Names of found things round it (`ui.frame`): on their dots, nearest first, text to the right (left at the right edge), inside the free part, clear of the lesson and of each other, else hidden.
 - `ui.layout()` gives the stage the part of the screen the pane leaves free; the pane's text scrolls inside it, its buttons stay in view.
 
 | Kind (`Stage.open` → `s.mode`) | When | The view |
 |---|---|---|
-| `near` | a thing ≤ 1.5 m in radius | glides up to it along the line it was seen on (0.55 s); orbit ±50°; over the eye: seen from below, orbit ±30°; `engine.closeLook`: the eye adapts fully |
+| `near` | a thing ≤ 1.5 m in radius | glides up to it along the line it was seen on (0.55 s); orbit ±50°; over the eye: seen from below, orbit ±30°; `engine.closeLook`: the eye adapts fully, except with a fire (`userData.fire` light) in view |
 | `out` | a house, tree, fence, seen from outside | cut (dip to dark 0.4 s) to the baked side (`dir`), framed whole; orbit all round where `free` |
 | `here` | inside the thing, or an entry with a `cam` (in person too when the thing is over the eye) | stays (or cuts to `cam`, its aim in the free part of the screen) and looks round |
 | `photo` | an idea with no place (`photo`) | the view stays; its photograph fills the free part |

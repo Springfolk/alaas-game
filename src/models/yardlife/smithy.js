@@ -278,7 +278,7 @@ export function smithy(K, x, z, yaw) {
   // light from the coals
   const light = new THREE.PointLight(0xff7a33, 0, 5.5, 2);
   light.position.set(...Wy(FX, fy + FTOP + 0.15, 0));
-  light.castShadow = false;
+  light.castShadow = false; light.userData.fire = true;
   K.group.add(light);
 
   // ---- animation: idle smoulder; pumping alternates the bags and the coals flare ----

@@ -91,7 +91,7 @@ export default async function build(ctx) {
   root.add(fire.group);
   root.traverse((o) => { if (o.isMesh) o.castShadow = !o.userData.noShadow && !o.material.transparent; });
   const BOUNCE = 0.13, bounce = new THREE.PointLight(0xffc9a0, 0, 7.5, 1);
-  root.add(bounce);
+  root.add(bounce); fire.light.userData.pair = bounce; // (a carried thing indoors takes both: src/engine/master.js fireLit)
   // Explicit light sets. Interior-only materials take the fire's light alone: the sun gets in only through the
   // door and the smoke hole, and shadow-map leaks would light thin lines along every pole and seam. The outside
   // takes the sun alone (the fire must not glow through the bark); the floor, door frame and curtain take both.

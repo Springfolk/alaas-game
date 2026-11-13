@@ -96,7 +96,7 @@ export function buildFire(rng, { holeY, holeR, coneR }) {
   // ---- light
   const light = new THREE.PointLight(0xffb27c, FIRE_LIGHT.intensity, FIRE_LIGHT.distance, 2); // warm but not orange; cut off within the house
   light.position.set(0, y0 + 0.6, 0);
-  light.userData.noShadow = true;
+  light.userData.noShadow = true; light.userData.fire = true; // (the inspect stage meters a fire as play does)
   group.add(light);
 
   // ---- smoke: camera-facing puffs rebuilt each frame on the CPU

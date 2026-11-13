@@ -7,6 +7,7 @@
 // Props: src/models/barkwork.js. Softening by warming at the fire is attested; boiling is not (docs/content.md).
 import * as THREE from 'three/webgpu';
 import { ease } from '../../util.js';
+import { fireLit } from '../../engine/master.js';
 
 const L = (sah, en, ru) => ({ sah, en, ru });
 const TXT = {
@@ -45,6 +46,8 @@ export class Tuos {
     this.pose = null; this.folding = -1;
     const own = hands.pose;
     hands.pose = (dt, cam) => (hands.held === this.thing ? this.pose || (this.made ? null : WORK) : own?.(dt, cam));
+    const fires = []; this.game.engine.scene.traverse((o) => { if (o.isLight && o.userData.fire) fires.push(o); });
+    parts.vessel.traverse((o) => { if (o.material) fireLit(o.material, parts.vessel, fires, 20); }); // carried indoors: lit by the hearth, as the house is, its face to the eye by the room's glow
     this.thing.onDown = () => { this.onHide = this.thing.obj.position.distanceTo(this.rest.p) < 0.9; };
   }
   get held() { return this.hands.held === this.thing; }
@@ -96,7 +99,8 @@ export class Tuos {
       if (F.on) await this.wait(0.5); // the edges stand, it is soft
       F.aim({ c: work.clone().add(V(0, 0.03, 0)), r: 0.32, el: 0.7 });
       while (F.on && !this.made) { await this.foldNext(); await this.wait(0.25); }
-      if (this.made) { F.aim({ r: 0.24 }); await this.wait(1.6); } // the vessel, close up
+      if (this.made) { F.aim({ c: this.centre(), r: 0.17 }); await this.wait(2.2); } // the vessel, close up
+      const P = g.player; if (F.on) P.yaw = P.aimYaw = Math.atan2(P.pos.x - fp.x, P.pos.z - fp.z), P.pitch = P.aimPitch = -0.4; // back in the body: facing the fire, the vessel in the hands
       await F.close();
     }
     h.eye = null; this.pose = null; this.at = null;
@@ -105,6 +109,13 @@ export class Tuos {
     g.promptKey = null;
   }
   wait(s) { return this.tween(s, () => {}); }
+  // the middle of the vessel as drawn (its visible meshes only: the berries wait hidden inside)
+  centre() {
+    const b = new THREE.Box3(), m = new THREE.Box3();
+    this.thing.obj.updateWorldMatrix(true, true);
+    this.thing.obj.traverseVisible((o) => { if (o.isMesh) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); b.union(m.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld)); } });
+    return b.getCenter(V(0, 0, 0));
+  }
   // one pass through the heat: out over the fire's edge, along it, back; the long edges lift a step
   async warmIt() {
     const g = this.game, A = this.at, P = this.pose;
