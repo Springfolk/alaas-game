@@ -81,6 +81,25 @@ export function useLights(material, own) {
     });
   });
 }
+/** A carried thing's material: lit by the fire (a light marked `userData.fire`, with its house's second light in
+ * `userData.pair`, × `fill`) whose reach `obj` is in, as the house's own things are. */
+export function fireLit(material, obj, fires, fill = 1) {
+  material._ownLights = true;
+  const cur = { l: null }, w = new THREE.Vector3(), q = new THREE.Vector3();
+  const pick = () => {
+    obj.getWorldPosition(w); cur.l = null;
+    for (const l of fires) if (q.setFromMatrixPosition(l.matrixWorld).distanceTo(w) < l.distance) cur.l = l;
+  };
+  for (let i = 0; i < LOCAL_LIGHTS; i++) {
+    const c = new THREE.Color(), p = new THREE.Vector3(), lit = () => (i === 0 ? cur.l : cur.l?.userData.pair);
+    Object.defineProperties(material, {
+      [`_l${i}c`]: { get: () => { if (i === 0) pick(); const l = lit(); return l ? c.copy(l.color).multiplyScalar(l.intensity * (i ? fill : 1)) : c.setRGB(0, 0, 0); }, configurable: true },
+      [`_l${i}p`]: { get: () => { const l = lit(); return l ? p.setFromMatrixPosition(l.matrixWorld) : p; }, configurable: true },
+      [`_l${i}d`]: { get: () => lit()?.distance ?? 1, configurable: true },
+      [`_l${i}k`]: { get: () => lit()?.decay ?? 2, configurable: true },
+    });
+  }
+}
 /** Model helpers: no sunlight (an interior the shadow map would leak into) / none of the model's lights. */
 export const noSun = (m) => { m._sun = 0; return m; };
 export const noLocalLights = (m) => { m._ownLights = true; return m; };

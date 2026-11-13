@@ -96,7 +96,7 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
     // reach and decay: the far benches keep their shape in its light; it stands before the mouth, so the hood's
     // own front takes some of it
     const light = new THREE.PointLight(0xffb57a, 6, 9, 1.5);
-    light.position.set(F[0] + sw[0] * 0.62, F[1] + 0.5, F[2] + sw[1] * 0.62);
+    light.position.set(F[0] + sw[0] * 0.62, F[1] + 0.5, F[2] + sw[1] * 0.62); light.userData.fire = true;
     // No shadow map: a point-light shadow adds a sampled texture to every lit material in the scene and
     // pushes the ground shader past WebGPU's default 16-texture limit. Re-enable if the engine raises
     // requiredLimits.maxSampledTexturesPerShaderStage.
@@ -107,7 +107,7 @@ export function buildHearth({ B, M, rng, winter, root, chTop }) {
     const fill = new THREE.PointLight(0xc4d4ea, 1.4, 5.5, 1.6);
     fill.position.set(2.5, 1.1, 0.5);
     root.add(fill);
-    fire.fill = fill;
+    fire.fill = fill; light.userData.pair = fill;
   } else {
     // the shut-up winter house: daylight through the door (bright when open, a glow through the gaps when shut)
     // and through the windows and the cracks in the old plaster, from overhead

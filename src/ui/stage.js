@@ -112,7 +112,7 @@ export class Stage {
     if (s.mode === 'near' || s.mode === 'out') s.room = g.hints?.rooms.find((r) => r.in(s.c) && r.free(s.c)) || null; // a thing indoors: the eye stays in its room
     if (wasOn && this.s?.mode !== 'photo') s.cut = s.cut || s.mode !== 'near';
     this.s = s; this.on = true; this.closing = false;
-    g.engine.closeLook = s.mode === 'near';
+    g.engine.closeLook = s.mode === 'near' && !this.byFire(s); // (a fire in view keeps play's metering: the close-up gain would blow its flame white)
     if (s.mode === 'photo') { s.t = 1; return s.mode; }
     if (s.cut) { s.hold = true; this.cut(() => { s.t = 1; s.hold = false; }); } // (the view stays put until the dip hides the cut)
     return s.mode;
@@ -232,6 +232,12 @@ export class Stage {
     v.applyMatrix4(this.cam.projectionMatrix);
     out.x = (v.x + 1) / 2 * innerWidth; out.y = (1 - v.y) / 2 * innerHeight;
     return out;
+  }
+  // Is a fire (a light marked `userData.fire`) within the staged view?
+  byFire(s) {
+    if (!this.fires) { this.fires = []; this.game.engine.scene.traverse((o) => { if (o.isLight && o.userData.fire) this.fires.push(o); }); }
+    const p = new THREE.Vector3();
+    return this.fires.some((l) => l.getWorldPosition(p).distanceTo(s.c) < s.r + 1);
   }
   // The named things round the staged one: its own labelled parts, and what the player has found there.
   marks(found) {

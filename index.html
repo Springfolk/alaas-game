@@ -194,6 +194,8 @@
   .p-act .p-key .mouse { width: 10px; height: 15px; }
   /* touch: the lens and the plate are tap targets too */
   .tc-live .p-read .lens { width: 38px; height: 38px; } .tc-live .p-read .ic { width: 20px; height: 20px; }
+  .tc-live #prompt::before { content: ''; position: absolute; inset: -12px -26px; z-index: -1; border-radius: 50%; /* at the thing: a soft shade keeps it readable over flame, sky or white bark */
+    background: radial-gradient(closest-side, rgba(4,18,36,.62), rgba(4,18,36,.45) 55%, rgba(4,18,36,0)); }
   .tc-live .p-act { min-height: 38px; padding: 3px 10px 3px 3px; } .tc-live .p-act .tool { width: 30px; height: 30px; } .tc-live .p-act .tool .ic { width: 20px; height: 20px; }
   /* what is carried can be put down: by the hands, low on the right */
   #puthint { position: fixed; z-index: 4; right: 19vw; bottom: 9vh; zoom: var(--ui); display: none; align-items: center; gap: 7px; padding: 5px 7px 5px 9px; }
@@ -247,9 +249,10 @@
   .st-go kbd { box-shadow: none; }
   /* the names of the things round it, on their places */
   .st-marks { position: absolute; left: 0; top: 0; }
-  .st-mark { position: absolute; left: 0; top: 0; display: none; align-items: center; gap: 7px; margin: -10px 0 0 -6px; padding: 2px 10px 2px 0; border: 0; background: none; cursor: pointer; white-space: nowrap; will-change: transform;
+  .st-mark { position: absolute; left: 0; top: 0; display: none; align-items: center; gap: 7px; padding: 2px 10px 2px 0; border: 0; background: none; cursor: pointer; white-space: nowrap; will-change: transform;
     color: #fff; font: 600 13px var(--sans); text-shadow: 0 1px 2px rgba(0,8,20,.95), 0 0 10px rgba(0,8,20,.85); }
-  .st-mark.on { display: flex; }
+  .st-mark.on { display: flex; } .st-mark.msr { display: flex; visibility: hidden; }
+  .st-mark.l { flex-direction: row-reverse; padding: 2px 0 2px 10px; }
   .st-mark i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; background: #2a8ae0; }
   .st-mark.vh, .st-mark:hover { color: var(--live-l); }
   @media (orientation: portrait) {

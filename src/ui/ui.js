@@ -272,13 +272,25 @@ export class UI {
       this.marks = st.marks(this.state.found);
       box.innerHTML = this.marks.map((m, k) => `<button class="st-mark" data-mark="${k}"><i></i>${nameHTML(m.label || BY_ID[m.entry], this.state.lang)}</button>`).join('');
       this.markEls = [...box.children];
+      for (const el of this.markEls) { el.classList.add('msr'); el._w = el.offsetWidth; el._h = el.offsetHeight; el.classList.remove('msr'); } // (both names of a fade share one box: its width is the longer)
     }
-    const f = this.free, o = {};
+    // each name on its dot, its text to the right, or to the left at the right edge; inside the free part of the view,
+    // clear of the lesson and of the names already placed (nearest first)
+    const f = this.free, o = {}, keep = [], t = document.getElementById('teach');
+    if (t && t.offsetParent) { const r = t.getBoundingClientRect(); if (r.width) keep.push(r); }
     for (let k = 0; k < this.marks.length; k++) {
       const el = this.markEls[k], p = st.s?.t >= 1 && !st.closing && st.project(this.marks[k].p, o);
-      const on = !!p && p.x > f.l + 12 && p.x < f.r - 40 && p.y > f.t + 8 && p.y < f.b - 16;
+      let on = !!p && p.x > f.l + 8 && p.x < f.r - 8 && p.y > f.t + 8 && p.y < f.b - 8, left = false, x = 0;
+      if (on) {
+        left = p.x - 6 + el._w > f.r - 4;
+        x = left ? p.x + 6 - el._w : p.x - 6;
+        const r = { left: x - 3, right: x + el._w + 3, top: p.y - el._h / 2 - 2, bottom: p.y + el._h / 2 + 2 };
+        on = x >= f.l + 4 && r.top >= f.t && r.bottom <= f.b && !keep.some((q) => r.left < q.right && r.right > q.left && r.top < q.bottom && r.bottom > q.top);
+        if (on) keep.push(r);
+      }
       if (on !== el._on) { el._on = on; el.classList.toggle('on', on); }
-      if (on) el.style.transform = `translate(${Math.round(p.x)}px,${Math.round(p.y)}px)`;
+      if (left !== el._l) { el._l = left; el.classList.toggle('l', left); }
+      if (on) el.style.transform = `translate(${Math.round(x)}px,${Math.round(p.y - el._h / 2)}px)`;
     }
   }
   // the photograph `i` (the one shown) over everything, with its caption and credit
