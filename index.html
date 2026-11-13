@@ -480,7 +480,9 @@
   .settings .vadv { display: contents; }
   .settings .row > .vl:first-child { flex-direction: column; align-items: flex-start; gap: 1px; padding-left: 28px; }
   .settings .vl small { font-size: 11.5px; color: var(--c-dim); }
-  .qnote { color: #8a5a10; font-size: 13px; background: #fff6e2; border: 1px solid #f0d49a; margin-top: 4px; }
+  /* the reload notice: pinned to the foot of the page, under the scrolling list */
+  .qnote { position: sticky; bottom: -14px; z-index: 2; margin: 10px -16px -14px; padding: 8px 16px; color: #8a5a10; font-size: 13px; font-weight: 600;
+    background: #fff6e2; border-top: 1px solid #e5bf72; border-radius: 0 0 4px 4px; box-shadow: 0 -4px 10px rgba(120,80,10,.12); }
   .qnote[hidden], .settings .row[hidden] { display: none; }
   /* the controls, drawn: its key (or the touch control) and what it does */
   .keys { display: grid; grid-template-columns: auto 1fr; gap: 9px 14px; font-size: 14px; color: var(--c-ink); align-items: center; padding: 4px 6px; }
@@ -636,8 +638,8 @@
             <label class="row"><span><i data-ic="battery"></i><span data-t="battery"></span></span><input id="s-battery" type="checkbox"></label>
             <div class="row vmore"><span><i data-ic="sliders"></i><span data-t="vMore"></span></span></div>
             <div class="vadv" id="v-adv"></div>
-            <div class="qnote" id="qnote" hidden><span data-t="qReload"></span> <button class="btn" id="reload" data-t="reload"></button></div>
           </div>
+          <div class="qnote" id="qnote" hidden><span data-t="qReload"></span> <button class="btn" id="reload" data-t="reload"></button></div>
         </div>
         <div class="tab on" id="tab-controls">
           <div class="pz-title"><button class="pz-back" data-page=""><i data-ic="chev"></i></button><i data-ic="keys"></i><span data-t="controls"></span></div>
