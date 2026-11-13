@@ -5,7 +5,7 @@
   "model:ampaar": "a81766e27c41",
   "model:balagan": "ea16e583da0c",
   "model:barkwork": "2565f2df20a4",
-  "model:chores": "e14dbe369f4f",
+  "model:chores": "82b98613666e",
   "model:drywood": "a74c7f34b16a",
   "model:fishery": "caf2b48b192e",
   "model:haybase": "c2b46edb27c2",
@@ -15,9 +15,9 @@
   "model:sacred-birch": "56b5cf43ba39",
   "model:sele": "81399b06ce4b",
   "model:serge": "5ad310dd22e9",
-  "model:urasa": "c7dc13e12bf0",
+  "model:urasa": "4b029ba41c2a",
   "model:work": "d7b28476f977",
-  "model:yardlife": "e2d3537ec469"
+  "model:yardlife": "f83c8abb8dfa"
  },
  "packs": {
   "forest#c904aa13": {
@@ -97,7 +97,7 @@
   },
   "model:chores#753cb87c": {
    "group": "model:chores",
-   "key": "e14dbe369f4f",
+   "key": "82b98613666e",
    "file": "chores-753cb87c.bin",
    "bytes": 11650,
    "raw": 47444
@@ -172,10 +172,10 @@
   },
   "model:urasa#c45c7fb1": {
    "group": "model:urasa",
-   "key": "c7dc13e12bf0",
+   "key": "4b029ba41c2a",
    "file": "urasa-c45c7fb1.bin",
-   "bytes": 325601,
-   "raw": 1609588
+   "bytes": 358479,
+   "raw": 1712044
   },
   "model:work#9d148979": {
    "group": "model:work",
@@ -186,7 +186,7 @@
   },
   "model:yardlife#8f2bbc3c": {
    "group": "model:yardlife",
-   "key": "e2d3537ec469",
+   "key": "f83c8abb8dfa",
    "file": "yardlife-8f2bbc3c.bin",
    "bytes": 1362943,
    "raw": 4607500

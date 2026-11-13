@@ -1,11 +1,13 @@
 // The frame: the bell profile, 12 carved posts, three hoops, 96 inner poles of three lengths (to the
-// middle hoop, the top hoop and the lashed tie), 36 outer poles holding the second bark layer, the door frame.
+// middle hoop, the top hoop and the lashed tie), 24 outer poles holding the bark cover down, the door frame.
 // Size: a rich family's summer house, ~10 m across at the ground and ~11 m to the tie (see docs/models.md).
 import * as THREE from 'three/webgpu';
 import { TAU, tube, lathe, merge, beam, xf } from './geom.js';
-import { valueNoise } from '../../util.js';
+import { valueNoise, hash2 } from '../../util.js';
 
 export const N_POST = 12, POST_H = 2.03, POLE_R = 0.048;
+// The bark cover's offsets from the pole line (urasa/cover.js): inner face, outer tiers' top, a tier's extra thickness at its lower edge.
+export const O_IN = 0.042, O_OUT = 0.056, TIER_T = 0.024;
 // carved posts (m up the post): the stained waist, and the bands of cut teeth [y0, y1] below it, above it and under the hoop
 export const POST_WAIST = [1.425, 1.575], POST_BANDS = [[1.375, 1.42], [1.58, 1.625], [1.905, 1.955]], POST_TEETH = 28;
 const HOOP_RT = 0.06; // lower hoop thickness
@@ -176,7 +178,8 @@ export function buildFrame(rng, P) {
     const perp = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a));
     const toApex = sEnd >= sApex;
     for (const s of poleRows(s0, sEnd, toApex)) {
-      const v = onProf(P, s, a, toApex ? o * (1 - Math.max(0, (s - (sApex - 1.6)) / 1.6) * 0.85) : o);
+      const os = typeof o === 'function' ? o(s) : o;
+      const v = onProf(P, s, a, toApex ? os * (1 - Math.max(0, (s - (sApex - 1.6)) / 1.6) * 0.85) : os);
       const k = toApex ? Math.max(0, Math.min(1, (s - (sApex - 1.8)) / 1.8)) : 0;
       v.addScaledVector(perp, lateral * k * k * (3 - 2 * k) + Math.sin(s * 1.1 + wobble) * 0.01);
       pts.push(v);
@@ -204,24 +207,30 @@ export function buildFrame(rng, P) {
     const rb = POLE_R * (0.9 + rng() * 0.25), rt = kind === 0 ? 0.016 + rng() * 0.005 : 0.022 + rng() * 0.006, seed = rng() * 50;
     G.poleIn.push(tube(pts, (t, an) => (rb + (rt - rb) * Math.pow(t, 0.8)) * (1 + valueNoise(an * 1.5 + seed, t * 30, 3) * 0.07), 6, { capEnd: true }));
   }
-  const NOUT = 36, outerAngles = [];
-  for (let k = 0; k < NOUT; k++) {
-    let a = ((k + 0.5) / NOUT) * TAU;
+  // Outer poles: slim peeled larch weathered silver, laid over the bark at uneven gaps (Suntaar and Druzhba urahas:
+  // ~24 round). They rest on the tiers' lower edges. Eleven draws each for 36 poles, as many as ever (the cover's and
+  // the interior's draws follow these).
+  const NOUT = 24, outerAngles = [];
+  for (let k = 0; k < 36; k++) {
+    const R = Array.from({ length: 11 }, () => rng());
+    if (k >= NOUT) continue;
+    let a = ((k + 0.5) / NOUT) * TAU + (hash2(k, 5, 61) - 0.5) * 0.8 * (TAU / NOUT);
     const w = Math.atan2(Math.sin(a), Math.cos(a));
     if (Math.abs(w) < doorA + 0.04) a = Math.sign(w) * (doorA + 0.05);
-    a += (rng() - 0.5) * 0.015;
+    a += (R[0] - 0.5) * 0.015;
     outerAngles.push(a);
-    const extra = 0.5 + rng() * 0.7;
-    const pts = polePath(a, 0.112, 0, sApex, extra, (rng() - 0.5) * 0.2, rng() * 9);
+    const extra = 0.5 + R[1] * 0.7;
+    const rb = 0.028 + R[7] * 0.012, rt = 0.012 + R[8] * 0.005, seed = R[9] * 50, knots = R[10] * 40;
+    const lie = O_OUT + TIER_T + 0.006;
+    const pts = polePath(a, (s) => lie + rb + (rt - rb) * Math.pow(Math.min(1, s / sApex), 0.7), 0, sApex, extra, (R[2] - 0.5) * 0.2, R[3] * 9);
     pts[0].y -= 0.1;
     // peeled larch: never straight — a sweep, a kink or two, knots and an uneven taper
-    const sweep = (rng() - 0.5) * 0.08, kink = rng() * 0.8 + 0.1, kinkA = (rng() - 0.5) * 0.04;
+    const sweep = (R[4] - 0.5) * 0.08, kink = R[5] * 0.8 + 0.1, kinkA = (R[6] - 0.5) * 0.04;
     const side = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a));
     pts.forEach((p, i) => {
       const t = i / (pts.length - 1);
       p.addScaledVector(side, Math.sin(t * Math.PI) * sweep + Math.max(0, t - kink) * kinkA * 3 + valueNoise(t * 9, k, 5) * 0.014);
     });
-    const rb = 0.036 + rng() * 0.018, rt = 0.014 + rng() * 0.006, seed = rng() * 50, knots = rng() * 40;
     G.poleOut.push(tube(pts, (t, an) => (rb + (rt - rb) * Math.pow(t, 0.7)) * (1 + valueNoise(an * 1.5 + seed, t * 30, 3) * 0.12 + Math.max(0, valueNoise(t * 26 + knots, an * 0.5, 4) - 0.55) * 0.5), 6, { capEnd: true }));
   }
 

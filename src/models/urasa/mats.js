@@ -54,15 +54,15 @@ export function makeMats() {
   const p = positionLocal;
   const ang = atan(p.z, p.x);
 
-  // ---- outer bark cover: rings of sewn sheets. uv.x = metres/1.6 along the ring, uv.y = metres/0.62 up the ring.
-  // aRing = (ring index, random, scallops on this ring, uv.y where the ring above lies on it)
+  // ---- outer bark cover: tiers of sewn sheets. uv.x = metres/1.6 along the tier, uv.y = metres/0.62 up the tier.
+  // aRing = (tier index, random, scallops on this tier, uv.y where the tier above lies on it)
   {
     const m = std({ name: 'tuos-outer' });
     const ring = attribute('aRing', 'vec4');
     const t = uv();
-    // each 0.8 m sheet picks one of the two baked sheets, maybe upside down: no visible repeat. Cut by hand: the
-    // sheet ends of a ring lean a little and wander (tx2: sheets along the ring)
-    const tx2 = t.x.mul(2).add(hash(ring.x.mul(3.1)).sub(0.5).mul(0.09).mul(t.y.sub(0.5))).add(cos(t.y.mul(9).add(ring.x)).mul(0.005));
+    // each ~1.3 m sheet picks one of the two baked sheets, maybe upside down: no visible repeat. Cut by hand: the
+    // sheet ends of a tier lean a little and wander (tx2: sheets along the tier)
+    const tx2 = t.x.mul(1.25).add(hash(ring.x.mul(3.1)).sub(0.5).mul(0.09).mul(t.y.sub(0.5))).add(cos(t.y.mul(9).add(ring.x)).mul(0.005));
     const sh = floor(tx2).add(ring.x.mul(17.3));
     const pick = floor(hash(sh.add(5.1)).mul(2)), flipV = hash(sh.add(9.7)).greaterThan(0.5);
     const ts = vec2(fract(tx2).add(pick).mul(0.5), select(flipV, float(1).sub(t.y), t.y));
@@ -70,7 +70,7 @@ export function makeMats() {
     const y = p.y;
     const scal = ring.x.greaterThan(0.5).select(float(0.024).mul(float(0.5).sub(cos(ang.mul(ring.z)).mul(0.5))), float(-1));
     const vNext = ring.w; // where the ring above lies on this one
-    // the sheets: each 0.8 m cell is one sheet, or two where a narrower one is sewn on beside it (split)
+    // the sheets: each cell is one sheet, or two where a narrower one is sewn on beside it (split)
     const cell = sh, lu = fract(tx2);
     const split = hash(cell.add(2.7)).mul(0.5).add(0.25).add(hash(cell.add(6.6)).sub(0.5).mul(0.1).mul(t.y.sub(0.5)));
     const twoSheets = hash(cell.add(8.1)).lessThan(0.55);
@@ -81,7 +81,8 @@ export function makeMats() {
     const tint = select(h2.lessThan(0.5), vec3(1.0, 0.97, 0.9), select(h2.lessThan(0.65), vec3(1.02, 1.01, 0.98), select(h2.lessThan(0.9), vec3(0.9, 0.87, 0.8), vec3(0.8, 0.7, 0.58))));
     // each sheet a little darker towards one end (bark from higher or lower on the trunk)
     const grad = mix(float(1), float(0.9), h4.greaterThan(0.5).select(lu, float(1).sub(lu)).mul(h4.mul(2).fract()));
-    let c = d.mul(h1.mul(0.14).add(0.87)).mul(tint).mul(grad).mul(1.35).min(0.86);
+    // (softened: a sheet differs from its neighbour by a shade, never a block of another colour)
+    let c = d.mul(h1.mul(0.08).add(0.92)).mul(mix(vec3(1), tint, 0.6)).mul(grad).mul(1.35).min(0.86);
     // weathering: cream → grey-brown, patchy, more on the upper rings that get the sun
     // the seven slow position-only noises (≤ 18/m): phones evaluate them per vertex (~11 cm apart), three varyings —
     // the cover filling the screen cost a warm iPhone ~44 ms a frame in these alone
@@ -97,18 +98,34 @@ export function makeMats() {
     const grey = vec3(lum(c)).mul(vec3(0.84, 0.8, 0.72)); // silvered, not browned
     c = mix(c, grey, age).mul(N.edgeK.mul(0.16).add(0.92)); // and mottled across the sheets
     // whole rings differ too: one sewn on later stays creamier, an older one has gone grey (ring.y: per ring)
-    c = c.mul(mix(vec3(1.04, 1.01, 0.93), vec3(0.95, 0.96, 0.98), ring.y));
+    c = c.mul(mix(vec3(1.06, 1.02, 0.92), vec3(0.91, 0.92, 0.94), ring.y));
     // darker weathered sheet edges (end seams and the free lower edge)
-    const eu = min(lu, float(1).sub(lu)).mul(0.8); // metres to the sheet end
+    const eu = min(lu, float(1).sub(lu)).mul(1.28); // metres to the sheet end
     const en = fbm3(vec3(t.x.mul(40), t.y.mul(8), ring.x), 3);
     const edgeDirt = smoothstep(0.06, 0.0, eu.sub(en.mul(0.02))).add(smoothstep(0.1, 0.0, t.y.sub(en.mul(0.03)))).clamp(0, 1);
     const edgeK = smoothstep(0.35, 0.75, N.edgeK).mul(h1.mul(0.7).add(0.3)); // only here and there
     c = mix(c, c.mul(vec3(0.55, 0.47, 0.38)), edgeDirt.mul(edgeK).mul(0.6));
+    // laps and seams, antialiased: a line thinner than a pixel fades instead of shimmering, so far off the cover
+    // reads as patchwork, not as a grid of tiles. fwM, fwV: metres per pixel across and along the ring.
+    const fwM = fwidth(t.x).mul(1.6).max(1e-5), fwV = fwidth(t.y).mul(0.62).max(1e-5);
+    const line = (dm, w, fw) => smoothstep(w.add(fw), w, dm).mul(min(float(1), w.mul(2).div(fw)));
+    // lenticels and scars: dark lens-shaped dashes 4–23 cm long, up to 1.1 cm thick, in loose rows 3 cm apart,
+    // denser on some sheets; far off they fade to a grain
+    {
+      const mx = t.x.mul(1.6), my = t.y.mul(0.62);
+      const ry = floor(my.div(0.03)), fy = fract(my.div(0.03)).sub(0.5).abs().mul(0.03);
+      const cx = mx.div(0.24).add(hash(ry.add(ring.x.mul(13.1)))), ci = floor(cx), fx = fract(cx).sub(0.5).abs().mul(2);
+      const hc = hash(ci.mul(7.31).add(ry.mul(1.913)).add(ring.x.mul(5.71))), hl = hash(ci.mul(3.17).add(ry.mul(4.37)).add(ring.x));
+      const len = hl.mul(0.8).add(0.15), k = fx.div(len).clamp(0, 1);
+      const half = hl.mul(hl).mul(0.0045).add(0.001).mul(float(1).sub(k.mul(k)));
+      const dash = line(fy, half, fwV).mul(step(hc, h1.mul(0.22).add(0.1))).mul(step(fx, len));
+      c = mix(c, c.mul(vec3(0.2, 0.18, 0.17)), dash.mul(0.9));
+    }
     // patched sheets: a smaller, browner piece sewn on with a row of stitches round it
     const isPatch = h3.lessThan(0.06);
     const px0 = hash(sheet.add(4.4)).mul(0.3).add(0.15), py0 = hash(sheet.add(5.5)).mul(0.25).add(0.12);
     const inPatch = step(px0, lu).mul(step(lu, px0.add(0.38))).mul(step(py0, t.y)).mul(step(t.y, py0.add(0.4))).mul(isPatch.select(1, 0));
-    const pd = min(min(lu.sub(px0), px0.add(0.38).sub(lu)).mul(0.8), min(t.y.sub(py0), py0.add(0.4).sub(t.y)).mul(0.62));
+    const pd = min(min(lu.sub(px0), px0.add(0.38).sub(lu)).mul(1.28), min(t.y.sub(py0), py0.add(0.4).sub(t.y)).mul(0.62));
     const stitchRow = smoothstep(0.004, 0.0, abs(pd.sub(0.012))).mul(step(0.45, fract(t.x.mul(1.6 * 120).add(t.y.mul(0.62 * 120)))));
     c = mix(c, c.mul(vec3(0.78, 0.66, 0.52)), inPatch.mul(0.8));
     c = mix(c, vec3(0.05, 0.04, 0.035), inPatch.mul(stitchRow));
@@ -125,25 +142,26 @@ export function makeMats() {
     // smoke from the hole: a brown-grey haze from mid-height that thickens to soot at the rim, in runs down the
     // slope (azimuthal noise, so the runs converge on the hole) and caught under every lap
     const run = smoothstep(0.3, 0.7, N.run).mul(N.soot.mul(0.6).add(0.4));
-    const haze = smoothstep(5.0, APEX_Y - 1.2, y);
-    const soot = haze.mul(run.mul(0.6).add(0.7)).add(smoothstep(APEX_Y - 2.4, APEX_Y - 0.5, y).mul(N.soot.mul(0.6).add(0.55))).clamp(0, 1);
-    c = mix(c, vec3(0.07, 0.06, 0.05), soot.mul(0.92));
+    // (the cover ends at the hole ~1 m under the apex: black over its top ~2 m, brown-grey runs down to mid-height)
+    const haze = smoothstep(4.6, APEX_Y - 2.2, y);
+    const soot = haze.mul(run.mul(0.75).add(0.3)).add(smoothstep(APEX_Y - 3.6, APEX_Y - 1.4, y).mul(N.soot.mul(0.5).add(0.6))).clamp(0, 1);
+    c = mix(c, mix(vec3(0.2, 0.17, 0.14), vec3(0.045, 0.04, 0.036), soot), soot.mul(0.96));
     const dirt = smoothstep(0.75, 0.0, y.add(N.dirt.mul(0.3))).clamp(0, 1);
     c = mix(c, vec3(0.22, 0.18, 0.13), dirt.mul(0.85));
     const splash = smoothstep(0.3, 0.0, y).mul(smoothstep(0.55, 0.75, N.splash));
     c = mix(c, vec3(0.2, 0.24, 0.12), splash.mul(0.6)); // mud and grass splash at the foot
-    // laps and seams, antialiased: a line thinner than a pixel fades instead of shimmering, so far off the cover
-    // reads as patchwork, not as a grid of tiles. fwM, fwV: metres per pixel across and along the ring.
-    const fwM = fwidth(t.x).mul(1.6).max(1e-5), fwV = fwidth(t.y).mul(0.62).max(1e-5);
-    const line = (dm, w, fw) => smoothstep(w.add(fw), w, dm).mul(min(float(1), w.mul(2).div(fw)));
-    // contact shadow under the ring above (soot collects there too), dark rim on the cut edge
+    // contact shadow under the tier above (soot collects there too), and a softer one a hand's width below it
+    // (the thick lower edge stands off the surface); dark rim on the cut edge
     const vUnder = vNext.sub(t.y).mul(0.62); // metres below the upper ring's edge
     const under = line(vUnder.max(0).add(step(vUnder, 0).mul(9)), float(0.025), fwV).mul(smoothstep(0.0, 0.025, vUnder).mul(0.5).add(0.5));
-    c = c.mul(float(1).sub(under.mul(float(0.26).add(haze.mul(0.3)))));
+    // (how far the edge stands off changes along the tier: deep where a sheet has curled, almost none where it lies flat)
+    const curl = smoothstep(0.25, 0.8, n3(vec3(t.x.mul(1.6 * 0.9), ring.x.mul(7.1), 3.3))).mul(1.2).add(0.2);
+    const soft = smoothstep(0.09, 0.0, vUnder).mul(step(0, vUnder));
+    c = c.mul(float(1).sub(under.mul(float(0.42).add(haze.mul(0.3))).mul(curl).min(0.85))).mul(float(1).sub(soft.mul(0.24).mul(curl)));
     const edge = line(t.y.sub(max(scal, 0)).mul(0.62).abs(), float(0.008), fwV);
     c = c.mul(float(1).sub(edge.mul(0.25)));
     // vertical seams: the sheet ends overlap; a shadow line where one sheet lies on the next, a lighter lip beside it
-    const dEnd = min(lu, float(1).sub(lu)).mul(0.8), dSplit = twoSheets.select(lu.sub(split).mul(0.8), float(9));
+    const dEnd = min(lu, float(1).sub(lu)).mul(1.28), dSplit = twoSheets.select(lu.sub(split).mul(1.28), float(9));
     const dSeam = min(dEnd, dSplit.abs());
     c = c.mul(float(1).sub(line(dSeam, float(0.0016), fwM).mul(0.4)));
     c = c.mul(float(1).add(line(dSplit.sub(0.006).abs(), float(0.004), fwM).mul(0.08)));
@@ -214,7 +232,7 @@ export function makeMats() {
     M.vessel = m;
   }
 
-  // ---- peeled larch poles: inner (smoked, honey-brown → soot) and outer (silver-grey weathered)
+  // ---- peeled larch poles: inner (smoked, honey-brown → soot) and outer (pale silver-grey weathered)
   const rw = maps('rough_wood');
   const poleUV = () => { const t = uv(); return vec2(fract(t.x).mul(0.3), t.y.div(1.1)); };
   {
@@ -237,9 +255,11 @@ export function makeMats() {
     const d = texture(rw.diff, t).rgb;
     const v = fbm3(p.mul(vec3(3, 0.3, 3)), 3);
     // each pole its own tone (index by azimuth), strips of bark left on by a hurried draw-knife
-    const pid = hash(floor(atan(p.z, p.x).mul(36 / 6.2832).add(0.5)).add(3.3)); // 36 outer poles
-    let c = mix(d.mul(1.05), d.mul(vec3(1.12, 0.92, 0.72)), pid.mul(0.8)).mul(v.mul(0.35).add(0.75));
-    const barkLeft = smoothstep(0.6, 0.68, fbm3(p.mul(vec3(14, 1.5, 14)).add(pid.mul(9)), 3)).mul(pid.greaterThan(0.35).select(1, 0.3));
+    // (Suntaar, Druzhba: the outer poles are pale, near the bark's tone; dark lines on the cover are their shadows)
+    const pid = hash(floor(atan(p.z, p.x).mul(24 / 6.2832).add(0.5)).add(3.3)); // ~24 outer poles
+    const silver = vec3(lum(d)).mul(vec3(1.0, 0.92, 0.8)).mul(2.3);
+    let c = mix(silver, silver.mul(vec3(0.94, 0.95, 0.98)), pid).mul(v.mul(0.3).add(0.8)).min(0.8);
+    const barkLeft = smoothstep(0.64, 0.7, fbm3(p.mul(vec3(14, 1.5, 14)).add(pid.mul(9)), 3)).mul(pid.greaterThan(0.6).select(0.8, 0.2));
     c = mix(c, vec3(0.2, 0.13, 0.08).mul(fbm3(p.mul(40), 2).add(0.5)), barkLeft);
     c = mix(c, vec3(0.1, 0.085, 0.075), smoothstep(APEX_Y - 2.5, APEX_Y - 0.28, p.y).mul(0.75));
     c = mix(c, vec3(0.28, 0.23, 0.17), smoothstep(0.4, 0.0, p.y).mul(0.6));

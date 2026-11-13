@@ -1,13 +1,14 @@
-// The birch-bark cover: rings of sewn sheets wrapped from the bottom up, each overlapping the one
-// below like roof tiles (outer, cream face), the inner layer's golden face seen from inside,
+// The birch-bark cover: tiers of long bands of sewn sheets wrapped from the bottom up, each overlapping the one
+// below like roof tiles with a thick, uneven lower edge (outer, cream face), the inner layer's golden face seen from inside,
 // the ornament bands (traced from the Suntar urasa, docs/patterns.md), and the bark door curtain.
 import * as THREE from 'three/webgpu';
 import { TAU, tube } from './geom.js';
-import { DOOR, wob, doorHalfAngle } from './frame.js';
+import { DOOR, wob, doorHalfAngle, O_IN, O_OUT, TIER_T } from './frame.js';
 import { hash2, valueNoise } from '../../util.js';
 
-const RING_STEP = 0.5, LAP = 0.12, SHEET_H = 0.62; // mean ring step, overlap on the ring below, the sheet texture's height
-export const O_IN = 0.042, O_OUT = 0.056;
+// RING_STEP: the inner face's stitch rows and the count of draws; TIER: mean tier step outside; LAP: overlap on the
+// tier below; SHEET_H: the sheet texture's height
+const RING_STEP = 0.5, TIER = 0.64, LAP = 0.12, SHEET_H = 0.62;
 const HOLE_R = 0.55; // the smoke hole: the cover stops at this radius
 
 // Rows of a strip between arc lengths s0..s1: nv even steps, plus a doubled row at the door's cut line so the
@@ -30,7 +31,7 @@ function rows(P, s0, s1, nv, doorCut) {
   return res;
 }
 
-// The cover rests on the inner poles and sags between them (3 % of the span, ≤ 1.1 cm): the poles show through.
+// The cover rests on the inner poles and sags between them (6 % of the span, ≤ 2 cm): the poles show through.
 // set(s): the sorted azimuths of the poles that reach arc length s; sag(A, a, s): the dip at azimuth a over the poles A;
 // samples(A, r): azimuths at each pole and at halves of each span (thirds where it is over 0.3 m wide at radius r;
 // 0 and TAU included), so the dips are drawn.
@@ -42,7 +43,7 @@ function poleSag(P, poles, sTop) {
     while (lo < hi) { const m = (lo + hi) >> 1; if (A[m] <= a) lo = m + 1; else hi = m; }
     const p0 = lo === 0 ? A[A.length - 1] - TAU : A[lo - 1], p1 = lo === A.length ? A[0] + TAU : A[lo];
     const q = P.at(Math.max(0, s)), fade = Math.min(1, Math.max(0, (sTop - 1.2 - s) / 1.5)); // the poles bend to the tie up there
-    return -Math.min(0.011, 0.03 * (p1 - p0) * q.r) * fade * Math.sin((Math.PI * (a - p0)) / (p1 - p0));
+    return -Math.min(0.02, 0.06 * (p1 - p0) * q.r) * fade * Math.sin((Math.PI * (a - p0)) / (p1 - p0));
   };
   const samples = (A, r) => {
     const out = [0, TAU];
@@ -57,11 +58,14 @@ function poleSag(P, poles, sTop) {
 
 // Build a strip of the surface between arc lengths s0..s1 at normal offset off(v), round the cone, the door cut away
 // (each cut row starts and ends on the straight cut edge, z = ±DOOR.edge). nu: segments round (fixed for a strip);
-// angles: the azimuths round instead (0..TAU; cut rows clamp them to the cut edges); sag(a, s, v): offset added.
-function strip(P, s0, s1, nv, off, segLen, { doorCut, flipNormals = false, uvFn, attrFn, edgeWobble = 0, seed = 0, lift, nu: nuFixed, angles, sag }) {
+// angles: the azimuths round instead (0..TAU; cut rows clamp them to the cut edges); sag(a, s, v): offset added;
+// edge(a): the lower edge's shift along the slope (fading to none at the top); lip: offset of an extra row tucked
+// under the lower edge (the bark's thickness, in shadow).
+function strip(P, s0, s1, nv, off, segLen, { doorCut, flipNormals = false, uvFn, attrFn, edgeWobble = 0, seed = 0, lift, nu: nuFixed, angles, sag, edge, lip }) {
   const rMid = P.at((s0 + s1) / 2).r + off(0.5);
   const nu = angles ? angles.length - 1 : nuFixed || Math.max(24, Math.ceil((TAU * rMid) / segLen));
   const R = rows(P, s0, s1, nv, doorCut);
+  if (lip !== undefined) R.unshift({ ...R[0], lip: true });
   const pos = [], uv = [], ex = [], idx = [];
   R.forEach((row, j) => {
     const v = row.v;
@@ -70,10 +74,11 @@ function strip(P, s0, s1, nv, off, segLen, { doorCut, flipNormals = false, uvFn,
     for (let i = 0; i <= nu; i++) {
       const a = angles ? Math.min(TAU - da, Math.max(da, angles[i])) : da + (TAU - 2 * da) * (i / nu);
       // the cut lower edge is not perfectly level
-      const s = row.s + (j === 0 ? valueNoise(a * 3.1, seed, 7) * edgeWobble : 0);
+      const s = row.s + (v === 0 ? valueNoise(a * 3.1, seed, 7) * edgeWobble : 0) + (edge ? edge(a) * (1 - v) : 0) - (row.lip ? 0.01 : 0);
       const q = P.at(Math.max(0, s));
-      const t = uvFn(a, v, rMid, s);
-      const o = off(v) + valueNoise(a * 5.3, s * 2.1 + seed, 3) * 0.003 + (lift ? lift(t[0], v) : 0) + (sag ? sag(a, s, v) : 0);
+      const t = uvFn(a, row.lip ? 0.003 : v, rMid, s);
+      const o = row.lip ? lip + (sag ? sag(a, s, v) : 0)
+        : off(v) + valueNoise(a * 5.3, s * 2.1 + seed, 3) * 0.003 + (lift ? lift(t[0], v, a) : 0) + (sag ? sag(a, s, v) : 0);
       const r = (q.r + q.nr * o) * wob(a, q.y), y = q.y + q.ny * o;
       pos.push(Math.cos(a) * r, y, Math.sin(a) * r);
       uv.push(...t);
@@ -103,21 +108,30 @@ function toGeom(parts, attrName, attrSize) {
   return g;
 }
 
-export function buildCover(rng, P, poles) {
+export function buildCover(rng, P, poles, outerAngles) {
   const sTop = P.sAtR(HOLE_R);
   const PS = poleSag(P, poles, sTop);
-  // the rings: cut from sheets of different widths, each 0.43–0.57 m to the next, lapping 12 cm over the one below
+  // the tiers: long bands of sheets of different widths, each 0.5–0.78 m to the next, lapping 12 cm over the one below
   const R0 = [], STEP = [];
   for (let i = 0, s = -0.03; s + 0.03 < sTop + 0.02; i++) {
-    const st = RING_STEP * (0.86 + 0.28 * hash2(i, 1, 93));
+    const st = TIER * (0.78 + 0.44 * hash2(i, 1, 93));
     if (i > 0 && sTop + 0.01 - s < 0.1) break; // a sliver at the top: the ring below already reaches the rim
     R0.push(s); STEP.push(st); s += st;
   }
   const nRings = R0.length;
+  // metres round from azimuth a to the nearest outer pole at radius r: the poles hold the tiers down, between them
+  // the free edges stand off
+  const OA = [...outerAngles].map((x) => ((x % TAU) + TAU) % TAU).sort((x, y) => x - y);
+  const toPole = (a, r) => {
+    a = ((a % TAU) + TAU) % TAU;
+    let d = TAU;
+    for (const o of OA) { const x = Math.abs(a - o); d = Math.min(d, x, TAU - x); }
+    return d * r;
+  };
   // three draws per ring of 0.5 m, as many as ever (the interior's draws follow these)
   const draws = Array.from({ length: Math.ceil((sTop + 0.02) / RING_STEP) }, () => [rng(), rng(), 0.75 + rng() * 0.6]);
-  const ringH = (i) => (STEP[i] ?? RING_STEP) + LAP;
-  const ringSet = (i) => PS.set(Math.max(0, R0[Math.min(i, nRings - 1)] + (i >= nRings ? RING_STEP : 0)));
+  const ringH = (i) => (STEP[i] ?? TIER) + LAP;
+  const ringSet = (i) => PS.set(Math.max(0, R0[Math.min(i, nRings - 1)] + (i >= nRings ? TIER : 0)));
   const outer = [], inner = [], bands = [];
   // ornament bands as on the Suntar urasa: the arcade just above the door, the zigzag band where the cone has
   // narrowed to ~0.65 of its base radius. [ring, kind, height, repeat]: one texture repeat holds 11 arcade or
@@ -126,40 +140,59 @@ export function buildCover(rng, P, poles) {
   const ringAtY = (y) => R0.findIndex((s0) => s0 + 0.07 >= P.sAtY(y) - 1e-6);
   const BANDS = [[ringAtY(DOOR.h + 0.2), 'arcade', 0.2 * 946 / 356, 11 * 0.2], [ringAtY(5.2), 'zigzag', 0.24 * 680 / 406, 7 * 0.24]];
   const BAND_RINGS = BANDS.map((b) => b[0]);
+  // each band of sheets was laid by hand: its lower edge climbs and dips round the cone (≤ ±5 cm, under the 12 cm lap),
+  // level only where an ornament band is sewn on it or below it, by the door, and on the lowest tier
+  const edgeOf = (i) => {
+    if (i <= 0 || i >= nRings || BAND_RINGS.some((b) => i >= b && i <= b + 2)) return () => 0;
+    const ph = hash2(i, 2, 93) * TAU, k = 0.022 + hash2(i, 3, 93) * 0.018, ph2 = hash2(i, 4, 93) * TAU;
+    return (a) => {
+      const w = Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
+      const door = Math.min(1, Math.max(0, (w - 0.45) / 0.4));
+      return door * (k * Math.sin(a + ph) + 0.014 * Math.sin(a * 3 + ph2) + 0.012 * valueNoise(a * 2.2, i * 1.7, 11));
+    };
+  };
   // sheet edges are cut straight, also on the ornamented rings (Suntar urasa)
   for (let i = 0; i < nRings; i++) {
     const s0 = R0[i], s1 = Math.min(s0 + ringH(i), sTop + 0.01);
     const doorCut = P.at(Math.max(0, s0)).y < DOOR.cutY;
     const [rnd, uOff, uScale] = draws[i % draws.length]; // sheets differ in length ring to ring
-    // sheets lift and curl at their free lower edge and corners, and are wavy from drying
-    const lift = (u, v) => {
-      const su = u * 2, sid = Math.floor(su), lu = su - sid, h = hash2(sid, i, 91), h2 = hash2(sid, i, 92);
+    // sheets lift and curl at their free lower edge and corners, and are wavy from drying (sheets as in urasa/mats.js: uv.x × 1.25)
+    // and bow out between the outer poles that pin them (up to 3.5 cm at the free edge)
+    const rr = P.at(Math.max(0, s0)).r;
+    const lift = (u, v, a) => {
+      const su = u * 1.25, sid = Math.floor(su), lu = su - sid, h = hash2(sid, i, 91), h2 = hash2(sid, i, 92);
       const free = Math.pow(1 - v, 3);
       const corner = Math.pow(Math.max(0, Math.abs(lu - 0.5) * 2 - 0.75) / 0.25, 2) * (h2 > 0.4 ? 1 : 0.2);
       const k = BAND_RINGS.includes(i) || BAND_RINGS.includes(i - 1) ? 0.2 : 1; // under a band: sewn down flat
-      return k * (free * (0.003 + h * 0.014) + corner * Math.pow(1 - v, 2) * 0.02 + Math.sin(lu * Math.PI * (2 + Math.floor(h2 * 3)) + h * 6) * 0.004 * (0.4 + free));
+      const dp = toPole(a, rr), pin = Math.min(1, Math.max(0, (dp - 0.04) / 0.16)), pin2 = pin * pin * (3 - 2 * pin);
+      const bow = Math.pow(1 - v, 1.5) * (0.023 + 0.011 * valueNoise(a * 4, i * 1.3, 94)) * Math.min(1, Math.max(0, (dp - 0.05) / 0.45));
+      return k * (pin2 * (free * (0.003 + h * 0.014) + corner * Math.pow(1 - v, 2) * 0.02) + bow + Math.sin(lu * Math.PI * (2 + Math.floor(h2 * 3)) + h * 6) * 0.004 * (0.4 + free) * pin2);
     };
     // over its part hidden under the ring above, a ring takes that ring's dips (fewer poles reach higher up)
     const A = ringSet(i), An = ringSet(i + 1);
     const sag = (a, s, v) => { const k = Math.min(1, Math.max(0, (v - 0.55) / 0.25)); return PS.sag(A, a, s) * (1 - k) + PS.sag(An, a, s) * k; };
-    outer.push(strip(P, s0, s1, 3, (v) => O_OUT + 0.011 * (1 - v) * (1 - v * 0.3), 0.2, {
-      doorCut, edgeWobble: 0.018, seed: i * 3.3, lift, angles: PS.samples(A, P.at(Math.max(0, s0)).r), sag,
+    const e = edgeOf(i), eNext = edgeOf(i + 1);
+    outer.push(strip(P, s0, s1, 3, (v) => O_OUT + TIER_T * (1 - v) * (1 - v * 0.3), 0.2, {
+      doorCut, edgeWobble: 0.018, seed: i * 3.3, lift, angles: PS.samples(A, P.at(Math.max(0, s0)).r), sag, edge: e,
+      lip: i > 0 ? O_OUT - 0.004 : undefined,
       uvFn: (a, v, rm) => [((a * rm) / 1.6) * uScale + uOff, (v * (s1 - s0)) / SHEET_H], // uv.y: metres / SHEET_H
-      attrFn: () => [i, rnd, 0, STEP[i] / SHEET_H], // .w: where the ring above lies on this one (uv.y)
+      // .w: where the tier above lies on this one (uv.y)
+      attrFn: (a) => [i, rnd, 0, ((STEP[i] + eNext(a) - e(a)) / (s1 - s0 - e(a))) * ((s1 - s0) / SHEET_H)],
     }));
   }
   // inner face: one watertight surface from the ground to the smoke hole (the same vertices round every row,
-  // so no cracks between rings); uv.y counts rings (the stitch rows), uv.x metres/1.6 round
+  // so no cracks between rings), sagging between the poles like the outer one; uv.y counts rings (the stitch rows),
+  // uv.x metres/1.6 round
   {
-    const nv = Math.ceil(sTop / 0.35), rm = P.at(sTop / 2).r;
+    const nv = Math.ceil(sTop / 0.35), rm = P.at(sTop / 2).r, A0 = PS.set(0);
     inner.push(strip(P, 0, sTop, nv, () => O_IN, 0, {
-      doorCut: true, flipNormals: true, seed: 50, nu: 128,
+      doorCut: true, flipNormals: true, seed: 50, angles: PS.samples(A0, P.at(0).r), sag: (a, s) => PS.sag(PS.set(s), a, s),
       uvFn: (a, v, _rm, s) => [(a * rm) / 1.6, s / RING_STEP],
     }));
   }
   // smoke-hole rim: the bark is rolled over the top edge, closing the gap between the two layers
   {
-    const q = P.at(sTop), rr = (O_OUT + 0.011 - O_IN) / 2 + 0.006, oc = (O_IN + O_OUT + 0.011) / 2;
+    const q = P.at(sTop), rr = (O_OUT + TIER_T - O_IN) / 2 + 0.006, oc = (O_IN + O_OUT + TIER_T) / 2;
     const pts = [];
     for (let i = 0; i <= 40; i++) {
       const a = (i / 40) * TAU, r = (q.r + q.nr * oc) * wob(a, q.y);
@@ -173,7 +206,7 @@ export function buildCover(rng, P, poles) {
   const bandAt = (ring, kind, hgt, repeat) => {
     const s0 = R0[ring] + 0.07, s1 = s0 + hgt;
     // the band is sewn over its ring and, where taller than the ring's visible part, over the ring above
-    const surf = (h, H) => (h < 0 ? 0 : 0.011 * (1 - h / H) * (1 - (0.3 * h) / H)); // a ring's face above O_OUT
+    const surf = (h, H) => (h < 0 ? 0 : TIER_T * (1 - h / H) * (1 - (0.3 * h) / H)); // a ring's face above O_OUT
     const o = (v) => { const h = 0.07 + v * hgt; return O_OUT + Math.max(surf(h, ringH(ring)), surf(h - STEP[ring], ringH(ring + 1)) + 0.005) + 0.008; };
     const rm = P.at((s0 + s1) / 2).r + O_OUT;
     const reps = Math.max(2, Math.round((TAU * rm) / repeat));
