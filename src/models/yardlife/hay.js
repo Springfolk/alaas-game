@@ -240,7 +240,7 @@ export function hayMeadow(K) {
       mown.push({ x: -38, z: 113, rx: 11, rz: 21 });
       for (let k = 0; k < 5; k++) {
         const wx = -46 + k * 4 + (rng() - 0.5);
-        B.add(windrow(gr, wx, 95 + rng() * 2, wx + (rng() - 0.5) * 2, 131 - rng() * 3, rng), M.hayGreen, null, jitterTint(rng, 0.1));
+        B.add(windrow(gr, wx, 95 + rng() * 2, wx + (rng() - 0.5) * 2, 131 - rng() * 3, rng), M.hayGreen, null, jitterTint(rng, 0.1, [2.6, 3.7, 4.0])); // lifted from the dark texture to wilting grass
       }
     }
     return { boxes, mown };
