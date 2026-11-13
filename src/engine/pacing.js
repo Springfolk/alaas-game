@@ -50,10 +50,13 @@ export function pace(e, now, fps) {
   if (e.gpuPending >= hold && now - (e.beat ?? now) < 250) { e.gpuHeld = (e.gpuHeld || 0) + 1; return false; }
   if (e.gpuPending >= hold) { e.gpuPending = 0; e.gpuSilent = (e.gpuSilent || 0) + 1; } // frames whose end was never reported: carry on (twice: without the timing)
   // the beat moves on by whole refreshes, on the display's grid (pulled halfway to each timestamp: their jitter is
-  // halved, an inexact refresh estimate cannot build up); after a long gap it starts again from now
-  const late = e.beat == null ? 0 : Math.round((now - e.beat) / v);
+  // halved, an inexact refresh estimate cannot build up); after a long gap it starts again from now. A callback is
+  // late, never early (Safari hands some over 5–10 ms after their refresh): up to 0.65 of a refresh past one, it
+  // belongs to that one.
+  const late = e.beat == null ? 0 : Math.floor((now - e.beat) / v + 0.35);
   e.beat = e.beat == null || late > 4 * n ? now : e.beat + late * v;
   e.beat += (now - e.beat) * 0.5;
+  e.paceSteps = late; // refreshes since the last drawn frame (govern: late frames)
   e.gpuAtStart = e.gpuPending;
   return true;
 }
@@ -93,7 +96,9 @@ export function govern(e, dt, now = performance.now()) {
   if (e.govHold) { const g = e.gov; if (g) { g.n = g.t = g.late = g.deep = g.js = g.room = g.over = 0; g.settle = true; } if (e.gpuTimes) e.gpuTimes.length = 0; return; }
   const g = e.gov ||= { n: 0, t: 0, late: 0, deep: 0, js: 0, room: 0, over: 0 };
   g.n++; g.t += Math.min(ms, iv * 3); g.js += e.jsMs || 0;
-  if (ms > iv + 0.5 * iv / (e.paceN || 1)) g.late++; // a refresh or more over (at 30 on a 60 Hz display that is 50 ms, 1.5×: no margin for a ratio)
+  // a refresh or more over, on the display's grid (pace), else by the interval (at 30 on a 60 Hz display that is 50 ms, 1.5×)
+  if (e.paceSteps != null ? e.paceSteps > (e.paceN || 1) : ms > iv + 0.5 * iv / (e.paceN || 1)) g.late++;
+  e.paceSteps = null;
   if (e.gpuAtStart >= 2) g.deep++;
   g.deep += e.gpuHeld || 0; e.gpuHeld = 0;
   if (g.t < 500 || g.n < 8) return;
