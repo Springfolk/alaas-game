@@ -7,7 +7,13 @@
   An interactive museum: a first-person walk through a Sakha summer homestead in Central Yakutia.
 </p>
 
+<h3 align="center">
+  <a href="https://springfolk.github.io/alaas-game/">▶ Play in your browser</a>
+</h3>
+<p align="center"><sub>Free, no install, no account. Desktop and phone. Or <a href="#play-offline">download it to play offline</a>.</sub></p>
+
 <p align="center">
+  <a href="https://github.com/Springfolk/alaas-game/releases/latest"><img src="https://img.shields.io/github/v/release/Springfolk/alaas-game?label=release&color=3a82aa&labelColor=21160f" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/code-MIT-3a82aa?labelColor=21160f" alt="Code: MIT">
   <img src="https://img.shields.io/badge/content-CC%20BY--SA%204.0-3a82aa?labelColor=21160f" alt="Content: CC BY-SA 4.0">
   <img src="https://img.shields.io/badge/three.js-r186-5f8f37?labelColor=21160f&logo=threedotjs&logoColor=white" alt="three.js r186">
@@ -17,7 +23,7 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start"><b>Play locally</b></a> · <a href="CONTRIBUTING.md"><b>Contributing</b></a> · <a href="docs/credits.md"><b>Credits</b></a>
+  <a href="https://springfolk.github.io/alaas-game/"><b>Play</b></a> · <a href="#quick-start"><b>Run locally</b></a> · <a href="https://github.com/Springfolk/alaas-game/releases"><b>Releases</b></a> · <a href="CONTRIBUTING.md"><b>Contributing</b></a> · <a href="docs/credits.md"><b>Credits</b></a>
 </p>
 
 Алаас is an interactive museum, a first-person walk through a traditional Sakha summer homestead (сайылык) in an alaas, the
@@ -64,6 +70,13 @@ first, then English and Russian, picked from your browser's language. You walk, 
 
 The quality tier is picked from the device (Settings → Quality changes it).
 
+## Play offline
+- **Windows, macOS, Linux**: download the app from the [latest release](https://github.com/Springfolk/alaas-game/releases/latest)
+  (`.exe`, `.dmg` for Apple silicon or Intel, `.AppImage`). The builds are unsigned: on macOS open it the first
+  time with right-click → Open; on Windows choose More info → Run anyway.
+- **Phones, tablets, Chromebooks, any browser**: open the game and use the browser's *Install* or *Add to Home
+  Screen*. Once it has loaded online, the installed app keeps everything it needs and starts without a connection.
+
 ## Quick start
 ```sh
 npm install
@@ -96,14 +109,16 @@ Phones: the left thumb walks (push the stick to its rim to run), a drag anywhere
 | `src/nature/` | forest, grass, lake and wildlife |
 | `src/interact/` · `src/ui/` · `src/audio/` | hands-on acts · cards, journal, touch · soundscape |
 | `src/data/` | explainer entries and reference images |
+| `desktop/` | the Electron desktop app |
 | `tools/` | asset fetchers, texture bakers and headless checks |
 | `docs/` | how it all works ([`AGENTS.md`](AGENTS.md) has the map) |
 
 ## Contributing
 Contributions are welcome, from code to Sakha-language corrections. If you know Sakha life and
-something is wrong or missing, open an [issue](https://github.com/Springfolk/alaas-game/issues) or write
+something is wrong or missing, open an [issue](https://github.com/Springfolk/alaas-game/issues/new/choose) or write
 to hello@springfolk.co; corrections are credited. For pull requests, read [`CONTRIBUTING.md`](CONTRIBUTING.md)
-first: it lists the checks to run and the content rules.
+first: it lists the checks to run and the content rules. The newest work is playable on the
+[canary build](https://springfolk.github.io/alaas-game/canary/).
 
 ## Credits and licences
 - **AI-assisted**, directed and reviewed by Georgii Antipin (Springfolk), who also checked every Sakha text.

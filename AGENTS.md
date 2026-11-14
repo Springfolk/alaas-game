@@ -1,14 +1,16 @@
 # Алаас (Alaas)
 
-First-person walk through a traditional Sakha summer homestead (сайылык) in a Central Yakutia alaas, rendered realistically, that teaches Sakha culture: look at a thing, press E, read its explainer (Sakha / English / Russian, with reference images), do respectful hands-on acts (feed the fire, tie a ribbon). No combat, no human characters. Browser game: three.js WebGPURenderer + TSL, Vite, no backend; progress in `localStorage` (`alaas-v1`). Public face: `README.md`, `CONTRIBUTING.md`, `LICENSE` (code MIT, content CC BY-SA 4.0).
+First-person walk through a traditional Sakha summer homestead (сайылык) in a Central Yakutia alaas, rendered realistically, that teaches Sakha culture: look at a thing, press E, read its explainer (Sakha / English / Russian, with reference images), do respectful hands-on acts (feed the fire, tie a ribbon). No combat, no human characters. Browser game (installable, offline; also an Electron desktop app): three.js WebGPURenderer + TSL, Vite, no backend; progress in `localStorage` (`alaas-v1`). Public face: `README.md`, `CONTRIBUTING.md`, `LICENSE` (code MIT, content CC BY-SA 4.0).
 
 ## Commands
 - `npm install` · `npm run dev` → http://127.0.0.1:5190 · `npm run build` → `dist/` · `npm run lint` (ESLint: undefined/unused names only)
 - Branches: PRs merge into `canary` (testing); `main` holds only released code.
 - Hosting: GitHub Pages, `.github/workflows/pages.yml` rebuilds both on a push to `main` or `canary`: `main` at https://springfolk.github.io/alaas-game/, `canary` at https://springfolk.github.io/alaas-game/canary/ (`BASE=/alaas-game/[canary/] npm run build`; one origin, so both share `localStorage`)
+- `npm run desktop` — on a Mac: builds the site, then the macOS, Windows and Linux installers into `desktop/out/`; uploaded to the release by hand (`docs/offline.md`)
 - `npm run shot -- "<path?query>" out.png [w h waitMs]` — headless screenshot (system Chrome, WebGPU); `PORT`, `EVAL`, `CHROME` env
 - Checks against a dev server (`PORT`): `npm run walkcheck|smooth|hitch|loadprof|loadtrace|bench -- chrome|webkit|phone` (`docs/testing.md`)
 - Icon and README art: `node tools/make-icon.mjs` (→ `docs/img/icon.svg`) → `node tools/readme-art.mjs` (icon PNGs, `public/icon.svg`, `docs/img/banner.webp`; no dev server) · `node tools/og-image.mjs` (link-preview `public/og.jpg`; meta tags in `index.html`)
+- README clips: `node tools/clip.mjs <clip>|all` (served build on `PORT`; frame by frame on a virtual clock → `.cache/clips/<clip>.{mp4,webp,gif}`; shots and clips are tables in the tool)
 - Traced ornament textures (`docs/patterns.md`): `node tools/make-carving.mjs` (chorons, front saddle bow; no dev server)
 - `npm run fetch-assets` (Poly Haven textures, then `tools/tex-sizes.mjs`: masters re-encoded + 1024/512/256 sizes) · `npm run fetch-audio` (sound sources)
 - Bakes (dev server running; `docs/loading.md`), rerun after changing a model, tree or the look, in this order: `npm run bake-geometry` → `npm run bake-impostors` → `npm run bake-journal` (stage views, `docs/ui.md`) → `npm run key-art` (then `readme-art`, `og-image`) · after a terrain change: `npm run bake-map` (the journal's map)
@@ -30,6 +32,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 - `docs/patterns.md` — every drawn ornament: motif, where it is used, source.
 - `docs/credits.md` — third-party assets and licences.
 - `docs/testing.md` — headless checks, iOS.
+- `docs/offline.md` — service worker and installed web app, the Electron desktop app, release builds.
 - `docs/roadmap.md` — planned features (forest and lake life) and open items.
 
 ## Constraints

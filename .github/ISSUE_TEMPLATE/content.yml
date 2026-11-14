@@ -1,0 +1,25 @@
+name: Sakha culture or language correction
+description: A custom, object, word or translation is wrong or missing
+labels: [content]
+body:
+  - type: markdown
+    attributes:
+      value: Corrections are credited. Sakha, English or Russian are all fine here.
+  - type: input
+    id: where
+    attributes:
+      label: Card or place
+      placeholder: The serge card, Sakha text
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong, and what it should be
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source
+      description: A book, article, museum, or your own or your family's knowledge.

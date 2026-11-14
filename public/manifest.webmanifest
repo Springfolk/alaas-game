@@ -1,0 +1,20 @@
+{
+  "name": "Алаас",
+  "short_name": "Алаас",
+  "description": "An interactive museum: walk a Sakha summer homestead in Central Yakutia. In Sakha, English and Russian.",
+  "lang": "sah",
+  "start_url": ".",
+  "scope": ".",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#21160f",
+  "theme_color": "#21160f",
+  "categories": ["education", "games"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
