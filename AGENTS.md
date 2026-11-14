@@ -4,7 +4,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 
 ## Commands
 - `npm install` · `npm run dev` → http://127.0.0.1:5190 · `npm run build` → `dist/` · `npm run lint` (ESLint: undefined/unused names only)
-- Branches: PRs merge into `canary` (testing); `main` holds only released code.
+- Branches: PRs merge into `canary` (testing); `main` holds only released code. `.github/workflows/ci.yml` lints and builds every PR.
 - Hosting: GitHub Pages, `.github/workflows/pages.yml` rebuilds both on a push to `main` or `canary`: `main` at https://springfolk.github.io/alaas-game/, `canary` at https://springfolk.github.io/alaas-game/canary/ (`BASE=/alaas-game/[canary/] npm run build`; one origin, so both share `localStorage`)
 - `npm run shot -- "<path?query>" out.png [w h waitMs]` — headless screenshot (system Chrome, WebGPU); `PORT`, `EVAL`, `CHROME` env
 - Checks against a dev server (`PORT`): `npm run walkcheck|smooth|hitch|loadprof|loadtrace|bench -- chrome|webkit|phone` (`docs/testing.md`)

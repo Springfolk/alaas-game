@@ -5,6 +5,9 @@
   "license": "MIT",
   "author": "Springfolk",
   "repository": "github:Springfolk/alaas-game",
+  "homepage": "https://springfolk.github.io/alaas-game/",
+  "bugs": "https://github.com/Springfolk/alaas-game/issues",
+  "keywords": ["sakha", "yakutia", "interactive-museum", "cultural-heritage", "threejs", "webgpu", "tsl", "browser-game", "walking-simulator"],
   "private": true,
   "type": "module",
   "engines": {

@@ -10,7 +10,7 @@ headless (`CHROME=<path>` if it is not in `/Applications`) or Playwright WebKit
 (`npx playwright-core install webkit`).
 
 ## Before you send a change
-The last three run against a dev server (`PORT` if it is not 5190):
+Pull requests go to `canary`; CI runs the first two. The last three run against a dev server (`PORT` if it is not 5190):
 
 | Check | Pass |
 |---|---|
@@ -43,6 +43,9 @@ More in [`docs/testing.md`](docs/testing.md).
   the cards.
 - **Free assets only**: CC0, or CC BY / BY-SA credited in [`docs/credits.md`](docs/credits.md). No paid
   services.
+
+## Conduct
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Security reports: [`SECURITY.md`](SECURITY.md).
 
 ## Licence
 By contributing you agree that your code is released under MIT and your text and other original

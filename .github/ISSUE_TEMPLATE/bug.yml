@@ -1,0 +1,35 @@
+name: Bug or performance problem
+description: Something breaks, looks wrong, stutters or fails to load
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you saw, what you expected. A screenshot helps.
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: The place or thing in the game, and the page address if it has flags (`?q=…`).
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: MacBook Air M2, Chrome 142 · iPhone 15, Safari 18
+    validations:
+      required: true
+  - type: textarea
+    id: meter
+    attributes:
+      label: Frame-rate meter
+      description: Press F3 (or open the game with `?fps`) and copy what it shows, for anything about speed, loading or graphics.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown on the title screen and in the pause menu.
+      placeholder: v1.1.0
