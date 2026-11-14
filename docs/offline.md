@@ -19,9 +19,9 @@
 
 ## Desktop app (`desktop/`, Electron)
 - Its own package (the site's `npm ci` installs no Electron). `main.js` serves `dist/` (shipped as `resources/dist`) from `app://alaas/`; saves live under that origin in the app's user data.
-- `npm run desktop` → installers in `desktop/out/` for the OS it runs on (`builder.config.cjs`: version from the root `package.json`; macOS dmg arm64 + x64, Windows NSIS x64, Linux AppImage x64).
+- `npm run desktop` on a Mac → `desktop/out/`: macOS dmg (arm64, x64), Windows NSIS (x64), Linux AppImage (x64), cross-built (`builder.config.cjs`; version from the root `package.json`).
+- Release: set the version (`npm version <v> --no-git-tag-version`), `npm run desktop`, `gh release upload <tag> desktop/out/Alaas-*.{dmg,exe,AppImage}`. No CI builds them.
 - Unsigned: macOS ad-hoc (first launch: right-click → Open, or System Settings → Privacy & Security → Open Anyway), Windows SmartScreen (More info → Run anyway).
 - Linux starts Chromium with WebGPU switched on; without it the game falls back to WebGL2.
 - F11 or Alt+Enter: fullscreen (Windows, Linux; macOS has its menu). External links open in the browser.
-- `.github/workflows/desktop.yml`: publishing a release (pre-releases too) builds all three and attaches them; the app's version is the tag.
 - Headless check: `ALAAS_HIDDEN=1 ALAAS_QUERY='?auto'` (no window), driven with Playwright's `_electron.launch({ executablePath })`.

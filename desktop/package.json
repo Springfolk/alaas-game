@@ -11,7 +11,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --publish never --config builder.config.cjs"
+    "dist": "electron-builder --publish never --config builder.config.cjs --mac --win --linux"
   },
   "devDependencies": {
     "electron": "45.3.2",

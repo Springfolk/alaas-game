@@ -1,4 +1,4 @@
-// electron-builder: installers into desktop/out/, the version taken from the game's package.json.
+// electron-builder: installers into desktop/out/, the version taken from the game's package.json (a Mac builds all three).
 // Unsigned: macOS gets an ad-hoc signature (first launch through right-click → Open), Windows shows SmartScreen.
 const { version } = require('../package.json');
 
@@ -7,6 +7,8 @@ module.exports = {
   productName: 'Alaas',
   copyright: '© Springfolk. Code MIT, content CC BY-SA 4.0.',
   extraMetadata: { version },
+  detectUpdateChannel: false,
+  publish: null,
   directories: { output: 'out', buildResources: '.' },
   files: ['main.js', 'package.json'],
   extraResources: [{ from: '../dist', to: 'dist', filter: ['**/*', '!viewer.html', '!sw.js', '!offline.json', '!**/.DS_Store'] }],

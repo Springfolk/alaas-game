@@ -10,7 +10,7 @@ headless (`CHROME=<path>` if it is not in `/Applications`) or Playwright WebKit
 (`npx playwright-core install webkit`).
 
 ## Before you send a change
-Pull requests go to `canary`; CI runs the first two. The last three run against a dev server (`PORT` if it is not 5190):
+Pull requests go to `canary`. The last three run against a dev server (`PORT` if it is not 5190):
 
 | Check | Pass |
 |---|---|
