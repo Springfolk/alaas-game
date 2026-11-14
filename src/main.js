@@ -5,6 +5,7 @@ import { setAnisotropy, setTextureRenderer, sharpenTextures } from './engine/mat
 import { bootDone, bootFailed, restoreLost, resumeSpot, isPhone, PRESETS } from './engine/tier.js';
 import { VIDEO, fromOpts, toOpts, needsReload, applyLive } from './engine/video.js';
 import { releaseGeometry } from './load/release.js';
+import { offline } from './load/offline.js';
 import { World } from './world/world.js';
 import { START } from './world/layout.js';
 import { Input } from './input.js';
@@ -131,6 +132,7 @@ class Game {
     // object per pass before it reads the material (raycasts and bounds ignore `visible`)
     this.engine.scene.traverse((o) => { if (o.isMesh && o.material?.visible === false && !o.children.length) o.visible = false; });
     this.sharpening = sharpenTextures().then(() => { this.sharp = true; mark('sharp'); closeWorkers(); }); // 256 → the tier's size, in play
+    offline(this); // the service worker; the installed app fetches the rest (src/load/offline.js)
     if (params.has('perftest')) this.sharpening.then(() => import('./load/perftest.js')).then((m) => m.perfTest(this)); // per-layer frame cost on a device
     this.player.onStep = (surface, speed) => this.audio?.step(surface, speed);
 
