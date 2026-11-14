@@ -1,5 +1,6 @@
 // Renders the README art from docs/img/icon.svg (tools/make-icon.mjs) and the loading key art (tools/key-art.mjs):
-// public/icon.svg (copy), docs/img/icon-256.png, public/apple-touch-icon.png (180, on the dark rim colour) and
+// public/icon.svg (copy), docs/img/icon-256.png, public/apple-touch-icon.png (180, on the dark rim colour), the
+// installed app's icons (public/icon-192.png, icon-512.png, icon-maskable-512.png, desktop/icon.png) and
 // docs/img/banner.webp (1600×500: key art, icon, «Алаас» in the self-hosted Noto Serif).
 // node tools/readme-art.mjs — headless system Chrome (CHROME), `cwebp`; no dev server.
 import { execFileSync } from 'node:child_process';
@@ -30,6 +31,11 @@ const icon = (size, bg) => `<!doctype html><body style="margin:0;background:${bg
   <img src="${url('docs/img/icon.svg')}" style="display:block;width:${size}px;height:${size}px">`;
 await render(icon(256, 'transparent'), 256, 256, 1, at('docs/img/icon-256.png'), true);
 await render(icon(180, DARK), 180, 180, 1, at('public/apple-touch-icon.png'));
+// the installed app (public/manifest.webmanifest; desktop/icon.png for the Electron build): maskable = inside the safe zone
+for (const s of [192, 512]) await render(icon(s, 'transparent'), s, s, 1, at(`public/icon-${s}.png`), true);
+await render(icon(1024, 'transparent'), 1024, 1024, 1, at('desktop/icon.png'), true);
+await render(`<!doctype html><body style="margin:0;background:${DARK};display:grid;place-items:center;height:512px">
+  <img src="${url('docs/img/icon.svg')}" style="width:400px;height:400px">`, 512, 512, 1, at('public/icon-maskable-512.png'));
 
 // banner at 800×250 CSS px, 2× device pixels
 const banner = `<!doctype html><link rel="stylesheet" href="${url('public/assets/ui/fonts.css')}">

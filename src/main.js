@@ -5,6 +5,7 @@ import { setAnisotropy, setTextureRenderer, sharpenTextures } from './engine/mat
 import { bootDone, bootFailed, restoreLost, resumeSpot, isPhone, PRESETS } from './engine/tier.js';
 import { VIDEO, fromOpts, toOpts, needsReload, applyLive } from './engine/video.js';
 import { releaseGeometry } from './load/release.js';
+import { offline } from './load/offline.js';
 import { World } from './world/world.js';
 import { START } from './world/layout.js';
 import { Input } from './input.js';
@@ -131,6 +132,7 @@ class Game {
     // object per pass before it reads the material (raycasts and bounds ignore `visible`)
     this.engine.scene.traverse((o) => { if (o.isMesh && o.material?.visible === false && !o.children.length) o.visible = false; });
     this.sharpening = sharpenTextures().then(() => { this.sharp = true; mark('sharp'); closeWorkers(); }); // 256 → the tier's size, in play
+    offline(this); // the service worker; the installed app fetches the rest (src/load/offline.js)
     if (params.has('perftest')) this.sharpening.then(() => import('./load/perftest.js')).then((m) => m.perfTest(this)); // per-layer frame cost on a device
     this.player.onStep = (surface, speed) => this.audio?.step(surface, speed);
 
@@ -686,12 +688,14 @@ document.getElementById('go').textContent = '· · ·';
 new Game().boot().catch(fail);
 
 // Frame pacing (perf): a steady 60 fps (30 with the battery saver) in play, on the title and in menus;
-// once the pause menu has settled (TRAA converged) no frames are drawn until it closes. Engine.pace counts
+// once the pause menu has settled (TRAA converged) or the journal is up no frames are drawn until it closes. Engine.pace counts
 // display refreshes, so a 120 Hz screen draws exactly every other one.
 Game.prototype.tick = function (now) {
   const e = this.engine, s = this.save.settings;
   e.fpsCap = e.phone || (s.batterySaver ?? e.autoSaver) ? 30 : e.opts.fps; // phones: always 30
   const paused = document.getElementById('pause')?.classList.contains('show');
   this.pausedFrames = paused ? (this.pausedFrames || 0) + 1 : 0;
-  if (e.pace(now, this.pausedFrames > 45 ? 0 : e.fpsCap)) this.frame(now);
+  // the journal covers the world: once its fade is over the world waits, and the map has the whole machine
+  this.journalFrames = this.ui.open === 'journal' ? (this.journalFrames || 0) + 1 : 0;
+  if (e.pace(now, this.pausedFrames > 45 || this.journalFrames > 20 ? 0 : e.fpsCap)) this.frame(now);
 };

@@ -106,7 +106,7 @@ export class Journal {
   // `here`: the map comes up round the player (at the scale it was left at)
   show(tab = this.tab, here = false) {
     const ui = this.ui, found = ui.state.found, n = found.size;
-    this.tab = tab;
+    this.tab = tab; this.sz = this.rt = null;
     if (here && this.view && this.game) { this.sel = null; this.centre(this.game.player.pos, null); }
     const $ = (s) => this.el.querySelector(s);
     $('h2').textContent = this.t(this.title);
@@ -182,9 +182,10 @@ export class Journal {
     this.destEl.classList.toggle('on', !!p);
     if (p) { const [u, v] = toMap(p.x, p.z); this.destEl.style.left = `${u * 100}%`; this.destEl.style.top = `${v * 100}%`; }
   }
-  size() { return { w: this.map.clientWidth || 1, h: this.map.clientHeight || 1 }; }
-  // local px per px of the screen (the window is zoomed on a big screen)
-  ratio() { const r = this.map.getBoundingClientRect(); return r.width ? this.map.clientWidth / r.width : 1; }
+  // the map's box and the local px per px of the screen (the window is zoomed on a big screen), measured once a
+  // showing or resize: a read per mouse event would force a layout each time
+  size() { return (this.sz ||= this.map.clientWidth ? { w: this.map.clientWidth, h: this.map.clientHeight || 1 } : null) || { w: 1, h: 1 }; }
+  ratio() { if (!this.rt) { const r = this.map.getBoundingClientRect(); if (!r.width) return 1; this.rt = { k: this.map.clientWidth / r.width, x: r.left, y: r.top }; } return this.rt.k; }
   limits() { const { w, h } = this.size(); return { min: Math.min(w, h) / U, max: (2 * M.half / U) / 0.1 }; } // from the whole alaas to 10 cm a pixel
   // show `span` metres across (null: the scale as it is), centred on a world point
   centre(p, span) {
@@ -204,6 +205,12 @@ export class Journal {
     const v = this.view, { w, h } = this.size(), S = U * v.sc;
     // the map fills the window; where it is smaller it sits in the middle
     v.tx = S < w ? (w - S) / 2 : Math.min(0, Math.max(w - S, v.tx)); v.ty = S < h ? (h - S) / 2 : Math.min(0, Math.max(h - S, v.ty));
+    if (force) { cancelAnimationFrame(this.raf); this.raf = 0; this.paint(true); } else this.raf ||= requestAnimationFrame(() => { this.raf = 0; this.paint(); });
+  }
+  // the view on the page, once a displayed frame however many mouse events moved it
+  paint(force = false) {
+    const v = this.view;
+    if (!v) return;
     this.world.style.transform = `translate(${v.tx.toFixed(1)}px,${v.ty.toFixed(1)}px) scale(${v.sc.toFixed(4)})`;
     const step = Math.round(Math.log2(v.sc) * 4);
     if (step !== this.step || force) { this.step = step; this.world.style.setProperty('--k', (1 / v.sc).toFixed(4)); this.thin(); }
@@ -217,6 +224,7 @@ export class Journal {
     const v = this.view;
     if (!v || this.ui.open !== 'journal' || this.tab !== 'map') return;
     this.world.classList.remove('moving');
+    this.sz = this.rt = null; // measured afresh for the next move
     const { w, h } = this.size(), S = U * v.sc, span = 2 * M.half, m = (px) => px / S * span;
     const dev = Math.min(2, devicePixelRatio || 1) / this.ratio(); // device px per local px
     this.tiles.update(span / S / dev, { x0: m(-v.tx), x1: m(w - v.tx), z0: m(-v.ty), z1: m(h - v.ty) });
@@ -268,7 +276,7 @@ export class Journal {
       img = this.thumb(m.id, k);
       if (k) read = `<button class="j-do read" data-open="${m.id}">${icon('eye')}</button>`;
     }
-    this.selBox.innerHTML = `<span class="j-thumb">${img}</span><span class="j-name">${name}</span>${read}<button class="j-do go${going ? ' on' : ''}" data-go="${esc(m.key)}"><i class="gmark"></i>${icon('walk')}</button>`;
+    this.selBox.innerHTML = `<span class="j-thumb">${img}</span><span class="j-name">${name}</span>${read}<button class="j-do go${going ? ' on' : ''}" data-go="${esc(m.key)}">${icon('nav')}</button>`;
     this.thin();
   }
   // show a marker on the map (from the lists): the map leaf, centred on it, chosen
@@ -311,7 +319,7 @@ export class Journal {
       <i class="j-pin dest on" ${at(55, 55)}></i><i class="j-pin me" ${at(60, 60)}></i>`;
     this.selBox.className = 'j-sel pane on';
     this.selBox.innerHTML = `<span class="j-thumb"></span><span class="j-name"><b><span class="nm"><span class="nm-s">Алаас</span><span class="nm-l">Alaas</span></span></b><small><span>${icon('log')}1</span></small></span><button class="j-do read">${icon('eye')}</button>
-      <button class="j-do go"><i class="gmark"></i>${icon('walk')}</button><button class="j-do go on"><i class="gmark"></i>${icon('walk')}</button>`;
+      <button class="j-do go">${icon('nav')}</button><button class="j-do go on">${icon('nav')}</button>`;
     this.view = { sc: 0.6, tx: 0, ty: 0 };
     this.world.style.transform = 'translate(0px,0px) scale(.6)';
     this.world.style.setProperty('--k', '1.6667');
@@ -337,7 +345,7 @@ export class Journal {
     // a free pointer or fingers on the map: one drags, two pinch; a short still touch is a tap
     const pts = new Map();
     let moved = 0, pinch = 0, t0 = 0, onPin = null;
-    const local = (e) => { const r = this.map.getBoundingClientRect(), k = this.ratio(); return [(e.clientX - r.left) * k, (e.clientY - r.top) * k]; };
+    const local = (e) => { const k = this.ratio(), r = this.rt || { x: 0, y: 0 }; return [(e.clientX - r.x) * k, (e.clientY - r.y) * k]; };
     this.map.addEventListener('pointerdown', (e) => {
       if (document.pointerLockElement || e.target.closest('.j-ctl, .j-sel')) return;
       pts.set(e.pointerId, local(e));
@@ -370,10 +378,10 @@ export class Journal {
       const p = local(e);
       this.zoom(Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0016)), p[0], p[1]);
     }, { passive: true });
-    addEventListener('resize', () => { if (ui.open === 'journal' && this.tab === 'map' && this.view) this.apply(true); });
+    addEventListener('resize', () => { this.sz = this.rt = null; if (ui.open === 'journal' && this.tab === 'map' && this.view) this.apply(true); });
   }
   // the drawn cursor (pointer locked): a drag, the wheel, a click on the bare map, at screen px
   cursorPan(dx, dy) { const k = this.ratio(); this.pan(dx * k, dy * k); }
-  cursorZoom(dy, x, y) { const r = this.map.getBoundingClientRect(), k = this.ratio(); this.zoom(Math.exp(-dy * 0.0016), (x - r.left) * k, (y - r.top) * k); }
-  cursorTap(x, y) { const r = this.map.getBoundingClientRect(), k = this.ratio(); this.tapAt((x - r.left) * k, (y - r.top) * k); }
+  cursorZoom(dy, x, y) { const k = this.ratio(), r = this.rt || { x: 0, y: 0 }; this.zoom(Math.exp(-dy * 0.0016), (x - r.x) * k, (y - r.y) * k); }
+  cursorTap(x, y) { const k = this.ratio(), r = this.rt || { x: 0, y: 0 }; this.tapAt((x - r.x) * k, (y - r.y) * k); }
 }

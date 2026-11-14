@@ -84,7 +84,9 @@ const q = (v, f) => v[Math.min(v.length - 1, Math.floor(v.length * f))];
 //         under 0.6 of it, twice in a row: 4–8% more resolution, by the room measured (not up to a scale the GPU
 //         fell behind at in the last 15 s, doubled ≤ 2 min each time the climb back fails). At full resolution a
 //         knob comes back, last first, after `knobWait` (4 s; doubled, ≤ 2 min, when a restored one fails within
-//         20 s); a slower beat comes back first, and only when the faster one is measured to fit.
+//         20 s); a slower beat comes back first (its own `beatWait`), and only when the faster one is measured to
+//         fit; while it stays (or the browser gives 30 callbacks a second: Safari in Low Power Mode), the others
+//         come back under it.
 //   else  nothing changes: a frame rate held with little to spare is left alone, not probed.
 // Without GPU timing (no fence; Safari: WebGL2 fences cost 5 ms a frame, WebGPU reports a frame done a paced frame
 // later at any load): over by late frames alone, room = none late and the average under 2% over; so resolution is
@@ -142,34 +144,41 @@ export function govern(e, dt, now = performance.now()) {
         e.resScale = Math.max(floor, e.resScale * Math.min(0.95, Math.max(0.8, Math.sqrt(0.9 / ratio))));
         g.over = 0;
       }
+    } else if (fresh && e.knobUp?.fits && !e.knobs.includes(e.knobUp)) { // a faster beat that just failed: the slower one and its resolution back at once
+      knob(e, -1, now, false, false, e.knobUp); e.resScale = Math.max(e.resScale, e.beatRes ?? 0); g.over = 0;
     } else if ((g.over >= need || edge) && knob(e, -1, now, cpu, g.over < need * 2 && !edge && !fresh)) g.over = 0; // (a slower beat: after twice as many windows)
   } else if (room && g.room >= 2) {
     g.room = 0;
     const on = e.knobs, top = on?.[on.length - 1];
     // a slower cadence comes back before resolution does: 60 at fewer pixels over 30 at more
-    if (top?.fits && now - e.knobAt > e.knobWait && top.fits(e, { gpu, js, iv, floor })) { knob(e, 1, now); e.resScale = Math.min(e.resScale, Math.max(floor, top.scale ?? floor)); }
+    if (top?.fits && now - e.knobAt > e.beatWait && top.fits(e, { gpu, js, iv, floor })) { knob(e, 1, now); e.beatRes = e.resScale; e.resScale = Math.min(e.resScale, Math.max(floor, top.scale ?? floor)); }
     else if (e.resScale < 1) {
       // as many more pixels as the GPU's time leaves room for, 4–8% a step, short of a scale that failed
       const to = Math.min(1, e.resCeil ? e.resCeil - 0.04 : 1, e.resScale * Math.min(1.08, Math.max(1.04, Math.sqrt(iv * 0.75 / Math.max(quick, 1)))));
       if (to > e.resScale + 0.03 || (to >= 1 && !e.resCeil)) { e.resScale = to; e.resUpAt = now; }
     }
-    else if (top && !top.fits && now - e.knobAt > e.knobWait) knob(e, 1, now);
+    else if (now - e.knobAt > e.knobWait) { // the other knobs come back at the beat that has room, under a slower one too
+      const k = on?.findLast((k) => !k.fits);
+      if (k) knob(e, 1, now, false, false, k);
+    }
   }
   if (e.resScale !== prev) { e.applyResolution(); g.settle = true; }
 }
 
-// One knob down (dir −1; `cpu`: only those that save JS; `gentle`: not a slower beat) or the last one back up (+1).
-// True when one was stepped.
-export function knob(e, dir, now, cpu = false, gentle = false) {
+// One knob down (dir −1; `which`, else the first not on; `cpu`: only those that save JS; `gentle`: not a slower
+// beat) or one back up (+1: `which`, else the last). True when one was stepped. A slower beat and the other knobs wait apart (knobWait, beatWait).
+export function knob(e, dir, now, cpu = false, gentle = false, which = null) {
   const on = e.knobs ||= [];
-  e.knobWait ||= 4000;
+  e.knobWait ||= 4000; e.beatWait ||= 4000;
   if (dir < 0) {
-    const k = KNOBS.find((k) => !on.includes(k) && (!cpu || k.cpu) && k.ok(e));
+    const k = which && !on.includes(which) ? which : KNOBS.find((k) => !on.includes(k) && (!cpu || k.cpu) && k.ok(e));
     if (!k || (gentle && k.fits)) return false;
-    if (now - e.knobAt < 20000 && e.knobUp === k) e.knobWait = Math.min(120000, e.knobWait * 2);
+    const w = k.fits ? 'beatWait' : 'knobWait';
+    if (now - e.knobAt < 20000 && e.knobUp === k) e[w] = Math.min(120000, e[w] * 2);
     on.push(k); k.set(e, true);
   } else {
-    const k = e.knobUp = on.pop();
+    const k = e.knobUp = which ?? on[on.length - 1];
+    on.splice(on.lastIndexOf(k), 1);
     k.set(e, false);
     e.knobUpAt = now;
   }

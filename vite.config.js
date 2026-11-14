@@ -26,6 +26,20 @@ function assetVersions() {
 const ASSET_V = assetVersions();
 const uiVersioned = (html) => html.replace(/\/assets\/ui\/[\w.-]+(?![\w.?-])/g, (u) => `${u}?v=${ASSET_V['assets/ui']}`);
 
+// The service worker's lists (public/sw.js, docs/offline.md): offline.json = { shell: the built scripts, files: every
+// file, `?v=` as the game asks for it }; sw.js gets a build id, so each deploy installs a new worker.
+function offlineList(dir) {
+  const files = readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && !e.name.startsWith('.'))
+    .map((e) => `${e.parentPath}/${e.name}`.slice(dir.length + 1).replaceAll('\\', '/'))
+    .filter((f) => !['index.html', 'viewer.html', 'sw.js', 'offline.json', 'og.jpg'].includes(f)).sort();
+  const shell = files.filter((f) => /^assets\/[^/]+$/.test(f));
+  const list = JSON.stringify({ shell, files: files.map((f) => { const v = ASSET_V[f.slice(0, f.lastIndexOf('/'))]; return v ? `${f}?v=${v}` : f; }) });
+  writeFileSync(`${dir}/offline.json`, list);
+  const build = createHash('sha1').update(list).update(readFileSync(`${dir}/index.html`)).digest('hex').slice(0, 10);
+  writeFileSync(`${dir}/sw.js`, readFileSync(`${dir}/sw.js`, 'utf8').replace('__BUILD__', build));
+}
+
 const warnStale = (log) => {
   const stale = staleGroups();
   if (stale.length) log(`geometry bake stale for ${stale.join(', ')} (generated at load instead): npm run bake-geometry`);
@@ -39,7 +53,12 @@ function geoKeysPlugin() {
       tags: [{ tag: 'script', children: `window.__GEO_KEYS__=${JSON.stringify(geoKeys().keys)};window.__ASSET_V__=${JSON.stringify(ASSET_V)}`, injectTo: 'head-prepend' }],
     }),
     // a build re-serialises srcset after every html hook, dropping the query: version the written page again
-    writeBundle(o) { const f = `${o.dir}/index.html`; if (existsSync(f)) writeFileSync(f, uiVersioned(readFileSync(f, 'utf8'))); },
+    writeBundle(o) {
+      const f = `${o.dir}/index.html`;
+      if (!existsSync(f)) return;
+      writeFileSync(f, uiVersioned(readFileSync(f, 'utf8')));
+      offlineList(o.dir);
+    },
     buildStart() { if (this.meta.watchMode === false) warnStale((m) => this.warn(m)); },
     configureServer(server) { warnStale((m) => server.config.logger.warn(m)); },
   };

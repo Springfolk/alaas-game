@@ -6,10 +6,13 @@
 // rebuild), anything not StaticDrawUsage (attributes rewritten in play are marked DynamicDrawUsage where made),
 // instanced and interleaved data, and whatever has no GPU buffer yet (never drawn: e.g. the coarse ground on phones).
 // A freed attribute keeps its count and array type (three's pipeline layout reads them); bounds are computed first.
-// `?keepgeo`: off (A/B). Dev: reading a freed array outside three, or marking one for upload, warns once.
+// `?keepgeo`: off (A/B). Dev: reading a freed array outside three, or marking one for upload, warns once
+// (reads inside `Engine.render` are three's own and go unchecked: a stack per read costs over 1 ms a frame).
 import { StaticDrawUsage } from 'three/webgpu';
 import { KEYART, urlFlag } from '../util.js';
 import { dropPacks } from './geocache.js';
+
+let inRender = false;
 
 export function releaseGeometry(game) {
   if (KEYART || urlFlag('keepgeo') || urlFlag('bakegeo') || urlFlag('bakeimpostors')) return null;
@@ -22,6 +25,11 @@ export function releaseGeometry(game) {
   const onGpu = (a) => { const d = backend.get(a); return !!(d.buffer || d.bufferGPU); };
   const seen = new Set();
   let bytes = 0, n = 0;
+  if (import.meta.env.DEV && !engine.render.unchecked) {
+    const render = engine.render;
+    engine.render = function () { inRender = true; try { return render.call(this); } finally { inRender = false; } };
+    engine.render.unchecked = true;
+  }
   const free = (a) => {
     if (!a || seen.has(a)) return;
     seen.add(a);
@@ -31,7 +39,7 @@ export function releaseGeometry(game) {
     if (!import.meta.env.DEV) { a.array = stub; return; }
     let warned = false;
     const warn = (what) => { if (!warned) { warned = true; console.warn(`release.js: freed attribute ${what}`, a.name || '', new Error().stack); } };
-    Object.defineProperty(a, 'array', { get() { if (!/three|release\.js/.test(new Error().stack.split('\n')[2] || '')) warn('read'); return stub; }, set() { warn('replaced'); } });
+    Object.defineProperty(a, 'array', { get() { if (!inRender && !/three|release\.js/.test(new Error().stack.split('\n')[2] || '')) warn('read'); return stub; }, set() { warn('replaced'); } });
     Object.defineProperty(a, 'needsUpdate', { set() { warn('marked for upload (make it DynamicDrawUsage)'); } });
   };
   engine.scene.traverse((o) => {

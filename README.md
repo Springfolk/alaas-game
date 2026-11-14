@@ -7,7 +7,17 @@
   An interactive museum: a first-person walk through a Sakha summer homestead in Central Yakutia.
 </p>
 
+<h3 align="center">
+  <a href="https://springfolk.github.io/alaas-game/">▶ Play in your browser</a>
+</h3>
+<p align="center"><sub>Free, no install, no account. Desktop and phone. Or <a href="#play-offline">download it to play offline</a>.</sub></p>
+
 <p align="center">
+  <a href="https://springfolk.github.io/alaas-game/"><img src="docs/img/trailer.webp" width="100%" alt="The game in motion: the urasa across the meadow grass, the hearth fire inside, carved чороон cups, the serge and its explainer card, then the lake through the shore grass under the taiga"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Springfolk/alaas-game/releases/latest"><img src="https://img.shields.io/github/v/release/Springfolk/alaas-game?label=release&color=3a82aa&labelColor=21160f" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/code-MIT-3a82aa?labelColor=21160f" alt="Code: MIT">
   <img src="https://img.shields.io/badge/content-CC%20BY--SA%204.0-3a82aa?labelColor=21160f" alt="Content: CC BY-SA 4.0">
   <img src="https://img.shields.io/badge/three.js-r186-5f8f37?labelColor=21160f&logo=threedotjs&logoColor=white" alt="three.js r186">
@@ -17,7 +27,7 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start"><b>Play locally</b></a> · <a href="CONTRIBUTING.md"><b>Contributing</b></a> · <a href="docs/credits.md"><b>Credits</b></a>
+  <a href="https://springfolk.github.io/alaas-game/"><b>Play</b></a> · <a href="#quick-start"><b>Run locally</b></a> · <a href="https://github.com/Springfolk/alaas-game/releases"><b>Releases</b></a> · <a href="CONTRIBUTING.md"><b>Contributing</b></a> · <a href="docs/credits.md"><b>Credits</b></a>
 </p>
 
 Алаас is an interactive museum, a first-person walk through a traditional Sakha summer homestead (сайылык) in an alaas, the
@@ -28,14 +38,14 @@ first, then English and Russian, picked from your browser's language. You walk, 
 
 <table>
   <tr>
-    <td width="33%" align="center"><img src="docs/img/lake.webp" alt="The lake shore of the alaas, with a path up the meadow to the homestead"><br><sub>Down at the lake, the path climbs to the сайылык</sub></td>
-    <td width="33%" align="center"><img src="docs/img/serge.webp" alt="Three carved serge posts in the yard, the urasa and the balagan behind them"><br><sub>Serge hitching posts before the urasa</sub></td>
+    <td width="33%" align="center"><img src="docs/img/lake.webp" alt="The alaas lake seen over the shore grass, the taiga mirrored in it under a summer sky"><br><sub>The alaas lake from its shore</sub></td>
+    <td width="33%" align="center"><img src="docs/img/serge.webp" alt="Three carved serge posts in the yard before the birch-bark urasa, the storehouse behind them"><br><sub>Serge hitching posts before the urasa</sub></td>
     <td width="33%" align="center"><img src="docs/img/balagan.webp" alt="The balagan interior: the clay оһох hearth burning, shelves of dishes, the open east door"><br><sub>The balagan, lit by its оһох hearth</sub></td>
   </tr>
   <tr>
     <td width="33%" align="center"><img src="docs/img/urasa-inside.webp" alt="Inside the urasa: the hearth frame with its fire, benches round the wall and the birch-bark cover on its poles"><br><sub>Inside the urasa: the fire, the benches, the bark cover</sub></td>
-    <td width="33%" align="center"><img src="docs/img/choron.webp" alt="Three carved birch чороон cups on a low board, a birch-bark ыаҕас and the smoked leather симиир of kymys beside them"><br><sub>Carved чороон cups for kymys</sub></td>
-    <td width="33%" align="center"><img src="docs/img/card.webp" alt="An explainer card in Sakha, with a reference photo by Il-Gil (CC BY-SA 4.0)"><br><sub>Explainer cards: Sakha first, then English, Russian</sub></td>
+    <td width="33%" align="center"><img src="docs/img/choron.webp" alt="Three carved birch чороон cups on a low board in the urasa, a birch-bark vessel before them and the hearth fire behind"><br><sub>Carved чороон cups for kymys</sub></td>
+    <td width="33%" align="center"><img src="docs/img/card.webp" alt="The serge seen close, its explainer card open in Sakha with two reference photos"><br><sub>Explainer cards: Sakha first, then English, Russian</sub></td>
   </tr>
 </table>
 
@@ -63,6 +73,13 @@ first, then English and Russian, picked from your browser's language. You walk, 
 | Anything without WebGPU | WebGL2 fallback (force it with `?webgl`) |
 
 The quality tier is picked from the device (Settings → Quality changes it).
+
+## Play offline
+- **Windows, macOS, Linux**: download the app from the [latest release](https://github.com/Springfolk/alaas-game/releases/latest)
+  (`.exe`, `.dmg` for Apple silicon or Intel, `.AppImage`). The builds are unsigned: on macOS open it the first
+  time with right-click → Open; on Windows choose More info → Run anyway.
+- **Phones, tablets, Chromebooks, any browser**: open the game and use the browser's *Install* or *Add to Home
+  Screen*. Once it has loaded online, the installed app keeps everything it needs and starts without a connection.
 
 ## Quick start
 ```sh
@@ -96,17 +113,19 @@ Phones: the left thumb walks (push the stick to its rim to run), a drag anywhere
 | `src/nature/` | forest, grass, lake and wildlife |
 | `src/interact/` · `src/ui/` · `src/audio/` | hands-on acts · cards, journal, touch · soundscape |
 | `src/data/` | explainer entries and reference images |
+| `desktop/` | the Electron desktop app |
 | `tools/` | asset fetchers, texture bakers and headless checks |
 | `docs/` | how it all works ([`AGENTS.md`](AGENTS.md) has the map) |
 
 ## Contributing
 Contributions are welcome, from code to Sakha-language corrections. If you know Sakha life and
-something is wrong or missing, open an [issue](https://github.com/Springfolk/alaas-game/issues) or write
+something is wrong or missing, open an [issue](https://github.com/Springfolk/alaas-game/issues/new/choose) or write
 to hello@springfolk.co; corrections are credited. For pull requests, read [`CONTRIBUTING.md`](CONTRIBUTING.md)
-first: it lists the checks to run and the content rules.
+first: it lists the checks to run and the content rules. The newest work is playable on the
+[canary build](https://springfolk.github.io/alaas-game/canary/).
 
 ## Credits and licences
-- **AI-assisted**, directed and reviewed by Georgii Antipin (Springfolk), who also checked every Sakha text.
+- **Built with AI assistance** under human direction and review. Sakha texts are written and checked by hand, never machine-translated.
 - **Code**: MIT, © Springfolk ([`LICENSE`](LICENSE)).
 - **Original content** (explainer and interface texts, the project's own baked textures): CC BY-SA 4.0.
 - **Third-party assets** keep their own licences: CC0 textures from Poly Haven and ambientCG, CC0 and
