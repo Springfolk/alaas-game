@@ -5,10 +5,11 @@
 // Prints: frames per second, dips (a frame a refresh late or more) in all and in the last third, the resolution's
 // range, its changes, the knobs at the end, and input→display p50/p95 (ms from a frame's start to the refresh after
 // its GPU work ends). `lag`/`lagP`: a callback that late (½–1×, ms) with that chance; `quant`: timestamp resolution,
-// ms; `timed: false`: no GPU timing; `queue`: unfinished frames that hold rAF back (Chrome 4, Safari 2).
+// ms; `timed: false`: no GPU timing; `queue`: unfinished frames that hold rAF back (Chrome 4, Safari 2);
+// `every`: rAF only on every n-th refresh (Safari in Low Power Mode: 2).
 import { pace, govern, frameDone, KNOBS } from '../src/engine/pacing.js';
 
-function run({ hz = 60, fps = 60, js = 5, gpu = 3, px = 8, floor = 0.55, start = 1, secs = 60, jitter = 0.2, load = () => 1, noise = 0.08, lag = 0, lagP = 0, quant = 0, timed = true, queue = 4 }) {
+function run({ hz = 60, fps = 60, js = 5, gpu = 3, px = 8, floor = 0.55, start = 1, secs = 60, jitter = 0.2, load = () => 1, noise = 0.08, lag = 0, lagP = 0, quant = 0, timed = true, queue = 4, every = 1 }) {
   let seed = 7;
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2 ** 32; };
   const clock = { t: 0, now() { return this.t; } };
@@ -23,7 +24,7 @@ function run({ hz = 60, fps = 60, js = 5, gpu = 3, px = 8, floor = 0.55, start =
     clock.t = T;
     while (done.length && done[0][0] <= T) { clock.t = done[0][0]; done.shift()[1](); clock.t = T; }
     while (ends.length && ends[0] <= T) ends.shift();
-    if (T < busyUntil || ends.length >= queue) continue;
+    if (k % every || T < busyUntil || ends.length >= queue) continue;
     const late = lagP && rnd() < lagP ? lag * (0.5 + rnd() / 2) : 0, S = T + late; // (a callback delivered late: its JS starts late)
     let now = S + (rnd() - 0.5) * 2 * jitter;
     if (quant) now = Math.round(now / quant) * quant;
@@ -76,6 +77,7 @@ const CASES = {
   'Safari, GPU near the budget': { js: 6, gpu: 4, px: 13.5, floor: 0.667, quant: 1, lag: 10, lagP: 0.04, timed: false, queue: 2 },
   'Safari, fast GPU': { js: 6, gpu: 3, px: 5, floor: 0.667, quant: 1, lag: 10, lagP: 0.04, timed: false, queue: 2 },
   'Safari, heavy first 15 s': { js: 6, gpu: 4, px: 10, floor: 0.667, secs: 90, load: (t) => (t < 15 ? 3 : 1), quant: 1, lag: 10, lagP: 0.04, timed: false, queue: 2 },
+  'Safari, Low Power Mode (rAF at 30 Hz)': { js: 6, gpu: 3, px: 5, floor: 0.667, quant: 1, lag: 10, lagP: 0.04, timed: false, queue: 2, every: 2, secs: 300 },
   'Safari, GPU-bound ×3': { js: 6, gpu: 8, px: 42, floor: 0.667, quant: 1, lag: 10, lagP: 0.04, timed: false, queue: 2 },
 };
 const only = process.argv[2];
