@@ -17,6 +17,7 @@
     "dev": "vite --host 127.0.0.1 --port 5190",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 5190",
+    "desktop": "npm run build && npm --prefix desktop install && npm --prefix desktop run dist",
     "fetch-assets": "node tools/fetch-assets.mjs && node tools/webp.mjs && node tools/tex-sizes.mjs",
     "shot": "node tools/shot.mjs",
     "fetch-audio": "node tools/fetch-audio.mjs",

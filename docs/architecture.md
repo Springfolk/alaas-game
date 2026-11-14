@@ -16,7 +16,7 @@
 | `src/world/layout.js` · `world.js` | every placement, the start spot · builds terrain, models, nature; colliders, floors, interactables, updaters |
 | `src/models/*.js` | one module per placed thing (`docs/models.md`) |
 | `src/nature/*.js` | after the models: `forest.js` + `trees/` (larch/birch/pine, impostors, canopy, deadwood; `?trees`, `?noforest`), `grass.js` (blades, flowers, shore plants; `natureField`/`natureWind`), `lake.js` (planar mirror), `life.js` + `life/` (birds, insects, motes, lake ripples: 4 draws) |
-| `src/load/*` | loading (`docs/loading.md`) |
+| `src/load/*` | loading (`docs/loading.md`); `offline.js` + `public/sw.js`, `desktop/` (`docs/offline.md`) |
 | `src/interact/*` | carrying, sitting, berries, rites, world hints for the next step (`hints.js`); `work/` jobs (`docs/interactions.md`, `docs/actions.md`) |
 | `src/ui/*` | stage, prompt, card, journal, toasts, title, cursor, finder, lessons, phone controls, prewarm; `i18n.js` strings and controls list (`docs/ui.md`) |
 | `src/audio/audio.js` | `AudioScape` (`docs/audio.md`) |

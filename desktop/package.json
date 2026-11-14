@@ -1,0 +1,20 @@
+{
+  "name": "alaas-desktop",
+  "productName": "Alaas",
+  "version": "0.0.0",
+  "description": "Алаас: a first-person walk through a traditional Sakha summer homestead.",
+  "homepage": "https://springfolk.github.io/alaas-game/",
+  "author": "Springfolk <hello@springfolk.co>",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --publish never --config builder.config.cjs"
+  },
+  "devDependencies": {
+    "electron": "45.3.2",
+    "electron-builder": "26.18.0"
+  }
+}

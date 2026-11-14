@@ -1,0 +1,42 @@
+# Builds the desktop app (desktop/, Electron) for Windows, macOS and Linux when a release is published,
+# pre-releases included, and attaches the installers to it. Manual run: pick the release's tag.
+name: Desktop
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of an existing release
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.TAG }}' }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+      - run: npm ci
+      - run: npm version "${TAG#v}" --no-git-tag-version --allow-same-version
+        shell: bash
+      - run: npm run build
+      - run: npm ci && npm run dist
+        working-directory: desktop
+      - run: |
+          shopt -s nullglob
+          files=(desktop/out/Alaas-*.dmg desktop/out/Alaas-*.exe desktop/out/Alaas-*.AppImage)
+          gh release upload "$TAG" "${files[@]}" --clobber
+        shell: bash

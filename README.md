@@ -10,7 +10,7 @@
 <h3 align="center">
   <a href="https://springfolk.github.io/alaas-game/">▶ Play in your browser</a>
 </h3>
-<p align="center"><sub>Free, no install, no account. Desktop and phone.</sub></p>
+<p align="center"><sub>Free, no install, no account. Desktop and phone. Or <a href="#play-offline">download it to play offline</a>.</sub></p>
 
 <p align="center">
   <a href="https://github.com/Springfolk/alaas-game/releases/latest"><img src="https://img.shields.io/github/v/release/Springfolk/alaas-game?label=release&color=3a82aa&labelColor=21160f" alt="Latest release"></a>
@@ -70,6 +70,13 @@ first, then English and Russian, picked from your browser's language. You walk, 
 
 The quality tier is picked from the device (Settings → Quality changes it).
 
+## Play offline
+- **Windows, macOS, Linux**: download the app from the [latest release](https://github.com/Springfolk/alaas-game/releases/latest)
+  (`.exe`, `.dmg` for Apple silicon or Intel, `.AppImage`). The builds are unsigned: on macOS open it the first
+  time with right-click → Open; on Windows choose More info → Run anyway.
+- **Phones, tablets, Chromebooks, any browser**: open the game and use the browser's *Install* or *Add to Home
+  Screen*. Once it has loaded online, the installed app keeps everything it needs and starts without a connection.
+
 ## Quick start
 ```sh
 npm install
@@ -102,6 +109,7 @@ Phones: the left thumb walks (push the stick to its rim to run), a drag anywhere
 | `src/nature/` | forest, grass, lake and wildlife |
 | `src/interact/` · `src/ui/` · `src/audio/` | hands-on acts · cards, journal, touch · soundscape |
 | `src/data/` | explainer entries and reference images |
+| `desktop/` | the Electron desktop app |
 | `tools/` | asset fetchers, texture bakers and headless checks |
 | `docs/` | how it all works ([`AGENTS.md`](AGENTS.md) has the map) |
 
