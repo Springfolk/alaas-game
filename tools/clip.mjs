@@ -1,6 +1,7 @@
 // Renders the README clips from the game itself, frame by frame on a virtual clock (timers, rAF, performance.now and
 // CSS animations all step 1/50 s a frame), so the result is even whatever the machine's speed.
-// node tools/clip.mjs <clip>|all [--stills] — needs a served build (PORT; `npx vite preview`), ffmpeg, img2webp.
+// node tools/clip.mjs <clip>|all|readme [--stills] — needs a served build (PORT; `npx vite preview`), ffmpeg, img2webp,
+// cwebp. `readme`: the README's six screenshots (`STILLS`) into docs/img/.
 // The README shows `trailer` (copy its .webp to docs/img/trailer.webp).
 // Out: .cache/clips/<clip>.mp4 (1080p, 50 fps), .webp (800 px, 25 fps), .gif (480 px, 20 fps); `shots --stills`: the
 // first frame of every shot as a PNG.
@@ -38,6 +39,8 @@ const SHOTS = {
   balagan: { dur: 3.2, cam: drift([-20.6, 1.45, -198.2], [-17, 1.0, -201.5], [-19.6, 1.4, -197.9], [-17, 1.05, -201.5], 60) },
   // through the shore grass, over the lake to the far forest and the sky
   shore: { dur: 4.6, cam: drift([-34, 0.72, -57.6], [-10, 11, 120], [-33.5, 1.55, -55.4], [-10, 9, 120], 56) },
+  sergeYard: { dur: 1, cam: drift([18, 1.55, -210], [7.5, 2.7, -204.4], [18, 1.55, -210], [7.5, 2.7, -204.4], 56) },
+  hearthWide: { dur: 1, cam: drift([1.9, 1.5, -205.6], [-2, 1.0, -205], [1.9, 1.5, -205.6], [-2, 1.0, -205], 74) },
   // the player's own walk up the track, the body's bob and sway left in
   walk: {
     dur: 9, play: true, hud: true,
@@ -48,6 +51,10 @@ const SHOTS = {
   // walk up to the serge, look closer (E), read on (E): the card
   read: read(9, 2.4, 6.2),
   readShort: read(6.4, 2.0, 4.6),
+};
+// The README's stills (`node tools/clip.mjs readme` → docs/img/<name>.webp): a shot, the second it is taken at, the language
+const STILLS = {
+  lake: ['shore', 4.4], serge: ['sergeYard', 0], balagan: ['balagan', 1], 'urasa-inside': ['hearthWide', 0], choron: ['choron', 0.2], card: ['read', 8, 'sah'],
 };
 // A clip: its shots in order, cross-faded
 const CLIPS = {
@@ -60,7 +67,7 @@ const CLIPS = {
 
 const [name = 'all', ...flags] = process.argv.slice(2);
 const stills = flags.includes('--stills');
-const names = name === 'all' ? Object.keys(CLIPS) : name === 'shots' ? Object.keys(SHOTS) : [name];
+const names = name === 'readme' ? [] : name === 'all' ? Object.keys(CLIPS) : name === 'shots' ? Object.keys(SHOTS) : [name];
 mkdirSync(OUT, { recursive: true });
 const browser = await launch('chrome');
 const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: DPR });
@@ -90,8 +97,9 @@ await page.evaluate(() => {
 });
 const step = async (view) => { await page.clock.runFor(DT); await page.evaluate(([dt, v]) => window.__frame(dt, v), [DT, view]); };
 
-async function shoot(id, dir) {
-  const s = SHOTS[id], frames = stills ? 1 : Math.round(s.dur * FPS);
+// `only`: just that frame, as a PNG
+async function shoot(id, dir, only) {
+  const s = SHOTS[id], frames = only != null ? only + 1 : stills ? 1 : Math.round(s.dur * FPS);
   await page.evaluate(([hud, start]) => {
     const g = window.game;
     document.documentElement.classList.toggle('nohud', !hud);
@@ -104,13 +112,21 @@ async function shoot(id, dir) {
   for (let n = 0; n < 70; n++) await step(s.cam?.(0)); // the view settles: shadows, eye, anti-aliasing, the near grass
   for (let n = 0; n < frames; n++) {
     if (each) await drive(n);
-    await step(s.cam?.(n / Math.max(1, frames - 1)));
-    await page.screenshot({ path: `${dir}/f${String(n).padStart(5, '0')}.jpg`, type: 'jpeg', quality: 97 });
+    await step(s.cam?.(n / Math.max(1, Math.round(s.dur * FPS) - 1)));
+    if (only == null) await page.screenshot({ path: `${dir}/f${String(n).padStart(5, '0')}.jpg`, type: 'jpeg', quality: 97 });
+    else if (n === only) await page.screenshot({ path: `${dir}/${id}.png` });
   }
   if (s.end) await page.evaluate((fn) => (0, eval)(`(${fn})`)(window.game), s.end.toString());
   return frames;
 }
 
+if (name === 'readme') {
+  for (const [out, [id, at, lang]] of Object.entries(STILLS)) {
+    await page.evaluate((l) => window.game.setLang(l), lang || 'en');
+    await shoot(id, OUT, Math.round(at * FPS));
+    execFileSync('cwebp', ['-quiet', '-q', '86', '-m', '6', '-resize', '1280', '0', `${OUT}${id}.png`, '-o', new URL(`../docs/img/${out}.webp`, import.meta.url).pathname]);
+  }
+}
 const done = new Map();
 const ff = (...a) => execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...a], { stdio: 'inherit' });
 for (const clip of names) {

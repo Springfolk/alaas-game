@@ -38,14 +38,14 @@ first, then English and Russian, picked from your browser's language. You walk, 
 
 <table>
   <tr>
-    <td width="33%" align="center"><img src="docs/img/lake.webp" alt="The lake shore of the alaas, with a path up the meadow to the homestead"><br><sub>Down at the lake, the path climbs to the сайылык</sub></td>
-    <td width="33%" align="center"><img src="docs/img/serge.webp" alt="Three carved serge posts in the yard, the urasa and the balagan behind them"><br><sub>Serge hitching posts before the urasa</sub></td>
+    <td width="33%" align="center"><img src="docs/img/lake.webp" alt="The alaas lake seen over the shore grass, the taiga mirrored in it under a summer sky"><br><sub>The alaas lake from its shore</sub></td>
+    <td width="33%" align="center"><img src="docs/img/serge.webp" alt="Three carved serge posts in the yard before the birch-bark urasa, the storehouse behind them"><br><sub>Serge hitching posts before the urasa</sub></td>
     <td width="33%" align="center"><img src="docs/img/balagan.webp" alt="The balagan interior: the clay оһох hearth burning, shelves of dishes, the open east door"><br><sub>The balagan, lit by its оһох hearth</sub></td>
   </tr>
   <tr>
     <td width="33%" align="center"><img src="docs/img/urasa-inside.webp" alt="Inside the urasa: the hearth frame with its fire, benches round the wall and the birch-bark cover on its poles"><br><sub>Inside the urasa: the fire, the benches, the bark cover</sub></td>
-    <td width="33%" align="center"><img src="docs/img/choron.webp" alt="Three carved birch чороон cups on a low board, a birch-bark ыаҕас and the smoked leather симиир of kymys beside them"><br><sub>Carved чороон cups for kymys</sub></td>
-    <td width="33%" align="center"><img src="docs/img/card.webp" alt="An explainer card in Sakha, with a reference photo by Il-Gil (CC BY-SA 4.0)"><br><sub>Explainer cards: Sakha first, then English, Russian</sub></td>
+    <td width="33%" align="center"><img src="docs/img/choron.webp" alt="Three carved birch чороон cups on a low board in the urasa, a birch-bark vessel before them and the hearth fire behind"><br><sub>Carved чороон cups for kymys</sub></td>
+    <td width="33%" align="center"><img src="docs/img/card.webp" alt="The serge seen close, its explainer card open in Sakha with two reference photos"><br><sub>Explainer cards: Sakha first, then English, Russian</sub></td>
   </tr>
 </table>
 

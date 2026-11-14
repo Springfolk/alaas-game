@@ -1,6 +1,6 @@
-// The next thing to do, told by the world itself (docs/interactions.md "Hints"): while a job is under way or something
-// is carried, the thing the hands should go to next answers as it would in life: the axe's edge catches the sun,
-// resin on the rounds and billets or the bark's satin glints, a fish rises where the trap goes, the hearth's fire
+// The next thing to do, told by the world itself (docs/interactions.md "Hints"): only while a job is under way or
+// something is carried (work not begun is never advertised), the thing the hands should go to next answers as it
+// would in life: resin glints on the billets, the catch splashes in the trap, hot iron spits, the hearth's fire
 // settles with a knock and a lift of sparks, a thrush calls from the ripe berries. No mark, no sentence. Indoors
 // (or with the thing indoors) the light leads to the doorway first. One table of rules (`next()`), read from the jobs' own state. The glint sprite is
 // made before the warm-up; only its uniforms, transform and `visible` change in play; the ripples are the lake's own
@@ -50,7 +50,7 @@ export class Hints {
     this.game = game;
     const its = game.world.interactables, jobs = game.work?.jobs || [];
     this.hands = game.interact.hands;
-    this.split = jobs.find((j) => j.axe); this.fish = jobs.find((j) => j.trap); this.tuos = jobs.find((j) => j.rest && j.thing);
+    this.fish = jobs.find((j) => j.trap); this.tuos = jobs.find((j) => j.rest && j.thing);
     this.fires = its.filter((i) => i.fireplace);
     this.heap = its.find((i) => i.rounds); this.tymtay = its.find((i) => i.tymtay); this.stone = its.find((i) => i.offering);
     this.blank = its.find((i) => i.target?.userData.forge); this.forge = its.find((i) => i.act?.id === 'forge');
@@ -150,16 +150,12 @@ export class Hints {
     const g = this.game, h = this.hands, held = h?.held, P = g.player.pos;
     if (!h || g.acting || g.interact.seat.on) return null;
     if (g.interact.rites.some((r) => r.held)) return null; // (the khomus)
-    const S = this.split;
-    if (S && !S.working && !held && P.distanceTo(S.block) < 8 && (S.restHalf() || S.freeRound() !== undefined)) return { kind: 'glint', at: S.axe.obj.localToWorld(new THREE.Vector3(0.02, 0.66, 0)) }; // wood waits: the sun on the axe's edge
     const F = this.fish;
     if (F && !F.busy && !held) {
-      if (F.state === 'shore' && P.distanceTo(F.gap) < 12) return { kind: 'ripple', at: this.wet(F.gap.clone().add(_v.set(0.5, 0, 0))), lap: true }; // fish rising where the trap goes
       if (F.state === 'set' && F.n >= 3 && P.distanceTo(F.trap.obj.position) < 45) return { kind: 'splash', at: this.wet(F.trap.obj.position.clone()), lap: true }; // the catch thrashing in the trap
     }
     const T = this.tuos;
     if (T && !T.busy) {
-      if (!held && !T.made && P.distanceTo(T.thing.obj.position) < 8) return this.sheen(T.thing.obj); // the sheet waits: its satin catches the light
       if (T.held && !T.made) { // made by a fire: from afar the hearth; in its room within 7 m the spot on its rim
         const f = this.hearth(), fp = f && (f.fireplace.pos?.() || this.centre(f));
         return fp && this.room(fp) === this.room(P) && Math.hypot(fp.x - P.x, fp.z - P.z) < LOOK.fire.near ? this.rim(f) : this.fireHint(f);
