@@ -276,7 +276,7 @@ export class Journal {
       img = this.thumb(m.id, k);
       if (k) read = `<button class="j-do read" data-open="${m.id}">${icon('eye')}</button>`;
     }
-    this.selBox.innerHTML = `<span class="j-thumb">${img}</span><span class="j-name">${name}</span>${read}<button class="j-do go${going ? ' on' : ''}" data-go="${esc(m.key)}"><i class="gmark"></i>${icon('walk')}</button>`;
+    this.selBox.innerHTML = `<span class="j-thumb">${img}</span><span class="j-name">${name}</span>${read}<button class="j-do go${going ? ' on' : ''}" data-go="${esc(m.key)}">${icon('nav')}</button>`;
     this.thin();
   }
   // show a marker on the map (from the lists): the map leaf, centred on it, chosen
@@ -319,7 +319,7 @@ export class Journal {
       <i class="j-pin dest on" ${at(55, 55)}></i><i class="j-pin me" ${at(60, 60)}></i>`;
     this.selBox.className = 'j-sel pane on';
     this.selBox.innerHTML = `<span class="j-thumb"></span><span class="j-name"><b><span class="nm"><span class="nm-s">Алаас</span><span class="nm-l">Alaas</span></span></b><small><span>${icon('log')}1</span></small></span><button class="j-do read">${icon('eye')}</button>
-      <button class="j-do go"><i class="gmark"></i>${icon('walk')}</button><button class="j-do go on"><i class="gmark"></i>${icon('walk')}</button>`;
+      <button class="j-do go">${icon('nav')}</button><button class="j-do go on">${icon('nav')}</button>`;
     this.view = { sc: 0.6, tx: 0, ty: 0 };
     this.world.style.transform = 'translate(0px,0px) scale(.6)';
     this.world.style.setProperty('--k', '1.6667');

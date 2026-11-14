@@ -4,7 +4,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 
 ## Commands
 - `npm install` · `npm run dev` → http://127.0.0.1:5190 · `npm run build` → `dist/` · `npm run lint` (ESLint: undefined/unused names only)
-- Branches: PRs merge into `canary` (testing, where the maintainer playtests): merge your own verified PR at once; `main` holds only released code.
+- Branches: PRs merge into `canary` (testing, where the maintainer playtests): merge your own verified PR at once; `main` holds only released code. `package.json` on `canary` carries the next version as `<v>-rc.<n>`, raised with each pre-release.
 - Hosting: GitHub Pages, `.github/workflows/pages.yml` rebuilds both on a push to `main` or `canary`: `main` at https://springfolk.github.io/alaas-game/, `canary` at https://springfolk.github.io/alaas-game/canary/ (`BASE=/alaas-game/[canary/] npm run build`; one origin, so both share `localStorage`)
 - `npm run desktop` — on a Mac: builds the site, then the macOS, Windows and Linux installers into `desktop/out/`; uploaded to the release by hand (`docs/offline.md`)
 - `npm run shot -- "<path?query>" out.png [w h waitMs]` — headless screenshot (system Chrome, WebGPU); `PORT`, `EVAL`, `CHROME` env
