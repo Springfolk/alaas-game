@@ -125,7 +125,7 @@ first: it lists the checks to run and the content rules. The newest work is play
 [canary build](https://springfolk.github.io/alaas-game/canary/).
 
 ## Credits and licences
-- **AI-assisted**, directed and reviewed by Georgii Antipin (Springfolk), who also checked every Sakha text.
+- **Built with AI assistance** under human direction and review. Sakha texts are written and checked by hand, never machine-translated.
 - **Code**: MIT, © Springfolk ([`LICENSE`](LICENSE)).
 - **Original content** (explainer and interface texts, the project's own baked textures): CC BY-SA 4.0.
 - **Third-party assets** keep their own licences: CC0 textures from Poly Haven and ambientCG, CC0 and
