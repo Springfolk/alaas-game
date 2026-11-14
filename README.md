@@ -13,6 +13,10 @@
 <p align="center"><sub>Free, no install, no account. Desktop and phone. Or <a href="#play-offline">download it to play offline</a>.</sub></p>
 
 <p align="center">
+  <a href="https://springfolk.github.io/alaas-game/"><img src="docs/img/trailer.webp" width="100%" alt="The game in motion: the urasa across the meadow grass, the hearth fire inside, carved чороон cups, the serge and its explainer card, then the lake through the shore grass under the taiga"></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/Springfolk/alaas-game/releases/latest"><img src="https://img.shields.io/github/v/release/Springfolk/alaas-game?label=release&color=3a82aa&labelColor=21160f" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/code-MIT-3a82aa?labelColor=21160f" alt="Code: MIT">
   <img src="https://img.shields.io/badge/content-CC%20BY--SA%204.0-3a82aa?labelColor=21160f" alt="Content: CC BY-SA 4.0">

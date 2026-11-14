@@ -1,6 +1,7 @@
 // Renders the README clips from the game itself, frame by frame on a virtual clock (timers, rAF, performance.now and
 // CSS animations all step 1/50 s a frame), so the result is even whatever the machine's speed.
 // node tools/clip.mjs <clip>|all [--stills] — needs a served build (PORT; `npx vite preview`), ffmpeg, img2webp.
+// The README shows `trailer` (copy its .webp to docs/img/trailer.webp).
 // Out: .cache/clips/<clip>.mp4 (1080p, 50 fps), .webp (800 px, 25 fps), .gif (480 px, 20 fps); `shots --stills`: the
 // first frame of every shot as a PNG.
 import { execFileSync } from 'node:child_process';
@@ -35,7 +36,8 @@ const SHOTS = {
   hearth: { dur: 3.2, cam: drift([0.9, 1.25, -207.3], [-2, 0.75, -205], [1.4, 1.2, -206.2], [-2, 0.8, -205], 58) },
   choron: { dur: 3.2, cam: drift([2.35, 0.55, -207.0], [1.5, 0.3, -206.4], [2.5, 0.6, -206.1], [1.5, 0.32, -206.4], 40) },
   balagan: { dur: 3.2, cam: drift([-20.6, 1.45, -198.2], [-17, 1.0, -201.5], [-19.6, 1.4, -197.9], [-17, 1.05, -201.5], 60) },
-  shore: { dur: 3.6, cam: drift([24, 1.5, -58], [22, 0.2, -44], [21, 1.5, -57], [22, 0.2, -44], 55) },
+  // through the shore grass, over the lake to the far forest and the sky
+  shore: { dur: 4.6, cam: drift([-34, 0.72, -57.6], [-10, 11, 120], [-33.5, 1.55, -55.4], [-10, 9, 120], 56) },
   // the player's own walk up the track, the body's bob and sway left in
   walk: {
     dur: 9, play: true, hud: true,
@@ -132,7 +134,7 @@ for (const clip of names) {
   const tmp = `${OUT}${clip}-webp`;
   rmSync(tmp, { recursive: true, force: true }); mkdirSync(tmp);
   ff('-i', mp4, '-vf', 'fps=25,scale=800:-1:flags=lanczos', `${tmp}/f%05d.png`);
-  execFileSync('img2webp', ['-loop', '0', '-lossy', '-q', '78', '-m', '5', '-d', '40', ...readdirSync(tmp).sort().map((f) => `${tmp}/${f}`), '-o', `${OUT}${clip}.webp`]);
+  execFileSync('img2webp', ['-loop', '0', '-lossy', '-q', '72', '-m', '5', '-d', '40', ...readdirSync(tmp).sort().map((f) => `${tmp}/${f}`), '-o', `${OUT}${clip}.webp`]);
   rmSync(tmp, { recursive: true });
   console.log(`${clip}: ${(parts.reduce((s, p) => s + p.dur, 0) - FADE * (parts.length - 1)).toFixed(1)} s, ${((Date.now() - t0) / 1000).toFixed(0)} s to render`);
 }
