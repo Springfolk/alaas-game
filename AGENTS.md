@@ -10,6 +10,7 @@ First-person walk through a traditional Sakha summer homestead (сайылык) 
 - `npm run shot -- "<path?query>" out.png [w h waitMs]` — headless screenshot (system Chrome, WebGPU); `PORT`, `EVAL`, `CHROME` env
 - Checks against a dev server (`PORT`): `npm run walkcheck|smooth|hitch|loadprof|loadtrace|bench -- chrome|webkit|phone` (`docs/testing.md`)
 - Icon and README art: `node tools/make-icon.mjs` (→ `docs/img/icon.svg`) → `node tools/readme-art.mjs` (icon PNGs, `public/icon.svg`, `docs/img/banner.webp`; no dev server) · `node tools/og-image.mjs` (link-preview `public/og.jpg`; meta tags in `index.html`)
+- README clips: `node tools/clip.mjs <clip>|all` (served build on `PORT`; frame by frame on a virtual clock → `.cache/clips/<clip>.{mp4,webp,gif}`; shots and clips are tables in the tool)
 - Traced ornament textures (`docs/patterns.md`): `node tools/make-carving.mjs` (chorons, front saddle bow; no dev server)
 - `npm run fetch-assets` (Poly Haven textures, then `tools/tex-sizes.mjs`: masters re-encoded + 1024/512/256 sizes) · `npm run fetch-audio` (sound sources)
 - Bakes (dev server running; `docs/loading.md`), rerun after changing a model, tree or the look, in this order: `npm run bake-geometry` → `npm run bake-impostors` → `npm run bake-journal` (stage views, `docs/ui.md`) → `npm run key-art` (then `readme-art`, `og-image`) · after a terrain change: `npm run bake-map` (the journal's map)
