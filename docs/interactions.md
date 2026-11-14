@@ -41,18 +41,15 @@ Code: input flow in `src/main.js` (`act`, `put`, `run`, `inspect`, `read`, `actO
 - A job's movable parts are scene children marked `userData.dynamic`; after moving one, clear its `userData.sphere` (the look-at cache).
 
 ## Hints (`src/interact/hints.js` `next()`, `game.hints`)
-No sentence and no mark says the next step: light catches the thing, as in a photograph. One rule table, read from the jobs' own state; nothing while acting, sitting, mowing or in a framed view; it stops once the step is done. Sound only accompanies.
+No sentence and no mark says the next step: light catches the thing, as in a photograph. One rule table, read from the jobs' own state; nothing for work not begun (empty hands, no job under way), nor while acting, sitting, mowing or in a framed view; it stops once the step is done. Sound only accompanies.
 
 | In the hands / state | The world's hint |
 |---|---|
 | empty pail | a fish rises in open water off the nearest shore: sun glitter (seen ≤ 220 m) and a glare on the rings |
 | pail with water, > 2.5 m from its place, not in the uraha | the uraha's doorway |
 | billets | the nearer of: the woodpile (resin glints and glares on the billet ends), a hearth (the fire lifts with a knock; its light swells round the hearth, from outside in the smoke over the roof) |
-| nothing, ≤ 8 m from the block, a round or a half to split | the sun glints on the axe's edge |
-| nothing, ≤ 12 m from the weir, trap on the shore | fish rise and jump in the weir's gap, sun glitter on the rings, water laps |
 | nothing, trap set with ≥ 3 fish, ≤ 45 m | the catch splashes in the trap, sun glitter on the water |
 | player and thing in different rooms (uraha, balagan, khoton, ampaar) | the doorway first: daylight in it, its jamb glints (from inside the player's room, from outside the thing's); a hearth from beyond 14 m keeps its smoke glow |
-| nothing, ≤ 8 m from the bark sheet, no тордуйа yet | its satin catches the light |
 | bark sheet | the nearest hearth by the way there (kept until another is a fifth nearer); in its room within 7 m: firelight settles on the rim before the player (the frame's front; the ohokh: the lip before its mouth), beating faster until within 3.2 m; aimed at, it stays |
 | тордуйа | the nearest full дьэдьэн patch ≤ 80 m: its berries glint and glare, a thrush calls from there |
 | nothing, a knife begun, ≤ 14 m | hot iron: the blank spits an ember and glows; cold: the bellows glint |
