@@ -1,6 +1,6 @@
 {
   "name": "alaas",
-  "version": "1.2.0-rc.2",
+  "version": "1.2.0",
   "description": "Алаас: a first-person walk through a traditional Sakha summer homestead that teaches Sakha culture (three.js WebGPU).",
   "license": "MIT",
   "author": "Springfolk",
